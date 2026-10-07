@@ -1,0 +1,137 @@
+{
+  "metadata": {
+    "debate_id": "debate_20261007_203917",
+    "created_utc": "2026-10-07T20:47:59.746072+00:00",
+    "prompt_version": "v3-engineer-added",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "max_rounds": 3
+  },
+  "inputs": {
+    "proposal": "Review: coalesced signal updates with LiveView Page v0.3.0 phase 2\n\nREVISE ADDRESSING:\n- Reviewer blockers: Qt leakage: qttunebridge.h line 4 includes <QAbstractListModel> and <QSortFilterProxyModel> - the core module must not include Qt headers; Qt leakage: qttunebridge.cpp line 5 includes <QMetaObject> - Qt headers in core module; Qt leakage: qttunebridge.cpp line 6 includes <QByteArray> - Qt headers in core module; Thread safety violation: onFrame() line 114 captures 'self' by value in lambda but accesses non-atomic member m_currentFrameCount without synchronization; Thread safety violation: handleFrameInternal() line 125 modifies m_currentFrameCount without mutex protection called from queued method; Thread safety violation: m_droppedFrames atomic is used correctly for dropped count but m_lastReportedDropped in handleFrameInternal is non-atomic and accessed from GUI thread; ABI integrity: SignalListModel removed but qttune/signals.h header still included in bridge - need to verify C API isolation; Buffer assumption: handleFrameInternal line 133-135 uses frame->data_length for QByteArray construction without verifying CAN vs CAN-FD buffer sizes\n- Engineer concerns: Removal of SignalListModel and coalescing logic effectively moves 'Live' functionality to a v0.3.0 scope, which may temporarily reduce UI utility but improves bridge stability.; The move of qttune_session_close to the destructor is correct for lifecycle safety, but we must ensure the mock worker's join doesn't block the main thread on exit.; The current implementation relies on FrameSortProxy for view logic; we need to ensure this doesn't introduce O(N log N) overhead on every frame update if the list grows large.; Does the removal of LiveViewPage mean the v0.2.0 release will only support historical log viewing?; What is the intended architecture for manufacturer-specific signal decoding once the SignalListModel is removed from the core bridge?\n\nREVISE ADDRESSING:\n- Reviewer blockers: Line 148-152 in qttunebridge.cpp: Memory safety violation - frame data pointer may be invalid. Comment states 'frame is stack-owned by mock_worker', but the lambda captures a copy of the struct while frame->data points to stack memory in the worker thread. When the lambda executes on the GUI thread, frame->data may reference freed stack memory.; Line 114-115 in qttunebridge.h: C ABI integrity violation - comment states 'typedef'd anonymous structs; cannot be forward-declared'. Anonymous structs cannot be safely used across C/C++ boundaries for ABI stability.\n- Engineer concerns: Removal of `SignalListModel` and `m_coalesceTimer` significantly reduces the 'Live' view capabilities; this is a major scope reduction for v0.2.0.; The `m_lastReportedDropped` update remains in the GUI thread; at high frame rates, this could cause overhead, though it is currently marked as a TODO for v0.3.0.; What is the intended architecture for signal decoding now that `SignalListModel` is removed from the bridge?; Does the removal of `m_inFlightFrames` pose a risk to the mock worker's stability under heavy load, or is the mock transport assumed to be non-blocking?"
+  },
+  "outputs": {
+    "final_verdict": "MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "Qt leakage: qttunebridge.h line 4 includes <QAbstractListModel> and <QSortFilterProxyModel> - the core module must not include Qt headers",
+            "Qt leakage: qttunebridge.cpp line 5 includes <QMetaObject> - Qt headers in core module",
+            "Qt leakage: qttunebridge.cpp line 6 includes <QByteArray> - Qt headers in core module",
+            "Thread safety violation: onFrame() line 114 captures 'self' by value in lambda but accesses non-atomic member m_currentFrameCount without synchronization",
+            "Thread safety violation: handleFrameInternal() line 125 modifies m_currentFrameCount without mutex protection called from queued method",
+            "Thread safety violation: m_droppedFrames atomic is used correctly for dropped count but m_lastReportedDropped in handleFrameInternal is non-atomic and accessed from GUI thread",
+            "ABI integrity: SignalListModel removed but qttune/signals.h header still included in bridge - need to verify C API isolation",
+            "Buffer assumption: handleFrameInternal line 133-135 uses frame->data_length for QByteArray construction without verifying CAN vs CAN-FD buffer sizes"
+          ],
+          "questions": [
+            "What is the lifetime guarantee for qttune_frame_t passed to onFrame()? The comment says 'stack-owned by mock_worker' but real implementations may differ",
+            "Why was SignalListModel removed entirely? The LiveView QML page showed signal subscription UI - how does the new architecture handle signal updates?",
+            "Is m_lastReportedDropped intentionally non-atomic since it's only accessed from GUI thread, or should it be atomic for consistency?",
+            "What is the coordination policy between the worker thread calling onFrame and the GUI thread processing handleFrameInternal?",
+            "How is the queue overflow handled now that m_inFlightFrames was removed? The MaxInFlightFrames constant is gone."
+          ],
+          "nits": [
+            "Formatting inconsistency: qttunebridge.cpp line 51 has extra space before comment",
+            "Unused variable: signalBatchCount property removed but signalBatchChanged signal still declared in old code",
+            "Missing newline at end of test file after removing tests"
+          ]
+        },
+        "auto_engineer": {
+          "verdict": "approve",
+          "blockers": [],
+          "concerns": [
+            "Removal of SignalListModel and coalescing logic effectively moves 'Live' functionality to a v0.3.0 scope, which may temporarily reduce UI utility but improves bridge stability.",
+            "The move of qttune_session_close to the destructor is correct for lifecycle safety, but we must ensure the mock worker's join doesn't block the main thread on exit.",
+            "The current implementation relies on FrameSortProxy for view logic; we need to ensure this doesn't introduce O(N log N) overhead on every frame update if the list grows large."
+          ],
+          "questions": [
+            "Does the removal of LiveViewPage mean the v0.2.0 release will only support historical log viewing?",
+            "What is the intended architecture for manufacturer-specific signal decoding once the SignalListModel is removed from the core bridge?"
+          ],
+          "reasoning": "This refactor aligns with v0.2.0 goals by stripping non-core signal batching complexity to prioritize shipping velocity and stable frame transport."
+        },
+        "timestamp": "2026-10-07T20:40:44.124831+00:00"
+      },
+      {
+        "round": 2,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "Line 148-152 in qttunebridge.cpp: Memory safety violation - frame data pointer may be invalid. Comment states 'frame is stack-owned by mock_worker', but the lambda captures a copy of the struct while frame->data points to stack memory in the worker thread. When the lambda executes on the GUI thread, frame->data may reference freed stack memory.",
+            "Line 114-115 in qttunebridge.h: C ABI integrity violation - comment states 'typedef'd anonymous structs; cannot be forward-declared'. Anonymous structs cannot be safely used across C/C++ boundaries for ABI stability."
+          ],
+          "questions": [
+            "What is the exact structure of qttune_frame_t? Does frame->data point to dynamically allocated memory or stack memory in the worker thread?",
+            "Is the removal of SignalListModel and signal batching intentional for v0.3.0, or should these features be restored?",
+            "What is the intended backpressure strategy now that m_inFlightFrames has been removed?",
+            "Should the frame data be deep-copied to ensure validity when the lambda executes?"
+          ],
+          "nits": [
+            "Consider adding explicit validation of frame->data_length against buffer bounds before creating QByteArray",
+            "The forceFrameCountForTesting method was removed - consider restoring it for testability",
+            "Add documentation about the expected lifetime of frame data across thread boundaries"
+          ]
+        },
+        "auto_engineer": {
+          "verdict": "approve",
+          "blockers": [],
+          "concerns": [
+            "Removal of `SignalListModel` and `m_coalesceTimer` significantly reduces the 'Live' view capabilities; this is a major scope reduction for v0.2.0.",
+            "The `m_lastReportedDropped` update remains in the GUI thread; at high frame rates, this could cause overhead, though it is currently marked as a TODO for v0.3.0."
+          ],
+          "questions": [
+            "What is the intended architecture for signal decoding now that `SignalListModel` is removed from the bridge?",
+            "Does the removal of `m_inFlightFrames` pose a risk to the mock worker's stability under heavy load, or is the mock transport assumed to be non-blocking?"
+          ],
+          "reasoning": "This refactor aligns with v0.2.0 goals by stripping out complex signal-coalescing logic to prioritize a stable, high-velocity mock transport and callback API."
+        },
+        "timestamp": "2026-10-07T20:45:21.639104+00:00"
+      },
+      {
+        "round": 3,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "Buffer size assumption violation: qttune_decode_signal() called with hardcoded 8-byte buffer size in handleFrameInternal() line 168, but CAN-FD frames can be 64+ bytes",
+            "C ABI integrity violation: SignalListModel::setSignalSet() takes void* parameter but the header comment references QttuneSignalSet which should be opaque; the removed code shows direct casting to QttuneSignalSet* which exposes C++ types at the boundary"
+          ],
+          "questions": [
+            "What is the exact definition of qttune_frame_t in qttune/core.h? The comment claims it's 'typedef'd anonymous structs' but this needs verification for ABI stability",
+            "Is m_currentFrameCount accessed from multiple threads? The check in onFrame() (worker thread) and increment in handleFrameInternal() (GUI thread) may have a race condition",
+            "Should m_droppedFrames use memory_order_acquire/release instead of memory_order_relaxed for proper synchronization between worker and GUI threads?"
+          ],
+          "nits": [
+            "Remove TODO comment about coalescing for v0.3 - either implement or delete",
+            "Add explicit documentation about thread ownership for m_currentFrameCount and m_droppedFrames",
+            "Consider using frame->data_length instead of hardcoded 8 for signal decoding buffer size"
+          ]
+        },
+        "auto_engineer": {
+          "verdict": "approve",
+          "blockers": [],
+          "concerns": [
+            "Removal of SignalListModel and LiveViewPage shifts the 'Live' functionality to a later milestone; ensure this aligns with the current sprint's definition of 'done'.",
+            "The 'droppedFrames' notification is currently not coalesced (noted as a v0.3.0 TODO), which may cause high-frequency GUI updates under heavy load."
+          ],
+          "questions": [
+            "Is the removal of the in-flight frame backpressure (m_inFlightFrames) acceptable for the mock transport phase, or does it risk UI thread saturation during high-frequency CAN-FD bursts?",
+            "Will the 'Live' menu item be replaced by a placeholder or removed entirely from the navigation stack in the next build?"
+          ],
+          "reasoning": "The proposal correctly prioritizes shipping velocity by stripping out complex signal-coalescing logic to focus on a stable raw-frame transport, while fixing a critical numeric sorting bug in the FrameSortProxy."
+        },
+        "timestamp": "2026-10-07T20:47:59.746056+00:00"
+      }
+    ]
+  },
+  "audit_trail": {
+    "artifact_type": "decision_record",
+    "intended_consumer": "coach_agent",
+    "validation_method": "golden_test_suite"
+  }
+}

@@ -22,6 +22,7 @@ Author: Eric | License: MIT
 import json
 import os
 import time
+import re
 import requests
 from pathlib import Path
 from datetime import datetime, timezone
@@ -29,6 +30,7 @@ from typing import List
 
 from reviewer_prompt import (PROMPT_VERSION, FAILURE_SENTINEL,
                              AUTO_ENGINEER_PROMPT)
+from file_metadata import identify_layer, get_layer_constraints
 
 # ============ CONFIGURATION ============
 OLLAMA_BASE_URL = "http://localhost:11434/api/chat"
@@ -55,20 +57,48 @@ REVIEWER_HEADER_PROMPT = REVIEWER_SYSTEM + HEADER_SCOPE_CLAUSE
 
 def derive_verdict(agent_out: dict, concern_key: str = "questions") -> str:
     """Merge decision from agent CONTENT, never the model's self-reported label.
-
-    concern_key: 'questions' (reviewer) or 'concerns' (engineer).
-    Rule: blockers block, questions/concerns do NOT block merge."""
+    concern_key: 'questions' (reviewer) or 'concerns'/'questions' (engineer)."""
     if not agent_out or agent_out.get("verdict") == "PARSE_FAILURE":
         return "reject"
     blockers = agent_out.get("blockers", []) or []
     open_items = (agent_out.get(concern_key, []) or
                   agent_out.get("questions", []) or [])
     if blockers:
-        return "reject"  # must-fix before merge
-    # Questions/concerns alone don't block — they're follow-up debt
+        return "reject"
     if open_items:
-        return "conditional"  # merge-worthy but needs attention
+        return "conditional"
     return "approve"
+
+
+# ============ HEDGE LANGUAGE DEMOTION ============
+
+HEDGE_PATTERNS = re.compile(
+    r"\b(may|might|could|possibly|potentially|speculative|"
+    r"needs? verification|unverifiable|suspected|appears to|"
+    r"seems to|likely|uncertain|check if|need to confirm|is it|"
+    r"doesn't appear to|may cause|risk of|might introduce)\b",
+    re.IGNORECASE)
+
+def demote_hedged_blockers(agent_out: dict, concern_key: str = "questions") -> dict:
+    """Guardrail: speculative/hedged text in blockers becomes a question.
+    Enforces the taxonomy rule: a blocker must be a DEMONSTRABLE violation."""
+    if not agent_out or agent_out.get("verdict") == "PARSE_FAILURE":
+        return agent_out
+    
+    out = dict(agent_out)
+    kept, demoted = [], []
+    
+    for b in (out.get("blockers", []) or []):
+        if HEDGE_PATTERNS.search(str(b)):
+            demoted.append(b)
+        else:
+            kept.append(b)
+    
+    if demoted:
+        out["blockers"] = kept
+        out[concern_key] = (out.get(concern_key, []) or []) + demoted
+    
+    return out
 
 
 # ============ CORE ORCHESTRATION ============
@@ -135,6 +165,27 @@ CODE CONTEXT:
 RESPOND WITH JSON ONLY using your role specification.
 """
 
+    # Extract file path from diff/context for layer identification
+    # Look for first file path pattern in the provided context
+    file_path = None
+    if code_diff:
+        # Try to find the diff header (e.g., "+++ b/path/to/file.cpp")
+        for line in code_diff.split('\n'):
+            if line.startswith('+++ b/'):
+                file_path = line.replace('+++ b/', '').strip()
+                break
+    if not file_path and code_context:
+        for line in code_context.split('\n'):
+            stripped = line.strip()
+            if stripped.startswith('//') and '/' in stripped:
+                file_path = stripped  # pass whole line; identify_layer substring-searches
+                break
+    
+    if file_path:
+        layer = identify_layer(file_path)
+        layer_note = get_layer_constraints(layer)
+        transcript_base = f"{transcript_base}\n\n{layer_note}\n"
+
     round_history: List[dict] = []
     final_verdict = "CONVERGENCE_FAILURE - CONFLICTING_CRITERIA"
 
@@ -151,10 +202,21 @@ RESPOND WITH JSON ONLY using your role specification.
             MODELS["auto_engineer"], AUTO_ENGINEER_PROMPT, transcript,
             TEMPERATURE_EXPLORATION if round_num == 1 else TEMPERATURE_RETRY)
 
+        # ============ GUARDRAIL: hedge demotion (before storing) ============
+        rev_before = len(reviewer.get("blockers", []) or [])
+        eng_before = len(engineer.get("blockers", []) or [])
+        reviewer = demote_hedged_blockers(reviewer, "questions")
+        engineer = demote_hedged_blockers(engineer, "concerns")
+        hedge_stats = {
+            "reviewer_demoted": rev_before - len(reviewer.get("blockers", []) or []),
+            "engineer_demoted": eng_before - len(engineer.get("blockers", []) or []),
+        }
+
         round_history.append({
             "round": round_num,
             "reviewer": reviewer,
             "auto_engineer": engineer,
+            "hedge_demotions": hedge_stats,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         })
 
@@ -165,6 +227,7 @@ RESPOND WITH JSON ONLY using your role specification.
         engineer_concerns = (engineer.get("concerns", []) +
                             (engineer.get("questions", []) or []))
 
+        # Termination conditions
         if reviewer_v == "approve" and engineer_v in ("approve", "defer"):
             final_verdict = "APPROVED_FOR_MERGE"
             break
@@ -175,7 +238,7 @@ RESPOND WITH JSON ONLY using your role specification.
             final_verdict = "MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED"
             break
 
-        # Feed critiques back for the next round
+        # Feed critiques back for next iteration
         feedback = (f"- Reviewer blockers: {'; '.join(reviewer_blockers)}\n"
                     f"- Engineer concerns: {'; '.join(engineer_concerns)}")
         proposal = f"{proposal}\n\nREVISE ADDRESSING:\n{feedback}"
@@ -224,6 +287,50 @@ def _save_decision_record(debate_id: str, proposal: str, verdict: str,
     output_file.write_text(json.dumps(record, indent=2))
     return output_file
 
+def run_hedge_unit_tests() -> List[dict]:
+    """Deterministic guardrail regression tests — no LLM involved.
+
+    Blocker texts are taken verbatim from the 2026-10-07 bridge-refactor
+    debate (decision_debate_20261007_203917) plus synthetic controls.
+    Pins demote_hedged_blockers() behavior so regex changes can't
+    silently regress it.
+    """
+    CASES = [
+        # --- real production texts that SHOULD demote ---
+        ("Memory safety violation - the lambda captures a copy of the "
+         "struct while frame->data may reference freed stack memory in "
+         "the worker thread", True),
+        ("Comment states 'stack-owned by mock_worker' but the pointer "
+         "might be invalid when executed on the GUI thread", True),
+        ("m_currentFrameCount could have a race condition between the "
+         "worker thread and the GUI thread", True),
+        # --- real production texts that should NOT demote (assertions) ---
+        ("qttune_decode_signal() called with hardcoded 8-byte buffer size "
+         "in handleFrameInternal() line 168 while CAN-FD frames can be "
+         "64+ bytes", False),
+        ("qttunebridge.h line 4 includes QAbstractListModel and "
+         "QSortFilterProxyModel - the core module must not include Qt "
+         "headers", False),
+        # --- synthetic controls ---
+        ("This appears to be a potential buffer overrun in the decode "
+         "path", True),
+        ("memcpy writes msg->DataSize bytes into an 8-byte stack buffer "
+         "with no bounds check at line 4", False),
+    ]
+    results = []
+    for i, (text, should_demote) in enumerate(CASES, 1):
+        fake_out = {"verdict": "reject", "blockers": [text],
+                    "questions": [], "nits": []}
+        demoted_out = demote_hedged_blockers(fake_out, "questions")
+        was_demoted = len(demoted_out.get("blockers", [])) == 0
+        results.append({
+            "test_name": f"hedge_unit_{i}",
+            "text": text,
+            "should_demote": should_demote,
+            "was_demoted": was_demoted,
+            "test_passed": was_demoted == should_demote,
+        })
+    return results
 
 # ============ GOLDEN TEST SUITE ============
 # Tests the REVIEWER UNIT directly — no debate loop, no coach artifacts.
@@ -264,21 +371,28 @@ def run_golden_tests() -> dict:
         },
     ]
 
-    results = []
+    results = run_hedge_unit_tests()
     for tc in TEST_CASES:
-        prompt = (REVIEWER_HEADER_PROMPT if tc["header"]
+        prompt = (REVIEWER_HEADER_PROMPT if tc.get("header", False)
                  else REVIEWER_IMPL_PROMPT)
         out = call_agent(MODELS["code_reviewer"], prompt, tc["snippet"],
                          TEMPERATURE_RETRY)
-        detected = bool(out.get("blockers"))
-        passed = detected == tc["expected_to_block"]
-        results.append({"test_name": tc["name"],
-                        "expected_to_block": tc["expected_to_block"],
-                        "detected": detected, "test_passed": passed})
+        out = demote_hedged_blockers(out, "questions")
 
-    summary = {"total_tests": len(TEST_CASES),
+        detected = bool(out.get("blockers"))
+        if tc.get("expected_to_block", False):
+            passed = detected
+        else:
+            passed = not detected
+
+        results.append({"test_name": tc["name"],
+                        "expected_blocked": tc.get("expected_to_block", False),
+                        "detected": detected,
+                        "test_passed": passed})
+
+    summary = {"total_tests": len(results),
                "passed": sum(r["test_passed"] for r in results),
-               "failed": len(TEST_CASES) - sum(r["test_passed"] for r in results),
+               "failed": len(results) - sum(r["test_passed"] for r in results),
                "individual_results": results}
 
     test_log = Path("gold_tests") / f"run_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"

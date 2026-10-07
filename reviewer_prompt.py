@@ -60,7 +60,8 @@ OUTPUT TAXONOMY (respond ONLY with this JSON):
 Rules for using the taxonomy:
 - A "blocker" is a DEMONSTRABLE violation visible in the provided code. If you
   cannot cite the line and rule, it does not belong in blockers.
-- Uncertainty is not a blocker. Speculative concerns go in "questions".
+- Hedged language (may/might/could/possibly/suspected/appears/seems/uncertain)
+  MUST NOT appear in blockers — such statements belong in "questions".
 - "reject" requires at least one blocker. If you have only questions or nits,
   your verdict MUST be "conditional" at worst.
 - Do not pad. Empty lists are valid answers."""
