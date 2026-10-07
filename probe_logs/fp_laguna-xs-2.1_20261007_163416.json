@@ -1,0 +1,84 @@
+{
+  "timestamp": "2026-10-07T16:34:16.086851",
+  "prompt_version": "v2-header-scope",
+  "model": "laguna-xs-2.1",
+  "runs": 5,
+  "fixture": "..\\core.h",
+  "results": [
+    {
+      "verdict": "approve",
+      "blockers": [],
+      "questions": [
+        "Who owns the session handle returned by qttune_session_create and must it be freed by caller?",
+        "What is the lifetime guarantee for strings returned by qttune_version_string() and qttune_status_string()?",
+        "In qttune_session_receive(), who allocates and owns the memory for out_frame?",
+        "Is data_length validated to be <= 64, or is it caller's responsibility to ensure validity?",
+        "What are the thread safety guarantees for session functions (send/receive/start/close) beyond the documented callback constraints?"
+      ],
+      "inflated": false,
+      "timed_out": false
+    },
+    {
+      "verdict": "conditional",
+      "blockers": [],
+      "questions": [
+        "What is the lifetime contract for transport_uri string passed to qttune_session_create? Is it copied or referenced?",
+        "What is the lifetime contract for user_data in callback registration? Must caller ensure user_data outlives the callback?",
+        "Does qttune_session_close destroy the session handle or just close it? Is there a separate destroy function?",
+        "What happens if NULL is passed for session, frame, callback, or user_data parameters?",
+        "Which qttune_* APIs acquire session locks and are unsafe to call from callbacks?",
+        "Should qttune_shutdown return a status code to report potential cleanup failures?",
+        "nits"
+      ],
+      "inflated": false,
+      "timed_out": false
+    },
+    {
+      "verdict": "conditional",
+      "blockers": [],
+      "questions": [
+        "Ownership semantics for qttune_session_t handle: who owns it and when can it be freed?",
+        "Lifetime contract for user_data in callback registration: must caller ensure user_data outlives callback?",
+        "Thread safety guarantees: which functions are thread-safe and which require external synchronization?",
+        "Queue overflow behavior in qttune_session_receive: what happens if receive queue overflows?",
+        "qttune_status_string behavior with invalid status codes: undefined or error string?",
+        "qttune_session_create validation: what happens with NULL transport_uri?",
+        "qttune_session_close idempotency: can it be called multiple times safely?",
+        "qttune_register_frame_callback NULL callback handling: is NULL callback accepted?",
+        "Transport URI format specification: what formats are supported?",
+        "qttune_init thread-safety: can it be called from multiple threads?",
+        "qttune_shutdown behavior if qttune_init not called: undefined or safe no-op?"
+      ],
+      "inflated": false,
+      "timed_out": false
+    },
+    {
+      "verdict": "conditional",
+      "blockers": [],
+      "questions": [
+        "The data_length field is uint8_t but comment specifies range 0-64. Is validation required at API boundary, or does the contract comment suffice?",
+        "What is the memory lifetime contract for user_data in callbacks? Who owns the pointed-to memory and for how long?",
+        "The rsvd[3] field at end of struct with comment 'Padding for alignment' seems misplaced - is this intentional or a documentation error?",
+        "Why does qttune_shutdown return void while other lifecycle functions return status codes? Inconsistent error handling."
+      ],
+      "inflated": false,
+      "timed_out": false
+    },
+    {
+      "verdict": "conditional",
+      "blockers": [],
+      "questions": [
+        "data_length field is uint8_t (0-255) but valid range is 0-64 per comment. Type allows values that exceed buffer size - should type be uint8_t with runtime validation or smaller type?",
+        "data[64] sized for CAN-FD (64 bytes) but classic CAN only needs 8 bytes. Is classic CAN support required, or is CAN-FD-only intentional?"
+      ],
+      "inflated": false,
+      "timed_out": false
+    }
+  ],
+  "summary": {
+    "blocker_fp_runs": 0,
+    "inflated_runs": 0,
+    "timeout_runs": 0,
+    "parse_fails": 0
+  }
+}

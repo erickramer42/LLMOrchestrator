@@ -1,0 +1,78 @@
+{
+  "timestamp": "2026-10-07T15:33:39.058588",
+  "prompt_version": "v2-header-scope",
+  "model": "laguna-xs-2.1",
+  "runs": 5,
+  "fixture": "..\\core.h",
+  "results": [
+    {
+      "verdict": "conditional",
+      "blockers": [],
+      "questions": [
+        "The `data_length` field in `qttune_frame_t` (line 26) is `uint8_t` which can hold 0-255, but the 64-byte buffer only supports 0-63. The comment constrains it to 0-64, but the implementation must validate this at runtime to prevent buffer overruns.",
+        "Callback thread-safety: The documentation states callbacks execute on the transport thread, but the header provides no mechanism to enforce this. The implementation must ensure the callback list is thread-safe for concurrent registration/unregistration from other threads.",
+        "The `QT_ERR_ALREADY_REGISTERED` status code (line 46) appears unused in the API but is documented for the callback registration. Is this intentional for future use or should it be removed?"
+      ],
+      "inflated": false
+    },
+    {
+      "verdict": "conditional",
+      "blockers": [],
+      "questions": [
+        "Ownership semantics for qttune_session_t: who owns the handle and when is it freed?",
+        "Lifetime guarantee for qttune_frame_t passed to callbacks: is it valid after callback returns?",
+        "Thread safety: what synchronization primitives protect session state?",
+        "What validation occurs for data_length > 64? (comment says 0-64 but uint8_t allows 0-255)",
+        "Queue overflow handling: what happens if receive queue fills?",
+        "Callback deduplication: how is (callback, user_data) pair compared for deduplication?"
+      ],
+      "inflated": false
+    },
+    {
+      "verdict": "conditional",
+      "blockers": [],
+      "questions": [
+        "What are the thread safety guarantees for qttune_session_send/receive? The comments only mention callback thread safety, not the synchronous APIs.",
+        "Who owns the memory for qttune_frame_t objects passed to callbacks? Is the frame valid after the callback returns?",
+        "What is the lifetime contract for qttune_session_t handles? When is it safe to destroy/free them?",
+        "What specific errors can each function return? The status codes are defined but not mapped to specific functions.",
+        "Is data_length validated to be <= 64 by the implementation? The uint8_t type allows values 0-255 but the buffer is only 64 bytes.",
+        "What is the ownership model for transport_uri strings passed to session_create and transport_attach?",
+        "Are there any queue overflow handling guarantees for the callback registration system?",
+        "What happens if a callback throws an exception or crashes? How does the transport thread recover?"
+      ],
+      "inflated": false
+    },
+    {
+      "verdict": "conditional",
+      "blockers": [],
+      "questions": [
+        "Memory lifetime: Who owns and for how long is the memory pointed to by `frame` in the callback? The documentation states callbacks execute on the transport thread but doesn't specify if the frame pointer remains valid after the callback returns.",
+        "Thread safety: Are `qttune_register_frame_callback` and `qttune_unregister_frame_callback` thread-safe? The documentation mentions duplicate deduplication but doesn't specify thread-safety guarantees.",
+        "NULL handling: What happens if `callback` is NULL in registration functions? What happens if `user_data` is NULL? What happens if `out_session` is NULL in `qttune_session_create`?",
+        "data_length validation: The comment states 'Actual bytes used (0-64)' but `data_length` is `uint8_t` which can hold values 0-255. What happens if a value > 64 is passed?",
+        "Session ownership: Who owns the session handle after `qttune_session_create`? When is it safe to free?",
+        "Queue overflow: How are frames handled if the receive queue is full? Is there backpressure mechanism?",
+        "Callback reentrancy: The documentation warns callbacks must not call qttune_* APIs that acquire session lock. Is this enforced or just documented?"
+      ],
+      "inflated": false
+    },
+    {
+      "verdict": "conditional",
+      "blockers": [],
+      "questions": [
+        "Memory lifetime contract for callback user_data parameter - who owns it and for how long?",
+        "Thread safety guarantees for session operations - are mutexes used in shared-state paths?",
+        "Queue overflow handling strategy for frame callbacks - what happens when consumer is too slow?",
+        "Buffer size rationale - 64-byte array for CAN-FD vs traditional 8-byte CAN; is this intentional?",
+        "data_length field range validation - uint8_t allows 0-255 but buffer is 64 bytes; comment says 0-64 but no enforcement"
+      ],
+      "inflated": false
+    }
+  ],
+  "summary": {
+    "blocker_fp_runs": 0,
+    "inflated_runs": 0,
+    "parse_fails": 0
+  }
+}
