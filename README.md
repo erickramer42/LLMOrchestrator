@@ -19,6 +19,26 @@ publishing its own measured failure rates and fixing them.
 - Ollama (v0.40.0+) with local models pulled
 - Git Bash or equivalent shell (Windows) / zsh/bash (Linux/macOS)
 
+## Code Layout
+
+| Module | Purpose |
+|---|---|
+| `orchestrator.py` | CLI entrypoint (argument parsing and dispatch only) |
+| `config.py` | Models, runtime knobs, prompt composition |
+| `agent_client.py` | Ollama client — the only module that touches the network |
+| `adjudication.py` | Pure logic: verdict derivation + hedge demotion guardrail |
+| `debate.py` | Debate loop, judging, decision-record persistence |
+| `golden_tests.py` | Golden suite: LLM fixtures + deterministic guardrail units |
+| `reviewer_prompt.py` | All prompts (versioned, single source of truth) |
+| `file_metadata.py` | File-path → layer mapping (core / bridge / app) |
+| `eval_harness/` | FP-rate probe + model bake-off |
+
+Dependency direction is acyclic: prompts/layer maps are leaves → config composes
+them → agent_client and adjudication are independent layers → debate and 
+golden_tests sit on top → orchestrator is just the handle. `adjudication.py` 
+imports nothing with side effects, so the guardrail tests run in CI without any 
+model serving.
+
 ## Running Locally
 
 Install dependencies and verify Ollama is up:

@@ -1,6 +1,6 @@
 # STATUS — Project Map & Continuation Notes
 
-Last updated: 2026-10-07 (post "false-positive reduction v1")
+Last updated: 2026-10-08 (module split; post "false-positive reduction v1")
 
 Purpose of this file: anyone picking up this repo can
 orient in five minutes, run the existing validation, and continue the
@@ -20,6 +20,9 @@ queued work without reverse-engineering the ADRs.
 - FP-rate probe (5-run aggregates), model bake-off
 - Two archived decision records: header review (core.h) and diff review
   (bridge refactor — the 1/12 precision datapoint)
+- Module split (2026-10-08): single-file orchestrator decomposed into
+  config / agent_client / adjudication / debate / golden_tests, with
+  orchestrator.py reduced to a thin CLI entrypoint
 
 **Known limitations (by design or pending):**
 - Unresolved concerns/questions force MAX_ROUNDS_EXCEEDED → manual
@@ -39,7 +42,12 @@ queued work without reverse-engineering the ADRs.
 
 | Path | Purpose |
 |---|---|
-| `orchestrator.py` | Main entry point. Debate loop, judge, guardrails, golden tests, CLI. Read top-down: config → derive_verdict → demote_hedged_blockers → call_agent → run_debate → golden tests → CLI. |
+| `orchestrator.py` | Thin CLI entrypoint: argument parsing and dispatch only. Re-exports key symbols (call_agent, MODELS, derive_verdict, demote_hedged_blockers) as a transition shim for older importers. |
+| `config.py` | Central configuration: MODELS dict, num_ctx, timeouts, temperatures, and prompt composition (REVIEWER_IMPL_PROMPT / REVIEWER_HEADER_PROMPT). Single place to swap models. |
+| `agent_client.py` | Ollama client. Single agent turn, JSON-mode enforcement, retry logic, FAILURE_SENTINEL emission. The ONLY module that touches the network. |
+| `adjudication.py` | Pure adjudication logic, no I/O: `derive_verdict()` (content-based verdicts) and `demote_hedged_blockers()` (hedge regex guardrail). CI-importable with no model serving. |
+| `debate.py` | The debate loop: transcript construction, layer-note injection, guardrail application, rule-based judge, feedback composition, decision-record persistence (`_save_decision_record`). |
+| `golden_tests.py` | Golden suite: 3 LLM-backed model fixtures + `run_hedge_unit_tests()` (7 deterministic guardrail regression cases, production-derived texts). |
 | `reviewer_prompt.py` | Single source of truth for all prompts. PROMPT_VERSION stamped into decision records. REVIEWER_SYSTEM + IMPL_SCOPE_CLAUSE / HEADER_SCOPE_CLAUSE compose the two reviewer prompts. |
 | `file_metadata.py` | File-path → layer mapping (core/bridge/app). `get_layer_constraints()` returns the injected transcript text telling the reviewer which rules apply. |
 | `eval_harness/probe.py` | FP-rate probe: N runs against a clean fixture, aggregates blocker/verdict distribution, timeouts, parse failures. |
@@ -53,24 +61,33 @@ queued work without reverse-engineering the ADRs.
 | `requirements.txt` | Runtime deps (requests only, as of this writing). |
 | `.gitignore` | Note: `gold_tests/run_*.json` outputs are transient and NOT committed. Eval evidence lives in probe_logs/ and coach_artifacts/. |
 
+**Module dependency direction (acyclic):** reviewer_prompt + file_metadata
+(leaves) → config → agent_client and adjudication (parallel layers) →
+debate + golden_tests → orchestrator (CLI handle).
+
 ---
 
 ## Conventions (do not silently violate)
 
 1. **Derived verdicts only.** Never trust a model's self-reported
-   verdict label. Judge reads blockers/questions/concerns arrays.
+   verdict label. Judge reads blockers/questions/concerns arrays
+   (adjudication.derive_verdict).
 2. **Fail closed.** Parse failure, timeout, empty input → reject /
-   manual review. Never default to approve.
+   manual review. Never default to approve. (Enforced in
+   agent_client.call_agent + adjudication.)
 3. **Blockers must be demonstrable.** Speculation belongs in questions.
-   If you widen HEDGE_PATTERNS, the 7 unit cases in
-   `run_hedge_unit_tests()` must still pass — several are negative
-   controls that assert confident statements are NOT demoted.
+   If you widen HEDGE_PATTERNS in adjudication.py, the 7 unit cases in
+   `run_hedge_unit_tests()` (golden_tests.py) must still pass — several
+   are negative controls that assert confident statements are NOT demoted.
 4. **Prompts are versioned.** Any prompt change bumps PROMPT_VERSION in
    reviewer_prompt.py so eval results correlate to prompt revisions.
 5. **Evidence pairs.** Every committed decision record needs its input
    fixture committed alongside (docs/fixtures/).
 6. **Quantify, then fix, then re-measure.** The ADR's pattern: measure
    FP rate → root-cause classes → remediate → re-measure. Continue it.
+7. **Respect the module boundaries.** Network calls only in
+   agent_client.py; adjudication stays pure (no I/O) so it remains
+   CI-testable. Don't let conveniences erode that.
 
 ---
 
@@ -92,18 +109,23 @@ queued work without reverse-engineering the ADRs.
    recorded as severity-tagged follow-ups in the decision record instead
    of forcing MAX_ROUNDS_EXCEEDED. Design first; current behavior is
    defensible and documented. GitHub issue holds the notes.
-4. **GitHub Actions CI.** Mock Ollama server (or skip-if-unreachable)
-   to run: compile checks + hedge unit tests + judge logic tests
-   deterministically. The guardrail subset already runs without a model.
+4. **GitHub Actions CI.** The module split makes this easy: compile
+   checks + hedge unit tests + judge logic tests, importing
+   adjudication/golden_tests directly with no Ollama needed. Optionally
+   mock or skip-if-unreachable for the LLM fixtures.
 5. **Multi-file diff layer handling.** Parse ALL `+++ b/` headers in a
-   diff; inject a layer map keyed by file rather than a single layer.
-6. **Cross-link from QtTune repo README** to this tribunal.
+   diff (debate.extract_file_path currently returns only the first);
+   inject a layer map keyed by file rather than a single layer.
+6. **Retire the orchestrator re-export shim.** Once eval_harness/probe.py
+   and bakeoff.py import from agent_client/config directly, delete the
+   re-export block in orchestrator.py.
+7. **Cross-link from QtTune repo README** to this tribunal.
 
 ---
 
 ## Notes for Continuing Agents
 
-- Models are assigned in `MODELS` dict at the top of orchestrator.py:
+- Models are assigned in the `MODELS` dict in config.py:
   reviewer = `laguna-xs-2.1` (33B MoE, num_ctx 16384 — smaller contexts
   truncate due to thinking tokens), engineer = `gemma4:12b`. Swap freely;
   that's the point of the dict.
@@ -123,3 +145,8 @@ queued work without reverse-engineering the ADRs.
 - Golden test fixture texts for hedge units are drawn verbatim from
   production decision records (see run_hedge_unit_tests docstring).
   Preserve production-derived provenance when extending.
+- To modify judging or guardrail behavior: adjudication.py. To change
+  what agents are asked: reviewer_prompt.py (+ bump PROMPT_VERSION).
+  To change the debate protocol itself: debate.py. To swap models or
+  knobs: config.py.
+  
