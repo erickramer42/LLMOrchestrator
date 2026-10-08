@@ -91,35 +91,47 @@ debate + golden_tests → orchestrator (CLI handle).
 
 ---
 
-## Queued Work (priority order)
+## Backlog (ideas, loosely ordered)
+
+Nothing here is committed to — loosely sorted by what unblocks what.
 
 1. **Re-measure precision post-remediation.** Rerun the bridge-refactor
-   diff debate; compare blocker precision to the 1/12 baseline. This is
-   the validation of "false-positive reduction v1" and the ADR's table
-   needs the new number. Use the SAME diff (docs/fixtures/) so it's
-   comparable.
-2. **Definition-context injection (remediation #3).** When a diff or
-   snippet references structs/types (qttune_frame_t, etc.), locate and
-   inject their definitions from QtTune headers into the transcript.
-   Closes the "confident guessing" class the regex can't touch.
-   Suggested approach: map type names → header paths, extract the
-   typedef block, append as "TYPE DEFINITIONS (ground truth)".
-3. **Judge granularity rework.** Split severity axis from resolution
-   axis: APPROVED / APPROVED_WITH_FOLLOWUPS / BLOCKED, with open items
-   recorded as severity-tagged follow-ups in the decision record instead
-   of forcing MAX_ROUNDS_EXCEEDED. Design first; current behavior is
-   defensible and documented. GitHub issue holds the notes.
-4. **GitHub Actions CI.** The module split makes this easy: compile
-   checks + hedge unit tests + judge logic tests, importing
-   adjudication/golden_tests directly with no Ollama needed. Optionally
-   mock or skip-if-unreachable for the LLM fixtures.
-5. **Multi-file diff layer handling.** Parse ALL `+++ b/` headers in a
-   diff (debate.extract_file_path currently returns only the first);
-   inject a layer map keyed by file rather than a single layer.
-6. **Retire the orchestrator re-export shim.** Once eval_harness/probe.py
-   and bakeoff.py import from agent_client/config directly, delete the
-   re-export block in orchestrator.py.
-7. **Cross-link from QtTune repo README** to this tribunal.
+   diff debate; compare blocker precision to the 1/12 baseline. The
+   current remediation claim rests on this run. Same diff
+   (docs/fixtures/) for comparability.
+2. **Definition-context injection (remediation #3).** Inject struct
+   definitions referenced by a diff (qttune_frame_t etc.) as
+   "TYPE DEFINITIONS (ground truth)". Closes the confident-guessing
+   class the regex can't touch.
+3. **Judge granularity rework.** Split severity from resolution:
+   APPROVED / APPROVED_WITH_FOLLOWUPS / BLOCKED with severity-tagged
+   follow-ups recorded in the decision record. Design first; current
+   fail-closed behavior is defensible.
+4. **GitHub Actions CI.** Compile checks + hedge units + judge logic,
+   importing adjudication/golden_tests directly — no Ollama needed.
+5. **Per-debate cost/latency telemetry.** Wall-clock per round and
+   eval_count (token estimate) stamped into decision records.
+6. **Cloud model support.** OpenAI-compatible endpoint in
+   agent_client.py. Golden suite first (cost control); keep cloud
+   results segregated in the ADR. Local-vs-cloud bake-off on the same
+   fixtures would be a publishable comparison.
+7. **Chained/escalated debates.** On MAX_ROUNDS_EXCEEDED, re-submit
+   unresolved questions as a fresh debate (different model pair
+   optional), depth capped at 2, parent_debate_id recorded. Depends
+   on #3 — both touch termination logic.
+8. **Stable real-diff corpus.** 3–5 triaged real diffs with known
+   expected outcomes — the systemic answer to fixture-pass /
+   production-fail.
+9. **Multi-file diff layer handling.** Parse all `+++ b/` headers;
+   inject a layer map keyed by file.
+10. **Retire the orchestrator re-export shim** once eval_harness
+    imports from agent_client/config directly.
+11. **Codebase abstraction.** Move QtTune-specific bits (layer rules,
+    domain prompts) behind config so other codebases can point the
+    tribunal at themselves. More interesting if #6 lands.
+
+Deliberately deferred: MAX_DEBATE_ROUNDS / loop-shape tuning — #3
+supersedes; changing termination logic twice is wasted motion.
 
 ---
 
@@ -149,4 +161,8 @@ debate + golden_tests → orchestrator (CLI handle).
   what agents are asked: reviewer_prompt.py (+ bump PROMPT_VERSION).
   To change the debate protocol itself: debate.py. To swap models or
   knobs: config.py.
-  
+
+## Potential Next Steps
+
+- modify amount of rounds, feed verdict into another set of rounds as the proposal
+- usage of cloud based models instead of local
