@@ -35,17 +35,21 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
                header_artifact: bool = False) -> dict:
     """Orchestrates the full debate loop. Returns structured decision
     with audit trail. header_artifact selects the header-scoped reviewer
-    prompt (interface definitions) instead of implementation standards."""
+    prompt (interface definitions) instead of implementation standards.
+
+    NOTE (2026-10-09): the transcript is re-rendered from the CURRENT
+    proposal each round, so REVISE ADDRESSING feedback is actually visible
+    to both agents. Previously the base transcript was frozen before the
+    loop — rounds 2+ were blind resamples, not debate. Archived records
+    predate this fix; see ADR-0002 erratum.
+    """
     debate_id = f"debate_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
 
     reviewer_prompt = (REVIEWER_HEADER_PROMPT if header_artifact
                        else REVIEWER_IMPL_PROMPT)
 
-    transcript_base = f"""
-QTTUNE PROPOSAL FOR DEBATE
-==========================
-{proposal}
-
+    # Static transcript sections — built once, they never change.
+    static_section = f"""
 CODE DIFF:
 ----------
 {code_diff or '(no diff attached)'}
@@ -53,20 +57,30 @@ CODE DIFF:
 CODE CONTEXT:
 -------------
 {code_context[:8000] if code_context else '(none provided)'}
-
-RESPOND WITH JSON ONLY using your role specification.
 """
 
     file_path = extract_file_path(code_diff, code_context)
     if file_path:
         layer_note = get_layer_constraints(identify_layer(file_path))
-        transcript_base = f"{transcript_base}\n\n{layer_note}\n"
+        static_section = f"{static_section}\n{layer_note}\n"
+
+    def render_transcript(current_proposal: str, round_num: int) -> str:
+        """Full per-round transcript. Called EVERY round so the agents
+        see the revised proposal (prior critiques included)."""
+        return f"""
+QTTUNE PROPOSAL FOR DEBATE
+==========================
+{current_proposal}
+{static_section}
+RESPOND WITH JSON ONLY using your role specification.
+
+[DEBATE ROUND {round_num}]"""
 
     round_history: List[dict] = []
     final_verdict = "CONVERGENCE_FAILURE - CONFLICTING_CRITERIA"
 
     for round_num in range(1, MAX_DEBATE_ROUNDS + 1):
-        transcript = f"{transcript_base}\n\n[DEBATE ROUND {round_num}]"
+        transcript = render_transcript(proposal, round_num)
 
         # Both agents critique the same transcript; they do not see
         # each other's responses until the judge feeds feedback back
@@ -114,7 +128,8 @@ RESPOND WITH JSON ONLY using your role specification.
             final_verdict = "MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED"
             break
 
-        # Feed critiques back for next iteration
+        # Feed critiques back: proposal grows, next round's transcript
+        # re-renders from it — this is the debate actually functioning
         feedback = (f"- Reviewer blockers: {'; '.join(reviewer_blockers)}\n"
                     f"- Engineer concerns: {'; '.join(engineer_concerns)}")
         proposal = f"{proposal}\n\nREVISE ADDRESSING:\n{feedback}"

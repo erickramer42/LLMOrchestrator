@@ -9,8 +9,9 @@ what's possible beyond LangChain/AutoGen abstractions — including
 publishing its own measured failure rates and fixing them.
 
 **Artifacts produced:** [Decision records](coach_artifacts/) *(incl. a real
-300-line refactor debate)*, [Eval logs](probe_logs/),
-[Bake-off results + measured precision data](docs/decisions/0001-model-selection.md),
+300-line refactor debate, re-run after remediation)*,
+[Eval logs](probe_logs/),
+[Measured precision data](docs/decisions/0002-adjudication-and-fp-remediation.md),
 [Input fixtures](docs/fixtures/)
 
 ## Prerequisites
@@ -33,11 +34,11 @@ publishing its own measured failure rates and fixing them.
 | `file_metadata.py` | File-path → layer mapping (core / bridge / app) |
 | `eval_harness/` | FP-rate probe + model bake-off |
 
-Dependency direction is acyclic: prompts/layer maps are leaves → config composes
-them → agent_client and adjudication are independent layers → debate and 
-golden_tests sit on top → orchestrator is just the handle. `adjudication.py` 
-imports nothing with side effects, so the guardrail tests run in CI without any 
-model serving.
+Dependency direction is acyclic: prompts/layer maps are leaves → config
+composes them → agent_client and adjudication are independent layers →
+debate and golden_tests sit on top → orchestrator is just the handle.
+`adjudication.py` imports nothing with side effects, so the guardrail
+tests run in CI without any model serving.
 
 ## Running Locally
 
@@ -78,17 +79,19 @@ structured decision records for downstream consumption.
 
 Pipeline per round:
 
-    AGENTS CRITIQUE INDEPENDENTLY
-        → GUARDRAILS (hedge demotion, layer metadata)
-        → RULE-BASED JUDGE (derived verdicts, fail-closed)
-        → CONVERGED, or feedback fed back for another round
+```
+AGENTS CRITIQUE INDEPENDENTLY
+    → GUARDRAILS (hedge demotion, layer metadata)
+    → RULE-BASED JUDGE (derived verdicts, fail-closed)
+    → CONVERGED, or feedback fed back for another round
+```
 
 ### Key Design Decisions
 
 1. **Verdict derivation from content, not model labels** — Model
    self-reported verdicts exhibit run-to-run jitter. Merge decisions
    derive deterministically from blockers/questions counts (see
-   `derive_verdict()` in orchestrator.py).
+   `derive_verdict()` in adjudication.py).
 
 2. **Hedge-language demotion** — A blocker must be a demonstrable
    violation, stated with a line citation. Blockers phrased as speculation
@@ -110,7 +113,7 @@ Pipeline per round:
    information. See probe_logs/ for 5-run aggregates.
 
 6. **Parse failures fail closed** — Unusable reviews block merges rather
-   than slipping through (see `call_agent()` retry logic).
+   than slipping through (see retry logic in agent_client.py).
 
 7. **Prompts as versioned single source of truth** — PROMPT_VERSION
    stamps appear in every decision record, enabling correlation between
@@ -121,23 +124,32 @@ Pipeline per round:
 On synthetic fixtures, the reviewer scored 100% (3/3 golden, 0/5
 false-positive rate across probe runs). On its first real workload —
 a 300-line bridge refactor — blocker precision was **1/12 (~8%)**.
-That gap is the most important result in this repo, and it was
-root-caused into three classes:
+The gap was root-caused into classes, remediated with deterministic
+guardrails, and re-measured on the same diff:
 
-| Failure class | Blockers | Status |
-|---|---|---|
-| Layer-rule misapplication (core rules on bridge code) | 7 | **Fixed** — layer metadata injection |
-| Speculative phrasing filed as blockers | 3 | **Fixed** — hedge demotion guardrail |
-| Definition-context guessing (struct internals unseen) | 2 | **Open** — queued as remediation #3 |
+| Failure class | Baseline | After v1 | Status |
+|---|---|---|---|
+| Layer-rule misapplication (core rules on bridge code) | 7 | 0 | **Fixed** — layer metadata injection |
+| Speculative phrasing filed as blockers | 3 | 0 | **Fixed** — taxonomy discipline; hedge guardrail in reserve |
+| Confident-but-wrong assertions (missing context) | 0 | 4 | **Open** — dominant residual class; context injection is the designated remedy |
 
-The one confirmed real catch (`qttune_decode_signal()` hardcoded 8-byte
-buffer ignoring `frame->data_length`) was subsequently fixed in QtTune.
-Evidence: `coach_artifacts/decision_debate_20261007_203917.json`,
-input `docs/fixtures/qttune_bridge_refactor.diff`, triage in the ADR.
-Re-measurement after remediation is pending — that's the next eval run.
+Total blockers fell 12 → 6 on the same diff; the one real defect
+(`qttune_decode_signal()` hardcoded 8-byte buffer ignoring
+`frame->data_length`) was caught in both runs and fixed in QtTune.
+The re-measurement also surfaced the next finding honestly: the hedge
+guardrail never fired because the contextual metadata changed the
+reviewer's phrasing at the source — guardrails eliminated the classes,
+context eliminated the rhetoric. The remaining failures are confidently
+stated claims about code the reviewer cannot see, which no output
+filter can fix.
+
+Evidence: baseline `coach_artifacts/decision_debate_20261007_203917.json`,
+re-measurement `coach_artifacts/decision_debate_20261009_014257.json`,
+input `docs/fixtures/qttune_bridge_refactor.diff`, full analysis in
+[ADR-0002](docs/decisions/0002-adjudication-and-fp-remediation.md).
 
 Fixture-pass / production-fail is a known trap in eval harnesses. This
-repo measures both.
+repo measures both — twice, with predictions recorded before each run.
 
 ## Running the Eval Harness
 
@@ -147,7 +159,7 @@ Command examples:
   `python -m eval_harness.probe --model laguna-xs-2.1 --fixture ../qttune/core/include/qttune/core.h`
 - Bake-off, detection vs. false positives:
   `python -m eval_harness.bakeoff laguna-xs-2.1 gemma4:12b`
-- Diff-based review example (the archived debate):
+- Diff-based review example (the archived debates):
   `python orchestrator.py --proposal "..." --diff docs/fixtures/qttune_bridge_refactor.diff`
 
 ## What Makes This Different From Tutorial Projects
@@ -157,7 +169,7 @@ Command examples:
 | Demo prompt → demo output | Eval harness with failure modes, remediation logs |
 | Single run, cherry-picked | 5-run aggregates with variance reporting |
 | Prompts hardcoded, no version | PROMPT_VERSION stamps every decision record |
-| Only clean results shown | 8% production precision published, root-caused, remediated |
+| Only clean results shown | 8% precision published, root-caused, remediated, re-measured at 17% with class-level attribution |
 | No evaluation methodology | Golden tests, probe logs, ADRs documenting decisions |
 | "Works on my toy example" | Runs on actual codebase (QtTune), decision records archived |
 
@@ -170,15 +182,14 @@ These patterns work on ANY codebase:
 - Layer/role metadata injection → applies wherever file-level rules differ
 - Artifact-type prompting → headers vs. implementations differ everywhere
 - Multi-run probes → stability is a property of the eval harness, not the model
-- Failure-mode documentation → context limits, timeout budgets, and
-  thinking-token interactions are universal constraints
+- Measure → remediate per class → re-measure → publish the trend → this loop is the repo's core contribution
 
 ## Reproducing the Results
 
-All numbers in docs/decisions/0001-model-selection.md are reproducible
-via the eval harness. The probe_logs/ directory contains timestamped
-JSON artifacts for each run. Guardrail regression tests run without any
-LLM and are suitable for CI.
+All numbers in docs/decisions/ are reproducible via the eval harness.
+The probe_logs/ directory contains timestamped JSON artifacts for each
+run. Guardrail regression tests run without any LLM and are suitable
+for CI.
 
 ## Project Map and Continuation Notes
 

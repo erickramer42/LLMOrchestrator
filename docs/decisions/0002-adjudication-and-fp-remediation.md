@@ -109,3 +109,27 @@ Precision: 1/12 (~8%) → 1/6 (~17%). Blocker volume halved (12 → 6).
   units, production-derived texts). The deterministic subset is
   CI-suitable with no model serving.
   
+  ## Erratum (2026-10-09)
+
+Two defects found by external review (Claude Code pass, 2026-10-09):
+
+1. **Debate feedback loop was not wired.** `transcript_base` was frozen
+   before the loop; the REVISE ADDRESSING feedback accumulated in the
+   proposal variable but was never re-rendered into agent transcripts.
+   Consequence: archived "3-round debates" were one exploratory sample
+   (round 1) plus two constrained resamples — not adversarial
+   iteration. Impact on recorded results: none on validity of the
+   precision measurements (baseline and v1 re-measurement ran the same
+   code, so they are internally consistent multi-sample comparisons;
+   class-level eliminations stand), but records should be read as
+   sampling measurements, not convergent debates. Fixed 2026-10-09:
+   transcript re-rendered per round; PROMPT_VERSION bumped.
+   Attribution note for future measurements: post-fix debates differ
+   from archived ones in mechanism, not just remediation — per-class
+   comparison remains the method.
+
+2. **Bake-off summary conflated clean passes with bug hits** (second
+   occurrence; prior fix never committed). ADR numbers unaffected —
+   5/5 was read from individual result lines. Summary printer fixed;
+   tp + fn invariant documented inline.
+   

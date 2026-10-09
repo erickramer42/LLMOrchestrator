@@ -1,0 +1,147 @@
+{
+  "metadata": {
+    "debate_id": "debate_20261009_153541",
+    "created_utc": "2026-10-09T15:45:35.962581+00:00",
+    "prompt_version": "v3-engineer-added",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "max_rounds": 3
+  },
+  "inputs": {
+    "proposal": "Smoke: verify feedback loop wiring\n\nREVISE ADDRESSING:\n- Reviewer blockers: Data race on m_currentFrameCount: In qttunebridge.cpp:279, onFrame() (worker thread) reads m_currentFrameCount non-atomically to check backpressure limit, while handleFrameInternal() (GUI thread) increments it non-atomically. This violates thread safety requirements for shared state across threads.; Lost backpressure tracking: The removal of m_inFlightFrames counter in qttunebridge.cpp:114-122 eliminates the queue backlog bound. The new code checks m_currentFrameCount (processed count) instead of tracking queued-but-not-yet-processed frames, allowing unbounded in-flight queue growth.; Removed test validation: tests/test_bridge.cpp:178-182 removed critical tests for signal batching and frame streaming past 10000 frames, eliminating coverage for the backpressure mechanism that was just weakened.\n- Engineer concerns: The removal of the `m_inFlightFrames` atomic counter creates a risk of unbounded `QueuedConnection` backlog growth if the GUI thread lags behind high-frequency CAN-FD streams.; The backpressure logic relies on `m_currentFrameCount`, which is modified in the GUI thread and read in the worker thread; a data race here may cause inconsistent frame dropping under high load.; Is the 10,000 frame limit (MaxFrames) intended as a hard safety cap or a soft UI-performance threshold?; Does the v0.2.0 roadmap assume that the GUI thread can maintain the necessary processing throughput for the maximum expected CAN-FD baud rate?\n\nREVISE ADDRESSING:\n- Reviewer blockers: Data race on m_currentFrameCount: qttunebridge.cpp:279 (onFrame) reads m_currentFrameCount non-atomically while qttunebridge.cpp:311 (handleFrameInternal) increments it non-atomically. The variable is declared as 'int m_currentFrameCount = 0;' in qttunebridge.h:158 without atomic wrapper, violating thread safety for shared state across worker/GUI threads.; Lost backpressure tracking: qttunebridge.cpp:114-122 removed m_inFlightFrames atomic counter that bounded queued-but-not-yet-processed frames. The new code at qttunebridge.cpp:279 checks m_currentFrameCount (processed count) instead of tracking in-flight queue depth, allowing unbounded QueuedConnection backlog growth under high-frequency CAN-FD streams.; Removed test validation: tests/test_bridge.cpp:178-182 removed critical tests for signal batching and frame streaming past 10000 frames, eliminating coverage for the backpressure mechanism that was weakened by removing m_inFlightFrames.\n- Engineer concerns: Unbounded QueuedConnection backlog growth during high-frequency CAN-FD bursts; Removal of critical test coverage for signal batching and 10k frame streaming (tests/test_bridge.cpp:178-182); Is the 10,000 frame limit a hard safety cap or a soft UI-performance threshold?; Does the v0.2.0 roadmap assume the GUI thread can maintain throughput for maximum CAN-FD baud rates?"
+  },
+  "outputs": {
+    "final_verdict": "MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "Data race on m_currentFrameCount: In qttunebridge.cpp:279, onFrame() (worker thread) reads m_currentFrameCount non-atomically to check backpressure limit, while handleFrameInternal() (GUI thread) increments it non-atomically. This violates thread safety requirements for shared state across threads.",
+            "Lost backpressure tracking: The removal of m_inFlightFrames counter in qttunebridge.cpp:114-122 eliminates the queue backlog bound. The new code checks m_currentFrameCount (processed count) instead of tracking queued-but-not-yet-processed frames, allowing unbounded in-flight queue growth.",
+            "Removed test validation: tests/test_bridge.cpp:178-182 removed critical tests for signal batching and frame streaming past 10000 frames, eliminating coverage for the backpressure mechanism that was just weakened."
+          ],
+          "questions": [
+            "What is the intended backpressure strategy? The old code bounded in-flight frames at 1000 while allowing up to 10000 total frames in model. The new code only checks model capacity but allows unbounded queue depth.",
+            "Is the signal decoding functionality intentionally removed? The old code decoded signals into a staging buffer for batching. The new code calls qttune_decode_signal() but discards results, suggesting the feature was partially removed."
+          ],
+          "nits": [
+            "Missing newline at end of tests/test_bridge.cpp for proper file formatting",
+            "Comment inconsistency: qttunebridge.cpp:273 comment says 'frame is stack-owned by mock_worker' but this assumption should be verified against the C API documentation",
+            "The removed ThemedTabButton component in Main.qml had custom styling that is now lost with plain TabButton usage"
+          ]
+        },
+        "auto_engineer": {
+          "verdict": "approve",
+          "blockers": [],
+          "concerns": [
+            "The removal of the `m_inFlightFrames` atomic counter creates a risk of unbounded `QueuedConnection` backlog growth if the GUI thread lags behind high-frequency CAN-FD streams.",
+            "The backpressure logic relies on `m_currentFrameCount`, which is modified in the GUI thread and read in the worker thread; a data race here may cause inconsistent frame dropping under high load."
+          ],
+          "questions": [
+            "Is the 10,000 frame limit (MaxFrames) intended as a hard safety cap or a soft UI-performance threshold?",
+            "Does the v0.2.0 roadmap assume that the GUI thread can maintain the necessary processing throughput for the maximum expected CAN-FD baud rate?"
+          ],
+          "reasoning": "The pivot to a raw frame-streaming architecture aligns with v0.2.0 goals by prioritizing shipping velocity and core transport integrity over complex signal decoding."
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0,
+          "engineer_demoted": 0
+        },
+        "timestamp": "2026-10-09T15:39:30.610952+00:00"
+      },
+      {
+        "round": 2,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "Data race on m_currentFrameCount: qttunebridge.cpp:279 (onFrame) reads m_currentFrameCount non-atomically while qttunebridge.cpp:311 (handleFrameInternal) increments it non-atomically. The variable is declared as 'int m_currentFrameCount = 0;' in qttunebridge.h:158 without atomic wrapper, violating thread safety for shared state across worker/GUI threads.",
+            "Lost backpressure tracking: qttunebridge.cpp:114-122 removed m_inFlightFrames atomic counter that bounded queued-but-not-yet-processed frames. The new code at qttunebridge.cpp:279 checks m_currentFrameCount (processed count) instead of tracking in-flight queue depth, allowing unbounded QueuedConnection backlog growth under high-frequency CAN-FD streams.",
+            "Removed test validation: tests/test_bridge.cpp:178-182 removed critical tests for signal batching and frame streaming past 10000 frames, eliminating coverage for the backpressure mechanism that was weakened by removing m_inFlightFrames."
+          ],
+          "questions": [
+            "Is the 10,000 frame limit (MaxFrames) intended as a hard safety cap or a soft UI-performance threshold given the backpressure logic now uses processed count instead of queued count?",
+            "Does the v0.2.0 roadmap assume the GUI thread can maintain necessary processing throughput for maximum expected CAN-FD baud rate with the current unbounded queue risk?",
+            "Should m_currentFrameCount be atomic or should backpressure use a separate atomic in-flight counter to properly bound the queue?"
+          ],
+          "nits": [
+            "Consider adding explicit thread annotations or QThread affinity comments for m_currentFrameCount access patterns",
+            "The forceFrameCountForTesting method was removed from header but may be needed for future testing scenarios",
+            "Signal batching implementation was removed entirely - consider if this is intentional or needs restoration"
+          ]
+        },
+        "auto_engineer": {
+          "verdict": "defer",
+          "blockers": [
+            "Data race on m_currentFrameCount: qttunebridge.cpp:279 (violates thread-safety requirements for shared state)",
+            "Lost backpressure tracking: qttunebridge.cpp:114-122 (eliminates the queue backlog bound)"
+          ],
+          "concerns": [
+            "Unbounded QueuedConnection backlog growth during high-frequency CAN-FD bursts",
+            "Removal of critical test coverage for signal batching and 10k frame streaming (tests/test_bridge.cpp:178-182)"
+          ],
+          "questions": [
+            "Is the 10,000 frame limit a hard safety cap or a soft UI-performance threshold?",
+            "Does the v0.2.0 roadmap assume the GUI thread can maintain throughput for maximum CAN-FD baud rates?"
+          ],
+          "reasoning": "The proposal compromises the safety and stability goals of the project by removing backpressure bounds and introducing a data race on the frame counter."
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0,
+          "engineer_demoted": 0
+        },
+        "timestamp": "2026-10-09T15:43:38.140193+00:00"
+      },
+      {
+        "round": 3,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "Data race on m_currentFrameCount: qttunebridge.h:158 declares 'int m_currentFrameCount = 0;' as non-atomic, qttunebridge.cpp:279 (onFrame worker thread) reads it non-atomically while qttunebridge.cpp:311 (handleFrameInternal GUI thread) increments it non-atomically. This violates thread safety for shared state across worker/GUI threads.",
+            "Lost backpressure tracking: qttunebridge.cpp:114-122 removed m_inFlightFrames atomic counter that bounded queued-but-not-yet-processed frames. The new code at qttunebridge.cpp:279 checks m_currentFrameCount (processed count) instead of tracking in-flight queue depth, allowing unbounded QueuedConnection backlog growth under high-frequency CAN-FD streams.",
+            "Removed test validation: tests/test_bridge.cpp:178-182 removed critical tests for signal batching and frame streaming past 10000 frames, eliminating coverage for the backpressure mechanism that was weakened by removing m_inFlightFrames."
+          ],
+          "questions": [
+            "Is the 10,000 frame limit (MaxFrames) intended as a hard safety cap or a soft UI-performance threshold?",
+            "Does the v0.2.0 roadmap assume that the GUI thread can maintain the necessary processing throughput for the maximum expected CAN-FD baud rate?",
+            "What is the intended ownership model for the qttune_frame_t copy in onFrame - the comment says 'stack-owned by mock_worker' but the frame is copied to a lambda capture?"
+          ],
+          "nits": [
+            "Consider adding memory_order_consistency documentation for the atomic operations used",
+            "The comment at qttunebridge.cpp:273 could clarify why frame copy is necessary (QueuedConnection lifetime)",
+            "Consider adding a runtime assertion or debug check for the backpressure logic during development"
+          ]
+        },
+        "auto_engineer": {
+          "verdict": "defer",
+          "blockers": [
+            "Data race on m_currentFrameCount: qttunebridge.cpp:279 and qttunebridge.cpp:311 access a non-atomic int across worker and GUI threads.",
+            "Lost backpressure tracking: Removal of m_inFlightFrames in qttunebridge.cpp:114-122 allows unbounded QueuedConnection backlog growth."
+          ],
+          "concerns": [
+            "Unbounded memory growth during high-frequency CAN-FD bursts",
+            "Removal of critical test coverage for 10k frame streaming and signal batching"
+          ],
+          "questions": [
+            "Is the 10,000 frame limit a hard safety cap or a soft UI-performance threshold?",
+            "Does the v0.2.0 roadmap assume the GUI thread can maintain throughput for maximum CAN-FD baud rates?"
+          ],
+          "reasoning": "The proposal aligns with v0.2.0's velocity goals by simplifying the bridge, but the removal of in-flight tracking and the resulting data race create significant stability risks for high-frequency CAN-FD streams."
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0,
+          "engineer_demoted": 0
+        },
+        "timestamp": "2026-10-09T15:45:35.962568+00:00"
+      }
+    ]
+  },
+  "audit_trail": {
+    "artifact_type": "decision_record",
+    "intended_consumer": "coach_agent",
+    "validation_method": "golden_test_suite"
+  }
+}

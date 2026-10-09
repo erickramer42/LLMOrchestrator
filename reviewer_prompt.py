@@ -2,7 +2,7 @@
 Import this from fp_rate_probe.py, bakeoff.py, and orchestrator.py.
 Any edit here must be reflected by bumping PROMPT_VERSION."""
 
-PROMPT_VERSION = "v3-engineer-added"
+PROMPT_VERSION = "v4-feedback-loop-live"
 
 AUTO_ENGINEER_PROMPT = """You are a senior automotive engineer advocating for QtTune's v0.2.0 goals:
 shipping velocity, J2534/ECU domain correctness, and safety.
