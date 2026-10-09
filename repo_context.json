@@ -1,0 +1,383 @@
+{
+  "index_version": "idx_20261009_212605",
+  "repo_root": "E:\\CodeProjects\\qttune",
+  "files": [
+    {
+      "path": ".github/dependabot.yml",
+      "purpose": "CI workflow",
+      "layer": "meta"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "purpose": "CI workflow",
+      "layer": "meta"
+    },
+    {
+      "path": ".github/workflows/scorecard.yml",
+      "purpose": "CI workflow",
+      "layer": "meta"
+    },
+    {
+      "path": "app/CMakeLists.txt",
+      "purpose": "Build configuration",
+      "layer": "meta"
+    },
+    {
+      "path": "app/main.cpp",
+      "purpose": "",
+      "layer": "bridge"
+    },
+    {
+      "path": "app/qml/DashboardPage.qml",
+      "purpose": "",
+      "layer": "bridge"
+    },
+    {
+      "path": "app/qml/HomePage.qml",
+      "purpose": "Logo block \u2014 animated equalizer mark",
+      "layer": "bridge"
+    },
+    {
+      "path": "app/qml/LiveViewPage.qml",
+      "purpose": "",
+      "layer": "bridge"
+    },
+    {
+      "path": "app/qml/LogPage.qml",
+      "purpose": "Toolbar: stats + actions",
+      "layer": "bridge"
+    },
+    {
+      "path": "app/qml/Main.qml",
+      "purpose": "Sidebar (\u2265720px)",
+      "layer": "bridge"
+    },
+    {
+      "path": "app/qml/NavButton.qml",
+      "purpose": "",
+      "layer": "bridge"
+    },
+    {
+      "path": "app/qml/SettingsPage.qml",
+      "purpose": "",
+      "layer": "bridge"
+    },
+    {
+      "path": "app/qml/Theme.qml",
+      "purpose": "Central palette - dark mode",
+      "layer": "bridge"
+    },
+    {
+      "path": "app/qml/ThemedButton.qml",
+      "purpose": "Expose so callers can tweak if needed",
+      "layer": "bridge"
+    },
+    {
+      "path": "app/qttunebridge.cpp",
+      "purpose": "FrameListModel",
+      "layer": "bridge"
+    },
+    {
+      "path": "app/qttunebridge.h",
+      "purpose": "FIX: latest-value-per-signal-ID staging (merge, not clear-and-refill)",
+      "layer": "bridge"
+    },
+    {
+      "path": "CLAUDE.md",
+      "purpose": "Configuration or docs",
+      "layer": "meta"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "purpose": "Build configuration",
+      "layer": "meta"
+    },
+    {
+      "path": "core/CMakeLists.txt",
+      "purpose": "Build configuration",
+      "layer": "meta"
+    },
+    {
+      "path": "core/include/qttune/core.h",
+      "purpose": "File/layer: core/include/qttune/core.h | C ABI, public interface",
+      "layer": "core"
+    },
+    {
+      "path": "core/include/qttune/internal.h",
+      "purpose": "",
+      "layer": "core"
+    },
+    {
+      "path": "core/include/qttune/signal_sets.h",
+      "purpose": "",
+      "layer": "core"
+    },
+    {
+      "path": "core/include/qttune/signals.h",
+      "purpose": "",
+      "layer": "core"
+    },
+    {
+      "path": "core/src/core.cpp",
+      "purpose": "File/layer: core/src/core.cpp | C++17, Qt-free, CI-validated headless build",
+      "layer": "core"
+    },
+    {
+      "path": "core/src/mock_transport.cpp",
+      "purpose": "",
+      "layer": "core"
+    },
+    {
+      "path": "core/src/session.h",
+      "purpose": "",
+      "layer": "core"
+    },
+    {
+      "path": "core/src/signal_sets.cpp",
+      "purpose": "",
+      "layer": "core"
+    },
+    {
+      "path": "core/src/signals.cpp",
+      "purpose": "",
+      "layer": "core"
+    },
+    {
+      "path": "DISCLAIMER.md",
+      "purpose": "Configuration or docs",
+      "layer": "meta"
+    },
+    {
+      "path": "README.md",
+      "purpose": "Project documentation",
+      "layer": "meta"
+    },
+    {
+      "path": "SECURITY.md",
+      "purpose": "Configuration or docs",
+      "layer": "meta"
+    },
+    {
+      "path": "STATUS.md",
+      "purpose": "Configuration or docs",
+      "layer": "meta"
+    },
+    {
+      "path": "tests/CMakeLists.txt",
+      "purpose": "Test suite",
+      "layer": "meta"
+    },
+    {
+      "path": "tests/test_bridge.cpp",
+      "purpose": "Double connect = idempotent success, no new session",
+      "layer": "bridge"
+    },
+    {
+      "path": "tests/test_core.cpp",
+      "purpose": "File/layer: tests/test_core.cpp | GTest-based, CI-validated",
+      "layer": "unknown"
+    },
+    {
+      "path": "tests/test_signals.cpp",
+      "purpose": "",
+      "layer": "unknown"
+    }
+  ],
+  "types": [
+    {
+      "name": "qttune_frame_t",
+      "decl": "typedef struct qttune_frame {\n    uint64_t timestamp_us;    /* Microseconds since epoch or session start */\n    uint32_t channel_id;      /* Logical channel (e.g., CAN bus ID) */\n    uint8_t data[64];         /* Max CAN-FD payload size */\n    uint8_t data_length;      /* Actual bytes used (0-64) */\n    uint8_t is_extended;      /* Extended frame flag (29-bit address) */\n    uint8_t rsvd[3];          /* Padding for alignment */\n} qttune_frame_t;",
+      "members": [
+        "timestamp_us"
+      ],
+      "def_file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "qttune_status_t",
+      "decl": "typedef enum {\n    QT_OK = 0,\n    QT_ERR_NULL_ARGUMENT = 1,\n    QT_ERR_NOT_IMPLEMENTED = 2,\n    QT_ERR_NO_TRANSPORT = 3,\n    QT_ERR_OUT_OF_MEMORY = 4,\n    QT_ERR_SESSION_CLOSED = 5,\n    QT_ERR_ALREADY_REGISTERED = 6   /* Kept for backward compat if needed */\n} qttune_status_t;",
+      "members": [],
+      "def_file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "QttuneSignalType",
+      "decl": "typedef enum {\n    QTTUNE_SIGNAL_TYPE_UINT8   = 0,\n    QTTUNE_SIGNAL_TYPE_UINT16  = 1,\n    QTTUNE_SIGNAL_TYPE_UINT32  = 2,\n    QTTUNE_SIGNAL_TYPE_INT8    = 3,\n    QTTUNE_SIGNAL_TYPE_INT16   = 4,\n    QTTUNE_SIGNAL_TYPE_INT32   = 5,\n    QTTUNE_SIGNAL_TYPE_FLOAT32 = 6,\n    QTTUNE_SIGNAL_TYPE_STRING  = 7,  /* Reserved */\n    QTTUNE_SIGNAL_TYPE_MANUF_START = 256\n} QttuneSignalType;",
+      "members": [],
+      "def_file": "core/include/qttune/signals.h"
+    },
+    {
+      "name": "QttuneSignalDef",
+      "decl": "typedef struct QttuneSignalDef {\n    uint16_t id;\n    char name[32];\n    QttuneSignalType type;\n    uint8_t start_byte;\n    uint8_t num_bytes;\n    uint8_t bit_offset;\n    uint8_t bit_length;\n    float scale;\n    float offset;\n    char unit[16];\n    uint8_t decimal_places;\n    uint32_t flags;\n    uint32_t reserved[3];\n} QttuneSignalDef;",
+      "members": [
+        "id",
+        "type",
+        "num_bytes",
+        "bit_length",
+        "offset",
+        "decimal_places",
+        "reserved"
+      ],
+      "def_file": "core/include/qttune/signals.h"
+    },
+    {
+      "name": "QttuneSignalSet",
+      "decl": "typedef struct QttuneSignalSet {\n    uint32_t version;\n    uint32_t count;\n    const QttuneSignalDef* defs;\n} QttuneSignalSet;",
+      "members": [
+        "version",
+        "defs"
+      ],
+      "def_file": "core/include/qttune/signals.h"
+    }
+  ],
+  "constants": [
+    {
+      "name": "firstRow",
+      "value": "-1",
+      "file": "app/qttunebridge.cpp"
+    },
+    {
+      "name": "lastRow",
+      "value": "-1",
+      "file": "app/qttunebridge.cpp"
+    },
+    {
+      "name": "val",
+      "value": "0.0f",
+      "file": "app/qttunebridge.cpp"
+    },
+    {
+      "name": "MaxFrames",
+      "value": "10000",
+      "file": "app/qttunebridge.h"
+    },
+    {
+      "name": "value",
+      "value": "0.0f",
+      "file": "app/qttunebridge.h"
+    },
+    {
+      "name": "m_subscribedCount",
+      "value": "0",
+      "file": "app/qttunebridge.h"
+    },
+    {
+      "name": "m_currentFrameCount",
+      "value": "0",
+      "file": "app/qttunebridge.h"
+    },
+    {
+      "name": "m_lastReportedDropped",
+      "value": "0",
+      "file": "app/qttunebridge.h"
+    },
+    {
+      "name": "m_signalBatchCount",
+      "value": "0",
+      "file": "app/qttunebridge.h"
+    },
+    {
+      "name": "m_guiNotifyCount",
+      "value": "0",
+      "file": "app/qttunebridge.h"
+    },
+    {
+      "name": "MaxInFlightFrames",
+      "value": "1000",
+      "file": "app/qttunebridge.h"
+    },
+    {
+      "name": "DEFAULT_FRAME_INTERVAL_MS",
+      "value": "50",
+      "file": "core/src/mock_transport.cpp"
+    },
+    {
+      "name": "tick",
+      "value": "0",
+      "file": "core/src/mock_transport.cpp"
+    },
+    {
+      "name": "coolant_c",
+      "value": "20.0f",
+      "file": "core/src/mock_transport.cpp"
+    },
+    {
+      "name": "iat_c",
+      "value": "20.0f",
+      "file": "core/src/mock_transport.cpp"
+    },
+    {
+      "name": "load_pct",
+      "value": "0.0f",
+      "file": "core/src/mock_transport.cpp"
+    },
+    {
+      "name": "throttle_pct",
+      "value": "0.0f",
+      "file": "core/src/mock_transport.cpp"
+    },
+    {
+      "name": "frame_counter",
+      "value": "0",
+      "file": "core/src/mock_transport.cpp"
+    },
+    {
+      "name": "result",
+      "value": "0",
+      "file": "core/src/signals.cpp"
+    },
+    {
+      "name": "foundRow",
+      "value": "-1",
+      "file": "tests/test_bridge.cpp"
+    },
+    {
+      "name": "notifyCount",
+      "value": "0",
+      "file": "tests/test_bridge.cpp"
+    },
+    {
+      "name": "lastReported",
+      "value": "-1",
+      "file": "tests/test_bridge.cpp"
+    },
+    {
+      "name": "counter",
+      "value": "0",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "counter1",
+      "value": "0",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "counter2",
+      "value": "0",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMaxFrames",
+      "value": "20",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "count",
+      "value": "0",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "val",
+      "value": "0.0f",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "value",
+      "value": "0.0f",
+      "file": "tests/test_signals.cpp"
+    },
+    {
+      "name": "val",
+      "value": "0.0f",
+      "file": "tests/test_signals.cpp"
+    }
+  ]
+}

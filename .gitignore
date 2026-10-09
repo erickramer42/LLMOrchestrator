@@ -39,3 +39,4 @@ logs/
 # Environment variables
 .env
 .env.local
+repo_context_cache.json
