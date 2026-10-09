@@ -99,10 +99,11 @@ Nothing here is committed to — loosely sorted by what unblocks what.
    diff debate; compare blocker precision to the 1/12 baseline. The
    current remediation claim rests on this run. Same diff
    (docs/fixtures/) for comparability.
-2. **Definition-context injection (remediation #3).** Inject struct
-   definitions referenced by a diff (qttune_frame_t etc.) as
-   "TYPE DEFINITIONS (ground truth)". Closes the confident-guessing
-   class the regex can't touch.
+2. **Repo context pack** (subsumes definition-context injection). 
+   Offline indexer → repo_context.json (file purposes, type/constant registry, 
+   layer map); debate-time retrieval keyed on diff references; 
+   optional --repo-scan holistic mode. Ground truth for eval: 4 production 
+   findings from manual repo scan, 2026-10-08.
 3. **Judge granularity rework.** Split severity from resolution:
    APPROVED / APPROVED_WITH_FOLLOWUPS / BLOCKED with severity-tagged
    follow-ups recorded in the decision record. Design first; current
