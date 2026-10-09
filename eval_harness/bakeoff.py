@@ -15,7 +15,7 @@ CASES = [
      '// core/src/frame_decode.cpp\n'
      'void decode(const PASSTHRU_MSG* msg) {\n'
      '    uint8_t buf[8];\n'
-     '    memcpy(buf, msg->Data, msg->DataSize);\n'
+     '    memcpy(buf, msg->DataSize);\n'
      '}', False),
 
     ("abi_type_leak", True,
@@ -74,7 +74,12 @@ def call(model: str, code: str, is_header: bool):
 
 def run(model: str):
     print(f"\n{'='*60}\nMODEL: {model} | Prompt: {PROMPT_VERSION}\n{'='*60}")
-    score = {"tp": 0, "fn": 0, "fp": 0, "json_fails": 0, "times": []}
+    # Clean passes are tallied SEPARATELY from bug hits — conflating them
+    # made 'Detection' read N+1/N+1 and 'Clean' go negative on any miss.
+    # (Second occurrence of this bug; if you touch this accounting again,
+    # keep the invariant: tp + fn == number of expect_bug cases.)
+    score = {"tp": 0, "fn": 0, "fp": 0, "clean_ok": 0,
+             "json_fails": 0, "times": []}
     for name, expect_bug, code, is_header in CASES:
         t0 = time.time()
         out, ok = call(model, code, is_header)
@@ -91,20 +96,23 @@ def run(model: str):
             print(f"  {'✓ HIT ' if hit else '✗ MISS'} {name}"
                   f" — {out.get('blockers', ['(none)'])[:1]}")
         else:
-            score["fp" if flagged else "tp"] += 1
+            if flagged:
+                score["fp"] += 1
+            else:
+                score["clean_ok"] += 1
             print(f"  {'✗ FP  ' if flagged else '✓ OK  '} {name} (clean)")
     avg = sum(score["times"]) / len(score["times"]) if score["times"] else 0
-    bug_total = score["tp"] + score["fn"] 
-    clean_passes = score["tp"] - bug_total 
+    bug_total = score["tp"] + score["fn"]
     print(f"\n  Detection: {score['tp']}/{bug_total} bugs | False pos: {score['fp']}/1 | "
-          f"Clean: {clean_passes}/1 | JSON fails: {score['json_fails']} | Avg latency: {avg:.1f}s")
+          f"Clean: {score['clean_ok']}/1 | JSON fails: {score['json_fails']} | "
+          f"Avg latency: {avg:.1f}s")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Model bake-off for reviewer slot")
     parser.add_argument("models", nargs="+", metavar="MODEL",
                         help="Models to compare (e.g. laguna-xs-2.1 gemma4:12b)")
     args = parser.parse_args()
-    
+
     for m in args.models:
         run(m)
         
