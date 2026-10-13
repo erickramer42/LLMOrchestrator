@@ -9,7 +9,8 @@ what's possible beyond LangChain/AutoGen abstractions — including
 publishing its own measured failure rates and fixing them.
 
 **Artifacts produced:** [Decision records](coach_artifacts/) *(incl. a real
-300-line refactor debate, re-run after remediation)*,
+300-line refactor debate, re-run after remediation, then N=3 after context
+retrieval)*,
 [Eval logs](probe_logs/),
 [Measured precision data](docs/decisions/0002-adjudication-and-fp-remediation.md),
 [Input fixtures](docs/fixtures/)
@@ -28,12 +29,12 @@ publishing its own measured failure rates and fixing them.
 | `config.py` | Models, runtime knobs, prompt composition |
 | `agent_client.py` | Ollama client — the only module that touches the network; retries invalid or schema-violating replies, then fails closed |
 | `adjudication.py` | Pure logic: schema validation, verdict derivation, hedge demotion guardrail |
-| `debate.py` | Debate loop, transcript templates, judging, decision-record persistence |
+| `debate.py` | Debate loop, transcript templates, repo-context retrieval, judging, decision-record persistence |
 | `golden_tests.py` | Golden suite: LLM fixtures + deterministic guardrail units |
 | `reviewer_prompt.py` | Agent system prompts (versioned, single source of truth) |
 | `file_metadata.py` | File-path → layer mapping (core / bridge / app) |
 | `eval_harness/` | FP-rate probe + model bake-off |
-| `repo_context.py` | Offline indexer: typedefs, constants, layer map → `repo_context.json` |
+| `repo_context.py` | Offline indexer: typedefs, constants, layer map, queued-connection call sites → `repo_context.json`; builds retrieved context packs |
 | `tests/` | Deterministic regression tests (fake Ollama, no model needed) |
 
 Dependency direction is acyclic: prompts/layer maps are leaves → config
@@ -68,7 +69,8 @@ Build the repo context pack (`--no-llm` skips the LLM purpose summaries):
 
     python orchestrator.py --index ../qttune --no-llm
 
-Run a production debate on a real diff:
+Run a production debate on a real diff (uses the committed context pack
+for retrieval when present):
 
     python orchestrator.py --proposal "Describe the change" --diff path/to/change.diff
 
@@ -100,6 +102,7 @@ TRANSCRIPT (proposal + diff/context + layer note + prior-round feedback)
     → CONVERGED, or feedback fed back for another round
 ```
 
+
 Possible outcomes: `APPROVED_FOR_MERGE`, `APPROVED_WITH_OPEN_QUESTIONS`,
 `MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED`, and
 `AGENT_FAILURE - MANUAL_REVIEW_REQUIRED`. In practice every recorded
@@ -108,9 +111,12 @@ agent to raise zero concerns, which it rarely does. Reworking that rule
 is on the backlog (see STATUS.md).
 
 An offline indexer (`--index`) builds a repo context pack of type
-definitions, constants and a layer map for the target codebase. It is
-built and committed, but not yet injected into debates; that is the
-next remediation for the dominant false-positive class below.
+definitions, constants, file purposes and queued-connection call sites
+for the target codebase. At debate time, retrieval pulls the entries
+tied to the diff into the transcript under a character budget
+(non-fatal and recorded via `pack_report` on failure), so reviewers
+assert less about code they cannot see. Injected in v5-context-pack and
+measured N=3 — see ADR-0002.
 
 ### Key Design Decisions
 
@@ -126,7 +132,8 @@ next remediation for the dominant false-positive class below.
    demoted to the questions channel (`demote_hedged_blockers()`).
    Regression-tested against real production blocker texts — see
    `run_hedge_unit_tests()`. Known tradeoff: one hedge word demotes the
-   whole blocker, even a confident one that cites a line.
+   whole blocker, even a confident one that cites a line — and the
+   context-pack measurement caught it demoting a hedged TRUE claim.
 
 3. **Layer-aware review context** — File paths are mapped to QtTune's
    layer structure (core / bridge / app) and injected into the transcript
@@ -138,7 +145,9 @@ next remediation for the dominant false-positive class below.
    `HEADER_SCOPE_CLAUSE` in reviewer_prompt.py).
 
 5. **Multi-run eval probes over single-run benchmarks** — Variance is
-   information. See probe_logs/ for 5-run aggregates.
+   information. See probe_logs/ for 5-run aggregates, and ADR-0002's
+   N=3 context-pack measurement for why single runs can't be trusted
+   with this model class.
 
 6. **Unusable replies fail closed** — Invalid JSON, schema violations
    (wrong, missing or nested keys), timeouts and server errors are
@@ -155,41 +164,68 @@ next remediation for the dominant false-positive class below.
 
 8. **Self-describing decision records** — Each record holds the original
    proposal, SHA-256 hashes of the diff and context, the detected layer,
-   sampling settings, per-round hedge-demotion counts and any agent
-   failure reasons, so a record can be matched to its fixture and
-   re-run.
+   sampling settings, per-round hedge-demotion counts, retrieval
+   diagnostics (`repo_context_pack`) and any agent failure reasons, so
+   a record can be matched to its fixture and re-run.
+
+9. **Repo-context retrieval** — Retrieved ground truth (file purposes,
+   type definitions, constants, queued-connection call sites) keyed to
+   the diff is injected into the transcript under a char budget, and
+   the pack text participates in the prompt fingerprint. Rationale:
+   no output filter can fix a model confidently asserting facts it
+   cannot see — only showing it the facts can.
 
 ## Measured Production Precision (the honest part)
 
 On synthetic fixtures, the reviewer scored 100% (3/3 golden, 0/5
 false-positive rate across probe runs). On its first real workload —
 a 300-line bridge refactor — blocker precision was **1/12 (~8%)**.
-The gap was root-caused into classes, remediated with deterministic
-guardrails, and re-measured on the same diff:
+The gap was root-caused into classes, remediated, and re-measured
+twice — with predictions recorded before each run:
 
-| Failure class | Baseline | After v1 | Status |
-|---|---|---|---|
-| Layer-rule misapplication (core rules on bridge code) | 7 | 0 | **Fixed** — layer metadata injection |
-| Speculative phrasing filed as blockers | 3 | 0 | **Fixed** — taxonomy discipline; hedge guardrail in reserve |
-| Confident-but-wrong assertions (missing context) | 0 | 4 | **Open** — dominant residual class; context injection is the designated remedy |
+| Failure class | Baseline | After v1 | After v5 context pack (N=3) | Status |
+|---|---|---|---|---|
+| Layer-rule misapplication (core rules on bridge code) | 7 | 0 | 0 | **Fixed** — layer metadata injection |
+| Speculative phrasing filed as blockers | 3 | 0 | 0 | **Fixed** — taxonomy discipline; hedge guardrail in reserve |
+| Confident-but-wrong assertions (missing context) | 0 | 4 | **0 in 3/3 runs** | **Fixed** — context retrieval; residual concern moved to questions |
+| Deletion-hallucination (fabricated surviving remnants) | 0 | 0 | 8 | **Open** — new dominant class |
+| True positives | 1 | 1 | 2 | See below |
 
-Total blockers fell 12 → 6 on the same diff; the one real defect
-(`qttune_decode_signal()` hardcoded 8-byte buffer ignoring
-`frame->data_length`) was caught in both runs and fixed in QtTune.
-The re-measurement also surfaced the next finding honestly: the hedge
-guardrail never fired because the contextual metadata changed the
-reviewer's phrasing at the source — guardrails eliminated the classes,
-context eliminated the rhetoric. The remaining failures are confidently
-stated claims about code the reviewer cannot see, which no output
-filter can fix.
+Round-1 precision: 1/12 (~8%) → 1/6 (~17%) → **2/10 (20%)**, N=3.
+
+The two context-pack true positives are the strongest result in the
+project's history — and they were only recognizable as true positives
+after forensic re-adjudication. The fixture diff turns out to be the
+reverse patch of a real merged QtTune commit, so its post-state is a
+formerly-shipped codebase state; both TPs (a cumulative-gate frame
+freeze past 10k frames, and a worker-thread read of GUI-owned
+`m_currentFrameCount`) are bugs that actually shipped and were later
+fixed in QtTune's real history. The reviewer detected both from a
+diff alone. That same forensics invalidated the refutation behind
+the v1 "confident-but-wrong" FP labels — those runs are flagged for
+re-triage in ADR-0002 rather than silently re-scored. Publishing the
+corrections is the point of this section.
+
+The offsetting cost is honest too: total FP volume did not fall. It
+migrated to a new class — the reviewer confidently fabricates
+surviving references to code the diff removes together (6/0/1 by
+run: extreme variance), one run died of num_ctx exhaustion in round 2,
+and the hedge guardrail demoted a hedged *true* claim. All recorded,
+all queued for per-class remediation.
 
 Evidence: baseline `coach_artifacts/decision_debate_20261007_203917.json`,
 re-measurement `coach_artifacts/decision_debate_20261009_014257.json`,
-input `docs/fixtures/qttune_bridge_refactor.diff`, full analysis in
+live-loop control `decision_debate_20261013_170208_71915a.json`,
+context-pack pilot `decision_debate_20261013_201540_ff958c.json` and
+three scored runs (`20261013_203802`, `20261013_204845`,
+`20261013_210548`), input `docs/fixtures/qttune_bridge_refactor.diff`,
+full analysis in
 [ADR-0002](docs/decisions/0002-adjudication-and-fp-remediation.md).
 
 Fixture-pass / production-fail is a known trap in eval harnesses. This
-repo measures both — twice, with predictions recorded before each run.
+repo measures both — repeatedly, with predictions recorded before each
+run, and with corrections published when measurement triage turns out
+to be wrong.
 
 ## Running the Eval Harness
 
@@ -210,11 +246,11 @@ Command examples:
 | Typical "Multi-Agent" Repo | This Repo |
 |---|---|
 | Demo prompt → demo output | Eval harness with failure modes, remediation logs |
-| Single run, cherry-picked | 5-run aggregates with variance reporting |
+| Single run, cherry-picked | N-run aggregates with variance reporting |
 | Prompts hardcoded, no version | PROMPT_VERSION stamps every decision record |
-| Only clean results shown | 8% precision published, root-caused, remediated, re-measured at 17% with class-level attribution |
+| Only clean results shown | 8% precision published, root-caused, remediated, re-measured at 17%, then 20% (N=3) — corrections included |
 | No evaluation methodology | Golden tests, probe logs, ADRs documenting decisions, model-free regression suite |
-| "Works on my toy example" | Runs on actual codebase (QtTune), decision records archived |
+| "Works on my toy example" | Runs on actual codebase (QtTune); caught two real previously-shipped bugs from a diff alone |
 
 ## Transferable Patterns
 
@@ -224,9 +260,11 @@ These patterns work on ANY codebase:
 - Schema validation before judging → a malformed reply must never read as "no findings"
 - Hedge demotion → enforce taxonomy discipline on any LLM output
 - Layer/role metadata injection → applies wherever file-level rules differ
+- Repo-context retrieval → give reviewers ground truth keyed to the diff, not the whole repo
 - Artifact-type prompting → headers vs. implementations differ everywhere
 - Multi-run probes → stability is a property of the eval harness, not the model
 - Measure → remediate per class → re-measure → publish the trend → this loop is the repo's core contribution
+- Forensic re-adjudication of eval ground truth → when triage refutations come from the wrong code state, your FP labels are wrong too
 
 ## Reproducing the Results
 
@@ -235,7 +273,10 @@ The probe_logs/ directory contains timestamped JSON artifacts for each
 run. The probe and bake-off scoring were corrected on 2026-10-10 so that
 parse failures and timeouts count against a model; ADR-0001's timeout
 row predates a working timeout counter (details in STATUS.md). The
-regression suite in tests/ runs without any LLM and is suitable for CI.
+context-pack measurement (ADR-0002, fourth measurement) is reproducible
+by running the debate command three times against the committed fixture
+and index. The regression suite in tests/ runs without any LLM and is
+suitable for CI.
 
 ## Project Map and Continuation Notes
 

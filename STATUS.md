@@ -1,7 +1,8 @@
 # STATUS — Project Map & Continuation Notes
 
-Last updated: 2026-10-13 (context pack phase 2: LLM purpose summaries,
-24/24 fill; --index CLI wiring landed)
+Last updated: 2026-10-13 (context-pack phase 3: retrieval wired into
+debates, queued-connection call-site harvester, N=3 measurement
+recorded in ADR-0002)
 
 Purpose of this file: anyone picking up this repo can
 orient in five minutes, run the existing validation, and continue the
@@ -23,14 +24,22 @@ queued work without reverse-engineering the ADRs.
 - Hedge-language demotion guardrail (deterministic, regression-tested)
 - Golden suite: 3 model fixtures + 7 deterministic guardrail units = 10/10
   (re-run live 2026-10-10 after the fixes below)
-- Deterministic regression suite: 34 stdlib unittest cases in `tests/`,
+- Deterministic regression suite: 44 stdlib unittest cases in `tests/`,
   with Ollama faked at the HTTP layer. No model needed; CI-ready.
 - FP-rate probe (5-run aggregates), model bake-off
-- Repo indexer (`--index`): typedefs, constants and a layer map for QtTune
-  (36 files, 7 types, 11 constants in the committed `repo_context.json`).
-  Built, but not yet read by debates. Rebuilt 2026-10-13 with LLM purpose 
-  summaries (24/24 source files, gemma4:12b); index records summary model and 
-  SUMMARY_PROMPT_VERSION.
+- Repo indexer (`--index`): typedefs, constants, layer map, LLM purpose
+  summaries and queued-connection call sites for QtTune (rebuilt
+  2026-10-13: 40 files, 28/28 source purposes, 2 call sites).
+- **Repo-context retrieval, measured (2026-10-13, v5-context-pack):**
+  `build_context_pack()` in repo_context.py retrieves purposes, types,
+  constants and queued-connection call sites tied to the diff;
+  debate.py injects them into the transcript under a 6000-char budget
+  (non-fatal on failure, recorded via `repo_context_pack` in decision
+  records; pack text included in the prompt fingerprint). N=3
+  measurement on the bridge-refactor fixture: thread-safety FP class
+  eliminated in 3/3 runs; round-1 precision 2/10 (was 1/6). Both TPs
+  are real previously-shipped bugs (see ADR-0002, fourth measurement,
+  including the retroactive re-adjudication flag on the v1 triage).
 - Module split (2026-10-08): single-file orchestrator decomposed into
   config / agent_client / adjudication / debate / golden_tests, with
   orchestrator.py reduced to a thin CLI entrypoint
@@ -38,85 +47,59 @@ queued work without reverse-engineering the ADRs.
   precision (2026-10-07, decision_debate_20261007_203917) → 1/6 after
   layer metadata + hedge demotion (2026-10-09,
   decision_debate_20261009_014257, same diff). Layer-class blockers:
-  7 → 0. Hedge-class: 0, with 0 demotions fired (the reviewer stopped
-  hedging; taxonomy discipline worked at the source). Full analysis
-  in ADR-0002.
+  7 → 0. Full analysis in ADR-0002. NOTE: the "confident-but-wrong"
+  class counts in both runs are flagged for re-triage — see ADR-0002
+  re-adjudication flag.
 - **Feedback loop repair (2026-10-09):** transcript re-rendered per round
   so `REVISE ADDRESSING` feedback reaches agents; archived records read
-  as multi-sample measurements; prompt version bumped to v4. Evidence:
-  smoke debate (20261009_153541) shows engineer elevating concerns to
-  blockers upon seeing prior critique.
-  Caveat (2026-10-10): that record is stamped `v3-engineer-added`, so
-  any grouping by prompt_version files it with pre-fix runs. Its
-  engineer round-2 blockers also restate the reviewer's round-1
-  blockers nearly verbatim, including the m_currentFrameCount race that
-  ADR-0002 classifies as confident-but-wrong. It shows feedback reaching
-  the engineer, not independent corroboration.
+  as multi-sample measurements; prompt version bumped to v4. Caveat
+  (2026-10-10): the 153541 smoke record is stamped `v3-engineer-added`;
+  see ADR-0002 erratum.
 - **Robustness and eval-integrity fixes (2026-10-10).** All pinned by
-  `tests/`. Prompt templates are unchanged (rendered transcripts verified
-  byte-identical on sample inputs), so PROMPT_VERSION stays v4. One
-  input-dependent difference: a context whose path sits in a `//` comment
-  now gets the correct layer note. QtTune header reviews get `core` where
-  194320 ran as `unknown`; the new record field `inputs.layer` shows which.
-  - Agent replies are schema-validated. Previously a reply with wrong
-    keys was judged APPROVED_FOR_MERGE, and object-valued items, null
-    arrays or non-object replies crashed the debate without a record.
-  - Exhausted agent calls end the debate as AGENT_FAILURE with a reason,
-    instead of looking like MAX_ROUNDS_EXCEEDED.
-  - Layer detection: `// core/...` comment paths were classified
-    `unknown`, and `// core/src/*bridge*` as bridge, which told the
-    reviewer Qt is allowed in core. QML under app/qml/ now gets the app
-    layer.
-  - Eval scoring: probe printed CLEAN when every run failed to parse,
-    and its timeout counter could never be non-zero. Bake-off dropped
-    parse-failed bug cases from the detection denominator. The golden
-    clean fixture passed on a parse failure. ADR-0001's "Timeouts 0/5"
-    could not have read otherwise.
-  - Decision records add original proposal, input hashes, layer,
-    sampling settings and a `prompt_fingerprint`. Debate IDs get a
-    random suffix.
-  - Indexer: harvests every struct member (it used to skip every other
-    one, dropping `qttune_frame_t.data[64]`), opaque/callback typedefs
-    with doc comments, enum values, #define/hex constants, and no
-    locals. LLM failures no longer cache the literal "PARSE_FAILURE" as a
-    purpose; the cache is keyed by model and summary-prompt version.
-  - CLI: modes are mutually exclusive, and inputs are read as UTF-8.
+  `tests/`. See ADR-0002 and the 2026-10-10 STATUS history: schema
+  validation, fail-closed agent exhaustion, layer detection fixes, eval
+  scoring fixes, decision-record provenance, indexer harvest fixes,
+  UTF-8 input reads.
+- GitHub Actions CI (2026-10-13): compile checks + deterministic
+  regression suite, no Ollama needed.
 
 **Known limitations (by design or pending):**
+- **Deletion-hallucination is now the dominant FP class** (8 total
+  across the N=3 context-pack runs, 6/0/1 by run): the reviewer
+  fabricates surviving references to code removed together in the diff.
+  Candidate fix: ground removed symbols from the diff's minus side
+  (backlog #15).
+- **Hedge demotion can demote true claims.** It fired once in the N=3
+  measurement, on a hedged formulation of a genuine thread-safety
+  finding. "Hedged" does not imply "wrong" (backlog #12).
+- **num_ctx crowding in rounds 2+:** the context pack (~2k chars) plus
+  feedback growth occasionally exhausts 16384 ctx
+  (`done_reason=length`, one AGENT_FAILURE in the N=3). The retrieval
+  budget competes with the debate loop's growth (backlogs #4/#16).
 - **Debates practically never converge.** Convergence needs the engineer
-  to return zero blockers, concerns AND questions, and its prompt routes
-  sequencing issues into concerns. Every archived debate ended at
-  MAX_ROUNDS_EXCEEDED. An uncommitted 2026-10-10 smoke debate on QtTune's
-  core.h showed the reviewer fully clean in round 1 and still not
-  converging. Fail-closed is intentional; the convergence rule is backlog #2.
-- **Feedback anchors rather than tests.** Critiques are appended inside
-  the PROPOSAL section, so they read as author text, and the code never
-  changes between rounds. In the 2026-10-10 smoke debate, the reviewer's
-  open questions grew 0 → 4 → 9 across rounds as engineer concerns were
-  fed back. Reviewer questions and engineer blockers are never fed back.
-  See backlog #11.
-- **Confident-but-wrong assertions are now the dominant FP class**
-  (4/6 blockers in the re-measurement: thread-safety claims on
-  GUI-thread-only state). Hedge regex provably cannot touch these —
-  the fix is ground-truth context (repo context pack, backlog #1).
-- **Hedge demotion is all-or-nothing.** One hedge word anywhere demotes
-  the whole blocker, including confident, line-cited claims such as
-  "memcpy at line 4 ... could overflow". See backlog #12.
-- Diff-only review caps recall: both real bugs found by full-repo
-  triage (drop-count starvation, staging-buffer last-write-wins) were
-  invisible in the diff itself. Also addressed by the context pack.
+  to return zero blockers, concerns AND questions. Every archived debate
+  ended at MAX_ROUNDS_EXCEEDED. Fail-closed is intentional; the
+  convergence rule is backlog #2.
+- **Feedback anchors rather than tests,** and the live loop can undo
+  retrieval's gains: in the pilot, engineer concerns reintroduced
+  thread-safety blockers in round 3 after a clean round 1. Additional
+  reason to score round-1 output (see backlog #11).
+- Diff-only review caps recall. Partially mitigated by the context pack;
+  the pack only carries what the indexer harvests.
 - Reviewed code goes into the prompt unfenced (prompt-injection surface),
-  context is cut at 8000 chars with no marker, and prompt token counts
-  are not recorded, so silent prompt truncation is undetectable.
-- Multi-file diffs only inject the FIRST file's layer. Queued.
-- Golden model fixtures are nondeterministic, and they call the reviewer
-  with bare snippets, bypassing the debate transcript builder (no layer
-  note). Use `tests/` for pass/fail signals.
+  and prompt token counts are not recorded, so silent prompt truncation
+  is undetectable (backlog #4).
+- Multi-file diffs only inject the FIRST file's layer. Queued (#8).
+- Golden model fixtures are nondeterministic and bypass the debate
+  transcript builder. Use `tests/` for pass/fail signals.
 - Probe and bake-off measure the raw model through their own `call()`:
-  no schema validation, no hedge demotion, no `config.py` settings. The
-  probe always uses the header-scoped prompt.
+  no schema validation, no hedge demotion, no `config.py` settings.
 - Evidence-pair gap: the header-review record (194320) and both probe
-  logs used QtTune's core.h, which is not in `docs/fixtures/`.
+  logs used QtTune's core.h, which is not in `docs/fixtures/` (#13).
+- **Historical FP labels suspect:** the v1 re-measurement's
+  "confident-but-wrong" thread-safety FPs were refuted using maintained
+  QtTune, but the fixture post-state genuinely races — re-triage
+  pending (ADR-0002 re-adjudication flag, backlog #17).
 
 ---
 
@@ -124,187 +107,154 @@ queued work without reverse-engineering the ADRs.
 
 | Path | Purpose |
 |---|---|
-| `orchestrator.py` | Thin CLI entrypoint: argument parsing and dispatch only. Modes `--golden`, `--proposal` and `--index` are mutually exclusive; inputs read as UTF-8. Re-exports key symbols (call_agent, MODELS, derive_verdict, demote_hedged_blockers) as a transition shim for older importers. |
-| `config.py` | Central configuration: MODELS dict, num_ctx, timeouts, temperatures, and prompt composition (REVIEWER_IMPL_PROMPT / REVIEWER_HEADER_PROMPT). Single place to swap models. |
-| `agent_client.py` | Ollama client. Single agent turn, JSON-mode enforcement, retries with corrective messages for invalid JSON and for replies rejected by an optional `validate` callback. `failure_result(reason)` returns a fresh fail-closed sentinel with `failure_reason`. The ONLY module that touches the network. |
-| `adjudication.py` | Pure adjudication logic, no I/O: `normalize_agent_output()` (per-role schema validation and coercion), `derive_verdict()` (content-based verdicts; anything malformed → reject) and `demote_hedged_blockers()` (hedge regex guardrail). CI-importable with no model serving. |
-| `debate.py` | The debate loop. Model-facing text lives in `STATIC_TEMPLATE`, `TRANSCRIPT_TEMPLATE` and `FEEDBACK_TEMPLATE` (prompts: edits bump PROMPT_VERSION). Re-renders the transcript every round (fixed 2026-10-09, see ADR-0002 erratum). Ends with AGENT_FAILURE on an exhausted agent call. Writes decision records with provenance. |
-| `golden_tests.py` | Golden suite: 3 LLM-backed model fixtures (an agent failure fails the fixture) + `run_hedge_unit_tests()` (7 deterministic guardrail regression cases, production-derived texts). |
-| `reviewer_prompt.py` | Single source of truth for agent system prompts. PROMPT_VERSION stamped into decision records. REVIEWER_SYSTEM + IMPL_SCOPE_CLAUSE / HEADER_SCOPE_CLAUSE compose the two reviewer prompts. Also holds FAILURE_SENTINEL. |
-| `file_metadata.py` | File-path → layer mapping. Order: core first, then UI dirs and `.qml` → app, then `app/` or "bridge" → bridge. `get_layer_constraints()` returns the injected transcript text telling the reviewer which rules apply. |
-| `repo_context.py` | Offline indexer for the repo context pack (`orchestrator.py --index ../qttune [--no-llm]`). Typedefs by kind (struct, union, enum, opaque, function_pointer) with members, enum values and doc comments; `#define` and const/constexpr numeric constants; layer map; optional LLM purpose lines cached by content hash, model and `SUMMARY_PROMPT_VERSION`. Committed context pack for QtTune, rebuilt 2026-10-13 with LLM purpose summaries (24/24, gemma4:12b). Not yet read by debate.py. |
-| `repo_context.json` | Committed context pack for QtTune (deterministic `--no-llm` build, regenerated 2026-10-10). Not yet read by debate.py. |
-| `eval_harness/probe.py` | FP-rate probe: N runs against a clean fixture (`--fixture` required). `summarize()` classifies CLEAN / BORDERLINE / SYSTEMATIC / NO_DATA; parse failures and timeouts count against the model. |
-| `eval_harness/bakeoff.py` | Side-by-side model comparison on bug fixtures + clean fixture. `tally()` keeps tp + fn == bug cases; a failed bug case is a miss. |
+| `orchestrator.py` | Thin CLI entrypoint: argument parsing and dispatch only. Modes `--golden`, `--proposal` and `--index` are mutually exclusive; inputs read as UTF-8. Re-exports key symbols as a transition shim. |
+| `config.py` | Central configuration: MODELS dict, num_ctx, timeouts, temperatures, and prompt composition. Single place to swap models. |
+| `agent_client.py` | Ollama client. Single agent turn, JSON-mode enforcement, retries with corrective messages. The ONLY module that touches the network. |
+| `adjudication.py` | Pure adjudication logic, no I/O: `normalize_agent_output()`, `derive_verdict()`, `demote_hedged_blockers()`. CI-importable. |
+| `debate.py` | The debate loop. Transcript templates incl. `REPO_CONTEXT_TEMPLATE`; loads `repo_context.json`, calls `build_context_pack`, injects retrieval into the transcript, records `repo_context_pack` diagnostics in decision records. Ends with AGENT_FAILURE on exhausted agent calls. |
+| `golden_tests.py` | Golden suite: 3 LLM-backed model fixtures + `run_hedge_unit_tests()` (7 deterministic guardrail cases, production-derived texts). |
+| `reviewer_prompt.py` | Single source of truth for agent system prompts. PROMPT_VERSION (currently v5-context-pack). Also holds FAILURE_SENTINEL. |
+| `file_metadata.py` | File-path → layer mapping and layer constraint notes. |
+| `repo_context.py` | Offline indexer (`orchestrator.py --index ../qttune [--no-llm]`) AND debate-time retrieval (`harvest_callsites`, `build_context_pack`): modified-file purposes, referenced types/constants, queued-connection call sites with paren-depth statement scanning, budget-enforced truncation. Consumed by debate.py since v5-context-pack. |
+| `repo_context.json` | Committed context pack for QtTune (40 files, 28 LLM purposes, 2 queued-connection call sites; repo_root field removed 2026-10-13 — local-path leak). Read by debate.py at runtime. |
+| `eval_harness/probe.py` | FP-rate probe: N runs against a clean fixture. CLEAN / BORDERLINE / SYSTEMATIC / NO_DATA. |
+| `eval_harness/bakeoff.py` | Side-by-side model comparison on bug + clean fixtures. |
 | `eval_harness/__init__.py` | Package marker. |
-| `tests/test_deterministic.py` | Stdlib unittest regression suite (`python -m unittest discover -s tests -v`). Fake Ollama HTTP layer, so the real client/judge/debate paths run with no model. Includes the 7 hedge units and CLI checks. CI-ready. |
-| `docs/decisions/0001-model-selection.md` | ADR-0001: model selection rationale, bake-off numbers, eval harness bug history. THE document for "why these models on this hardware." Its timeout row predates a working timeout counter. |
-| `docs/decisions/0002-adjudication-and-fp-remediation.md` | ADR-0002: the false-positive arc — 1/12 baseline triage, guardrail design, 1/6 re-measurement, residual class analysis, erratum. THE document for "why these guardrails." |
-| `docs/portability_guide.md` | Running on other machines / codebases. Predates the module split (MODELS is in config.py; keys are code_reviewer / auto_engineer). |
-| `docs/fixtures/qttune_bridge_refactor.diff` | Input diff for the bridge-refactor debates (baseline AND v1 re-measurement — same fixture enables comparability). Keep record/fixture pairs together. |
-| `coach_artifacts/decision_debate_*.json` | Decision records: round history, hedge_demotions counts per round, verdict, metadata (prompt version, models). Four archived: header review (194320), baseline diff review (203917), v1 re-measurement (014257), feedback-loop smoke debate (153541, see caveat above). Records written from 2026-10-10 also carry `prompt_fingerprint`, sampling settings, input hashes, original proposal, layer and `agent_failures`. Intended consumer: "coach agent" for human-facing synthesis. |
-| `probe_logs/fp_*.json` | 5-run probe aggregates backing the FP-rate claims in the ADR. |
-| `requirements.txt` | Runtime deps (requests only, as of this writing). |
-| `.gitignore` | `gold_tests/run_*.json` outputs are transient and NOT committed; neither is `repo_context_cache.json`. Eval evidence lives in probe_logs/ and coach_artifacts/. |
+| `tests/test_deterministic.py` | Stdlib unittest regression suite, incl. retrieval/callsite-harvesting cases. Fake Ollama HTTP layer. CI-ready. |
+| `tests/test_retrieval.py` | Retrieval unit tests: paren-depth scanning, multiline lambda connects, truncation-budget accounting. |
+| `docs/decisions/0001-model-selection.md` | ADR-0001: model selection rationale, bake-off numbers. |
+| `docs/decisions/0002-adjudication-and-fp-remediation.md` | ADR-0002: the false-positive arc — baseline triage, v1 guardrails, re-measurement, live-loop control, context-pack N=3 results with retroactive re-adjudication flag. |
+| `docs/portability_guide.md` | Running on other machines / codebases. Predates the module split. |
+| `docs/fixtures/qttune_bridge_refactor.diff` | Input diff for all bridge-refactor debates. Provenance (established 2026-10-13): reverse patch of QtTune `e0c4c31`; post-state identical to committed `8ffbf19` (blob `1c195f8`). |
+| `coach_artifacts/decision_debate_*.json` | Decision records. Nine archived: header review (194320), baseline (203917), v1 re-measurement (014257), feedback smoke (153541, see erratum caveat), live-loop control (170208), context-pack pilot (201540, unscored), and three scored context-pack runs (203802, 204845, 210548). Records from 2026-10-10 on carry `prompt_fingerprint`, sampling settings, input hashes, layer, `agent_failures`; v5 records carry `repo_context_pack`. |
+| `probe_logs/fp_*.json` | 5-run probe aggregates backing the FP-rate claims. |
+| `requirements.txt` | Runtime deps (requests). |
+| `.github/workflows/` | CI: compile checks + regression suite, no Ollama. |
+| `.gitignore` | Transient outputs (gold_tests/run_*.json, repo_context_cache.json, *.bat) not committed. |
 
 **Module dependency direction (acyclic):** reviewer_prompt + file_metadata
-(leaves) → config → agent_client and adjudication (parallel layers; callers
-pass adjudication validators into agent_client as callbacks, so neither
-imports the other) → debate + golden_tests + repo_context →
-orchestrator (CLI handle; imports repo_context lazily for `--index`).
-`tests/` sits on top of everything.
+(leaves) → config → agent_client and adjudication (parallel layers) →
+debate + golden_tests + repo_context → orchestrator. `tests/` sits on
+top of everything.
 
 ---
 
 ## Conventions (do not silently violate)
 
 1. **Derived verdicts only.** Never trust a model's self-reported
-   verdict label. Judge reads blockers/questions/concerns arrays
-   (adjudication.derive_verdict).
-2. **Fail closed.** Parse failure, schema violation, timeout, empty input
-   → reject / manual review (`AGENT_FAILURE - MANUAL_REVIEW_REQUIRED`).
-   Never default to approve; a missing array is never "no problems".
-   (Enforced in agent_client.call_agent + adjudication.)
+   verdict label. Judge reads blockers/questions/concerns arrays.
+2. **Fail closed.** Parse failure, schema violation, timeout, empty
+   input → reject / manual review. Never default to approve.
 3. **Blockers must be demonstrable.** Speculation belongs in questions.
-   If you widen HEDGE_PATTERNS in adjudication.py, the 7 unit cases in
-   `run_hedge_unit_tests()` (golden_tests.py) must still pass — several
-   are negative controls that assert confident statements are NOT demoted.
-4. **Prompts are versioned.** Any prompt change bumps PROMPT_VERSION in
-   reviewer_prompt.py so eval results correlate to prompt revisions.
-   The transcript templates in debate.py and the layer notes in
-   file_metadata.py are prompts too. Records also carry a
-   `prompt_fingerprint` of the exact templates used. The indexer's
-   SUMMARY_PROMPT has its own SUMMARY_PROMPT_VERSION.
+   HEDGE_PATTERNS changes must keep the 7 hedge units passing.
+4. **Prompts are versioned.** Any change to what agents see bumps
+   PROMPT_VERSION (transcript templates and retrieval text are prompts
+   too; pack text is in the fingerprint). Currently v5-context-pack.
 5. **Evidence pairs.** Every committed decision record needs its input
    fixture committed alongside (docs/fixtures/).
-6. **Predict before measuring.** Write down the expected outcome before
-   an eval run; record it in the ADR alongside results. Cheapest defense
-   against post-hoc rationalization. (Practiced for the v1 re-measurement:
-   prediction held on all three classes.)
-7. **Quantify, then fix, then re-measure.** measure FP rate → root-cause
-   classes → remediate → re-measure. Continue it.
-8. **Respect the module boundaries.** Network calls only in
-   agent_client.py; adjudication stays pure (no I/O) so it remains
-   CI-testable. Don't let conveniences erode that.
+6. **Predict before measuring.** Expected outcome written to the ADR
+   before any eval run; results recorded next to it. Practiced for v1,
+   the control run, and the N=3 context-pack measurement.
+7. **Quantify, then fix per class, then re-measure.** Attribute per
+   failure class; publish misses and corrections, not just wins.
+8. **Respect the module boundaries.** Network only in agent_client.py;
+   adjudication stays pure. Retrieval reads files (repo_context.py),
+   never the network.
 
 ---
 
 ## Backlog (ideas, loosely ordered)
 
-Nothing here is committed to — loosely sorted by what unblocks what.
+Suggested order as of 2026-10-13: #15 deletion-hallucination →
+#12 hedge gate → #4/#16 context budget + telemetry → #2 judge +
+#11 transcript v6 → #17 re-triage → the rest.
 
-Suggested order as of 2026-10-10: #3 CI → #13 evidence trail → #2 judge
-+ #11 transcript v5 → #1 retrieval and third re-measurement → the rest.
-
-1. **Repo context pack** (subsumes definition-context injection; now the
-   top priority since re-measurement confirmed confident-but-wrong as
-   the dominant residual class). **Indexer done** (repo_context.py,
-   harvesting fixed and verified 2026-10-10). Remaining: debate-time
-   retrieval keyed on diff references; optional --repo-scan holistic
-   mode. Gap: the predicted collapse of the 4 thread-safety FPs needs
-   queued-connection call sites (`connect(..., Qt::QueuedConnection)`),
-   which the indexer does not harvest yet. Ground truth for eval: 4
-   production findings from manual repo scan (coolant overflow, CI test
-   gap, stale page number, doc test counts), 2026-10-08. When built:
-   re-measure the bridge diff a third time. Score round-1 output, or do
-   #2 and #11 first, because the current feedback design contaminates
-   rounds 2–3.
-2. **Judge granularity rework.** Split severity from resolution:
-   APPROVED / APPROVED_WITH_FOLLOWUPS / BLOCKED with severity-tagged
-   follow-ups recorded in the decision record. Design first; current
-   fail-closed behavior is defensible. Minimal option: converge as
-   APPROVED_WITH_OPEN_QUESTIONS when neither agent has blockers (a
-   verdict the judge already has). Evidence: every debate so far ended
-   at max rounds.
-3. **GitHub Actions CI.** Now just two commands, no Ollama:
-   `python -m py_compile *.py eval_harness/*.py tests/*.py` and
-   `python -m unittest discover -s tests -v`.
+1. **Repo context pack — DONE (2026-10-13).** Indexer, callsite
+   harvester, debate-time retrieval and the third measurement are all
+   landed (ADR-0002, fourth measurement). Kept for history; open
+   follow-ups became #15–#17 below.
+2. **Judge granularity rework.** Split severity from resolution;
+   minimal option: converge as APPROVED_WITH_OPEN_QUESTIONS when
+   neither agent has blockers.
+3. **GitHub Actions CI — DONE (2026-10-13).**
 4. **Per-debate cost/latency telemetry.** Wall-clock per round, plus
-   Ollama's eval_count, prompt_eval_count and done_reason stamped into
-   decision records. prompt_eval_count near NUM_CTX reveals silent
-   prompt truncation.
+   eval_count, prompt_eval_count and done_reason stamped into records.
+   prompt_eval_count near NUM_CTX reveals silent truncation — directly
+   relevant to #16.
 5. **Cloud model support.** OpenAI-compatible endpoint in
-   agent_client.py. Golden suite first (cost control); keep cloud
-   results segregated in the ADR. Local-vs-cloud bake-off on the same
-   fixtures would be a publishable comparison.
+   agent_client.py; golden suite first; segregated results.
 6. **Chained/escalated debates.** On MAX_ROUNDS_EXCEEDED, re-submit
-   unresolved questions as a fresh debate (different model pair
-   optional), depth capped at 2, parent_debate_id recorded. Depends
-   on #2 — both touch termination logic.
+   unresolved questions as a fresh debate. Depends on #2.
 7. **Stable real-diff corpus.** 3–5 triaged real diffs with known
-   expected outcomes — the systemic answer to fixture-pass /
-   production-fail.
+   expected outcomes. The reverse-of-merged-commit technique that
+   produced the current fixture is a repeatable way to build this.
 8. **Multi-file diff layer handling.** Parse all `+++ b/` headers;
    inject a layer map keyed by file.
-9. **Retire the orchestrator re-export shim** once eval_harness
-   imports from agent_client/config directly (unifies the harness's
-   private `call()` functions with the production client).
-10. **Codebase abstraction.** Move QtTune-specific bits (layer rules,
-    domain prompts) behind config so other codebases can point the
-    tribunal at themselves. More interesting if #5 lands.
-11. **Transcript protocol v5** (one versioned prompt change, predicted
-    and measured as a unit): move prior critique out of the PROPOSAL
-    section into its own section marked unverified; ask each agent to
-    uphold or withdraw each prior item with a citation; feed back
-    reviewer questions and engineer blockers too; fence diff and context
-    as untrusted data; add a truncation marker. Bump PROMPT_VERSION.
+9. **Retire the orchestrator re-export shim.**
+10. **Codebase abstraction.** Move QtTune-specific bits behind config.
+11. **Transcript protocol v6** (one versioned prompt change, predicted
+    and measured as a unit): move prior critique out of PROPOSAL into
+    an unverified section; uphold-or-withdraw with citation; feed back
+    reviewer questions and engineer blockers; fence untrusted diff/
+    context; add truncation markers.
 12. **Hedge gate decision.** Demote only hedged blockers that cite no
-    line (`line N` or `file.ext:N`). Checked 2026-10-10: passes all 7
-    hedge units, but a hedged, line-cited claim would stay a blocker.
-    Needs production-derived controls first. Low urgency: the guardrail
-    fired 0 times in the last re-measurement.
+    line. NEW EVIDENCE (2026-10-13): the guardrail demoted a hedged
+    TRUE claim in the N=3 run; treats this as urgent, not "low".
 13. **Evidence-trail repair.** Commit QtTune's core.h under
-    docs/fixtures (pairs for 194320 and both probe logs); rerun the
-    probe with the fixed scoring; correct ADR-0001's timeout row; add
-    the 153541 version-stamp caveat to the ADR-0002 erratum.
+    docs/fixtures; rerun the probe with fixed scoring; correct
+    ADR-0001's timeout row.
 14. **Client hardening.** Pass the JSON schema as Ollama's `format`
-    (structured outputs) instead of `"json"`; route golden fixtures
-    through the debate transcript builder so layer detection is
-    exercised; add an implementation-prompt option to the probe.
+    (structured outputs); route golden fixtures through the transcript
+    builder.
+15. **Deletion-hallucination remediation (NEW, top priority).** Ground
+    "removed symbols" from the diff's minus side: a blocker claiming a
+    surviving reference to symbol X must verify X is not in the removed
+    set. Deterministic pre-judge check in adjudication.py, or retrieval
+    that lists removed symbols alongside survivors. Predict + measure
+    per convention 7 — this is the new dominant FP class (8 in N=3).
+16. **Context budget negotiation (NEW).** num_ctx crowding: drop the
+    pack from rounds 2+, trim feedback accumulation, or raise num_ctx
+    within VRAM. Decide with #4 telemetry data.
+17. **Historical re-triage (NEW).** Re-read the v1 (014257) and
+    control (170208) thread-safety blockers against the fixture's
+    actual post-state (which does read m_currentFrameCount on the
+    worker thread); correct the FP/TP labels in ADR-0002 and the
+    README precision table. The re-adjudication flag is already
+    recorded; this executes it.
 
 Deliberately deferred: MAX_DEBATE_ROUNDS / loop-shape tuning — #2
-supersedes; changing termination logic twice is wasted motion.
+supersedes.
 
 ---
 
 ## Notes for Continuing Agents
 
 - Models are assigned in the `MODELS` dict in config.py:
-  reviewer = `laguna-xs-2.1` (33B MoE, num_ctx 16384 — smaller contexts
-  truncate due to thinking tokens), engineer = `gemma4:12b`. Swap freely;
-  that's the point of the dict.
-- Temperature: 0.7 first round (exploration), 0.05 retries and later
-  rounds (consistency). Retries on invalid JSON or schema violations
-  append corrective user messages, not restarts.
-- The feedback loop functions (transcript re-rendered per round), but
-  debates still end at MAX_ROUNDS because the engineer must be fully
-  clean to converge (see Known limitations). Do not attribute
-  convergence changes to temperature or guardrails; the loop and the
-  termination rule drive it.
-- Decision records include `hedge_demotions` counts per round — when
-  judging whether a verdict change came from the guardrail vs. prompt
-  luck, read those counters. Note: in the 2026-10-09 re-measurement, 0
-  demotions fired across all rounds while hedged blockers disappeared —
-  the layer/context metadata changed phrasing at the source, upstream
-  of the regex. Guardrails fixed the classes; context fixed the rhetoric.
-- When grouping runs, compare `prompt_fingerprint` (records from
-  2026-10-10 on), not only PROMPT_VERSION; read `inputs.layer` too.
-- The judge derives "conditional" whenever questions/concerns exist,
-  so demotions shift verdicts toward APPROVED_WITH_OPEN_QUESTIONS.
-- The reviewer expects JSON-mode output (Ollama `format: "json"`).
-  If a new model emits prose or the wrong keys, the debate ends as
-  AGENT_FAILURE; read `outputs.agent_failures` in the record. A reason
-  mentioning `done_reason=length` means output was truncated: raise
-  NUM_CTX. Check probe logs before assuming the model is bad at reviewing.
+  reviewer = `laguna-xs-2.1` (num_ctx 16384), engineer = `gemma4:12b`.
+- Temperature: 0.7 first round, 0.05 retries and later rounds.
+- Round-1 output is the scored arm for measurements: the live feedback
+  loop demonstrably carries engineer concerns back into reviewer
+  blockers (pilot round 3, 2026-10-13), so rounds 2+ mix retrieval and
+  anchoring effects.
+- Decision records include `hedge_demotions` per round and (v5 on)
+  `repo_context_pack` retrieval diagnostics. When grouping runs,
+  compare `prompt_fingerprint`, not only PROMPT_VERSION.
+- The judge derives "conditional" whenever questions/concerns exist.
+- If an agent failure reason mentions `done_reason=length`, output was
+  truncated: the pack + feedback may be crowding num_ctx (see #16)
+  before assuming the model is bad.
 - Run ad-hoc debates from a scratch directory: `coach_artifacts/` is
-  CWD-relative, and records without a committed fixture shouldn't be
-  committed.
-- Golden test fixture texts for hedge units are drawn verbatim from
-  production decision records (see run_hedge_unit_tests docstring).
-  Preserve production-derived provenance when extending.
-- Pin every fix with a case in `tests/test_deterministic.py`; its
-  `fake_ollama()` helper drives the real client and debate code.
-- To modify judging or guardrail behavior: adjudication.py. To change
-  what agents are asked: reviewer_prompt.py or the templates in debate.py
-  (+ bump PROMPT_VERSION). To change the debate protocol itself:
-  debate.py. To swap models or knobs: config.py.
+  CWD-relative.
+- Pin every fix with a case in `tests/`; `fake_ollama()` drives the
+  real client and debate code.
+- To modify judging or guardrails: adjudication.py. To change what
+  agents are asked: reviewer_prompt.py or the templates in debate.py
+  (+ bump PROMPT_VERSION). Retrieval logic: repo_context.py. To swap
+  models or knobs: config.py.
+- Fixture provenance (2026-10-13, forensics): the bridge-refactor
+  fixture is the reverse patch of QtTune commit `e0c4c31`; post-state
+  byte-identical to committed `8ffbf19` (blob `1c195f8`, verified via
+  `git log --all --find-object=1c195f8`). Both N=3 TPs are real
+  previously-shipped bugs, later fixed in QtTune. Any future triage of
+  this fixture must score against the diff's post-state, NOT current
+  QtTune — that mistake is what #17 corrects.

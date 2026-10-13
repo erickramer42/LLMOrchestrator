@@ -2,7 +2,7 @@
 
 Date: 2026-10-13
 Status: Accepted (v1 remediation validated by re-measurement; live-loop
-control run recorded 2026-10-13; v2 in flight)
+control run 2026-10-13; context-pack measurement N=3 recorded 2026-10-13)
 
 Supersedes the adjudication portions of ADR-0001.
 
@@ -228,3 +228,89 @@ comparison (both arms measure retrieval's practical value).
 
 **Record:** decision_record_[id].json for each run, `repo_context.json`
 with callsites (idx_20261013_*).
+
+## Results (2026-10-13, N=3)
+
+Runs: `decision_debate_20261013_203802_276bd0` (run 1),
+`decision_debate_20261013_204845_e4d1b3` (run 2),
+`decision_debate_20261013_210548_6ce6c0` (run 3). Retrieval was
+identical in all three runs (pack 1983/6000 chars, 14 entries, 2
+queued-connection call sites, `error: null`) — deterministic across
+runs. A pilot run (`ff958c`, wiring validation only) is committed as
+unscored evidence and is excluded from these numbers.
+
+| Class | Run 1 | Run 2 | Run 3 | Total | Prediction | Outcome |
+|---|---|---|---|---|---|---|
+| Round-1 blockers | 3 | 6 | 1 | 10 | — | — |
+| Thread-safety FPs | 0 | 0 | 0 | 0 | 0–2 | **HIT — class collapsed, 3/3 runs** |
+| Deletion-consistency FPs | 2 | 6 | 0 | 8 | 0–4 | **MISSED HIGH** |
+| True positives | 1 | 0 | 1 | 2 | — | Best catches in project history |
+| Hedge demotions | 0 | 0 | 1 | — | — | First firing since remediation |
+
+Round-1 precision: **2/10 (20%)**; run-level 1/3, 0/6, 1/1. Run 2
+ended `AGENT_FAILURE` at round 2 (num_ctx truncation); its round-1 arm
+completed cleanly and is scored as pre-declared.
+
+**True positives (both adjudicated against the diff's post-state and
+QtTune real history):**
+
+1. Run 1: the cumulative `m_currentFrameCount` gate drops every frame
+   permanently after 10,000 total frames — and the diff deletes
+   `StreamingContinuesPastTenThousandFrames`, the regression test
+   guarding exactly this regression. Maintainer-confirmed as the
+   historical freeze bug.
+2. Run 3: data race on plain `int m_currentFrameCount` — read in
+   `onFrame()` on the worker thread (backpressure check), written in
+   `handleFrameInternal()` on the GUI thread; unsynchronized in the
+   diff's post-state. The pilot additionally showed the claim
+   returning as round-3 blockers after the live feedback loop carried
+   the engineer's concern back to the reviewer.
+
+**Fixture provenance (established by forensics, correcting an earlier
+misreading):** the fixture is the reverse patch of merged QtTune
+commit `e0c4c31`; its post-state is byte-identical to QtTune's
+committed `8ffbf19` bridge state (blob `1c195f8`, verified via
+`git log --all --find-object=1c195f8`). Both TPs are therefore bugs
+that **actually shipped** and were later fixed in real history: the
+freeze by `e0c4c31`'s in-flight gate plus the restored regression
+test (documented in `d565764`), and the thread boundary by the
+worker-path hardening in `b47687c`. The reviewer detected two real,
+previously-shipped bugs from a diff alone.
+
+**Negative findings (recorded, not yet remediated):**
+
+- **Deletion-consistency class exceeded prediction** (8 total, 6/0/1
+  by run — extreme variance): the reviewer fabricates surviving
+  remnants of jointly removed code ("signalModel() still declared"),
+  all false against the diff. Candidate remediation: ground removed
+  symbols from the diff's minus side and require confirmation before
+  assertion.
+- **Hedge demotion fired once, on a hedged formulation of a TRUE
+  thread-safety claim** (run 3, round 1). Hedged language does not
+  imply incorrectness; strengthens the case for backlog #12.
+- **num_ctx crowding:** the pack (~2k chars) plus feedback growth
+  caused `done_reason=length` truncations in rounds 2+ (one
+  AGENT_FAILURE). The retrieval budget competes with the debate
+  loop's context growth; pack-from-rounds-2+ or a larger num_ctx is
+  the trade space.
+
+**Re-adjudication flag (retroactive):** the v1 re-measurement's
+dominant residual class — thread-safety claims on
+`m_currentFrameCount`, refuted as "GUI-thread-only by
+queued-connection construction" — is **invalidated by the forensics
+above**: in the fixture's post-state the variable IS read on the
+worker thread. Some of the four v1 "confident-but-wrong" FPs and the
+170208 control's single blocker are likely true positives, mislabeled
+because the triage refutation was drawn from maintained QtTune rather
+than the diff's post-state. Those runs warrant re-triage against
+their blocker texts before their historical FP counts stand. This
+measurement's numbers are unaffected — scored against the diff text.
+
+**Interpretation:** the context pack did what it was designed to do —
+eliminated the targeted information-deficit class in 3/3 runs, with
+the residual concern correctly filed as questions — and enabled the
+best catches in the project's history. But total FP volume did not
+fall; it migrated to a new hallucination class. The tribunal now
+knows what the code contains; it still cannot reliably reason about
+what a diff removes. Per the standing loop, that is the next class to
+remediate and re-measure.

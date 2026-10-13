@@ -85,11 +85,6 @@
       "layer": "bridge"
     },
     {
-      "path": "CLAUDE.md",
-      "purpose": "Configuration or docs",
-      "layer": "meta"
-    },
-    {
       "path": "CMakeLists.txt",
       "purpose": "Build configuration",
       "layer": "meta"
