@@ -206,6 +206,7 @@ queued-connection call sites, both carrying `Qt::QueuedConnection`:
 | Real defect (decode_signal 8-byte) | 1 (blocker) | 0 (drifted to nit) | 0–1 |
 | Layer-rule FPs | 0 | 0 | 0 |
 | Hedge FPs | 0 | 0 | 0 |
+| Deletion-consistency FPs (new class) | 0 | 0 | 0–4 (emerging; pilot suggested 3) |
 
 **Rationale for range, not point estimate:** the live-loop control
 showed single-run variance of 6→1 blockers on near-identical inputs
