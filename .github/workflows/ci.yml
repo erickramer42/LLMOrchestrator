@@ -9,8 +9,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.13'
       - name: Syntax check
-        run: python -m py_compile *.py eval_harness/*.py tests/*.py
+        run: python -m py_compile $(ls *.py) $(ls eval_harness/*.py) $(ls tests/*.py)
       - name: Regression tests
         run: python -m unittest discover -s tests -v
