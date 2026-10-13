@@ -56,6 +56,8 @@ CASES = [
 ]
 
 def call(model: str, code: str, is_header: bool):
+    """Returns (reply, failure). failure is None on success, else
+    'timeout' or 'parse' (no attempt yielded a JSON object)."""
     system = REVIEWER_SYSTEM + (HEADER_SCOPE_CLAUSE if is_header
                                 else IMPL_SCOPE_CLAUSE)
     for attempt in range(3):
@@ -66,45 +68,65 @@ def call(model: str, code: str, is_header: bool):
                                "num_ctx": 16384}}
         try:
             r = requests.post(OLLAMA, json=payload, timeout=600).json()
-            result = json.loads(r["message"]["content"]), True
-            return result
-        except json.JSONDecodeError:
+            out = json.loads(r["message"]["content"])
+            if isinstance(out, dict):
+                return out, None
+        except requests.exceptions.Timeout:
+            return {}, "timeout"
+        except (requests.exceptions.RequestException, json.JSONDecodeError,
+                KeyError, TypeError):
             pass
-    return {}, False
+    return {}, "parse"
+
+
+def tally(outcomes) -> dict:
+    """Score (expect_bug, failure, flagged) triples.
+
+    Clean passes are tallied SEPARATELY from bug hits — conflating them
+    made 'Detection' read N+1/N+1 and 'Clean' go negative on any miss.
+    An unusable reply on a bug case is a miss (fn), not a dropped case.
+    Invariants (third occurrence of this bug class; keep them):
+        tp + fn == number of expect_bug cases
+        fp + clean_ok + clean_failed == number of clean cases
+    """
+    score = {"tp": 0, "fn": 0, "fp": 0, "clean_ok": 0, "clean_failed": 0,
+             "json_fails": 0, "timeouts": 0, "bug_total": 0, "clean_total": 0}
+    for expect_bug, failure, flagged in outcomes:
+        score["bug_total" if expect_bug else "clean_total"] += 1
+        if failure:
+            score["timeouts" if failure == "timeout" else "json_fails"] += 1
+        if expect_bug:
+            score["tp" if (flagged and not failure) else "fn"] += 1
+        elif failure:
+            score["clean_failed"] += 1
+        else:
+            score["fp" if flagged else "clean_ok"] += 1
+    return score
+
 
 def run(model: str):
     print(f"\n{'='*60}\nMODEL: {model} | Prompt: {PROMPT_VERSION}\n{'='*60}")
-    # Clean passes are tallied SEPARATELY from bug hits — conflating them
-    # made 'Detection' read N+1/N+1 and 'Clean' go negative on any miss.
-    # (Second occurrence of this bug; if you touch this accounting again,
-    # keep the invariant: tp + fn == number of expect_bug cases.)
-    score = {"tp": 0, "fn": 0, "fp": 0, "clean_ok": 0,
-             "json_fails": 0, "times": []}
+    outcomes, times = [], []
     for name, expect_bug, code, is_header in CASES:
         t0 = time.time()
-        out, ok = call(model, code, is_header)
-        elapsed = time.time() - t0
-        score["times"].append(elapsed)
-        if not ok:
-            score["json_fails"] += 1
-            print(f"  ✗✗ {name}: JSON PARSE FAILURE")
-            continue
+        out, failure = call(model, code, is_header)
+        times.append(time.time() - t0)
         flagged = bool(out.get("blockers"))
-        if expect_bug:
-            hit = flagged
-            score["tp" if hit else "fn"] += 1
-            print(f"  {'✓ HIT ' if hit else '✗ MISS'} {name}"
+        outcomes.append((expect_bug, failure, flagged))
+        if failure:
+            print(f"  ✗✗ {name}: {'TIMEOUT' if failure == 'timeout' else 'JSON PARSE FAILURE'}"
+                  f"{' (counted as MISS)' if expect_bug else ''}")
+        elif expect_bug:
+            print(f"  {'✓ HIT ' if flagged else '✗ MISS'} {name}"
                   f" — {out.get('blockers', ['(none)'])[:1]}")
         else:
-            if flagged:
-                score["fp"] += 1
-            else:
-                score["clean_ok"] += 1
             print(f"  {'✗ FP  ' if flagged else '✓ OK  '} {name} (clean)")
-    avg = sum(score["times"]) / len(score["times"]) if score["times"] else 0
-    bug_total = score["tp"] + score["fn"]
-    print(f"\n  Detection: {score['tp']}/{bug_total} bugs | False pos: {score['fp']}/1 | "
-          f"Clean: {score['clean_ok']}/1 | JSON fails: {score['json_fails']} | "
+    score = tally(outcomes)
+    avg = sum(times) / len(times) if times else 0
+    print(f"\n  Detection: {score['tp']}/{score['bug_total']} bugs | "
+          f"False pos: {score['fp']}/{score['clean_total']} | "
+          f"Clean: {score['clean_ok']}/{score['clean_total']} | "
+          f"JSON fails: {score['json_fails']} | Timeouts: {score['timeouts']} | "
           f"Avg latency: {avg:.1f}s")
 
 if __name__ == "__main__":

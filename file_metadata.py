@@ -5,19 +5,28 @@ actual repo layout (core/ = strict, app/ = Qt-allowed bridge)."""
 
 import re
 
+# A directory name must start the string or follow '/' or whitespace,
+# so '// core/src/x.cpp' comment lines match but 'hardcore/' does not.
+_DIR = r"(^|[/\s])"
+
+
 def identify_layer(file_path: str) -> str:
     """Return layer name for a path, using substring search (handles
     both '+++ b/app/foo.cpp' diff headers and '// core/src/x.cpp'
-    comment lines)."""
+    comment lines).
+
+    Order matters: core is strictest and wins; UI directories and .qml
+    files are checked before the app/ bridge rule, because QtTune keeps
+    its QML under app/qml/."""
     if not file_path:
         return "unknown"
     p = file_path.lower().replace("\\", "/")
-    if re.search(r"(^|/)core/", p):
+    if re.search(_DIR + r"core/", p):
         return "core"
-    if "bridge" in p or re.search(r"(^|/)app/", p):
-        return "bridge"
-    if re.search(r"(^|/)(ui|qml|gui)/", p):
+    if re.search(_DIR + r"(ui|qml|gui)/", p) or re.search(r"\.qml\b", p):
         return "app"
+    if "bridge" in p or re.search(_DIR + r"app/", p):
+        return "bridge"
     return "unknown"
 
 def get_layer_constraints(layer: str) -> str:

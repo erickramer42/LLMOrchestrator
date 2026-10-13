@@ -111,7 +111,7 @@ Precision: 1/12 (~8%) → 1/6 (~17%). Blocker volume halved (12 → 6).
   
   ## Erratum (2026-10-09)
 
-Two defects found by external review (Claude Code pass, 2026-10-09):
+Two defects found by external review (2026-10-09):
 
 1. **Debate feedback loop was not wired.** `transcript_base` was frozen
    before the loop; the REVISE ADDRESSING feedback accumulated in the

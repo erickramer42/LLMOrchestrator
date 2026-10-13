@@ -14,6 +14,7 @@ Usage:
 
 import json
 import os
+from pathlib import Path
 
 # Re-exports: keeps older scripts / one-liners importing from
 # orchestrator working during the transition.
@@ -39,29 +40,37 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         description="QtTune Agent Tribunal — Multi-agent code review orchestration")
-    parser.add_argument("--golden", action="store_true",
-                        help="Run golden test suite (reviewer unit test)")
-    parser.add_argument("--proposal", type=str, required=False,
-                        help="Proposal text for debate")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--golden", action="store_true",
+                      help="Run golden test suite (reviewer unit test)")
+    mode.add_argument("--proposal", type=str, required=False,
+                      help="Proposal text for debate")
+    mode.add_argument("--index", type=str, required=False, metavar="REPO_PATH",
+                      help="Build repo_context.json context pack for REPO_PATH")
     parser.add_argument("--diff", type=str, required=False,
-                        help="Path to code diff file")
+                        help="Path to code diff file (with --proposal)")
     parser.add_argument("--context", type=str, required=False,
-                        help="Path to surrounding code context file")
+                        help="Path to surrounding code context file "
+                             "(with --proposal)")
     parser.add_argument("--header", action="store_true",
                         help="Review target is header-only (C ABI stub)")
-    parser.add_argument("--index", type=str, required=False, metavar="REPO_PATH",
-                        help="Build repo_context.json context pack for REPO_PATH")
     parser.add_argument("--no-llm", action="store_true",
                         help="Index deterministically, skipping LLM purpose "
                              "summaries (applies to --index)")
 
     args = parser.parse_args()
 
+    if not args.proposal and (args.diff or args.context or args.header):
+        parser.error("--diff, --context and --header require --proposal")
+    if args.no_llm and not args.index:
+        parser.error("--no-llm applies only to --index")
+
+    def read_input(path: str) -> str:
+        # Explicit UTF-8: the Windows default (cp1252) silently garbles
+        # non-ASCII characters in diffs before the models see them.
+        return Path(path).read_text(encoding="utf-8", errors="replace")
+
     if args.index:
-        if args.golden or args.proposal:
-            raise SystemExit(
-                "ERROR: --index cannot be combined with --golden or --proposal.\n"
-                "Run the index build as a separate invocation.")
         run_index(args.index, use_llm=not args.no_llm)
     elif args.golden:
         run_golden_tests()
@@ -71,9 +80,9 @@ if __name__ == "__main__":
                              "Provide a valid diff file path.")
         if args.context and not os.path.exists(args.context):
             raise SystemExit(f"ERROR: --context path not found: {args.context}\n"
-                             "Provide a valid file context file path.")
-        code_diff = open(args.diff).read() if args.diff else ""
-        code_context = open(args.context).read() if args.context else ""
+                             "Provide a valid context file path.")
+        code_diff = read_input(args.diff) if args.diff else ""
+        code_context = read_input(args.context) if args.context else ""
         result = run_debate(args.proposal, code_diff, code_context,
                             header_artifact=args.header)
         print(json.dumps(result, indent=2))

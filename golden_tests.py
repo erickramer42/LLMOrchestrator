@@ -6,10 +6,24 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
-from adjudication import demote_hedged_blockers
+from adjudication import demote_hedged_blockers, normalize_agent_output
 from agent_client import call_agent
 from config import (MODELS, REVIEWER_HEADER_PROMPT, REVIEWER_IMPL_PROMPT,
                     TEMPERATURE_RETRY)
+
+
+def score_fixture(out: dict, expected_to_block: bool) -> dict:
+    """Pass/fail for one live-model fixture. An unusable reply (parse,
+    schema or transport failure) FAILS regardless of expectation; it
+    must never count as a clean pass."""
+    failed = out.get("verdict") == "PARSE_FAILURE"
+    detected = bool(out.get("blockers"))
+    passed = (not failed) and (detected == expected_to_block)
+    result = {"expected_blocked": expected_to_block, "detected": detected,
+              "agent_failure": failed, "test_passed": passed}
+    if failed:
+        result["failure_reason"] = out.get("failure_reason", "unknown")
+    return result
 
 
 def run_hedge_unit_tests() -> List[dict]:
@@ -99,19 +113,12 @@ def run_golden_tests() -> dict:
         prompt = (REVIEWER_HEADER_PROMPT if tc.get("header", False)
                  else REVIEWER_IMPL_PROMPT)
         out = call_agent(MODELS["code_reviewer"], prompt, tc["snippet"],
-                         TEMPERATURE_RETRY)
+                         TEMPERATURE_RETRY,
+                         validate=lambda raw: normalize_agent_output(raw, "reviewer"))
         out = demote_hedged_blockers(out, "questions")
 
-        detected = bool(out.get("blockers"))
-        if tc.get("expected_to_block", False):
-            passed = detected
-        else:
-            passed = not detected
-
         results.append({"test_name": tc["name"],
-                        "expected_blocked": tc.get("expected_to_block", False),
-                        "detected": detected,
-                        "test_passed": passed})
+                        **score_fixture(out, tc.get("expected_to_block", False))})
 
     summary = {"total_tests": len(results),
                "passed": sum(r["test_passed"] for r in results),
@@ -120,11 +127,13 @@ def run_golden_tests() -> dict:
 
     test_log = Path("gold_tests") / f"run_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
     test_log.parent.mkdir(exist_ok=True)
-    test_log.write_text(json.dumps(summary, indent=2))
+    test_log.write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
     print(f"\n{'='*50}")
     print(f"Golden Tests: {summary['passed']}/{summary['total_tests']} passed")
     print(f"{'='*50}")
     for r in results:
-        print(f"  {'PASS' if r['test_passed'] else 'FAIL'} {r['test_name']}")
+        note = (f"  (agent failure: {r['failure_reason']})"
+                if r.get("agent_failure") else "")
+        print(f"  {'PASS' if r['test_passed'] else 'FAIL'} {r['test_name']}{note}")
     return summary

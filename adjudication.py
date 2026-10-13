@@ -1,17 +1,83 @@
-"""Deterministic adjudication: verdict derivation + hedge demotion guardrail.
-Pure functions — no I/O, no LLM calls. Fully unit-testable in CI."""
+"""Deterministic adjudication: schema validation, verdict derivation and
+hedge demotion. Pure functions: no I/O, no LLM calls. Fully unit-testable
+in CI."""
 
 import re
+from typing import Optional, Tuple
+
+
+# ============ SCHEMA VALIDATION ============
+
+# The arrays the judge reads, per agent role (schemas are defined in the
+# prompts in reviewer_prompt.py). A reply missing a required array is a
+# schema failure, never "no problems found".
+SCHEMA_LISTS = {
+    "reviewer": {"required": ("blockers", "questions"), "optional": ("nits",)},
+    "engineer": {"required": ("blockers", "concerns", "questions"),
+                 "optional": ()},
+}
+
+# List items that carry no content ("blockers": ["None"]).
+_PLACEHOLDER_ITEMS = {"none", "n/a", "na", "null", "nil", "nothing", "-"}
+
+
+def _coerce_item(item) -> str:
+    """One array entry as text. Models often emit objects such as
+    {"line": 4, "rule": "...", "issue": "..."}; every field is kept so
+    line citations survive into the text the guardrails and judge read."""
+    if item is None:
+        return ""
+    if isinstance(item, str):
+        return item.strip()
+    if isinstance(item, dict):
+        return "; ".join(f"{k}: {v}" for k, v in item.items()
+                         if v not in (None, "")).strip()
+    return str(item).strip()
+
+
+def normalize_agent_output(raw, role: str) -> Tuple[Optional[dict], Optional[str]]:
+    """Validate a parsed agent reply against its role schema and coerce
+    the arrays into lists of non-empty strings.
+
+    Returns (normalized, None) on success, or (None, reason) when the reply
+    cannot be judged. Callers must treat a reason as a failure (fail closed).
+    """
+    spec = SCHEMA_LISTS[role]
+    if not isinstance(raw, dict):
+        return None, f"reply is a JSON {type(raw).__name__}, expected an object"
+    missing = [k for k in spec["required"] if k not in raw]
+    if missing:
+        return None, f"missing required keys: {', '.join(missing)}"
+
+    out = dict(raw)
+    for key in spec["required"] + spec["optional"]:
+        if key not in out:
+            continue
+        value = out[key]
+        if value is None:
+            value = []
+        elif isinstance(value, (str, dict)):
+            value = [value]
+        elif not isinstance(value, list):
+            return None, f"'{key}' is a {type(value).__name__}, expected a list"
+        items = (_coerce_item(v) for v in value)
+        out[key] = [s for s in items
+                    if s and s.lower().strip(" .") not in _PLACEHOLDER_ITEMS]
+    return out, None
 
 
 # ============ VERDICT DERIVATION ============
 
 def derive_verdict(agent_out: dict, concern_key: str = "questions") -> str:
     """Merge decision from agent CONTENT, never the model's self-reported label.
-    concern_key: 'questions' (reviewer) or 'concerns'/'questions' (engineer)."""
-    if not agent_out or agent_out.get("verdict") == "PARSE_FAILURE":
+    concern_key: 'questions' (reviewer) or 'concerns'/'questions' (engineer).
+    Anything that is not a well-formed reply fails closed to 'reject'."""
+    if (not isinstance(agent_out, dict) or not agent_out
+            or agent_out.get("verdict") == "PARSE_FAILURE"):
         return "reject"
-    blockers = agent_out.get("blockers", []) or []
+    blockers = agent_out.get("blockers")
+    if not isinstance(blockers, list):
+        return "reject"  # missing/garbled blockers array: unjudgeable
     open_items = (agent_out.get(concern_key, []) or
                   agent_out.get("questions", []) or [])
     if blockers:
@@ -34,7 +100,8 @@ HEDGE_PATTERNS = re.compile(
 def demote_hedged_blockers(agent_out: dict, concern_key: str = "questions") -> dict:
     """Guardrail: speculative/hedged text in blockers becomes a question.
     Enforces the taxonomy rule: a blocker must be a DEMONSTRABLE violation."""
-    if not agent_out or agent_out.get("verdict") == "PARSE_FAILURE":
+    if (not isinstance(agent_out, dict) or not agent_out
+            or agent_out.get("verdict") == "PARSE_FAILURE"):
         return agent_out
 
     out = dict(agent_out)
