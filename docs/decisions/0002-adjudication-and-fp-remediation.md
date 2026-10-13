@@ -1,7 +1,8 @@
 # ADR-0002: Rule-Based Adjudication and False-Positive Remediation
 
-Date: 2026-10-09
-Status: Accepted (v1 remediation validated by re-measurement; v2 in flight)
+Date: 2026-10-13
+Status: Accepted (v1 remediation validated by re-measurement; live-loop
+control run recorded 2026-10-13; v2 in flight)
 
 Supersedes the adjudication portions of ADR-0001.
 
@@ -133,3 +134,51 @@ Two defects found by external review (2026-10-09):
    5/5 was read from individual result lines. Summary printer fixed;
    tp + fn invariant documented inline.
    
+## Intermediate Measurement (2026-10-13) — Live Feedback Loop, No Context Injection
+
+Not the context-pack measurement (that remains queued): this run
+isolates a different variable. The 2026-10-09 records ran with the
+dead feedback loop; this is the first run of the same diff and
+proposal on the live loop (plus the 2026-10-10 hardening pass).
+
+Prediction recorded before running: round 1 reproduces ~v1 volume
+(5–7 blockers, 4 thread-safety FPs, decode defect retained), rounds
+2–3 diverge, no agent failures, verdict MAX_ROUNDS_EXCEEDED.
+
+Result: prediction MISSED on volume and placement.
+
+| Class | v1 Re-run (014257) | Live loop (170208) |
+|---|---|---|
+| Round-1 blockers | 6 | 1 (m_currentFrameCount data race — confident-but-wrong) |
+| Confident-but-wrong FPs | 4 | 1 (same m_currentFrameCount claim, consolidated) |
+| Layer-rule FPs | 0 | 0 |
+| Hedge demotions | 0 | 0 |
+| decode_signal 8-byte defect | Caught as blocker | Raised as a ROUND-2 NIT ("verify data_length <= 8") |
+| Verdict | MAX_ROUNDS_EXCEEDED | MAX_ROUNDS_EXCEEDED |
+
+Round-1 precision: 0/1. Across all rounds: 0/5. Real defect visible
+in-channel but mis-classified as an optional improvement.
+
+Findings:
+
+- Round-2/3 dynamics: the reviewer refined citations (splitting,
+  then simplifying the race claim) rather than amplifying; the
+  engineer held "approve" throughout. Feedback reached both agents
+  (evidence: round-2 content responds to round-1 engineer concerns).
+- Three stacked deltas make attribution impossible from one run:
+  live loop, hardening (schema validation, layer note now "bridge"
+  — v1 also had that), and model run-to-run variance. Laguna-xs-2.1
+  is nondeterministic at temp 0.7; a 6→1 blocker drop is within
+  plausible single-sample variance for this model.
+- Defect drifting blocker→nit is a new failure mode worth watching:
+  precision metrics that only count blockers will miss a defect the
+  reviewer technically surfaced. Future measurements should scan all
+  channels for known-defect mentions.
+
+Record: `coach_artifacts/decision_debate_20261013_170208_71915a.json`,
+fixture `docs/fixtures/qttune_bridge_refactor.diff` (hash f031d33a).
+
+Implication: single-run blocker counts from this model cannot be
+treated as stable measurements at current settings. The context-pack
+measurement should run multiple times (or score a multi-run aggregate)
+before claiming FP-class collapse.
