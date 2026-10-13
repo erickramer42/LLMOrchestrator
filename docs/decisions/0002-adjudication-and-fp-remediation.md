@@ -182,3 +182,48 @@ Implication: single-run blocker counts from this model cannot be
 treated as stable measurements at current settings. The context-pack
 measurement should run multiple times (or score a multi-run aggregate)
 before claiming FP-class collapse.
+
+## Fourth Measurement (Pending) — Context Pack Injection
+
+**Design:** Same diff (`qttune_bridge_refactor.diff`), same proposal text,
+same models (laguna-xs-2.1 + gemma4:12b), PROMPT_VERSION v5-context-pack,
+**context pack now injected** (retrieved purposes, types, constants,
+queued-connection call sites). N=3 runs, round-1 only, per-class
+attribution. Control arms: v1 blind resample (014257), live-loop control
+(170208).
+
+**Indexed ground truth confirmed:** `app/qttunebridge.cpp` contains two
+queued-connection call sites, both carrying `Qt::QueuedConnection`:
+- Line 390: `invokeMethod(self, [...], Qt::QueuedConnection)` invoking
+  `handleFrameInternal` — the receiver of m_currentFrameCount access
+  flagged in the 170208 run as a "data race."
+
+**Prediction (per-class rates, N=3):**
+
+| Class | v1 (014257) | Live-loop control (170208) | Predicted (v5, N=3) |
+|---|---|---|---|
+| Thread-safety FPs (queued-conn class) | 4 | 1 | 0–2 (median 1) |
+| Real defect (decode_signal 8-byte) | 1 (blocker) | 0 (drifted to nit) | 0–1 |
+| Layer-rule FPs | 0 | 0 | 0 |
+| Hedge FPs | 0 | 0 | 0 |
+
+**Rationale for range, not point estimate:** the live-loop control
+showed single-run variance of 6→1 blockers on near-identical inputs
+(without retrieval). Even if retrieval supplies the queued-connection
+ground truth that refutes the m_currentFrameCount claim, laguna-xs-2.1
+at temp 0.7 may or may not draw on it within a single run. Three runs
+estimate the per-class rate; median of 1 FP acknowledges variance while
+predicting collapse of the *majority* of the 4-v1 FP class.
+
+**Failure mode to watch:** decoder defect drifts blocker→question/nit
+(as in 170208 round 2). Future precision metrics must scan all channels,
+not just blockers.
+
+**Confound noted:** index from current QtTune tree (40 files, j2534
+changes added) while diff is older snapshot. Arguably realistic (reviews
+run against current trees); if the 4 new files introduce new identifiers
+the retrieval pulls, that's noise in the context but not bias in the
+comparison (both arms measure retrieval's practical value).
+
+**Record:** decision_record_[id].json for each run, `repo_context.json`
+with callsites (idx_20261013_*).
