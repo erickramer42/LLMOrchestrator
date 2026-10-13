@@ -16,6 +16,7 @@ from config import (MAX_DEBATE_ROUNDS, MODELS, NUM_CTX, REVIEWER_HEADER_PROMPT,
                     REVIEWER_IMPL_PROMPT, TEMPERATURE_EXPLORATION,
                     TEMPERATURE_RETRY)
 from file_metadata import get_layer_constraints, identify_layer
+from repo_context import CONTEXT_FILE, build_context_pack  # NEW
 from reviewer_prompt import PROMPT_VERSION, AUTO_ENGINEER_PROMPT
 
 # ============ TRANSCRIPT TEMPLATES ============
@@ -31,6 +32,16 @@ CODE DIFF:
 CODE CONTEXT:
 -------------
 {context}
+"""
+
+# NEW: retrieved repo context section. Model-facing — part of the
+# v5-context-pack prompt change.
+REPO_CONTEXT_TEMPLATE = """
+REPO CONTEXT (verified facts extracted from the indexed source —
+ground truth where it conflicts with inference from the diff alone):
+--------------------------------------------------------------------
+{pack}
+END REPO CONTEXT.
 """
 
 TRANSCRIPT_TEMPLATE = """
@@ -90,6 +101,16 @@ def _is_failure(agent_out: dict) -> bool:
     return agent_out.get("verdict") == "PARSE_FAILURE"
 
 
+def _load_repo_index() -> dict:
+    """Load the checked-in context pack. Fail visible, not fatal: a
+    missing/corrupt index yields an empty dict and the debate proceeds
+    WITHOUT retrieval, with the fact recorded in the decision record."""
+    try:
+        return json.loads(Path(CONTEXT_FILE).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return {"_load_error": f"{type(exc).__name__}: {exc}"}
+
+
 def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
                header_artifact: bool = False) -> dict:
     """Orchestrates the full debate loop. Returns structured decision
@@ -102,9 +123,10 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
     loop — rounds 2+ were blind resamples, not debate. Archived records
     predate this fix; see ADR-0002 erratum.
 
-    NOTE (2026-10-10): an agent that fails every attempt (transport error,
-    invalid JSON, schema violation) ends the debate with
-    AGENT_FAILURE_VERDICT instead of burning the remaining rounds.
+    NOTE (2026-10-13): the transcript now includes a retrieved repo
+    context pack (repo_context.json) when the diff matches indexed files.
+    Retrieval failure is non-fatal and recorded in the decision record.
+    PROMPT_VERSION v5-context-pack.
     """
     debate_id = (f"debate_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
                  f"_{uuid.uuid4().hex[:6]}")
@@ -112,6 +134,18 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
 
     reviewer_prompt = (REVIEWER_HEADER_PROMPT if header_artifact
                        else REVIEWER_IMPL_PROMPT)
+
+    # ============ CONTEXT PACK RETRIEVAL (NEW) ============
+    repo_index = _load_repo_index()
+    pack_text, pack_report = "", {"error": "index not loaded"}
+    if "_load_error" not in repo_index:
+        pack_text, pack_report = build_context_pack(code_diff, repo_index)
+    else:
+        pack_report = {"error": repo_index["_load_error"]}
+    if pack_text:
+        repo_context_section = REPO_CONTEXT_TEMPLATE.format(pack=pack_text)
+    else:
+        repo_context_section = ""
 
     # Static transcript sections — built once, they never change.
     static_section = STATIC_TEMPLATE.format(
@@ -122,6 +156,8 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
     file_path = extract_file_path(code_diff, code_context)
     layer = identify_layer(file_path) if file_path else None
     layer_note = get_layer_constraints(layer) if layer else ""
+    if repo_context_section:
+        static_section = f"{static_section}{repo_context_section}"
     if layer_note:
         static_section = f"{static_section}\n{layer_note}\n"
 
@@ -230,9 +266,11 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
         "temperature_retry": TEMPERATURE_RETRY,
         "num_ctx": NUM_CTX,
         "context_char_limit": CONTEXT_CHAR_LIMIT,
+        "repo_context_pack": pack_report,  # NEW: retrieval provenance
         "prompt_fingerprint": _prompt_fingerprint(
             reviewer_prompt, AUTO_ENGINEER_PROMPT, STATIC_TEMPLATE,
-            TRANSCRIPT_TEMPLATE, FEEDBACK_TEMPLATE, layer_note),
+            TRANSCRIPT_TEMPLATE, FEEDBACK_TEMPLATE, layer_note,
+            repo_context_section),  # NEW: pack text feeds the fingerprint
     }
     decision_record = _save_decision_record(
         debate_id, inputs, final_verdict, round_history, run_settings,
@@ -263,8 +301,8 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
 
 
 def _save_decision_record(debate_id: str, inputs: dict, verdict: str,
-                          round_history: List[dict], run_settings: dict,
-                          agent_failures: List[str]) -> Path:
+                           round_history: List[dict], run_settings: dict,
+                           agent_failures: List[str]) -> Path:
     """ADR-style artifact for coach pipeline."""
     record = {
         "metadata": {
