@@ -5,7 +5,7 @@ context window raised to 24576 and output capped at 12288 from live
 telemetry; v6 diff-authoritative retrieval with the index rebuilt from
 the fixture's base; backlog #18–#21 filed; convergence rule j2, backlog
 #2's minimal option; CI on Python 3.11 and 3.13; round-1 measurement
-mode and scorer)
+mode and scorer; v6 baseline measured)
 
 Purpose of this file: anyone picking up this repo can orient in five
 minutes, run the existing validation, and continue the queued work
@@ -121,7 +121,14 @@ without reverse-engineering the ADRs.
     `repo_context_pack.index_commit`.
   - Fixture pack (2,562 chars): `MaxInFlightFrames` and the
     `m_inFlightFrames` call site are omitted, and both `SignalListModel`
-    purposes are annotated. Not yet measured live.
+    purposes are annotated.
+  - **Measured 2026-10-22** (ADR-0002, sixth measurement; 10 round-1
+    samples, all first attempts, 26 blockers):
+    - Deletion-consistency FPs held at 0.5 per run, against a predicted
+      ≤ 0.2. They no longer cite pack-asserted symbols.
+    - The `m_currentFrameCount` race appeared in 5 of 10 runs.
+    - 4 blockers in 3 runs correctly flag that the diff reverts
+      `e0c4c31`'s in-flight backpressure gate. Arm 1 had none.
 - **Convergence rule j2 (2026-10-22, backlog #2 minimal option).** A
   round converges once neither agent has a blocker: open questions and
   concerns give `APPROVED_WITH_OPEN_QUESTIONS` instead of another round.
@@ -157,14 +164,19 @@ without reverse-engineering the ADRs.
   fell to 3 (0.5 per run), every one citing a symbol the stale context
   pack asserts. One cites a line number that exists only in the indexed
   tree (ADR-0002, fifth measurement, arm 1). v6 fixes the retrieval
-  side: the diff is authoritative and removed entries are omitted. The
-  ablation was skipped, so whether the class needs the pack is
-  unanswered; #15 (a pre-judge check) waits on the v6 baseline.
+  side: the diff is authoritative and removed entries are omitted.
+  **The v6 baseline (10 samples, 2026-10-22) shows the class persists
+  at the same rate,** 5 in 10 runs (0.5 per run). Four of the five claim
+  that `Main.qml` still references `signalModel`. No pack contains that
+  name, and `Main.qml` never did: it was used only in the deleted
+  `LiveViewPage.qml`. So the class does not need the pack, and #15 (a
+  pre-judge check) proceeds (ADR-0002, sixth measurement).
 - **The bridge fixture's proposal contradicts its diff.** Every run
   since 2026-10-07 used *"Review: coalesced signal updates with
   LiveView Page v0.3.0 phase 2"*, the subject of `e0c4c31`, which adds
   the LiveView page. The fixture is its reverse and deletes it. Many
-  round-1 blockers object to the removal (10 of 19 in the v5.2 runs).
+  round-1 blockers object to the removal (10 of 19 in the v5.2 runs,
+  13 of 26 in the v6 baseline).
   The text is constant across arms, so comparisons stand, but absolute
   rates on this fixture are affected (backlog #21).
 - **Hedge demotion can demote true claims.** It fired once in the N=3
@@ -238,7 +250,7 @@ without reverse-engineering the ADRs.
 | `docs/portability_guide.md` | Running on other machines / codebases. Predates the module split. |
 | `docs/fixtures/qttune_bridge_refactor.diff` | Input diff for all bridge-refactor debates. Provenance (established 2026-10-13): reverse patch of QtTune `e0c4c31`; post-state identical to committed `8ffbf19` (blob `1c195f8`). |
 | `coach_artifacts/decision_debate_*.json` | Decision records. Nine archived: header review (194320), baseline (203917), v1 re-measurement (014257), feedback smoke (153541, see erratum caveat), live-loop control (170208), context-pack pilot (201540, unscored), and three scored context-pack runs (203802, 204845, 210548). Plus seven unscored v5.2 telemetry runs on the bridge fixture, from 20261022: two at num_ctx 16384 (134539_3026b2, 140943_bbe168), three at 24576 (143424_1b11cc, 145342_743bc4, 153943_7a4809), and two at 24576 with num_predict 12288 (160429_15cc3f, 161800_5b3f1d). Records from 2026-10-10 on carry `prompt_fingerprint`, sampling settings, input hashes, layer, `agent_failures`; v5 records carry `repo_context_pack`; v5.2 records add the pack text and per-attempt `telemetry`. |
-| `coach_artifacts/measurement_round1_*.json` | Round-1 measurement records (`metadata.mode` `round1_reviewer`): one reviewer round, no engineer, no merge decision. Same provenance fields as decision records. None committed yet. |
+| `coach_artifacts/measurement_round1_*.json` | Round-1 measurement records (`metadata.mode` `round1_reviewer`): one reviewer round, no engineer, no merge decision. Same provenance fields as decision records. Ten from the v6 baseline (2026-10-22, 205145_5d2fc3 to 210647_dc4008), input fixture `docs/fixtures/qttune_bridge_refactor.diff`. |
 | `probe_logs/fp_*.json` | 5-run probe aggregates backing the FP-rate claims. |
 | `requirements.txt` | Runtime deps (requests). |
 | `.github/workflows/` | CI: compile checks + regression suite, no Ollama. |
@@ -280,10 +292,9 @@ top of everything.
 
 ## Backlog (ideas, loosely ordered)
 
-Suggested order as of 2026-10-22: v6 baseline on the bridge fixture
-(predict first; ADR-0002, fifth measurement amendment; samples from
-`eval_harness.round1`) → #15 if the
-deletion class persists → #21 fixture proposal → #16 runaway output →
+Suggested order as of 2026-10-22 (v6 baseline done; ADR-0002, sixth
+measurement): #15 deletion-consistency check, since the class persists
+→ #21 fixture proposal → #16 runaway output →
 #12 hedge gate → #18 early reject → #11 transcript protocol → #17
 re-triage → the rest.
 
@@ -334,8 +345,18 @@ re-triage → the rest.
     set. Deterministic pre-judge check in adjudication.py, or retrieval
     that lists removed symbols alongside survivors. Predict + measure
     per convention 7. In the v5.2 runs every instance cited a symbol
-    the stale pack asserted; v6 now omits those from the pack. Do this
-    only if the v6 baseline still shows the class.
+    the stale pack asserted; v6 now omits those from the pack.
+    **The v6 baseline still shows the class (0.5 per run), so this
+    proceeds.** Design constraint from that measurement:
+    - Key on a claim of survival ("still references", "remains",
+      "dangling") about an identifier that only the removed lines
+      contain. Citing a removed identifier is not enough.
+    - Of the 16 blockers that cite a removed identifier, 5 were M2, 4
+      were valid in-flight-gate blockers and 7 were removal objections.
+    - In 4 of the 5 M2 cases, the claimed survivor is in a modified
+      file that never contained the name.
+    - `eval_harness.round1`'s candidate logic is a prototype for the
+      identifier half.
 16. **Context budget and runaway output — IN PROGRESS (2026-10-22).**
     - **Prompt side, settled:** the prompt is a stable ~9.4K–10.2K
       tokens. The diff is ~83% of it, the pack ~820 tokens, feedback

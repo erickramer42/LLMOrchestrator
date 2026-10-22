@@ -683,3 +683,208 @@ other 15 have reviewer blockers in every round and are unaffected.
 
 **Effect on measurements:** none. Measurements score round-1 reviewer
 output, which no judge rule can change.
+
+## Sixth Measurement (Pending) — v6 Baseline
+
+*Prediction recorded 2026-10-22, before any v6 sample was run. No v6
+blocker has been seen.*
+
+**Question:** with the diff authoritative over the pack (v6), does the
+deletion-consistency class persist? The answer decides backlog #15.
+
+**Design:**
+
+- **Arm:** v6. PROMPT_VERSION `v6-diff-authoritative`, pack format
+  `f3-diff-authoritative`, prompt fingerprint `64bacb21aa6fb8b1`. The
+  2,562-char pack (sha256 `dfac132e…`) comes from the index of QtTune
+  `e0c4c31`, the fixture's base.
+- **Inputs and settings:** the same fixture, models and proposal text
+  as every bridge run. The text still contradicts the diff (STATUS #21);
+  a matching-proposal arm was considered and not run. num_ctx 24576,
+  num_predict 12288, first attempts at temperature 0.7.
+- **Comparison:** fifth measurement arm 1 (v5.2, six runs, 19 blockers).
+  Per run, that arm averaged 3.17 blockers, M1 0.67 and M2 0.5 (0.33
+  without the borderline case). It also had 1.67 feature-removal
+  objections and 0.67 race blockers (in 3 of 6 runs) per run.
+- **What v6 changes:** v6 differs from arm 1 in three ways at once: the
+  precedence wording, the omitted entries and the index base. This
+  measures v6 as a unit and cannot attribute an effect to any one of
+  them. The engineer prompt conflict (#20) is deferred, and round-1
+  scoring never reads the engineer.
+- **Sampling:** 10 samples from the round-1 measurement mode
+  (`python -m eval_harness.round1 run`). Each sample is the request a
+  debate's first reviewer call sends; a test pins the equality, and the
+  records share the debate's fingerprint. Arm 1's samples came from full
+  debates, but a debate's round-1 reviewer never sees the engineer, so
+  the sampled outputs are comparable. Samples whose round-1 reply came
+  from a retry, or that failed, are excluded and reported. Excluded
+  samples are not replaced.
+- **Unit:** the same as the fifth measurement: round-1 reviewer
+  blockers from first attempts, as stored after hedge demotion.
+- **Frozen P:** unchanged: `SignalListModel`, `MaxInFlightFrames`,
+  `m_inFlightFrames`. The v6 pack still names all three, but only as
+  removed (annotated purposes, the OMITTED list), never as present.
+
+**Metrics and scoring:**
+
+- **M1:** scripted, by `eval_harness.round1 score`.
+- **M2:** adjudicated as before, against `8ffbf19`. The scorer's
+  candidates must include every confirmed M2; arm 1 had 3 of 3 among
+  its 10 candidates.
+- **Composition:** each blocker is one of deletion-consistency (M2),
+  feature-removal objection, the `m_currentFrameCount` race, or other.
+  Other blockers are adjudicated one by one.
+
+**Prediction** (scored runs; totals assume about 9 of 10 are scored):
+
+| Metric | Arm 1 (v5.2, 6 runs) | Predicted v6 |
+|---|---|---|
+| M2, confirmed | 3 (0.5 per run) | 0–2 (≤ 0.2 per run) |
+| M2 citing a P symbol | 3 | 0–1 |
+| M1 | 4 (0.67 per run) | 1–6 (0.1–0.6 per run) |
+| Blockers per run | 3.17 | 2–4 |
+| Feature-removal objections, share of blockers | 10 of 19 | 35–65% |
+| Runs with the race blocker | 3 of 6 | 3–7 of the scored runs |
+| Samples excluded (retry or failure) | 1 of 7 | 0–3 of 10 |
+
+**Basis:**
+
+- **M2 should fall.** All three arm-1 M2 cited a P symbol that the stale
+  pack showed as present, and one copied a line number from the pack. v6
+  shows those symbols only as removed.
+- **M2 may not reach zero.** Both the diff and the proposal still name
+  the removed code, and the proposal says the feature is being added.
+- **M1 falls less than M2.** Feature-removal objections name
+  `SignalListModel` too (arm 1: 1b11cc #3).
+- **Removal objections still dominate,** because the proposal is
+  unchanged.
+- **The race is untouched by v6.** It lives in `m_currentFrameCount`,
+  which appears on both sides of the diff.
+
+**Decision rule** (on confirmed M2 per scored run):
+
+- **≤ 0.2: handled by v6.** #15 stays filed but deferred; next is #21.
+- **≥ 0.4: persists.** The class survives without the pack asserting
+  the symbols, so #15 proceeds.
+- **Between:** add 5 samples and apply the same thresholds to all of
+  them. If the result is still between, defer #15 and record it as
+  unresolved.
+
+**Power caveat:** arm 1's rate of 0.5 per run predicts about 5 M2 in 10
+runs if v6 changed nothing. A Poisson count with mean 5 is ≤ 2 about
+12% of the time. So "handled" is moderate evidence, not proof. Rates on
+this fixture have also drifted widely: 2.7 per run at v5, 0.5 at v5.2.
+
+### Results (scored 2026-10-22)
+
+**Samples:** `coach_artifacts/measurement_round1_20261022_*.json`, from
+205145_5d2fc3 to 210647_dc4008.
+- All 10 replies came on the first attempt and ended normally
+  (`done_reason` stop), so all 10 are scored.
+- Every sample carries fingerprint `64bacb21aa6fb8b1` and pack
+  `dfac132e…`. One hedge demotion fired (8e3c25).
+- No reviewer reply ran away. Collecting all 10 took 16.4 minutes, or
+  0.6–3.4 minutes per sample.
+
+| Metric | Predicted | Observed | Outcome |
+|---|---|---|---|
+| M2, confirmed | 0–2 (≤ 0.2 per run) | **5 (0.5 per run)**, in 3 of 10 runs | **MISSED HIGH** |
+| M2 citing a P symbol | 0–1 | 2 | **MISSED HIGH** |
+| M1 | 1–6 | **10** | **MISSED HIGH** |
+| Blockers per run | 2–4 | 2.6 (26 in all) | HIT |
+| Feature-removal objections, share | 35–65% | 13 of 26 (50%) | HIT |
+| Runs with the race blocker | 3–7 | 5 of 10 (7 blockers) | HIT |
+| Samples excluded | 0–3 | 0 | HIT |
+
+**Decision rule:** 0.5 confirmed M2 per run is ≥ 0.4, so the class
+**persists** and #15 proceeds. The outcome holds under either
+borderline call:
+- Dropping the vaguest M2 (81a8dc #2) leaves 0.4.
+- Adding the borderline non-M2 (a18d4b #2) gives 0.6.
+
+**Composition:**
+
+| Run | Blockers | M1 | M2 | Composition |
+|---|---|---|---|---|
+| 5d2fc3 | 2 | 1 | 0 | the race; in-flight gate |
+| 8e3c25 | 4 | 1 | 1 | 1 deletion-consistency, 3 removal objections |
+| ae1a96 | 2 | 0 | 0 | 2 × the race |
+| fe4eea | 3 | 1 | 0 | 3 removal objections |
+| a18d4b | 2 | 1 | 0 | the race; removal objection (borderline) |
+| fcb3ac | 1 | 0 | 0 | the race |
+| 81a8dc | 4 | 2 | 3 | 3 deletion-consistency; 8-byte decode in removed code |
+| 6f29d3 | 3 | 2 | 0 | 2 × in-flight gate; removal objection |
+| 07bb6b | 3 | 2 | 1 | in-flight gate; removal objection; 1 deletion-consistency |
+| dc4008 | 2 | 0 | 0 | 2 × the race |
+
+**The five M2 blockers, checked against `8ffbf19`:**
+
+- **Four claim that `Main.qml` still references `QtTune.signalModel`:**
+  8e3c25 #1, 81a8dc #1 and #4, and 07bb6b #3. `signalModel` has no hits
+  in the post-state.
+  - **`Main.qml` never referenced it, even before the diff.** The only
+    `QtTune.signalModel` uses in the fixture are on the removed lines of
+    `LiveViewPage.qml`, which the diff deletes. The pre-state `Main.qml`
+    (`e0c4c31`) mentions `signalBatchCount` and `LiveViewPage {}`, not
+    `signalModel`.
+  - So the reviewer moves a reference from the deleted file onto the
+    surviving one.
+  - **The pack does not mention `signalModel` at all.**
+- **81a8dc #2** says the deletion "leaves QML imports and references to
+  removed components unresolved". `LiveViewPage` has no hits in the
+  post-state. This is the vaguest of the five.
+- **Not counted:** a18d4b #2 says the removal "breaks the QML binding
+  contract even though LiveViewPage is deleted". It asserts no
+  surviving reference.
+
+**Removal objections whose cited comment does survive:** 8e3c25 #2 and
+#4, and fe4eea #3, cite the post-state comments "sync the drop counter"
+and `// TODO change to coalesce for v0.3 and real data`.
+`app/qttunebridge.cpp` at `8ffbf19` has both, at lines 224 and 228.
+These blockers are removal objections, not M2.
+
+**What changed and what did not:**
+
+- **The class kept its rate but changed its source.**
+  - All three arm-1 M2 cited a P symbol that the stale pack showed as
+    present.
+  - At v6, four of five cite `signalModel`, which no pack has ever
+    contained. The class does not need the pack to assert a symbol. So
+    the fifth measurement's open question, whether the class is
+    pack-driven or intrinsic, now leans intrinsic.
+  - This is not a clean ablation: the v6 pack still names
+    `SignalListModel` and the OMITTED entries.
+- **M1 no longer tracks false positives.**
+  - In arm 1, 3 of the 4 M1 blockers were M2.
+  - At v6, 2 of the 10 are M2, 4 are in-flight-gate blockers (below)
+    and 4 are removal objections.
+  - M1 rose because removed symbols are now cited for valid reasons.
+- **A new, valid sub-class: the in-flight gate.**
+  - Four blockers in three runs (5d2fc3 #2, 6f29d3 #1 and #2, 07bb6b
+    #1) object that the diff removes the `m_inFlightFrames` /
+    `MaxInFlightFrames` gate. They say the remaining
+    `m_currentFrameCount >= MaxFrames` check does not bound the queued
+    backlog.
+  - That is true of the post-state. `e0c4c31`, which the fixture
+    reverts, describes its fix as "gate bounds in-flight queue depth
+    (MaxInFlight), not cumulative frame count". The pre-state comment
+    reads "bound the QUEUED backlog, not the lifetime count".
+  - None of the four names the worse consequence, the permanent drop
+    after 10,000 frames (the fourth measurement's run-1 TP), and one
+    calls the remaining check "model capacity".
+  - They are counted under removal objections, per the arm-1
+    definition (objects to a removal without claiming survival). Arm 1
+    had no such blocker. Whether the OMITTED list drew attention to the
+    gate cannot be told from N=10.
+- **The race held:** 7 blockers in 5 of 10 runs, against 4 in 3 of 6.
+- **Implication for #15:**
+  - A check that demotes every blocker citing a removed identifier
+    would be wrong. Of the 16 scorer candidates, 5 are M2, 4 are the
+    valid gate blockers and 7 are removal objections.
+  - The check has to find a claim of survival ("still references",
+    "remains", "dangling") about an identifier that only the removed
+    lines contain. Citing a removed identifier is not enough.
+  - The four `signalModel` cases also show where it must look: the
+    claimed survivor sits in a file the diff touches but that never
+    contained the name.
+- **Scorer check:** all 5 confirmed M2 were among the 16 candidates.
