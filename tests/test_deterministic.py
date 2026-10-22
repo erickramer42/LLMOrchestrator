@@ -29,7 +29,8 @@ if str(REPO_ROOT) not in sys.path:
 import agent_client  # noqa: E402
 import debate  # noqa: E402
 import repo_context  # noqa: E402
-from adjudication import (demote_hedged_blockers, derive_verdict,  # noqa: E402
+from adjudication import (JUDGE_VERSION, convergence_verdict,  # noqa: E402
+                          demote_hedged_blockers, derive_verdict,
                           normalize_agent_output)
 from agent_client import call_agent, failure_result  # noqa: E402
 from eval_harness.bakeoff import tally  # noqa: E402
@@ -145,7 +146,35 @@ class VerdictTests(unittest.TestCase):
         self.assertEqual(len(results), 7)
 
     def test_demotion_passes_non_dicts_through(self):
-        self.assertEqual(demote_hedged_blockers(["x"]), ["x"])
+        self.assertEqual(demote_hedged_blockers(["x"]), (["x"], 0))
+
+    def test_demotion_reports_how_many_it_moved(self):
+        out, n = demote_hedged_blockers(
+            {"blockers": ["x might race", "memcpy overflows buf at line 4"],
+             "concerns": ["c"]}, "concerns")
+        self.assertEqual(n, 1)
+        self.assertEqual(out["blockers"], ["memcpy overflows buf at line 4"])
+        self.assertEqual(out["concerns"], ["c", "x might race"])
+
+
+class ConvergenceTests(unittest.TestCase):
+    """Backlog #2, minimal rule: a round converges once neither agent holds
+    a blocker. Open questions and concerns no longer force another round."""
+
+    def test_any_blocker_continues_the_debate(self):
+        for rv, ev in (("reject", "approve"), ("approve", "reject"),
+                       ("conditional", "reject"), ("reject", "reject")):
+            self.assertIsNone(convergence_verdict(rv, ev), (rv, ev))
+
+    def test_open_items_on_either_side_converge_with_questions(self):
+        for rv, ev in (("conditional", "approve"), ("approve", "conditional"),
+                       ("conditional", "conditional")):
+            self.assertEqual(convergence_verdict(rv, ev),
+                             "APPROVED_WITH_OPEN_QUESTIONS", (rv, ev))
+
+    def test_only_two_clean_replies_approve_for_merge(self):
+        self.assertEqual(convergence_verdict("approve", "approve"),
+                         "APPROVED_FOR_MERGE")
 
 
 # ============ layer detection ============
@@ -330,7 +359,38 @@ class DebateTests(NoSleep):
         self.assertEqual(rec["inputs"]["layer"], "core")
         self.assertEqual(len(rec["inputs"]["diff_sha256"]), 64)
         self.assertEqual(len(rec["metadata"]["prompt_fingerprint"]), 16)
+        self.assertEqual(rec["metadata"]["judge_version"], JUDGE_VERSION)
         self.assertEqual(rec["outputs"]["agent_failures"], [])
+
+    # ---- convergence (backlog #2) ----
+
+    def test_open_items_without_blockers_converge_in_round_one(self):
+        # Header review 194320 had no blockers on either side in any round,
+        # yet ran to MAX_ROUNDS_EXCEEDED because the engineer had concerns.
+        rev = {**REVIEWER_CLEAN, "questions": ["is the struct layout versioned?"]}
+        eng = {**ENGINEER_CLEAN, "concerns": ["no changelog entry"]}
+        with fake_ollama(rev, eng) as post:
+            result = debate.run_debate("p", "+++ b/core/src/x.cpp\n", "")
+        self.assertEqual(result["final_verdict"], "APPROVED_WITH_OPEN_QUESTIONS")
+        self.assertEqual(result["rounds_completed"], 1)
+        self.assertEqual(post.call_count, 2)
+
+    def test_engineer_blocker_alone_keeps_the_debate_going(self):
+        eng = {**ENGINEER_CLEAN, "blockers": ["memcpy overflows buf[8] at line 4"]}
+        with fake_ollama(*[REVIEWER_CLEAN, eng] * debate.MAX_DEBATE_ROUNDS):
+            result = debate.run_debate("p", "+++ b/core/src/x.cpp\n", "")
+        self.assertEqual(result["final_verdict"],
+                         "MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED")
+
+    def test_record_counts_hedge_demotions_per_round(self):
+        rev = {**REVIEWER_CLEAN, "blockers": ["x might race", "y could leak"]}
+        with fake_ollama(rev, ENGINEER_CLEAN):
+            result = debate.run_debate("p", "+++ b/core/src/x.cpp\n", "")
+        h = self.record(result)["outputs"]["round_history"][0]
+        self.assertEqual(h["hedge_demotions"],
+                         {"reviewer_demoted": 2, "engineer_demoted": 0})
+        self.assertEqual(h["reviewer"]["questions"], ["x might race", "y could leak"])
+        self.assertEqual(result["final_verdict"], "APPROVED_WITH_OPEN_QUESTIONS")
 
     # ---- retrieval inside the debate (code review 2026-10-21, finding 2) ----
 
@@ -523,6 +583,17 @@ class RepoContextTests(unittest.TestCase):
                "void f() {\n    int count = 0;\n}\n")
         got = {c["name"]: c["value"] for c in repo_context.harvest_constants(src, "f")}
         self.assertEqual(got, {"MAX_DLC": "64", "kMask": "0x7FF", "MaxFrames": "10000"})
+
+    def test_corrupt_summary_cache_warns_and_starts_empty(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for bad in ("{truncated", "[1, 2]"):
+                path = Path(tmp) / "cache.json"
+                path.write_text(bad, encoding="utf-8")
+                stderr = io.StringIO()
+                with mock.patch.object(repo_context, "CACHE_PATH", path), \
+                        contextlib.redirect_stderr(stderr):
+                    self.assertEqual(repo_context._load_cache(), {}, bad)
+                self.assertIn("summary cache", stderr.getvalue())
 
     def test_llm_failure_yields_no_purpose(self):
         with mock.patch.object(repo_context, "call_agent",

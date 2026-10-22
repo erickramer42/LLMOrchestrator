@@ -60,7 +60,7 @@ def run_hedge_unit_tests() -> List[dict]:
     for i, (text, should_demote) in enumerate(CASES, 1):
         fake_out = {"verdict": "reject", "blockers": [text],
                     "questions": [], "nits": []}
-        demoted_out = demote_hedged_blockers(fake_out, "questions")
+        demoted_out, _ = demote_hedged_blockers(fake_out, "questions")
         was_demoted = len(demoted_out.get("blockers", [])) == 0
         results.append({
             "test_name": f"hedge_unit_{i}",
@@ -115,7 +115,7 @@ def run_golden_tests() -> dict:
         out = call_agent(MODELS["code_reviewer"], prompt, tc["snippet"],
                          TEMPERATURE_RETRY,
                          validate=lambda raw: normalize_agent_output(raw, "reviewer"))
-        out = demote_hedged_blockers(out, "questions")
+        out, _ = demote_hedged_blockers(out, "questions")
 
         results.append({"test_name": tc["name"],
                         **score_fixture(out, tc.get("expected_to_block", False))})

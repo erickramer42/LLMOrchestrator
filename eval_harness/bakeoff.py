@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """bakeoff.py — reviewer slot bake-off. One model at a time, isolated calls."""
 
-import json, sys, time, requests, argparse
+import json, time, requests, argparse
 from pathlib import Path
 
 from reviewer_prompt import (REVIEWER_SYSTEM, HEADER_SCOPE_CLAUSE,

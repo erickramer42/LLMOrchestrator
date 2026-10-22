@@ -3,7 +3,8 @@
 Last updated: 2026-10-22 (record provenance and per-attempt telemetry;
 context window raised to 24576 and output capped at 12288 from live
 telemetry; v6 diff-authoritative retrieval with the index rebuilt from
-the fixture's base; backlog #18–#21 filed)
+the fixture's base; backlog #18–#21 filed; convergence rule j2, backlog
+#2's minimal option; CI on Python 3.11 and 3.13)
 
 Purpose of this file: anyone picking up this repo can orient in five
 minutes, run the existing validation, and continue the queued work
@@ -25,7 +26,7 @@ without reverse-engineering the ADRs.
 - Hedge-language demotion guardrail (deterministic, regression-tested)
 - Golden suite: 3 model fixtures + 7 deterministic guardrail units = 10/10
   (re-run live 2026-10-10 after the fixes below)
-- Deterministic regression suite: 83 stdlib unittest cases in `tests/`,
+- Deterministic regression suite: 91 stdlib unittest cases in `tests/`,
   with Ollama faked at the HTTP layer. No model needed; CI-ready.
 - FP-rate probe (5-run aggregates), model bake-off
 - Repo indexer (`--index`): typedefs, constants, layer map, LLM purpose
@@ -65,7 +66,8 @@ without reverse-engineering the ADRs.
   scoring fixes, decision-record provenance, indexer harvest fixes,
   UTF-8 input reads.
 - GitHub Actions CI (2026-10-13): compile checks + deterministic
-  regression suite, no Ollama needed.
+  regression suite, no Ollama needed. Since 2026-10-22 it installs from
+  `requirements.txt` and runs on Python 3.11 and 3.13.
 - **Retrieval fixes (2026-10-21, PROMPT_VERSION v5.1-retrieval-fidelity).**
   Index and cache paths are module-relative, so retrieval works from any
   working directory; an unavailable index prints a warning and returns
@@ -119,6 +121,13 @@ without reverse-engineering the ADRs.
   - Fixture pack (2,562 chars): `MaxInFlightFrames` and the
     `m_inFlightFrames` call site are omitted, and both `SignalListModel`
     purposes are annotated. Not yet measured live.
+- **Convergence rule j2 (2026-10-22, backlog #2 minimal option).** A
+  round converges once neither agent has a blocker: open questions and
+  concerns give `APPROVED_WITH_OPEN_QUESTIONS` instead of another round.
+  The rule is `adjudication.convergence_verdict`; records stamp
+  `metadata.judge_version`. Replayed over the 16 archived records, it
+  changes only header review 194320, which would converge in round 1.
+  Round-1 measurements are unaffected (ADR-0002, convergence rule j2).
 
 **Known limitations (by design or pending):**
 - **Deletion hallucination: the reviewer fabricates surviving
@@ -156,10 +165,11 @@ without reverse-engineering the ADRs.
 - **The output cap has a thin margin.** Finished reviewer replies reach
   10,097 tokens, ~18% under `NUM_PREDICT`. A legitimately longer reply
   would be cut and retried in the low-thinking mode.
-- **Debates practically never converge.** Convergence needs the engineer
-  to return zero blockers, concerns AND questions. Every archived debate
-  ended at MAX_ROUNDS_EXCEEDED. Fail-closed is intentional; the
-  convergence rule is backlog #2.
+- **Debates with reviewer blockers never converge.** Under j1 every
+  archived debate ended at MAX_ROUNDS_EXCEEDED. j2 lets a blocker-free
+  round converge, but 15 of the 16 records have reviewer blockers in
+  every round, and nothing ends a debate early on a settled rejection
+  (backlog #18).
 - **Feedback anchors rather than tests,** and the live loop can undo
   retrieval's gains: in the pilot, engineer concerns reintroduced
   thread-safety blockers in round 3 after a clean round 1. Additional
@@ -189,7 +199,7 @@ without reverse-engineering the ADRs.
 | `orchestrator.py` | Thin CLI entrypoint: argument parsing and dispatch only. Modes `--golden`, `--proposal` and `--index` are mutually exclusive; inputs read as UTF-8. Re-exports key symbols as a transition shim. |
 | `config.py` | Central configuration: MODELS dict, num_ctx, timeouts, temperatures, and prompt composition. Single place to swap models. |
 | `agent_client.py` | Ollama client. Single agent turn, JSON-mode enforcement, retries with corrective messages, optional per-attempt telemetry (token counts, thinking/reply sizes, done_reason, wall time; tails of failed replies). The ONLY module that touches the network. |
-| `adjudication.py` | Pure adjudication logic, no I/O: `normalize_agent_output()`, `derive_verdict()`, `demote_hedged_blockers()`. CI-importable. |
+| `adjudication.py` | Pure adjudication logic, no I/O: `normalize_agent_output()`, `derive_verdict()`, `convergence_verdict()`, `demote_hedged_blockers()` (returns the output and the demoted count), `JUDGE_VERSION`. CI-importable. |
 | `debate.py` | The debate loop. Transcript templates incl. `REPO_CONTEXT_TEMPLATE`; loads `repo_context.json`, calls `build_context_pack` (never fatal: errors degrade to no retrieval), injects retrieval into the transcript, records `repo_context_pack` (report, pack text, hash, index version) and per-round telemetry in decision records. Ends with AGENT_FAILURE on exhausted agent calls. |
 | `golden_tests.py` | Golden suite: 3 LLM-backed model fixtures + `run_hedge_unit_tests()` (7 deterministic guardrail cases, production-derived texts). |
 | `reviewer_prompt.py` | Single source of truth for agent system prompts. PROMPT_VERSION (currently v6-diff-authoritative). Also holds FAILURE_SENTINEL. |
@@ -221,7 +231,8 @@ top of everything.
 ## Conventions (do not silently violate)
 
 1. **Derived verdicts only.** Never trust a model's self-reported
-   verdict label. Judge reads blockers/questions/concerns arrays.
+   verdict label. Judge reads blockers/questions/concerns arrays. A
+   change to the judge or the convergence rule bumps `JUDGE_VERSION`.
 2. **Fail closed.** Parse failure, schema violation, timeout, empty
    input → reject / manual review. Never default to approve.
 3. **Blockers must be demonstrable.** Speculation belongs in questions.
@@ -249,16 +260,16 @@ top of everything.
 Suggested order as of 2026-10-22: v6 baseline on the bridge fixture
 (predict first; ADR-0002, fifth measurement amendment) → #15 if the
 deletion class persists → #21 fixture proposal → #16 runaway output →
-#12 hedge gate → #2 judge → #18 early reject → #11 transcript protocol
-→ #17 re-triage → the rest.
+#12 hedge gate → #18 early reject → #11 transcript protocol → #17
+re-triage → the rest.
 
 1. **Repo context pack — DONE (2026-10-13).** Indexer, callsite
    harvester, debate-time retrieval and the third measurement are all
    landed (ADR-0002, fourth measurement). Kept for history; open
    follow-ups became #15–#17 below.
-2. **Judge granularity rework.** Split severity from resolution;
-   minimal option: converge as APPROVED_WITH_OPEN_QUESTIONS when
-   neither agent has blockers.
+2. **Judge granularity rework — minimal option DONE (2026-10-22, j2).**
+   A round converges as APPROVED_WITH_OPEN_QUESTIONS when neither agent
+   has blockers. Still open: splitting severity from resolution.
 3. **GitHub Actions CI — DONE (2026-10-13).**
 4. **Per-debate cost/latency telemetry — DONE (2026-10-22).** Each
    round's `telemetry` holds one entry per agent attempt, failed ones
@@ -349,12 +360,14 @@ deletion class persists → #21 fixture proposal → #16 runaway output →
     - **Option A alone does nothing in round 1.** The engineer had zero
       round-1 blockers in all nine archived records, so only Option B
       can fire.
-    - **Do #2 first.** The engineer returned concerns in all 25
-      completed engineer rounds on record, so no debate could converge
-      whatever the reviewer said. #2's minimal rule is the root fix.
-      #18 only adds early exits for the 7 of 8 manual reviews that
-      ended with reviewer blockers. The eighth, header review 194320,
-      ended with no blockers on either side; only #2 resolves it.
+    - **#2 first — done (j2, 2026-10-22).** The engineer returned
+      concerns in all 25 completed engineer rounds on record, so no
+      debate could converge whatever the reviewer said. #2's minimal
+      rule was the root fix. #18 only adds early exits for the 7 of 8
+      manual reviews that ended with reviewer blockers. The eighth,
+      header review 194320, had no blockers on either side; under j2 it
+      converges in round 1. Option A and B's checks belong in
+      `adjudication.convergence_verdict`.
     - **Verdict labels stay out of feedback.** Agents do not see each
       other's verdict text. Feedback carries the reviewer's blockers
       and the engineer's concerns and questions. The judge ignores

@@ -10,7 +10,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-from adjudication import (demote_hedged_blockers, derive_verdict,
+from adjudication import (JUDGE_VERSION, convergence_verdict,
+                          demote_hedged_blockers, derive_verdict,
                           normalize_agent_output)
 from agent_client import call_agent, failure_result
 from config import (MAX_DEBATE_ROUNDS, MODELS, NUM_CTX, NUM_PREDICT,
@@ -198,7 +199,6 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
         return normalize_agent_output(raw, "engineer")
 
     round_history: List[dict] = []
-    final_verdict = "CONVERGENCE_FAILURE - CONFLICTING_CRITERIA"
     agent_failures: List[str] = []
 
     for round_num in range(1, MAX_DEBATE_ROUNDS + 1):
@@ -223,14 +223,10 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
                                   telemetry=telemetry["auto_engineer"])
 
         # ============ GUARDRAIL: hedge demotion (before storing) ============
-        rev_before = len(reviewer.get("blockers", []) or [])
-        eng_before = len(engineer.get("blockers", []) or [])
-        reviewer = demote_hedged_blockers(reviewer, "questions")
-        engineer = demote_hedged_blockers(engineer, "concerns")
-        hedge_stats = {
-            "reviewer_demoted": rev_before - len(reviewer.get("blockers", []) or []),
-            "engineer_demoted": eng_before - len(engineer.get("blockers", []) or []),
-        }
+        reviewer, rev_demoted = demote_hedged_blockers(reviewer, "questions")
+        engineer, eng_demoted = demote_hedged_blockers(engineer, "concerns")
+        hedge_stats = {"reviewer_demoted": rev_demoted,
+                       "engineer_demoted": eng_demoted}
 
         round_history.append({
             "round": round_num,
@@ -259,11 +255,9 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
                              (engineer.get("questions", []) or []))
 
         # Termination conditions
-        if reviewer_v == "approve" and engineer_v in ("approve", "defer"):
-            final_verdict = "APPROVED_FOR_MERGE"
-            break
-        if reviewer_v == "conditional" and engineer_v in ("approve", "defer"):
-            final_verdict = "APPROVED_WITH_OPEN_QUESTIONS"
+        converged = convergence_verdict(reviewer_v, engineer_v)
+        if converged:
+            final_verdict = converged
             break
         if round_num >= MAX_DEBATE_ROUNDS:
             final_verdict = "MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED"
@@ -340,6 +334,7 @@ def _save_decision_record(debate_id: str, inputs: dict, verdict: str,
             "debate_id": debate_id,
             "created_utc": datetime.now(timezone.utc).isoformat(),
             "prompt_version": PROMPT_VERSION,
+            "judge_version": JUDGE_VERSION,
             "models_used": MODELS,
             "max_rounds": MAX_DEBATE_ROUNDS,
             **run_settings,

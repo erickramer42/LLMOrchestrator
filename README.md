@@ -105,10 +105,12 @@ TRANSCRIPT (proposal + diff/context + layer note + prior-round feedback)
 
 Possible outcomes: `APPROVED_FOR_MERGE`, `APPROVED_WITH_OPEN_QUESTIONS`,
 `MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED`, and
-`AGENT_FAILURE - MANUAL_REVIEW_REQUIRED`. In practice every recorded
-debate so far has ended at max rounds: converging requires the domain
-agent to raise zero concerns, which it rarely does. Reworking that rule
-is on the backlog (see STATUS.md).
+`AGENT_FAILURE - MANUAL_REVIEW_REQUIRED`. A round converges once
+neither agent has a blocker: `APPROVED_FOR_MERGE` when both replies are
+empty, `APPROVED_WITH_OPEN_QUESTIONS` when questions or concerns remain
+(judge `j2-no-blockers`, 2026-10-22). Until then convergence also
+required the engineer to raise zero concerns, so every recorded debate
+ended at max rounds.
 
 An offline indexer (`--index`) builds a repo context pack of type
 definitions, constants, file purposes and queued-connection call sites
@@ -160,7 +162,9 @@ measured N=3 — see ADR-0002.
    stamps appear in every decision record, enabling correlation between
    eval results and production runs. Records also carry a
    `prompt_fingerprint`, a hash of the exact templates used, which
-   catches drift that a hand-bumped version string would miss.
+   catches drift that a hand-bumped version string would miss. A
+   `judge_version` stamp does the same for the convergence rule, which
+   changes verdicts without changing any prompt.
 
 8. **Self-describing decision records** — Each record holds the original
    proposal, SHA-256 hashes of the diff and context, the detected layer,

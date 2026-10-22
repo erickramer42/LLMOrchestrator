@@ -5,6 +5,12 @@ in CI."""
 import re
 from typing import Optional, Tuple
 
+# Stamped into every decision record: a judge change alters final verdicts
+# and round counts without touching any prompt, so the prompt fingerprint
+# cannot show it. j1 (until 2026-10-22) also required the engineer to have
+# zero concerns and questions.
+JUDGE_VERSION = "j2-no-blockers"
+
 
 # ============ SCHEMA VALIDATION ============
 
@@ -87,6 +93,19 @@ def derive_verdict(agent_out: dict, concern_key: str = "questions") -> str:
     return "approve"
 
 
+def convergence_verdict(reviewer_v: str, engineer_v: str) -> Optional[str]:
+    """Final verdict if this round settles the debate, else None.
+    Takes derive_verdict() results. Converges once neither agent holds a
+    blocker; open questions and concerns are carried in the verdict
+    instead of forcing another round (backlog #2, minimal rule). Agent
+    failures are handled before this is called."""
+    if reviewer_v == "reject" or engineer_v == "reject":
+        return None
+    if reviewer_v == "approve" and engineer_v == "approve":
+        return "APPROVED_FOR_MERGE"
+    return "APPROVED_WITH_OPEN_QUESTIONS"
+
+
 # ============ HEDGE LANGUAGE DEMOTION ============
 
 HEDGE_PATTERNS = re.compile(
@@ -97,12 +116,15 @@ HEDGE_PATTERNS = re.compile(
     re.IGNORECASE)
 
 
-def demote_hedged_blockers(agent_out: dict, concern_key: str = "questions") -> dict:
+def demote_hedged_blockers(agent_out: dict,
+                           concern_key: str = "questions") -> Tuple[dict, int]:
     """Guardrail: speculative/hedged text in blockers becomes a question.
-    Enforces the taxonomy rule: a blocker must be a DEMONSTRABLE violation."""
+    Enforces the taxonomy rule: a blocker must be a DEMONSTRABLE violation.
+    Returns (output, number of blockers demoted). Demoted blockers are
+    appended to the end of concern_key, in their original order."""
     if (not isinstance(agent_out, dict) or not agent_out
             or agent_out.get("verdict") == "PARSE_FAILURE"):
-        return agent_out
+        return agent_out, 0
 
     out = dict(agent_out)
     kept, demoted = [], []
@@ -117,4 +139,4 @@ def demote_hedged_blockers(agent_out: dict, concern_key: str = "questions") -> d
         out["blockers"] = kept
         out[concern_key] = (out.get(concern_key, []) or []) + demoted
 
-    return out
+    return out, len(demoted)

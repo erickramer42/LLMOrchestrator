@@ -21,6 +21,7 @@ import hashlib
 import json
 import re
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -592,9 +593,20 @@ def _cache_path() -> Path:
 
 
 def _load_cache() -> dict:
+    """The summary cache, or {} if it is missing or unreadable. The cache
+    only saves model calls, so a corrupt file warns and is rebuilt."""
     p = _cache_path()
-    if p.exists():
-        return json.loads(p.read_text(encoding="utf-8"))
+    if not p.exists():
+        return {}
+    try:
+        cache = json.loads(p.read_text(encoding="utf-8"))
+        if isinstance(cache, dict):
+            return cache
+        reason = f"a JSON {type(cache).__name__}, expected an object"
+    except (OSError, ValueError) as exc:
+        reason = f"{type(exc).__name__}: {exc}"
+    print(f"WARNING: summary cache {p} is unreadable ({reason}); "
+          "starting empty, it will be rewritten.", file=sys.stderr)
     return {}
 
 
@@ -826,8 +838,7 @@ def build_context_pack(code_diff: str, index: dict,
 
 
 if __name__ == "__main__":
-    import sys
-    target = sys.argv[1] if len(sys.argv) > 1 else "../qttune"
+    target =sys.argv[1] if len(sys.argv) > 1 else "../qttune"
     idx = build_index(target, use_llm="--no-llm" not in sys.argv)
     p = save_index(idx)
     print(f"Wrote {p}: {len(idx['files'])} files, "

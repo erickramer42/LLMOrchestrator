@@ -661,3 +661,25 @@ a reduction at small N, so the comparison should cover round-1 blocker
 composition and precision as well, scored first-attempt only. The
 proposal-text mismatch (STATUS #21) is still present and still
 constant.
+
+## Convergence Rule j2 (2026-10-22)
+
+**Decision:** a round converges once neither derived verdict is
+`reject`. Both `approve` gives `APPROVED_FOR_MERGE`; any open question
+or concern gives `APPROVED_WITH_OPEN_QUESTIONS`. Rule j1 also required
+the engineer's verdict to be `approve`, meaning zero concerns and
+questions. The engineer returned concerns in every completed engineer
+round on record, so no debate could converge (STATUS backlog #2,
+minimal option). The rule is `adjudication.convergence_verdict`, and
+records stamp it as `metadata.judge_version` because it changes
+verdicts and round counts without touching a prompt.
+
+**Replay over the 16 archived records** (derived verdicts recomputed
+from the stored, post-demotion outputs): only header review 194320
+changes. Its first round had open items but no blockers on either
+side, so it would converge in round 1 as
+`APPROVED_WITH_OPEN_QUESTIONS` instead of ending at max rounds. The
+other 15 have reviewer blockers in every round and are unaffected.
+
+**Effect on measurements:** none. Measurements score round-1 reviewer
+output, which no judge rule can change.
