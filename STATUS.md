@@ -4,7 +4,8 @@ Last updated: 2026-10-22 (record provenance and per-attempt telemetry;
 context window raised to 24576 and output capped at 12288 from live
 telemetry; v6 diff-authoritative retrieval with the index rebuilt from
 the fixture's base; backlog #18–#21 filed; convergence rule j2, backlog
-#2's minimal option; CI on Python 3.11 and 3.13)
+#2's minimal option; CI on Python 3.11 and 3.13; round-1 measurement
+mode and scorer)
 
 Purpose of this file: anyone picking up this repo can orient in five
 minutes, run the existing validation, and continue the queued work
@@ -26,7 +27,7 @@ without reverse-engineering the ADRs.
 - Hedge-language demotion guardrail (deterministic, regression-tested)
 - Golden suite: 3 model fixtures + 7 deterministic guardrail units = 10/10
   (re-run live 2026-10-10 after the fixes below)
-- Deterministic regression suite: 91 stdlib unittest cases in `tests/`,
+- Deterministic regression suite: 100 stdlib unittest cases in `tests/`,
   with Ollama faked at the HTTP layer. No model needed; CI-ready.
 - FP-rate probe (5-run aggregates), model bake-off
 - Repo indexer (`--index`): typedefs, constants, layer map, LLM purpose
@@ -128,6 +129,26 @@ without reverse-engineering the ADRs.
   `metadata.judge_version`. Replayed over the 16 archived records, it
   changes only header review 194320, which would converge in round 1.
   Round-1 measurements are unaffected (ADR-0002, convergence rule j2).
+- **Round-1 measurement mode and scorer (2026-10-22).** Measurements
+  score only the reviewer's round-1 first attempt, which never sees the
+  engineer. In the seven v5.2 telemetry runs that call took 2.2 of a
+  debate's 10.1 minutes on average.
+  - `debate.run_round1_review` makes that one call and saves
+    `coach_artifacts/measurement_*.json` (mode `round1_reviewer`,
+    verdict `NOT_ADJUDICATED - ROUND1_MEASUREMENT`). It shares its setup
+    with `run_debate`. A test pins that it sends the identical request
+    as a debate's first call, and the records share the debate's
+    `prompt_fingerprint`. No prompt changed, so PROMPT_VERSION stays v6.
+  - `python -m eval_harness.round1 run` collects N samples.
+  - `python -m eval_harness.round1 score` scores measurement and debate
+    records. It keeps first attempts on the given diff, counts M1, and
+    lists M2 candidates: blockers naming a removed identifier that the
+    post-state lacks (`git grep -w`). Candidates still need confirming
+    by hand.
+  - Scorer check: on the v5.2 arm-1 records it reproduces the
+    hand-scored M1 per run exactly (2, 1, 1, 0, 0, 0) and excludes
+    3026b2 as a retry. The 10 M2 candidates include all 3 confirmed M2
+    blockers; the other 7 object to removals.
 
 **Known limitations (by design or pending):**
 - **Deletion hallucination: the reviewer fabricates surviving
@@ -161,7 +182,7 @@ without reverse-engineering the ADRs.
   correction makes the reviewer answer in 267–493 tokens with little or
   no thinking (`thinking_chars` 0 in 15cc3f). In the telemetry runs, 4
   of 21 reviewer rounds came from such retries; telemetry shows which.
-  Score them separately.
+  Score them separately; `eval_harness.round1 score` excludes them.
 - **The output cap has a thin margin.** Finished reviewer replies reach
   10,097 tokens, ~18% under `NUM_PREDICT`. A legitimately longer reply
   would be cut and retried in the low-thinking mode.
@@ -200,7 +221,7 @@ without reverse-engineering the ADRs.
 | `config.py` | Central configuration: MODELS dict, num_ctx, timeouts, temperatures, and prompt composition. Single place to swap models. |
 | `agent_client.py` | Ollama client. Single agent turn, JSON-mode enforcement, retries with corrective messages, optional per-attempt telemetry (token counts, thinking/reply sizes, done_reason, wall time; tails of failed replies). The ONLY module that touches the network. |
 | `adjudication.py` | Pure adjudication logic, no I/O: `normalize_agent_output()`, `derive_verdict()`, `convergence_verdict()`, `demote_hedged_blockers()` (returns the output and the demoted count), `JUDGE_VERSION`. CI-importable. |
-| `debate.py` | The debate loop. Transcript templates incl. `REPO_CONTEXT_TEMPLATE`; loads `repo_context.json`, calls `build_context_pack` (never fatal: errors degrade to no retrieval), injects retrieval into the transcript, records `repo_context_pack` (report, pack text, hash, index version) and per-round telemetry in decision records. Ends with AGENT_FAILURE on exhausted agent calls. |
+| `debate.py` | The debate loop. Transcript templates incl. `REPO_CONTEXT_TEMPLATE`; loads `repo_context.json`, calls `build_context_pack` (never fatal: errors degrade to no retrieval), injects retrieval into the transcript, records `repo_context_pack` (report, pack text, hash, index version) and per-round telemetry in decision records. Ends with AGENT_FAILURE on exhausted agent calls. `run_round1_review` is the measurement mode: the debate's first reviewer call alone, saved as a measurement record. |
 | `golden_tests.py` | Golden suite: 3 LLM-backed model fixtures + `run_hedge_unit_tests()` (7 deterministic guardrail cases, production-derived texts). |
 | `reviewer_prompt.py` | Single source of truth for agent system prompts. PROMPT_VERSION (currently v6-diff-authoritative). Also holds FAILURE_SENTINEL. |
 | `file_metadata.py` | File-path → layer mapping and layer constraint notes. |
@@ -208,14 +229,16 @@ without reverse-engineering the ADRs.
 | `repo_context.json` | Committed context pack for QtTune, built from the bridge fixture's base (`source_commit` `e0c4c31`, 2026-10-22: 35 files, 24 LLM purposes, 1 queued-connection call site). Reviewing a different diff needs an index of that diff's base. repo_root field removed 2026-10-13 (local-path leak). Read by debate.py at runtime from next to repo_context.py, regardless of CWD. |
 | `eval_harness/probe.py` | FP-rate probe: N runs against a clean fixture. CLEAN / BORDERLINE / SYSTEMATIC / NO_DATA. |
 | `eval_harness/bakeoff.py` | Side-by-side model comparison on bug + clean fixtures. |
+| `eval_harness/round1.py` | Round-1 measurements. `run` collects samples through `debate.run_round1_review`, so unlike the probe and bake-off it uses agent_client and config. `score` counts M1 and lists M2 candidates over measurement or debate records, first attempts on one diff only. |
 | `eval_harness/__init__.py` | Package marker. |
-| `tests/test_deterministic.py` | Stdlib unittest regression suite: adjudication, agent client (incl. telemetry), debate (incl. retrieval in the transcript, record provenance, malformed-index degradation), eval scoring, indexer harvesting, CLI. Fake Ollama HTTP layer. CI-ready. |
+| `tests/test_deterministic.py` | Stdlib unittest regression suite: adjudication, agent client (incl. telemetry), debate (incl. retrieval in the transcript, record provenance, malformed-index degradation, round-1 measurement mode), eval scoring (incl. the round-1 scorer), indexer harvesting, CLI. Fake Ollama HTTP layer. CI-ready. |
 | `tests/test_retrieval.py` | Retrieval unit tests: paren-depth scanning, multiline lambda connects, truncation-budget accounting, section headers, related call sites, identifier matching, call-site/type/purpose rendering. |
 | `docs/decisions/0001-model-selection.md` | ADR-0001: model selection rationale, bake-off numbers. |
 | `docs/decisions/0002-adjudication-and-fp-remediation.md` | ADR-0002: the false-positive arc — baseline triage, v1 guardrails, re-measurement, live-loop control, context-pack N=3 results with retroactive re-adjudication flag. |
 | `docs/portability_guide.md` | Running on other machines / codebases. Predates the module split. |
 | `docs/fixtures/qttune_bridge_refactor.diff` | Input diff for all bridge-refactor debates. Provenance (established 2026-10-13): reverse patch of QtTune `e0c4c31`; post-state identical to committed `8ffbf19` (blob `1c195f8`). |
 | `coach_artifacts/decision_debate_*.json` | Decision records. Nine archived: header review (194320), baseline (203917), v1 re-measurement (014257), feedback smoke (153541, see erratum caveat), live-loop control (170208), context-pack pilot (201540, unscored), and three scored context-pack runs (203802, 204845, 210548). Plus seven unscored v5.2 telemetry runs on the bridge fixture, from 20261022: two at num_ctx 16384 (134539_3026b2, 140943_bbe168), three at 24576 (143424_1b11cc, 145342_743bc4, 153943_7a4809), and two at 24576 with num_predict 12288 (160429_15cc3f, 161800_5b3f1d). Records from 2026-10-10 on carry `prompt_fingerprint`, sampling settings, input hashes, layer, `agent_failures`; v5 records carry `repo_context_pack`; v5.2 records add the pack text and per-attempt `telemetry`. |
+| `coach_artifacts/measurement_round1_*.json` | Round-1 measurement records (`metadata.mode` `round1_reviewer`): one reviewer round, no engineer, no merge decision. Same provenance fields as decision records. None committed yet. |
 | `probe_logs/fp_*.json` | 5-run probe aggregates backing the FP-rate claims. |
 | `requirements.txt` | Runtime deps (requests). |
 | `.github/workflows/` | CI: compile checks + regression suite, no Ollama. |
@@ -258,7 +281,8 @@ top of everything.
 ## Backlog (ideas, loosely ordered)
 
 Suggested order as of 2026-10-22: v6 baseline on the bridge fixture
-(predict first; ADR-0002, fifth measurement amendment) → #15 if the
+(predict first; ADR-0002, fifth measurement amendment; samples from
+`eval_harness.round1`) → #15 if the
 deletion class persists → #21 fixture proposal → #16 runaway output →
 #12 hedge gate → #18 early reject → #11 transcript protocol → #17
 re-triage → the rest.

@@ -29,11 +29,11 @@ retrieval)*,
 | `config.py` | Models, runtime knobs, prompt composition |
 | `agent_client.py` | Ollama client — the only module that touches the network; retries invalid or schema-violating replies, then fails closed |
 | `adjudication.py` | Pure logic: schema validation, verdict derivation, hedge demotion guardrail |
-| `debate.py` | Debate loop, transcript templates, repo-context retrieval, judging, decision-record persistence |
+| `debate.py` | Debate loop, transcript templates, repo-context retrieval, judging, decision-record persistence; round-1 reviewer measurement mode |
 | `golden_tests.py` | Golden suite: LLM fixtures + deterministic guardrail units |
 | `reviewer_prompt.py` | Agent system prompts (versioned, single source of truth) |
 | `file_metadata.py` | File-path → layer mapping (core / bridge / app) |
-| `eval_harness/` | FP-rate probe + model bake-off |
+| `eval_harness/` | FP-rate probe, model bake-off, round-1 measurement runner and scorer |
 | `repo_context.py` | Offline indexer: typedefs, constants, layer map, queued-connection call sites → `repo_context.json`; builds retrieved context packs |
 | `tests/` | Deterministic regression tests (fake Ollama, no model needed) |
 
@@ -252,6 +252,15 @@ Command examples:
   A parse failure or timeout on a bug case counts as a miss.
 - Diff-based review example (the archived debates):
   `python orchestrator.py --proposal "..." --diff docs/fixtures/qttune_bridge_refactor.diff`
+- Round-1 reviewer samples, the arm that measurements score:
+  `python -m eval_harness.round1 run --proposal "..." --diff docs/fixtures/qttune_bridge_refactor.diff --runs 6`
+  Each sample is the reviewer call a debate's first round makes, same
+  prompt and settings, without the rest of the debate. Records go to
+  `coach_artifacts/measurement_*.json`.
+- Score round-1 blockers from measurement or debate records:
+  `python -m eval_harness.round1 score --diff docs/fixtures/qttune_bridge_refactor.diff --symbols SignalListModel,MaxInFlightFrames,m_inFlightFrames --repo ../qttune --rev 8ffbf19 "coach_artifacts/*.json"`
+  First attempts on that exact diff only. It counts M1 and lists M2
+  candidates for confirming by hand (ADR-0002, fifth measurement).
 
 ## What Makes This Different From Tutorial Projects
 

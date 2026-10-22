@@ -1,5 +1,6 @@
 """Debate orchestration — the loop, guardrail application, judging,
-and decision-record persistence."""
+and decision-record persistence. Also the round-1 reviewer measurement
+mode, which sends the reviewer the same first transcript as a debate."""
 
 import hashlib
 import json
@@ -8,7 +9,7 @@ import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, NamedTuple, Optional, Tuple
 
 from adjudication import (JUDGE_VERSION, convergence_verdict,
                           demote_hedged_blockers, derive_verdict,
@@ -65,6 +66,12 @@ REVISE ADDRESSING:
 - Engineer concerns: {concerns}"""
 
 AGENT_FAILURE_VERDICT = "AGENT_FAILURE - MANUAL_REVIEW_REQUIRED"
+# A measurement judges nothing, so its record must never read as a merge
+# decision, approving or otherwise.
+MEASUREMENT_VERDICT = "NOT_ADJUDICATED - ROUND1_MEASUREMENT"
+
+DEBATE_MODE = "debate"
+MEASUREMENT_MODE = "round1_reviewer"
 
 # A path-like token with at least one directory and a file extension,
 # e.g. 'core/src/x.cpp'. Rejects prose such as 'File/layer:'.
@@ -107,6 +114,12 @@ def _is_failure(agent_out: dict) -> bool:
     return agent_out.get("verdict") == "PARSE_FAILURE"
 
 
+def _new_id(kind: str) -> str:
+    """Timestamp plus a random suffix, so same-second runs don't collide."""
+    return (f"{kind}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+            f"_{uuid.uuid4().hex[:6]}")
+
+
 def _load_repo_index(path: Optional[Path] = None) -> dict:
     """Load the checked-in context pack from next to repo_context.py, so
     retrieval works from any working directory. Fail visible, not fatal:
@@ -132,6 +145,109 @@ def _retrieve_pack(code_diff: str) -> Tuple[str, dict]:
         return "", {"error": f"malformed index: {type(exc).__name__}: {exc}"}
 
 
+class _Setup(NamedTuple):
+    """What every transcript of one review is built from. Shared by
+    run_debate and run_round1_review, so a measurement sends the reviewer
+    exactly the prompt a debate's first call does."""
+    reviewer_prompt: str
+    static_section: str
+    pack_text: str
+    pack_report: dict
+    file_path: str
+    layer: Optional[str]
+    layer_note: str
+
+
+def _prepare(code_diff: str, code_context: str, header_artifact: bool) -> _Setup:
+    """Retrieve the context pack and build the static transcript sections.
+    header_artifact selects the header-scoped reviewer prompt (interface
+    definitions) instead of implementation standards."""
+    reviewer_prompt = (REVIEWER_HEADER_PROMPT if header_artifact
+                       else REVIEWER_IMPL_PROMPT)
+
+    # ============ CONTEXT PACK RETRIEVAL ============
+    pack_text, pack_report = _retrieve_pack(code_diff)
+    if pack_report.get("error"):
+        print(f"WARNING: repo context retrieval unavailable "
+              f"({pack_report['error']}); continuing without it.",
+              file=sys.stderr)
+    # The record keeps the exact pack the agents saw: repo_context.json is
+    # overwritten on every re-index, so this is the only surviving copy.
+    pack_report["sha256"] = _sha256(pack_text) if pack_text else None
+    pack_report["text"] = pack_text
+
+    # Static transcript sections — built once, they never change.
+    static_section = STATIC_TEMPLATE.format(
+        diff=code_diff or '(no diff attached)',
+        context=(code_context[:CONTEXT_CHAR_LIMIT] if code_context
+                 else '(none provided)'))
+
+    file_path = extract_file_path(code_diff, code_context)
+    layer = identify_layer(file_path) if file_path else None
+    layer_note = get_layer_constraints(layer) if layer else ""
+    if pack_text:
+        static_section += REPO_CONTEXT_TEMPLATE.format(pack=pack_text)
+    if layer_note:
+        static_section = f"{static_section}\n{layer_note}\n"
+    return _Setup(reviewer_prompt, static_section, pack_text, pack_report,
+                  file_path, layer, layer_note)
+
+
+def _render_transcript(proposal: str, static_section: str, round_num: int) -> str:
+    """Full per-round transcript. Rendered EVERY round so the agents see
+    the revised proposal (prior critiques included)."""
+    return TRANSCRIPT_TEMPLATE.format(
+        proposal=proposal, static_section=static_section, round_num=round_num)
+
+
+def _validate_reviewer(raw):
+    return normalize_agent_output(raw, "reviewer")
+
+
+def _validate_engineer(raw):
+    return normalize_agent_output(raw, "engineer")
+
+
+def _record_inputs(setup: _Setup, proposal: str, original_proposal: str,
+                   code_diff: str, code_context: str,
+                   header_artifact: bool) -> dict:
+    return {
+        "proposal": proposal,  # final, feedback-grown (archived meaning)
+        "original_proposal": original_proposal,
+        "header_artifact": header_artifact,
+        "file_path": setup.file_path or None,
+        "layer": setup.layer,
+        "diff_sha256": _sha256(code_diff) if code_diff else None,
+        "diff_chars": len(code_diff),
+        "context_sha256": _sha256(code_context) if code_context else None,
+        "context_chars": len(code_context),
+        "context_truncated": len(code_context) > CONTEXT_CHAR_LIMIT,
+    }
+
+
+def _run_settings(setup: _Setup, mode: str, max_rounds: int) -> dict:
+    """Sampling settings and prompt provenance. A measurement's
+    fingerprint covers the engineer's templates too, though it never sends
+    them: the fingerprint names the prompt revision, so measurement
+    samples group with the debates of the same revision, and `mode` tells
+    them apart."""
+    return {
+        "mode": mode,
+        "max_rounds": max_rounds,
+        "temperature_exploration": TEMPERATURE_EXPLORATION,
+        "temperature_retry": TEMPERATURE_RETRY,
+        "num_ctx": NUM_CTX,
+        "num_predict": NUM_PREDICT,
+        "context_char_limit": CONTEXT_CHAR_LIMIT,
+        "repo_context_pack": setup.pack_report,
+        "prompt_fingerprint": _prompt_fingerprint(
+            setup.reviewer_prompt, AUTO_ENGINEER_PROMPT, STATIC_TEMPLATE,
+            TRANSCRIPT_TEMPLATE, FEEDBACK_TEMPLATE, setup.layer_note,
+            # the pack's template and format, not its input-derived text
+            REPO_CONTEXT_TEMPLATE + PACK_FORMAT_VERSION if setup.pack_text else ""),
+    }
+
+
 def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
                header_artifact: bool = False) -> dict:
     """Orchestrates the full debate loop. Returns structured decision
@@ -149,68 +265,23 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
     Retrieval failure is non-fatal and recorded in the decision record.
     PROMPT_VERSION v5-context-pack.
     """
-    debate_id = (f"debate_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
-                 f"_{uuid.uuid4().hex[:6]}")
+    debate_id = _new_id("debate")
     original_proposal = proposal
-
-    reviewer_prompt = (REVIEWER_HEADER_PROMPT if header_artifact
-                       else REVIEWER_IMPL_PROMPT)
-
-    # ============ CONTEXT PACK RETRIEVAL ============
-    pack_text, pack_report = _retrieve_pack(code_diff)
-    retrieval_error = pack_report.get("error")
-    if retrieval_error:
-        print(f"WARNING: repo context retrieval unavailable "
-              f"({retrieval_error}); debating without it.", file=sys.stderr)
-    # The record keeps the exact pack the agents saw: repo_context.json is
-    # overwritten on every re-index, so this is the only surviving copy.
-    pack_report["sha256"] = _sha256(pack_text) if pack_text else None
-    pack_report["text"] = pack_text
-    if pack_text:
-        repo_context_section = REPO_CONTEXT_TEMPLATE.format(pack=pack_text)
-    else:
-        repo_context_section = ""
-
-    # Static transcript sections — built once, they never change.
-    static_section = STATIC_TEMPLATE.format(
-        diff=code_diff or '(no diff attached)',
-        context=(code_context[:CONTEXT_CHAR_LIMIT] if code_context
-                 else '(none provided)'))
-
-    file_path = extract_file_path(code_diff, code_context)
-    layer = identify_layer(file_path) if file_path else None
-    layer_note = get_layer_constraints(layer) if layer else ""
-    if repo_context_section:
-        static_section = f"{static_section}{repo_context_section}"
-    if layer_note:
-        static_section = f"{static_section}\n{layer_note}\n"
-
-    def render_transcript(current_proposal: str, round_num: int) -> str:
-        """Full per-round transcript. Called EVERY round so the agents
-        see the revised proposal (prior critiques included)."""
-        return TRANSCRIPT_TEMPLATE.format(
-            proposal=current_proposal, static_section=static_section,
-            round_num=round_num)
-
-    def validate_reviewer(raw):
-        return normalize_agent_output(raw, "reviewer")
-
-    def validate_engineer(raw):
-        return normalize_agent_output(raw, "engineer")
+    setup = _prepare(code_diff, code_context, header_artifact)
 
     round_history: List[dict] = []
     agent_failures: List[str] = []
 
     for round_num in range(1, MAX_DEBATE_ROUNDS + 1):
-        transcript = render_transcript(proposal, round_num)
+        transcript = _render_transcript(proposal, setup.static_section, round_num)
         temperature = (TEMPERATURE_EXPLORATION if round_num == 1
                        else TEMPERATURE_RETRY)
 
         # Both agents critique the same transcript; they do not see
         # each other's responses until the judge feeds feedback back
         telemetry = {"reviewer": [], "auto_engineer": []}
-        reviewer = call_agent(MODELS["code_reviewer"], reviewer_prompt,
-                              transcript, temperature, validate=validate_reviewer,
+        reviewer = call_agent(MODELS["code_reviewer"], setup.reviewer_prompt,
+                              transcript, temperature, validate=_validate_reviewer,
                               telemetry=telemetry["reviewer"])
         if _is_failure(reviewer):
             # The round cannot be judged either way; don't spend another
@@ -219,7 +290,7 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
         else:
             engineer = call_agent(MODELS["auto_engineer"], AUTO_ENGINEER_PROMPT,
                                   transcript, temperature,
-                                  validate=validate_engineer,
+                                  validate=_validate_engineer,
                                   telemetry=telemetry["auto_engineer"])
 
         # ============ GUARDRAIL: hedge demotion (before storing) ============
@@ -270,34 +341,12 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
             blockers='; '.join(str(b) for b in reviewer_blockers),
             concerns='; '.join(str(c) for c in engineer_concerns))
 
-    inputs = {
-        "proposal": proposal,  # final, feedback-grown (archived meaning)
-        "original_proposal": original_proposal,
-        "header_artifact": header_artifact,
-        "file_path": file_path or None,
-        "layer": layer,
-        "diff_sha256": _sha256(code_diff) if code_diff else None,
-        "diff_chars": len(code_diff),
-        "context_sha256": _sha256(code_context) if code_context else None,
-        "context_chars": len(code_context),
-        "context_truncated": len(code_context) > CONTEXT_CHAR_LIMIT,
-    }
-    run_settings = {
-        "temperature_exploration": TEMPERATURE_EXPLORATION,
-        "temperature_retry": TEMPERATURE_RETRY,
-        "num_ctx": NUM_CTX,
-        "num_predict": NUM_PREDICT,
-        "context_char_limit": CONTEXT_CHAR_LIMIT,
-        "repo_context_pack": pack_report,
-        "prompt_fingerprint": _prompt_fingerprint(
-            reviewer_prompt, AUTO_ENGINEER_PROMPT, STATIC_TEMPLATE,
-            TRANSCRIPT_TEMPLATE, FEEDBACK_TEMPLATE, layer_note,
-            # the pack's template and format, not its input-derived text
-            REPO_CONTEXT_TEMPLATE + PACK_FORMAT_VERSION if pack_text else ""),
-    }
     decision_record = _save_decision_record(
-        debate_id, inputs, final_verdict, round_history, run_settings,
-        agent_failures)
+        debate_id,
+        _record_inputs(setup, proposal, original_proposal, code_diff,
+                       code_context, header_artifact),
+        final_verdict, round_history,
+        _run_settings(setup, DEBATE_MODE, MAX_DEBATE_ROUNDS), agent_failures)
 
     last = round_history[-1]
     result = {
@@ -320,36 +369,98 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
     }
     if agent_failures:
         result["agent_failures"] = agent_failures
-    if retrieval_error:
-        result["retrieval_error"] = retrieval_error
+    if setup.pack_report.get("error"):
+        result["retrieval_error"] = setup.pack_report["error"]
     return result
 
 
-def _save_decision_record(debate_id: str, inputs: dict, verdict: str,
+def run_round1_review(proposal: str, code_diff: str = "", code_context: str = "",
+                      header_artifact: bool = False) -> dict:
+    """One reviewer call on the transcript a debate's first round sends,
+    for measurements, which score round-1 reviewer blockers. The round-1
+    reviewer never sees the engineer, so this samples the same output as
+    a debate's first call without running the rest of the debate.
+
+    Retries and hedge demotion work as in a debate; nothing is judged. The
+    record is coach_artifacts/measurement_<id>.json, with mode
+    round1_reviewer, verdict MEASUREMENT_VERDICT (AGENT_FAILURE_VERDICT if
+    every attempt failed), and no engineer entry in its one round."""
+    measurement_id = _new_id("round1")
+    setup = _prepare(code_diff, code_context, header_artifact)
+
+    telemetry = {"reviewer": []}
+    reviewer = call_agent(MODELS["code_reviewer"], setup.reviewer_prompt,
+                          _render_transcript(proposal, setup.static_section, 1),
+                          TEMPERATURE_EXPLORATION, validate=_validate_reviewer,
+                          telemetry=telemetry["reviewer"])
+    reviewer, demoted = demote_hedged_blockers(reviewer, "questions")
+    agent_failures = ([f"round 1 reviewer: "
+                       f"{reviewer.get('failure_reason', 'unknown')}"]
+                      if _is_failure(reviewer) else [])
+    verdict = AGENT_FAILURE_VERDICT if agent_failures else MEASUREMENT_VERDICT
+    round_history = [{
+        "round": 1,
+        "reviewer": reviewer,
+        "hedge_demotions": {"reviewer_demoted": demoted},
+        "telemetry": telemetry,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }]
+    record = _save_decision_record(
+        measurement_id,
+        _record_inputs(setup, proposal, proposal, code_diff, code_context,
+                       header_artifact),
+        verdict, round_history, _run_settings(setup, MEASUREMENT_MODE, 1),
+        agent_failures)
+
+    result = {
+        "measurement_id": measurement_id,
+        "final_verdict": verdict,
+        "record_path": str(record),
+        "blockers": len(reviewer.get("blockers", []) or []),
+        "attempts": len(telemetry["reviewer"]),
+    }
+    if agent_failures:
+        result["agent_failures"] = agent_failures
+    if setup.pack_report.get("error"):
+        result["retrieval_error"] = setup.pack_report["error"]
+    return result
+
+
+# mode -> (file name prefix, artifact type, intended consumer)
+_RECORD_KINDS = {
+    DEBATE_MODE: ("decision", "decision_record", "coach_agent"),
+    MEASUREMENT_MODE: ("measurement", "measurement_record", "eval_harness.round1"),
+}
+
+
+def _save_decision_record(record_id: str, inputs: dict, verdict: str,
                            round_history: List[dict], run_settings: dict,
                            agent_failures: List[str]) -> Path:
-    """ADR-style artifact for coach pipeline."""
+    """ADR-style artifact for coach pipeline. A measurement is saved as
+    measurement_<id>.json, so nothing reads it as a merge decision. Both
+    kinds keep the id under metadata.debate_id, so record readers need no
+    branch."""
+    prefix, artifact_type, consumer = _RECORD_KINDS[run_settings["mode"]]
     record = {
         "metadata": {
-            "debate_id": debate_id,
+            "debate_id": record_id,
             "created_utc": datetime.now(timezone.utc).isoformat(),
             "prompt_version": PROMPT_VERSION,
             "judge_version": JUDGE_VERSION,
             "models_used": MODELS,
-            "max_rounds": MAX_DEBATE_ROUNDS,
             **run_settings,
         },
         "inputs": inputs,
         "outputs": {"final_verdict": verdict, "round_history": round_history,
                     "agent_failures": agent_failures},
         "audit_trail": {
-            "artifact_type": "decision_record",
-            "intended_consumer": "coach_agent",
+            "artifact_type": artifact_type,
+            "intended_consumer": consumer,
             "validation_method": "golden_test_suite",
         },
     }
     output_dir = Path("coach_artifacts")
     output_dir.mkdir(exist_ok=True)
-    output_file = output_dir / f"decision_{debate_id}.json"
+    output_file = output_dir / f"{prefix}_{record_id}.json"
     output_file.write_text(json.dumps(record, indent=2), encoding="utf-8")
     return output_file

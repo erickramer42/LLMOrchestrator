@@ -33,6 +33,7 @@ from adjudication import (JUDGE_VERSION, convergence_verdict,  # noqa: E402
                           demote_hedged_blockers, derive_verdict,
                           normalize_agent_output)
 from agent_client import call_agent, failure_result  # noqa: E402
+from eval_harness import round1  # noqa: E402
 from eval_harness.bakeoff import tally  # noqa: E402
 from eval_harness.probe import summarize  # noqa: E402
 from file_metadata import identify_layer  # noqa: E402
@@ -360,6 +361,7 @@ class DebateTests(NoSleep):
         self.assertEqual(len(rec["inputs"]["diff_sha256"]), 64)
         self.assertEqual(len(rec["metadata"]["prompt_fingerprint"]), 16)
         self.assertEqual(rec["metadata"]["judge_version"], JUDGE_VERSION)
+        self.assertEqual(rec["metadata"]["mode"], debate.DEBATE_MODE)
         self.assertEqual(rec["outputs"]["agent_failures"], [])
 
     # ---- convergence (backlog #2) ----
@@ -490,6 +492,52 @@ class DebateTests(NoSleep):
         self.assertEqual(len(telemetry["reviewer"]), 3)
         self.assertEqual(telemetry["auto_engineer"], [])
 
+    # ---- round-1 measurement mode ----
+
+    def test_round1_measurement_sends_the_debates_first_call(self):
+        # Measurements stand in for debate round 1 only if the reviewer
+        # gets the identical request.
+        path = self.write_index([{"path": "app/x.cpp", "layer": "bridge",
+                                  "purpose": "Sentinel purpose for retrieval."}])
+        diff = "+++ b/app/x.cpp\n-int gone;\n+int y;\n"
+        with mock.patch.object(debate, "CONTEXT_PATH", path):
+            with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN) as post:
+                debated = debate.run_debate("p", diff, "ctx")
+            first_call = post.call_args_list[0].kwargs["json"]
+            with fake_ollama(REVIEWER_CLEAN) as post:
+                measured = debate.run_round1_review("p", diff, "ctx")
+        self.assertEqual(post.call_args_list[0].kwargs["json"], first_call)
+        a = self.record(debated)["metadata"]
+        b = json.loads(Path(measured["record_path"]).read_text(encoding="utf-8"))["metadata"]
+        self.assertEqual(a["prompt_fingerprint"], b["prompt_fingerprint"])
+        self.assertEqual(a["repo_context_pack"], b["repo_context_pack"])
+
+    def test_round1_measurement_makes_one_call_and_no_decision(self):
+        rev = {**REVIEWER_CLEAN, "blockers": ["memcpy overflows buf[8] at line 4",
+                                              "x might race"]}
+        with fake_ollama(rev) as post:
+            result = debate.run_round1_review("p", "+++ b/core/src/x.cpp\n", "")
+        self.assertEqual(post.call_count, 1)
+        self.assertEqual(result["final_verdict"], debate.MEASUREMENT_VERDICT)
+        self.assertEqual(result["blockers"], 1)
+        self.assertTrue(Path(result["record_path"]).name.startswith("measurement_round1_"))
+        rec = json.loads(Path(result["record_path"]).read_text(encoding="utf-8"))
+        self.assertEqual((rec["metadata"]["mode"], rec["metadata"]["max_rounds"]),
+                         (debate.MEASUREMENT_MODE, 1))
+        self.assertEqual(rec["audit_trail"]["artifact_type"], "measurement_record")
+        (only_round,) = rec["outputs"]["round_history"]
+        self.assertNotIn("auto_engineer", only_round)
+        self.assertEqual(only_round["hedge_demotions"], {"reviewer_demoted": 1})
+        self.assertEqual(only_round["reviewer"]["questions"], ["x might race"])
+
+    def test_round1_measurement_fails_closed(self):
+        bad = {"verdict": "approve", "summary": "looks fine"}
+        with fake_ollama(bad, bad, bad) as post:
+            result = debate.run_round1_review("p", "", "")
+        self.assertEqual(post.call_count, 3)
+        self.assertEqual(result["final_verdict"], debate.AGENT_FAILURE_VERDICT)
+        self.assertIn("schema violation", result["agent_failures"][0])
+
 
 # ============ eval scoring ============
 
@@ -522,6 +570,85 @@ class EvalScoringTests(unittest.TestCase):
         self.assertEqual((s["tp"], s["fn"], s["bug_total"]), (1, 2, 3))
         self.assertEqual(s["fp"] + s["clean_ok"] + s["clean_failed"], s["clean_total"])
         self.assertEqual((s["json_fails"], s["timeouts"]), (2, 1))
+
+
+ROUND1_DIFF = ("+++ b/app/x.cpp\n"
+               "-int m_gone = 0;  // the batch\n"
+               "-SignalListModel model;\n"
+               "+int m_kept = 0;\n")
+
+
+def round1_record(record_id, blockers, diff=ROUND1_DIFF, attempts=(0,),
+                  failed=False):
+    """A minimal decision record: round 1's reviewer, its telemetry and
+    the diff hash. attempts=None leaves telemetry out (pre-v5.2)."""
+    reviewer = (failure_result("x") if failed
+                else {**REVIEWER_CLEAN, "blockers": list(blockers)})
+    first_round = {"round": 1, "reviewer": reviewer}
+    if attempts is not None:
+        first_round["telemetry"] = {"reviewer": [{"attempt": a} for a in attempts]}
+    return {"metadata": {"debate_id": record_id, "prompt_version": "v",
+                         "prompt_fingerprint": "f"},
+            "inputs": {"diff_sha256": debate._sha256(diff)},
+            "outputs": {"round_history": [first_round]}}
+
+
+class Round1ScoringTests(unittest.TestCase):
+    def test_attempt_status(self):
+        self.assertEqual(round1.attempt_status(round1_record("a", [])), "first")
+        self.assertEqual(round1.attempt_status(round1_record("a", [], attempts=(0, 1))),
+                         "retry")
+        self.assertEqual(round1.attempt_status(round1_record("a", [], failed=True)),
+                         "failed")
+        self.assertEqual(round1.attempt_status(round1_record("a", [], attempts=None)),
+                         "unknown")
+
+    def test_m1_is_whole_word_and_case_sensitive(self):
+        hits = [round1.m1_hits(text, ["SignalListModel"])
+                for text in ("SignalListModel.", "SignalListModelX", "signallistmodel")]
+        self.assertEqual(hits, [["SignalListModel"], [], []])
+
+    def test_m2_candidates_are_removed_code_names_the_post_state_lacks(self):
+        removed = repo_context._removed_identifiers(ROUND1_DIFF)
+        blocker = "m_gone is still read next to m_kept; the batch breaks"
+        self.assertEqual(round1.m2_candidates(blocker, removed, lambda n: True),
+                         ["m_gone"])  # 'batch' is removed too, but English
+        self.assertEqual(round1.m2_candidates(blocker, removed, lambda n: False), [])
+
+    def test_only_first_attempts_on_this_diff_are_scored(self):
+        records = [("p", round1_record("first", ["m_gone survives in SignalListModel"])),
+                   ("p", round1_record("retry", ["b"], attempts=(0, 1))),
+                   ("p", round1_record("failed", [], failed=True)),
+                   ("p", round1_record("other", ["b"], diff="+++ b/y.cpp\n")),
+                   ("p", round1_record("old", ["b"], attempts=None))]
+        scores = round1.score_records(records, ROUND1_DIFF, ["SignalListModel"],
+                                      lambda n: True)
+        self.assertEqual([r["id"] for r in scores["rows"]], ["first", "old"])
+        self.assertEqual([r for r, _ in scores["excluded"]], ["retry", "failed", "other"])
+        self.assertEqual(scores["rows"][0]["blockers"][0]["m2"],
+                         ["SignalListModel", "m_gone"])
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            round1.print_report(scores, ["SignalListModel"], m2_on=True)
+        self.assertIn("scored 2 record(s): 2 blockers, M1 1, M2 candidates 1",
+                      out.getvalue())
+        self.assertIn("1 record(s) predate telemetry", out.getvalue())
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_post_state_check_greps_the_given_commit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            git = ["git", "-C", tmp, "-c", "user.name=t", "-c", "user.email=t@t"]
+            subprocess.run(["git", "init", "-q", tmp], check=True)
+            Path(tmp, "x.cpp").write_text("int m_kept = 0;\n", encoding="utf-8")
+            subprocess.run(git + ["add", "x.cpp"], check=True)
+            subprocess.run(git + ["commit", "-q", "-m", "c"], check=True)
+            Path(tmp, "x.cpp").write_text("int m_gone = 0;\n", encoding="utf-8")
+            lacks = round1.post_state_lacks(tmp, "HEAD")
+            # the commit, not the working tree, decides
+            self.assertEqual((lacks("m_kept"), lacks("m_gone"), lacks("m_kep")),
+                             (False, True, True))
+            with self.assertRaises(SystemExit):
+                round1.post_state_lacks(tmp, "no-such-rev")
 
 
 # ============ repo_context ============
@@ -651,6 +778,13 @@ class CliTests(unittest.TestCase):
     def test_diff_requires_proposal(self):
         r = self.run_cli("--golden", "--diff", "x.diff")
         self.assertEqual(r.returncode, 2)
+
+    def test_round1_score_needs_repo_and_rev_together(self):
+        r = subprocess.run([sys.executable, "-m", "eval_harness.round1", "score",
+                            "--diff", "x.diff", "--repo", "../qttune", "r.json"],
+                           cwd=REPO_ROOT, capture_output=True, text=True, timeout=60)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("--repo and --rev go together", r.stderr)
 
 
 if __name__ == "__main__":
