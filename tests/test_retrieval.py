@@ -105,7 +105,7 @@ class BuildContextPack(unittest.TestCase):
     def test_budget_enforced(self):
         text, report = rc.build_context_pack(self.DIFF, self.INDEX,
                                              budget=50)
-        self.assertLessEqual(len(text), 70)  # marker allowance
+        self.assertEqual(len(text), 50)  # the marker counts against the budget
         self.assertEqual(report["used"], 50)
         self.assertIn("truncated", text.lower())
 
@@ -240,6 +240,64 @@ class TypeAndPurposeRendering(unittest.TestCase):
         self.assertIn("Also modified (build/docs/CI, no summary): app/CMakeLists.txt",
                       text)
         self.assertNotIn("Build configuration", text)
+
+
+# ============ code review 2026-10-21, finding 6: pack accounting and sections ============
+
+class PackAccountingAndSections(unittest.TestCase):
+    INDEX = BuildContextPack.INDEX
+    DIFF = BuildContextPack.DIFF
+
+    def test_used_is_the_length_the_model_sees(self):
+        text, report = rc.build_context_pack(self.DIFF, self.INDEX)
+        self.assertTrue(text)
+        self.assertEqual(report["used"], len(text))
+
+    def test_truncation_is_decided_on_the_real_length(self):
+        # A budget between the old per-section undercount and the real
+        # length used to slip through untruncated.
+        full, _ = rc.build_context_pack(self.DIFF, self.INDEX)
+        text, report = rc.build_context_pack(self.DIFF, self.INDEX,
+                                             budget=len(full) - 1)
+        self.assertIn("[... context truncated ...]", text)
+        self.assertEqual(report["used"], len(full) - 1)
+
+    def test_types_without_constants_have_no_empty_constants_header(self):
+        text, report = rc.build_context_pack(self.DIFF, self.INDEX)
+        self.assertEqual(report["sections"]["constants"], 0)
+        self.assertIn("--- KNOWN TYPES ---", text)
+        self.assertNotIn("CONSTANTS", text)
+
+    def test_constants_without_types_have_no_empty_types_header(self):
+        text, _ = rc.build_context_pack(
+            "+++ b/core/src/codec.c\n+if (n > MAX_FRAMES) return;", self.INDEX)
+        self.assertIn("--- CONSTANTS ---\nMAX_FRAMES = 512", text)
+        self.assertNotIn("KNOWN TYPES", text)
+
+    def test_related_call_sites_do_not_need_a_direct_call_site(self):
+        index = dict(self.INDEX, callsites=[
+            {"file": "core/include/qttune.h", "line": 3, "doc": None,
+             "snippet": "connect(a, s1, b, s2, Qt::QueuedConnection);"}])
+        # codec.c has no call sites of its own; the type it uses does.
+        text, report = rc.build_context_pack(
+            "+++ b/core/src/codec.c\n+qttune_frame_t f;", index)
+        self.assertNotIn("--- QUEUED CONNECTION CALL SITES ---", text)
+        self.assertIn("--- RELATED CALL SITES (TYPE DEFINITIONS) ---\n"
+                      "[core/include/qttune.h:3]", text)
+        self.assertEqual(report["sections"]["related_call_sites"], 1)
+        self.assertEqual(report["entries"], 3)  # file, type, related site
+
+    def test_report_names_index_and_format_versions(self):
+        index = dict(self.INDEX, index_version="idx_test")
+        _, report = rc.build_context_pack(self.DIFF, index)
+        self.assertEqual(report["index_version"], "idx_test")
+        self.assertEqual(report["format_version"], rc.PACK_FORMAT_VERSION)
+
+    def test_index_without_types_or_constants_still_retrieves(self):
+        index = {"files": self.INDEX["files"]}
+        text, report = rc.build_context_pack(self.DIFF, index)
+        self.assertIn("Bridge between C core and QML UI", text)
+        self.assertIsNone(report["error"])
 
 
 if __name__ == "__main__":

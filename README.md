@@ -164,14 +164,18 @@ measured N=3 — see ADR-0002.
 
 8. **Self-describing decision records** — Each record holds the original
    proposal, SHA-256 hashes of the diff and context, the detected layer,
-   sampling settings, per-round hedge-demotion counts, retrieval
-   diagnostics (`repo_context_pack`) and any agent failure reasons, so
-   a record can be matched to its fixture and re-run.
+   sampling settings, per-round hedge-demotion counts, per-attempt token
+   telemetry (`prompt_eval_count`, `eval_count`, `done_reason`, wall
+   time), the exact retrieved pack with its hash and index version
+   (`repo_context_pack`) and any agent failure reasons, so a record can
+   be matched to its fixture and re-run.
 
 9. **Repo-context retrieval** — Retrieved ground truth (file purposes,
    type definitions, constants, queued-connection call sites) keyed to
-   the diff is injected into the transcript under a char budget, and
-   the pack text participates in the prompt fingerprint. Rationale:
+   the diff is injected into the transcript under a char budget. The
+   pack's template and format version participate in the prompt
+   fingerprint; the pack text itself is recorded separately, because it
+   depends on the reviewed diff. Rationale:
    no output filter can fix a model confidently asserting facts it
    cannot see — only showing it the facts can.
 

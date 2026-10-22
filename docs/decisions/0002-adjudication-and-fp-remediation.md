@@ -293,6 +293,17 @@ previously-shipped bugs from a diff alone.
   AGENT_FAILURE). The retrieval budget competes with the debate
   loop's context growth; pack-from-rounds-2+ or a larger num_ctx is
   the trade space.
+  *Correction (2026-10-22, code review 2026-10-21 finding 8):* the
+  prompt sizes do not support this attribution. In run 2 the diff is
+  26,695 of ~32,000 prompt chars (~83%); the pack is 2,023 and the
+  reviewer system prompt 1,890, and the proposal grew from 66 to 1,371
+  chars. Round 2's prompt was only ~4% larger than round 1's, which
+  completed. Thinking-token output in a nearly full 16K window is the
+  likelier driver, but no token counts were recorded, so it is
+  unverified. Debates record per-attempt token telemetry from
+  2026-10-22 on (STATUS backlog #4). The trade space is an output cap
+  (`num_predict`) or a larger num_ctx; dropping the pack recovers
+  little.
 
 **Re-adjudication flag (retroactive):** the v1 re-measurement's
 dominant residual class — thread-safety claims on

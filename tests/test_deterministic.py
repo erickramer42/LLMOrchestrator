@@ -44,10 +44,11 @@ ENGINEER_CLEAN = {"verdict": "approve", "blockers": [], "concerns": [], "questio
 class FakeResp:
     """Minimal stand-in for an Ollama /api/chat response."""
 
-    def __init__(self, content, done_reason="stop"):
+    def __init__(self, content, done_reason="stop", **stats):
         if not isinstance(content, str):
             content = json.dumps(content)
-        self._body = {"message": {"content": content}, "done_reason": done_reason}
+        self._body = {"message": {"content": content}, "done_reason": done_reason,
+                      **stats}
         self.text = json.dumps(self._body)
 
     def raise_for_status(self):
@@ -202,10 +203,43 @@ class AgentClientTests(NoSleep):
 
     def test_truncated_output_points_at_num_ctx(self):
         cut = FakeResp('{"verdict": "reject", "blockers": ["unterminated',
-                       done_reason="length")
+                       done_reason="length", prompt_eval_count=9000,
+                       eval_count=7384)
         with fake_ollama(cut, cut, cut):
             out = call_agent("m", "sys", "t", 0.7)
         self.assertIn("NUM_CTX", out["failure_reason"])
+        self.assertIn("9000 prompt + 7384 output tokens", out["failure_reason"])
+
+    # ---- telemetry (code review 2026-10-21, finding 8) ----
+
+    def test_every_attempt_is_recorded_successful_or_not(self):
+        calls = []
+        bad = FakeResp({"verdict": "reject", "issues": ["x"]},
+                       prompt_eval_count=120, eval_count=30)
+        good = FakeResp(REVIEWER_CLEAN, prompt_eval_count=140, eval_count=25)
+        with fake_ollama(requests.exceptions.Timeout(), bad, good):
+            out = call_agent("m", "sys", "t", 0.7, validate=self.validate,
+                             telemetry=calls)
+        self.assertEqual(out["blockers"], [])
+        self.assertEqual([c["attempt"] for c in calls], [0, 1, 2])
+        self.assertEqual([c["temperature"] for c in calls],
+                         [0.7, agent_client.TEMPERATURE_RETRY,
+                          agent_client.TEMPERATURE_RETRY])
+        timeout, schema, ok = calls
+        self.assertIsNone(timeout["prompt_eval_count"])
+        self.assertTrue(timeout["outcome"].startswith("timeout"))
+        self.assertEqual((schema["prompt_eval_count"], schema["eval_count"]), (120, 30))
+        self.assertIn("schema violation", schema["outcome"])
+        self.assertEqual((ok["prompt_eval_count"], ok["done_reason"], ok["outcome"]),
+                         (140, "stop", "ok"))
+        # the retry carries the corrective message, so its prompt is longer
+        self.assertEqual(schema["prompt_chars"], len("sys") + len("t"))
+        self.assertGreater(ok["prompt_chars"], schema["prompt_chars"])
+
+    def test_telemetry_is_optional(self):
+        with fake_ollama(REVIEWER_CLEAN):
+            out = call_agent("m", "sys", "t", 0.7, validate=self.validate)
+        self.assertEqual(out["blockers"], [])
 
     def test_failure_results_do_not_share_lists(self):
         a = failure_result("x")
@@ -306,6 +340,64 @@ class DebateTests(NoSleep):
         self.assertIn("WARNING: repo context retrieval unavailable", stderr.getvalue())
         transcript = post.call_args_list[0].kwargs["json"]["messages"][1]["content"]
         self.assertNotIn("REPO CONTEXT", transcript)
+
+    # ---- record provenance and degradation (code review 2026-10-21, findings 5, 6, 8) ----
+
+    def debate_with_purpose(self, purpose):
+        path = self.write_index([{"path": "app/x.cpp", "layer": "bridge",
+                                  "purpose": purpose}])
+        with mock.patch.object(debate, "CONTEXT_PATH", path), \
+                fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN) as post:
+            result = debate.run_debate("p", "+++ b/app/x.cpp\n+int y;\n", "")
+        transcript = post.call_args_list[0].kwargs["json"]["messages"][1]["content"]
+        return self.record(result), transcript
+
+    def test_record_keeps_the_exact_pack_the_agents_saw(self):
+        rec, transcript = self.debate_with_purpose("Sentinel purpose for retrieval.")
+        pack = rec["metadata"]["repo_context_pack"]
+        self.assertIn(pack["text"], transcript)
+        self.assertEqual(pack["sha256"], debate._sha256(pack["text"]))
+        self.assertEqual(pack["used"], len(pack["text"]))
+        self.assertEqual(pack["format_version"], repo_context.PACK_FORMAT_VERSION)
+        self.assertIn("index_version", pack)
+
+    def test_fingerprint_depends_on_templates_not_on_the_pack_text(self):
+        rec_a, _ = self.debate_with_purpose("First purpose for the fingerprint.")
+        rec_b, _ = self.debate_with_purpose("Second, different purpose text.")
+        a, b = rec_a["metadata"], rec_b["metadata"]
+        self.assertNotEqual(a["repo_context_pack"]["sha256"],
+                            b["repo_context_pack"]["sha256"])
+        self.assertEqual(a["prompt_fingerprint"], b["prompt_fingerprint"])
+
+    def test_malformed_index_degrades_instead_of_crashing(self):
+        path = Path(self._tmp.name) / "bad.json"
+        path.write_text(json.dumps({"files": [{"path": "app/x.cpp"}],
+                                    "types": [{"kind": "struct"}]}),  # no "name"
+                        encoding="utf-8")
+        with mock.patch.object(debate, "CONTEXT_PATH", path), \
+                contextlib.redirect_stderr(io.StringIO()), \
+                fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN) as post:
+            result = debate.run_debate("p", "+++ b/app/x.cpp\n", "")
+        self.assertEqual(result["final_verdict"], "APPROVED_FOR_MERGE")
+        self.assertIn("malformed index: KeyError", result["retrieval_error"])
+        transcript = post.call_args_list[0].kwargs["json"]["messages"][1]["content"]
+        self.assertNotIn("REPO CONTEXT", transcript)
+
+    def test_rounds_record_per_attempt_telemetry(self):
+        with fake_ollama(FakeResp(REVIEWER_CLEAN, prompt_eval_count=900, eval_count=40),
+                         FakeResp(ENGINEER_CLEAN, prompt_eval_count=800, eval_count=20)):
+            result = debate.run_debate("p", "+++ b/core/src/x.cpp\n", "")
+        telemetry = self.record(result)["outputs"]["round_history"][0]["telemetry"]
+        self.assertEqual(telemetry["reviewer"][0]["prompt_eval_count"], 900)
+        self.assertEqual(telemetry["auto_engineer"][0]["eval_count"], 20)
+
+    def test_skipped_engineer_has_no_telemetry(self):
+        bad = {"verdict": "approve", "summary": "looks fine"}
+        with fake_ollama(bad, bad, bad):
+            result = debate.run_debate("p", "", "")
+        telemetry = self.record(result)["outputs"]["round_history"][0]["telemetry"]
+        self.assertEqual(len(telemetry["reviewer"]), 3)
+        self.assertEqual(telemetry["auto_engineer"], [])
 
 
 # ============ eval scoring ============

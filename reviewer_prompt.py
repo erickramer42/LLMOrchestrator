@@ -5,7 +5,11 @@ Any edit here must be reflected by bumping PROMPT_VERSION."""
 # v5.1 (2026-10-21): same templates as v5; the retrieved pack changed
 # (all identifiers matched, full typedef declarations + doc comments,
 # comment-free call-site summaries, word-boundary clipping, no empty pack).
-PROMPT_VERSION = "v5.1-retrieval-fidelity"
+# v5.2 (2026-10-22): pack format f2-sections. Empty section headers are
+# dropped, related call sites no longer need a direct call site, and
+# truncation measures the real pack length. The bridge fixture's pack is
+# byte-identical to v5.1's, so runs on it stay comparable.
+PROMPT_VERSION = "v5.2-pack-sections"
 
 AUTO_ENGINEER_PROMPT = """You are a senior automotive engineer advocating for QtTune's v0.2.0 goals:
 shipping velocity, J2534/ECU domain correctness, and safety.

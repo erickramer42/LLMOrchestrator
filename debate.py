@@ -8,7 +8,7 @@ import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from adjudication import (demote_hedged_blockers, derive_verdict,
                           normalize_agent_output)
@@ -17,7 +17,7 @@ from config import (MAX_DEBATE_ROUNDS, MODELS, NUM_CTX, REVIEWER_HEADER_PROMPT,
                     REVIEWER_IMPL_PROMPT, TEMPERATURE_EXPLORATION,
                     TEMPERATURE_RETRY)
 from file_metadata import get_layer_constraints, identify_layer
-from repo_context import CONTEXT_PATH, build_context_pack
+from repo_context import CONTEXT_PATH, PACK_FORMAT_VERSION, build_context_pack
 from reviewer_prompt import PROMPT_VERSION, AUTO_ENGINEER_PROMPT
 
 # ============ TRANSCRIPT TEMPLATES ============
@@ -94,7 +94,8 @@ def _sha256(text: str) -> str:
 def _prompt_fingerprint(*parts: str) -> str:
     """Hash of every model-facing template actually used. Catches prompt
     drift that PROMPT_VERSION misses (templates outside reviewer_prompt.py,
-    layer notes)."""
+    layer notes). Templates only, never text derived from the reviewed
+    input, so runs of one prompt on different diffs share a fingerprint."""
     return _sha256("\x1e".join(parts))[:16]
 
 
@@ -112,6 +113,19 @@ def _load_repo_index(path: Optional[Path] = None) -> dict:
         return json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         return {"_load_error": f"{type(exc).__name__}: {exc}"}
+
+
+def _retrieve_pack(code_diff: str) -> Tuple[str, dict]:
+    """(pack_text, pack_report) for the diff. Never raises: retrieval is
+    an aid, so a missing, corrupt or malformed index degrades the debate
+    to no retrieval, with the reason in report['error']."""
+    repo_index = _load_repo_index()
+    if "_load_error" in repo_index:
+        return "", {"error": repo_index["_load_error"]}
+    try:
+        return build_context_pack(code_diff, repo_index)
+    except Exception as exc:  # malformed index content, e.g. an entry without "name"
+        return "", {"error": f"malformed index: {type(exc).__name__}: {exc}"}
 
 
 def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
@@ -139,15 +153,15 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
                        else REVIEWER_IMPL_PROMPT)
 
     # ============ CONTEXT PACK RETRIEVAL ============
-    repo_index = _load_repo_index()
-    if "_load_error" not in repo_index:
-        pack_text, pack_report = build_context_pack(code_diff, repo_index)
-    else:
-        pack_text, pack_report = "", {"error": repo_index["_load_error"]}
+    pack_text, pack_report = _retrieve_pack(code_diff)
     retrieval_error = pack_report.get("error")
     if retrieval_error:
         print(f"WARNING: repo context retrieval unavailable "
               f"({retrieval_error}); debating without it.", file=sys.stderr)
+    # The record keeps the exact pack the agents saw: repo_context.json is
+    # overwritten on every re-index, so this is the only surviving copy.
+    pack_report["sha256"] = _sha256(pack_text) if pack_text else None
+    pack_report["text"] = pack_text
     if pack_text:
         repo_context_section = REPO_CONTEXT_TEMPLATE.format(pack=pack_text)
     else:
@@ -191,8 +205,10 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
 
         # Both agents critique the same transcript; they do not see
         # each other's responses until the judge feeds feedback back
+        telemetry = {"reviewer": [], "auto_engineer": []}
         reviewer = call_agent(MODELS["code_reviewer"], reviewer_prompt,
-                              transcript, temperature, validate=validate_reviewer)
+                              transcript, temperature, validate=validate_reviewer,
+                              telemetry=telemetry["reviewer"])
         if _is_failure(reviewer):
             # The round cannot be judged either way; don't spend another
             # (possibly 30-minute) failing call on the engineer.
@@ -200,7 +216,8 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
         else:
             engineer = call_agent(MODELS["auto_engineer"], AUTO_ENGINEER_PROMPT,
                                   transcript, temperature,
-                                  validate=validate_engineer)
+                                  validate=validate_engineer,
+                                  telemetry=telemetry["auto_engineer"])
 
         # ============ GUARDRAIL: hedge demotion (before storing) ============
         rev_before = len(reviewer.get("blockers", []) or [])
@@ -217,6 +234,7 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
             "reviewer": reviewer,
             "auto_engineer": engineer,
             "hedge_demotions": hedge_stats,
+            "telemetry": telemetry,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         })
 
@@ -272,11 +290,12 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
         "temperature_retry": TEMPERATURE_RETRY,
         "num_ctx": NUM_CTX,
         "context_char_limit": CONTEXT_CHAR_LIMIT,
-        "repo_context_pack": pack_report,  # NEW: retrieval provenance
+        "repo_context_pack": pack_report,
         "prompt_fingerprint": _prompt_fingerprint(
             reviewer_prompt, AUTO_ENGINEER_PROMPT, STATIC_TEMPLATE,
             TRANSCRIPT_TEMPLATE, FEEDBACK_TEMPLATE, layer_note,
-            repo_context_section),  # NEW: pack text feeds the fingerprint
+            # the pack's template and format, not its input-derived text
+            REPO_CONTEXT_TEMPLATE + PACK_FORMAT_VERSION if pack_text else ""),
     }
     decision_record = _save_decision_record(
         debate_id, inputs, final_verdict, round_history, run_settings,

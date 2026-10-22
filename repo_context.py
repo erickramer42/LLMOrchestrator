@@ -46,8 +46,6 @@ _PURPOSE_HINTS = {
 # Bump when SUMMARY_PROMPT changes: it keys the summary cache.
 SUMMARY_PROMPT_VERSION = "s2-json-purpose"
 
-# MODEL-FACING text (feeds debate.py's prompt_fingerprint — a change here
-# is a prompt change; PROMPT_VERSION must be bumped alongside).
 PACK_BUDGET = 6000
 
 # call_agent forces Ollama JSON mode, so the prompt must ask for JSON with
@@ -82,8 +80,13 @@ _DECL_NAME = re.compile(r"(\w+)\s*(?:\[[^\]]*\]\s*)*(?::\s*\w+\s*)?$")
 QUEUED_CONN_RE = re.compile(r"\bQt::(?:Blocking)?QueuedConnection\b")
 _STATEMENT_LEADS = ("connect", "invokeMethod")
 
-# Presentation limits for model-facing pack lines (part of the prompt:
-# changing them changes what agents see).
+# MODEL-FACING: build_context_pack's output format, PACK_BUDGET and the
+# limits below are part of the prompt. Bump PACK_FORMAT_VERSION (it feeds
+# debate.py's prompt_fingerprint) and PROMPT_VERSION together whenever any
+# of them changes what agents see.
+PACK_FORMAT_VERSION = "f2-sections"
+
+# Presentation limits for model-facing pack lines.
 SNIPPET_LIMIT = 300      # one rendered call site
 TYPE_DECL_LIMIT = 400    # one compact typedef declaration
 PURPOSE_LIMIT = 200      # one file purpose
@@ -638,19 +641,25 @@ def _callsite_line(cs: dict) -> str:
 def build_context_pack(code_diff: str, index: dict,
                        budget: int = PACK_BUDGET) -> Tuple[str, dict]:
     """Retrieve ground-truth context for a given diff. Returns (context_text,
-    pack_report). The pack_report contains budget accounting for ADR provenance.
-    
-    Priority order within budget:
+    pack_report). The pack_report holds the budget accounting, section
+    counts, index version and pack format version for the decision record.
+    report['used'] is len(context_text): exactly what the model sees,
+    excluding debate.py's REPO_CONTEXT_TEMPLATE wrapper.
+
+    Sections in priority order (truncation cuts from the end); a section
+    with no entries is left out entirely:
     1. Files directly modified (from +++ b/ headers)
-    2. Types/constants referenced by identifier in the diff
-    3. Queued-connection call sites in the affected files
-    4. Adjacent directory neighbors (if budget remains)
+    2. Types, then constants, referenced by identifier in the diff
+    3. Queued-connection call sites in the modified files
+    4. Queued-connection call sites in files that define a referenced type
     """
     report = {
         "budget": budget,
         "used": 0,
         "sections": {},
         "entries": 0,
+        "index_version": index.get("index_version"),
+        "format_version": PACK_FORMAT_VERSION,
         "error": None,
     }
 
@@ -660,89 +669,66 @@ def build_context_pack(code_diff: str, index: dict,
 
     diff_paths = _diff_paths(code_diff)
     ref_ids = _referenced_identifiers(code_diff)
+    sections = []
 
-    lines = ["""/*** REPO CONTEXT — GROUND TRUTH ***/\n"""]
-    chars_used = 0
+    def add_section(title: str, entry_lines: List[str]) -> None:
+        if entry_lines:
+            sections.append("\n".join([f"--- {title} ---", *entry_lines]) + "\n")
 
     # Section 1: Modified files (purpose + layer)
     mod_files = [f for f in index["files"] if f["path"] in diff_paths]
-    if mod_files:
-        section_lines = ["--- MODIFIED FILES ---"]
-        # Build/docs/CI files only carry a path-derived hint ("Build
-        # configuration"): list them in one line instead of one line each.
-        meta = [f["path"] for f in mod_files if f.get("layer") == "meta"]
-        for f in [f for f in mod_files if f.get("layer") != "meta"][:20]:
-            purpose = _clip(f.get("purpose") or "(no purpose available)",
-                            PURPOSE_LIMIT)
-            layer = f.get("layer") or "unknown"
-            section_lines.append(f"[{f['path']}] ({layer}): {purpose}")
-        if meta:
-            section_lines.append("Also modified (build/docs/CI, no summary): "
-                                 + ", ".join(meta))
-        section_text = "\n".join(section_lines) + "\n"
-        chars_used += len(section_text)
-        lines.append(section_text)
+    # Build/docs/CI files only carry a path-derived hint ("Build
+    # configuration"): list them in one line instead of one line each.
+    meta = [f["path"] for f in mod_files if f.get("layer") == "meta"]
+    file_lines = [
+        f"[{f['path']}] ({f.get('layer') or 'unknown'}): "
+        + _clip(f.get("purpose") or "(no purpose available)", PURPOSE_LIMIT)
+        for f in [f for f in mod_files if f.get("layer") != "meta"][:20]]
+    if meta:
+        file_lines.append("Also modified (build/docs/CI, no summary): "
+                          + ", ".join(meta))
+    add_section("MODIFIED FILES", file_lines)
 
     # Section 2: Referenced types/constants
-    type_hits = [t for t in index["types"] if t["name"] in ref_ids]
-    const_hits = [c for c in index["constants"] if c["name"] in ref_ids]
-    if type_hits or const_hits:
-        section_lines = ["--- KNOWN TYPES ---"]
-        for t in type_hits[:10]:  # cap types
-            section_lines.append(_type_line(t))
-        section_lines.append("\n--- CONSTANTS ---")
-        for c in const_hits[:10]:  # cap constants
-            section_lines.append(f"{c['name']} = {c['value']} ({c['kind']})")
-        section_text = "\n".join(section_lines) + "\n"
-        chars_used += len(section_text)
-        lines.append(section_text)
+    type_hits = [t for t in index.get("types", []) if t["name"] in ref_ids]
+    const_hits = [c for c in index.get("constants", []) if c["name"] in ref_ids]
+    add_section("KNOWN TYPES", [_type_line(t) for t in type_hits[:10]])
+    add_section("CONSTANTS", [f"{c['name']} = {c['value']} ({c['kind']})"
+                              for c in const_hits[:10]])
 
-    # Section 3: Queued-connection call sites (THE KEY FIX FOR THREAD SAFETY)
-    affected_files_set = set(diff_paths)
-    call_sites = [cs for cs in index.get("callsites", [])
-                  if cs["file"] in affected_files_set]
-    if call_sites:
-        section_lines = ["--- QUEUED CONNECTION CALL SITES ---"]
-        for cs in call_sites[:15]:
-            section_lines.append(_callsite_line(cs))
-        section_text = "\n".join(section_lines) + "\n"
-        chars_used += len(section_text)
-        lines.append(section_text)
-        # Also add call sites for files mentioned by types
-        type_file_set = {t["def_file"] for t in type_hits if "def_file" in t}
-        extra_sites = [cs for cs in index.get("callsites", [])
-                       if cs["file"] in type_file_set
-                       and cs["file"] not in affected_files_set]
-        if extra_sites:
-            section_lines = ["--- RELATED CALL SITES (TYPE DEFINITIONS) ---"]
-            for cs in extra_sites[:10]:
-                section_lines.append(_callsite_line(cs))
-            section_text = "\n".join(section_lines) + "\n"
-            chars_used += len(section_text)
-            lines.append(section_text)
+    # Section 3: Queued-connection call sites in the modified files
+    all_sites = index.get("callsites", [])
+    call_sites = [cs for cs in all_sites if cs["file"] in diff_paths]
+    add_section("QUEUED CONNECTION CALL SITES",
+                [_callsite_line(cs) for cs in call_sites[:15]])
 
-    marker = "\n[... context truncated ...]"
+    # Section 4: call sites in files that define a referenced type
+    type_files = {t["def_file"] for t in type_hits if "def_file" in t}
+    related_sites = [cs for cs in all_sites
+                     if cs["file"] in type_files and cs["file"] not in diff_paths]
+    add_section("RELATED CALL SITES (TYPE DEFINITIONS)",
+                [_callsite_line(cs) for cs in related_sites[:10]])
+
     # Nothing matched: return no pack at all rather than a bare
     # "GROUND TRUTH" header with no facts under it.
-    context_text = "\n".join(lines) if len(lines) > 1 else ""
-    if chars_used > budget:
-        # Marker lives INSIDE the budget: report['used'] must match
-        # what the model actually sees, per-ADR accounting.
+    context_text = ("\n".join(["/*** REPO CONTEXT — GROUND TRUTH ***/\n",
+                               *sections]).strip() if sections else "")
+    marker = "\n[... context truncated ...]"
+    if len(context_text) > budget:
+        # The marker lives inside the budget.
         context_text = context_text[:max(0, budget - len(marker))] + marker
-        chars_used = budget
 
-    report["used"] = chars_used
+    report["used"] = len(context_text)
     report["sections"] = {
         "modified_files": len(mod_files),
         "types": len(type_hits),
         "constants": len(const_hits),
         "call_sites": len(call_sites),
+        "related_call_sites": len(related_sites),
     }
-    report["entries"] = (
-        len(mod_files) + len(type_hits) + len(const_hits) + len(call_sites)
-    )
+    report["entries"] = sum(report["sections"].values())
 
-    return (context_text.strip(), report)
+    return (context_text, report)
 
 
 if __name__ == "__main__":

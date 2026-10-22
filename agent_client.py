@@ -4,7 +4,7 @@ The only module that talks to the network."""
 import copy
 import json
 import time
-from typing import Callable, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import requests
 
@@ -26,15 +26,39 @@ def failure_result(reason: str) -> dict:
     return out
 
 
+def _attempt_stats(attempt: int, temperature: float, prompt_chars: int,
+                   started: float, body: dict, reason: Optional[str]) -> dict:
+    """One telemetry entry. Token counts and done_reason are Ollama's own,
+    None when no reply arrived. A prompt_eval_count near NUM_CTX means the
+    prompt is crowding the window; a large eval_count with
+    done_reason=length means the output (thinking included) ran out.
+    Ollama may count fewer prompt tokens when it reuses a cached prefix,
+    so prompt_chars is recorded as a deterministic size as well."""
+    return {
+        "attempt": attempt,
+        "temperature": temperature,
+        "prompt_chars": prompt_chars,
+        "prompt_eval_count": body.get("prompt_eval_count"),
+        "eval_count": body.get("eval_count"),
+        "done_reason": body.get("done_reason"),
+        "wall_s": round(time.monotonic() - started, 2),
+        "outcome": reason or "ok",
+    }
+
+
 def call_agent(model: str, system_prompt: str, transcript: str,
-               temperature: float, validate: Optional[Validator] = None) -> dict:
+               temperature: float, validate: Optional[Validator] = None,
+               telemetry: Optional[List[dict]] = None) -> dict:
     """Single agent turn with JSON-mode enforcement and retry logic.
 
     validate, when given, checks the parsed reply against the caller's
     schema (see adjudication.normalize_agent_output). A reply that fails
     it is retried with a corrective message, exactly like invalid JSON.
     Returns a failure sentinel carrying 'failure_reason' when every
-    attempt fails (fail closed)."""
+    attempt fails (fail closed).
+
+    telemetry, when given, receives one _attempt_stats entry per attempt,
+    successful or not."""
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": transcript},
@@ -43,55 +67,28 @@ def call_agent(model: str, system_prompt: str, transcript: str,
 
     for attempt in range(MAX_ATTEMPTS):
         last = attempt == MAX_ATTEMPTS - 1
+        attempt_temp = temperature if attempt == 0 else TEMPERATURE_RETRY
         payload = {
             "model": model,
             "messages": messages,
             "stream": False,
             "format": "json",
             "options": {
-                "temperature": temperature if attempt == 0 else TEMPERATURE_RETRY,
+                "temperature": attempt_temp,
                 "num_ctx": NUM_CTX,
             },
         }
-
-        # ---- transport ----
-        try:
-            resp = requests.post(OLLAMA_BASE_URL, json=payload,
-                                 timeout=REQUEST_TIMEOUT_S)
-            resp.raise_for_status()
-            body = resp.json()
-            content = body["message"]["content"]
-        except requests.exceptions.Timeout:
-            reason = f"timeout after {REQUEST_TIMEOUT_S}s"
-        except requests.exceptions.RequestException as e:
-            detail = ""
-            if getattr(e, "response", None) is not None:
-                detail = f" {e.response.text[:200]}"
-            reason = f"request failed: {type(e).__name__}{detail}"
-        except (KeyError, TypeError, ValueError) as e:
-            reason = f"malformed Ollama response: {type(e).__name__}: {e}"
-        else:
-            # ---- content ----
-            try:
-                parsed = json.loads(content)
-            except json.JSONDecodeError:
-                reason = "reply was not valid JSON"
-                if body.get("done_reason") == "length":
-                    reason += (" (done_reason=length: output truncated; "
-                               "check NUM_CTX)")
-                messages.append({"role": "user",
-                                 "content": "Invalid JSON. Reply with valid JSON only."})
-                print(f"    ({model} attempt {attempt}: {reason})")
-                continue
-            if validate is None:
-                return parsed
-            normalized, problem = validate(parsed)
-            if problem is None:
-                return normalized
-            reason = f"schema violation: {problem}"
-            messages.append({"role": "user", "content": (
-                f"Invalid reply: {problem}. Reply with valid JSON only, "
-                "using exactly the keys from your instructions.")})
+        prompt_chars = sum(len(m["content"]) for m in messages)
+        started = time.monotonic()
+        body, result, reason, correction = _attempt(payload, validate)
+        if telemetry is not None:
+            telemetry.append(_attempt_stats(attempt, attempt_temp, prompt_chars,
+                                            started, body, reason))
+        if reason is None:
+            return result
+        if correction:
+            # The model replied, but unusably: say why and retry at once.
+            messages.append({"role": "user", "content": correction})
             print(f"    ({model} attempt {attempt}: {reason})")
             continue
 
@@ -101,3 +98,49 @@ def call_agent(model: str, system_prompt: str, transcript: str,
             time.sleep(RETRY_BACKOFF_S)
 
     return failure_result(reason)
+
+
+def _attempt(payload: dict, validate: Optional[Validator]
+             ) -> Tuple[dict, Optional[dict], Optional[str], Optional[str]]:
+    """One request. Returns (ollama_body, result, failure_reason,
+    correction). Exactly one of result and failure_reason is set.
+    correction is the message for the model's next attempt when it replied
+    with unusable content; it is None for transport failures."""
+    body = {}
+    # ---- transport ----
+    try:
+        resp = requests.post(OLLAMA_BASE_URL, json=payload,
+                             timeout=REQUEST_TIMEOUT_S)
+        resp.raise_for_status()
+        body = resp.json()
+        content = body["message"]["content"]
+    except requests.exceptions.Timeout:
+        return {}, None, f"timeout after {REQUEST_TIMEOUT_S}s", None
+    except requests.exceptions.RequestException as e:
+        detail = ""
+        if getattr(e, "response", None) is not None:
+            detail = f" {e.response.text[:200]}"
+        return {}, None, f"request failed: {type(e).__name__}{detail}", None
+    except (KeyError, TypeError, ValueError) as e:
+        return (body if isinstance(body, dict) else {}, None,
+                f"malformed Ollama response: {type(e).__name__}: {e}", None)
+
+    # ---- content ----
+    try:
+        parsed = json.loads(content)
+    except json.JSONDecodeError:
+        reason = "reply was not valid JSON"
+        if body.get("done_reason") == "length":
+            reason += (f" (done_reason=length: output truncated after "
+                       f"{body.get('prompt_eval_count')} prompt + "
+                       f"{body.get('eval_count')} output tokens; "
+                       f"check NUM_CTX={NUM_CTX})")
+        return body, None, reason, "Invalid JSON. Reply with valid JSON only."
+    if validate is None:
+        return body, parsed, None, None
+    normalized, problem = validate(parsed)
+    if problem is None:
+        return body, normalized, None, None
+    return body, None, f"schema violation: {problem}", (
+        f"Invalid reply: {problem}. Reply with valid JSON only, "
+        "using exactly the keys from your instructions.")
