@@ -2,7 +2,8 @@
 
 Last updated: 2026-10-22 (code review 2026-10-21 findings 5–8: record
 provenance and telemetry, pack accounting, judge-proposal constraints,
-num_ctx attribution)
+num_ctx attribution; NUM_CTX raised to 24576 from live telemetry;
+runaway-thinking diagnostics)
 
 Purpose of this file: anyone picking up this repo can
 orient in five minutes, run the existing validation, and continue the
@@ -89,6 +90,25 @@ queued work without reverse-engineering the ADRs.
     no longer need a direct call site and are counted. A malformed index
     degrades the debate to no retrieval instead of crashing it.
   - The bridge fixture's pack is byte-identical to v5.1's.
+- **NUM_CTX 16384 → 24576 (2026-10-22, backlog #16).** Two live
+  telemetry runs on the bridge fixture (3026b2, bbe168) showed a stable
+  ~9.4K–10.2K-token prompt. One round-1 reviewer reply ran out at
+  9,397 + 6,987 = 16,384 tokens, so the output, thinking included,
+  fills the window. Evidence and decision: ADR-0002 telemetry
+  follow-up. Debates only; probe and bake-off keep 16384. Two re-runs
+  at 24576 (1b11cc, 743bc4) finished replies of 7.7K and 10.1K output
+  tokens, but two of six first attempts still ran away to the new
+  limit. See the next entry and ADR-0002's second follow-up.
+- **Runaway diagnostics (2026-10-22).** Telemetry now records
+  `thinking_chars` and `content_chars` for every attempt. For failed
+  attempts it also keeps the last 400 chars of thinking and content
+  (`thinking_tail`, `content_tail`). This tells looping from long
+  reasoning on the next runaway (backlog #16).
+- **Output cap, NUM_PREDICT 12288 (2026-10-22).** Engineer runaways
+  are a thinking loop. Every attempt is now capped above every finished
+  reply (longest 10,097). Verified live (runs 15cc3f, 5b3f1d): two
+  runaways stopped at exactly 12,288 tokens after 272 s and 186 s, and
+  both retries recovered. ADR-0002, third follow-up.
 
 **Known limitations (by design or pending):**
 - **Deletion-hallucination is now the dominant FP class** (8 total
@@ -99,13 +119,22 @@ queued work without reverse-engineering the ADRs.
 - **Hedge demotion can demote true claims.** It fired once in the N=3
   measurement, on a hedged formulation of a genuine thread-safety
   finding. "Hedged" does not imply "wrong" (backlog #12).
-- **num_ctx exhaustion:** one AGENT_FAILURE in the N=3 (run e4d1b3,
-  round 2, `done_reason=length`). It was first blamed on the pack plus
-  feedback growth, but the diff is ~83% of that prompt (26,695 of
-  ~32,000 chars). Round 2 was only ~4% larger than round 1, which
-  completed. The likelier cause is thinking-token output in a nearly
-  full 16K window. Per-attempt telemetry (since 2026-10-22) records the
-  token counts that tell the two apart. Decide #16 from it.
+- **Both agents' thinking sometimes runs away.** In seven telemetry
+  runs, 6 of 42 first attempts ran away (4 reviewer, 2 engineer), at
+  temperature 0.7 and 0.05 alike. Uncapped, they filled any window.
+  Both engineer runaways were a persona-versus-blocker loop (#20). The
+  one reviewer runaway with a tail read as an open-ended search for
+  more issues, not a visible loop. All six retries recovered. With
+  `NUM_PREDICT` a runaway still costs 3–5 minutes (#19). Before the
+  telemetry, at 16384, it caused one AGENT_FAILURE in the N=3 (e4d1b3).
+- **Retried rounds are a different mode.** The "Invalid JSON"
+  correction makes the reviewer answer in 267–493 tokens with little or
+  no thinking (`thinking_chars` 0 in 15cc3f). In the telemetry runs, 4
+  of 21 reviewer rounds came from such retries; telemetry shows which.
+  Score them separately.
+- **The output cap has a thin margin.** Finished reviewer replies reach
+  10,097 tokens, ~18% under `NUM_PREDICT`. A legitimately longer reply
+  would be cut and retried in the low-thinking mode.
 - **Debates practically never converge.** Convergence needs the engineer
   to return zero blockers, concerns AND questions. Every archived debate
   ended at MAX_ROUNDS_EXCEEDED. Fail-closed is intentional; the
@@ -138,7 +167,7 @@ queued work without reverse-engineering the ADRs.
 |---|---|
 | `orchestrator.py` | Thin CLI entrypoint: argument parsing and dispatch only. Modes `--golden`, `--proposal` and `--index` are mutually exclusive; inputs read as UTF-8. Re-exports key symbols as a transition shim. |
 | `config.py` | Central configuration: MODELS dict, num_ctx, timeouts, temperatures, and prompt composition. Single place to swap models. |
-| `agent_client.py` | Ollama client. Single agent turn, JSON-mode enforcement, retries with corrective messages, optional per-attempt telemetry (token counts, done_reason, wall time). The ONLY module that touches the network. |
+| `agent_client.py` | Ollama client. Single agent turn, JSON-mode enforcement, retries with corrective messages, optional per-attempt telemetry (token counts, thinking/reply sizes, done_reason, wall time; tails of failed replies). The ONLY module that touches the network. |
 | `adjudication.py` | Pure adjudication logic, no I/O: `normalize_agent_output()`, `derive_verdict()`, `demote_hedged_blockers()`. CI-importable. |
 | `debate.py` | The debate loop. Transcript templates incl. `REPO_CONTEXT_TEMPLATE`; loads `repo_context.json`, calls `build_context_pack` (never fatal: errors degrade to no retrieval), injects retrieval into the transcript, records `repo_context_pack` (report, pack text, hash, index version) and per-round telemetry in decision records. Ends with AGENT_FAILURE on exhausted agent calls. |
 | `golden_tests.py` | Golden suite: 3 LLM-backed model fixtures + `run_hedge_unit_tests()` (7 deterministic guardrail cases, production-derived texts). |
@@ -155,7 +184,7 @@ queued work without reverse-engineering the ADRs.
 | `docs/decisions/0002-adjudication-and-fp-remediation.md` | ADR-0002: the false-positive arc — baseline triage, v1 guardrails, re-measurement, live-loop control, context-pack N=3 results with retroactive re-adjudication flag. |
 | `docs/portability_guide.md` | Running on other machines / codebases. Predates the module split. |
 | `docs/fixtures/qttune_bridge_refactor.diff` | Input diff for all bridge-refactor debates. Provenance (established 2026-10-13): reverse patch of QtTune `e0c4c31`; post-state identical to committed `8ffbf19` (blob `1c195f8`). |
-| `coach_artifacts/decision_debate_*.json` | Decision records. Nine archived: header review (194320), baseline (203917), v1 re-measurement (014257), feedback smoke (153541, see erratum caveat), live-loop control (170208), context-pack pilot (201540, unscored), and three scored context-pack runs (203802, 204845, 210548). Records from 2026-10-10 on carry `prompt_fingerprint`, sampling settings, input hashes, layer, `agent_failures`; v5 records carry `repo_context_pack`. |
+| `coach_artifacts/decision_debate_*.json` | Decision records. Nine archived: header review (194320), baseline (203917), v1 re-measurement (014257), feedback smoke (153541, see erratum caveat), live-loop control (170208), context-pack pilot (201540, unscored), and three scored context-pack runs (203802, 204845, 210548). Plus seven unscored v5.2 telemetry runs on the bridge fixture, from 20261022: two at num_ctx 16384 (134539_3026b2, 140943_bbe168), three at 24576 (143424_1b11cc, 145342_743bc4, 153943_7a4809), and two at 24576 with num_predict 12288 (160429_15cc3f, 161800_5b3f1d). Records from 2026-10-10 on carry `prompt_fingerprint`, sampling settings, input hashes, layer, `agent_failures`; v5 records carry `repo_context_pack`; v5.2 records add the pack text and per-attempt `telemetry`. |
 | `probe_logs/fp_*.json` | 5-run probe aggregates backing the FP-rate claims. |
 | `requirements.txt` | Runtime deps (requests). |
 | `.github/workflows/` | CI: compile checks + regression suite, no Ollama. |
@@ -196,10 +225,11 @@ top of everything.
 
 ## Backlog (ideas, loosely ordered)
 
-Suggested order as of 2026-10-22: #15 deletion-hallucination (after
-code review 2026-10-21 finding 1's ablation) → #12 hedge gate → #16
-context budget, decided from #4 telemetry → #2 judge → #18 early
-reject → #11 transcript v6 → #17 re-triage → the rest.
+Suggested order as of 2026-10-22: #16 runaway output (read the
+diagnostics from the next live runs; cheap) → #15 deletion-hallucination
+(after code review 2026-10-21 finding 1's ablation) → #12 hedge gate →
+#2 judge → #18 early reject → #11 transcript v6 → #17 re-triage → the
+rest.
 
 1. **Repo context pack — DONE (2026-10-13).** Indexer, callsite
    harvester, debate-time retrieval and the third measurement are all
@@ -211,10 +241,12 @@ reject → #11 transcript v6 → #17 re-triage → the rest.
 3. **GitHub Actions CI — DONE (2026-10-13).**
 4. **Per-debate cost/latency telemetry — DONE (2026-10-22).** Each
    round's `telemetry` holds one entry per agent attempt, failed ones
-   included: prompt_eval_count, eval_count, done_reason, prompt chars,
-   wall time, outcome. prompt_eval_count near NUM_CTX means the prompt
-   is crowding the window; a large eval_count with done_reason=length
-   means the output ran out. Probe and bake-off do not record it (#9).
+   included: prompt_eval_count, eval_count, thinking and content
+   chars, done_reason, prompt chars, wall time and outcome. Failed
+   attempts also keep the tail of their thinking and content.
+   prompt_eval_count near NUM_CTX means the prompt is crowding the
+   window. A large eval_count with done_reason=length means the output
+   ran out. Probe and bake-off do not record it (#9).
 5. **Cloud model support.** OpenAI-compatible endpoint in
    agent_client.py; golden suite first; segregated results.
 6. **Chained/escalated debates.** On MAX_ROUNDS_EXCEEDED, re-submit
@@ -246,13 +278,24 @@ reject → #11 transcript v6 → #17 re-triage → the rest.
     set. Deterministic pre-judge check in adjudication.py, or retrieval
     that lists removed symbols alongside survivors. Predict + measure
     per convention 7 — this is the new dominant FP class (8 in N=3).
-16. **Context budget negotiation (NEW).** num_ctx exhaustion in rounds
-    2+. Corrected 2026-10-22 (code review 2026-10-21, finding 8): the
-    diff is ~83% of the prompt, not the pack or feedback, and round 2
-    was only ~4% larger than round 1. The options are to cap output or
-    thinking (`num_predict`) or to raise num_ctx within VRAM. Dropping
-    the ~2–3 KB pack from rounds 2+ recovers little. Decide from #4
-    telemetry on the next live runs.
+16. **Context budget and runaway output — IN PROGRESS (2026-10-22).**
+    - **Prompt side, settled:** the prompt is a stable ~9.4K–10.2K
+      tokens. The diff is ~83% of it, the pack ~820 tokens, feedback
+      ~400 per round. Dropping the pack is not worth it.
+    - **NUM_CTX 24576, kept:** it finished two replies (7.7K and 10.1K
+      output tokens) that 16384 would have lost.
+    - **Output capped, verified.** Both engineer runaways caught with
+      diagnostics (7a4809, 15cc3f) cycled between the persona and the
+      blocker rule. `NUM_PREDICT` 12288 now caps every attempt, above
+      every finished reply so far. Live, two runaways stopped at exactly
+      12,288 tokens and both retries recovered (ADR-0002, third
+      follow-up and verification).
+    - **Still open: the reviewer's runaways.** The one with a tail
+      (15cc3f) read as an open-ended search for more issues, not a
+      visible loop; a cycle longer than the 400-char tail cannot be ruled
+      out. A repetition measure over the whole thinking, or a longer
+      tail, would settle it. Stopping loops early is #19; the engineer
+      prompt conflict is #20.
 17. **Historical re-triage (NEW).** Re-read the v1 (014257) and
     control (170208) thread-safety blockers against the fixture's
     actual post-state (which does read m_currentFrameCount on the
@@ -294,6 +337,22 @@ reject → #11 transcript v6 → #17 re-triage → the rest.
       and the engineer's concerns and questions. The judge ignores
       labels, so adding them would add anchoring without information.
     - **Option C** (uphold-or-withdraw) is #11.
+19. **Stop looping replies early (NEW, 2026-10-22).** A runaway spends
+    ~12K tokens and 3–5 minutes going in circles before `NUM_PREDICT`
+    stops it. Stream the reply in agent_client.py and abort once the
+    recent thinking repeats an earlier passage, then retry as usual.
+    Most of a runaway's time would be saved. Watch for false positives
+    on legitimately repetitive reasoning; the telemetry tails give test
+    material. This catches the engineer's loops. It may miss the
+    reviewer's runaway, which looked like an open-ended search rather
+    than repetition (#16).
+20. **Engineer prompt conflict (NEW, 2026-10-22).** Both engineer
+    runaways on record (7a4809, 15cc3f) alternated between "argue for
+    shipping velocity; correctness is the reviewer's job" and "a
+    demonstrable violation is a blocker". Say what the engineer should do when it
+    sees a correctness violation, e.g. report it as a concern for the
+    reviewer. This is a prompt change: bump PROMPT_VERSION and measure
+    per convention 6.
 
 Deliberately deferred: MAX_DEBATE_ROUNDS / loop-shape tuning — #2
 supersedes.
@@ -303,7 +362,9 @@ supersedes.
 ## Notes for Continuing Agents
 
 - Models are assigned in the `MODELS` dict in config.py:
-  reviewer = `laguna-xs-2.1` (num_ctx 16384), engineer = `gemma4:12b`.
+  reviewer = `laguna-xs-2.1`, engineer = `gemma4:12b`, both at num_ctx
+  24576 with output capped at num_predict 12288 (16384 and uncapped
+  until 2026-10-22; probe and bake-off still use 16384, uncapped).
 - Temperature: 0.7 first round, 0.05 retries and later rounds.
 - Round-1 output is the scored arm for measurements: the live feedback
   loop demonstrably carries engineer concerns back into reviewer
@@ -319,7 +380,8 @@ supersedes.
 - If an agent failure reason mentions `done_reason=length`, output was
   truncated. The reason and that round's `telemetry` give the prompt
   and output token counts: check which side filled NUM_CTX (see #16)
-  before assuming the model is bad.
+  before assuming the model is bad. For a runaway, `thinking_tail`
+  shows whether the model was repeating itself.
 - Run ad-hoc debates from a scratch directory: `coach_artifacts/` is
   CWD-relative. Retrieval reads the index from next to repo_context.py,
   so this no longer disables it (fixed 2026-10-21).

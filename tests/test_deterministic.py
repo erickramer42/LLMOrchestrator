@@ -44,11 +44,13 @@ ENGINEER_CLEAN = {"verdict": "approve", "blockers": [], "concerns": [], "questio
 class FakeResp:
     """Minimal stand-in for an Ollama /api/chat response."""
 
-    def __init__(self, content, done_reason="stop", **stats):
+    def __init__(self, content, done_reason="stop", thinking=None, **stats):
         if not isinstance(content, str):
             content = json.dumps(content)
-        self._body = {"message": {"content": content}, "done_reason": done_reason,
-                      **stats}
+        message = {"content": content}
+        if thinking is not None:
+            message["thinking"] = thinking
+        self._body = {"message": message, "done_reason": done_reason, **stats}
         self.text = json.dumps(self._body)
 
     def raise_for_status(self):
@@ -236,6 +238,32 @@ class AgentClientTests(NoSleep):
         self.assertEqual(schema["prompt_chars"], len("sys") + len("t"))
         self.assertGreater(ok["prompt_chars"], schema["prompt_chars"])
 
+    def test_runaway_keeps_the_tail_of_its_thinking(self):
+        calls = []
+        loop = "Wait, let me re-check the frame counter. " * 300
+        runaway = FakeResp("", done_reason="length", thinking=loop,
+                           prompt_eval_count=10075, eval_count=14501)
+        good = FakeResp(REVIEWER_CLEAN, thinking="Short check.")
+        with fake_ollama(runaway, good):
+            call_agent("m", "sys", "t", 0.05, validate=self.validate,
+                       telemetry=calls)
+        failed, ok = calls
+        self.assertEqual(failed["thinking_chars"], len(loop))
+        self.assertEqual(failed["content_chars"], 0)
+        self.assertEqual(failed["thinking_tail"],
+                         loop[-agent_client.FAILURE_TAIL_CHARS:])
+        self.assertEqual(failed["content_tail"], "")
+        # successful attempts keep sizes only, never the text
+        self.assertEqual(ok["thinking_chars"], len("Short check."))
+        self.assertNotIn("thinking_tail", ok)
+
+    def test_every_request_caps_output(self):
+        with fake_ollama(REVIEWER_CLEAN) as post:
+            call_agent("m", "sys", "t", 0.7, validate=self.validate)
+        options = post.call_args.kwargs["json"]["options"]
+        self.assertEqual(options["num_predict"], agent_client.NUM_PREDICT)
+        self.assertLess(options["num_predict"], options["num_ctx"])
+
     def test_telemetry_is_optional(self):
         with fake_ollama(REVIEWER_CLEAN):
             out = call_agent("m", "sys", "t", 0.7, validate=self.validate)
@@ -387,7 +415,9 @@ class DebateTests(NoSleep):
         with fake_ollama(FakeResp(REVIEWER_CLEAN, prompt_eval_count=900, eval_count=40),
                          FakeResp(ENGINEER_CLEAN, prompt_eval_count=800, eval_count=20)):
             result = debate.run_debate("p", "+++ b/core/src/x.cpp\n", "")
-        telemetry = self.record(result)["outputs"]["round_history"][0]["telemetry"]
+        rec = self.record(result)
+        self.assertEqual(rec["metadata"]["num_predict"], debate.NUM_PREDICT)
+        telemetry = rec["outputs"]["round_history"][0]["telemetry"]
         self.assertEqual(telemetry["reviewer"][0]["prompt_eval_count"], 900)
         self.assertEqual(telemetry["auto_engineer"][0]["eval_count"], 20)
 

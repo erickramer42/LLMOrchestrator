@@ -13,9 +13,9 @@ from typing import List, Optional, Tuple
 from adjudication import (demote_hedged_blockers, derive_verdict,
                           normalize_agent_output)
 from agent_client import call_agent, failure_result
-from config import (MAX_DEBATE_ROUNDS, MODELS, NUM_CTX, REVIEWER_HEADER_PROMPT,
-                    REVIEWER_IMPL_PROMPT, TEMPERATURE_EXPLORATION,
-                    TEMPERATURE_RETRY)
+from config import (MAX_DEBATE_ROUNDS, MODELS, NUM_CTX, NUM_PREDICT,
+                    REVIEWER_HEADER_PROMPT, REVIEWER_IMPL_PROMPT,
+                    TEMPERATURE_EXPLORATION, TEMPERATURE_RETRY)
 from file_metadata import get_layer_constraints, identify_layer
 from repo_context import CONTEXT_PATH, PACK_FORMAT_VERSION, build_context_pack
 from reviewer_prompt import PROMPT_VERSION, AUTO_ENGINEER_PROMPT
@@ -289,6 +289,7 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
         "temperature_exploration": TEMPERATURE_EXPLORATION,
         "temperature_retry": TEMPERATURE_RETRY,
         "num_ctx": NUM_CTX,
+        "num_predict": NUM_PREDICT,
         "context_char_limit": CONTEXT_CHAR_LIMIT,
         "repo_context_pack": pack_report,
         "prompt_fingerprint": _prompt_fingerprint(

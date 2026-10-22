@@ -304,6 +304,145 @@ previously-shipped bugs from a diff alone.
   2026-10-22 on (STATUS backlog #4). The trade space is an output cap
   (`num_predict`) or a larger num_ctx; dropping the pack recovers
   little.
+  *Telemetry follow-up (2026-10-22):* two live debates on the
+  bridge-refactor fixture recorded per-attempt token counts. Both ran
+  at v5.2-pack-sections with num_ctx 16384 and the 2,816-char pack.
+  They are telemetry evidence only: no prediction was recorded and the
+  blockers are unscored. Records: `decision_debate_20261022_134539_3026b2`
+  (run A) and `decision_debate_20261022_140943_bbe168` (run B).
+
+  | Reviewer | Prompt tokens | Output tokens, run A | Output tokens, run B |
+  |---|---|---|---|
+  | Round 1 | 9,397 | **6,987 (`length`)**, retry 493 | 1,119 |
+  | Round 2 | ~9,820 | 1,891 | 4,460 |
+  | Round 3 | ~10,150 | 1,124 | 1,946 |
+
+  - **The one truncation was in round 1,** where there is no feedback
+    yet: 9,397 + 6,987 = 16,384, at temperature 0.7. The retry at 0.05
+    succeeded with 493 tokens, so the debate continued.
+  - **The prompt is stable.** Feedback adds ~400 tokens per round. The
+    pack is ~820 tokens (~3.4 chars per token).
+  - **The output decides it.** Successful reviewer outputs ranged from
+    493 to 4,460 tokens; the runaway reached at least 6,987.
+  - **The token counts are trustworthy.** The retry reported the full
+    9,412 prompt tokens, so prefix caching did not hide prompt tokens.
+  - **The engineer peaked at 13,105** tokens in total.
+
+  This confirms the correction above. The output, thinking included,
+  fills the window; feedback and pack growth are not the cause.
+  **Decision:** debates move to num_ctx 24576 (`config.NUM_CTX`), which
+  roughly doubles the output headroom to ~15K tokens. An output cap
+  alone would only make a runaway fail sooner, since it still yields no
+  JSON. Limiting thinking (the model reports Ollama's `thinking`
+  capability) changes reviewer behaviour and would need its own
+  measurement. On the RTX 3060 (12 GB) the 20.7 GB model's GPU share
+  drops from 48% to 46%. Expect slightly slower calls; the next live
+  runs' `wall_s` will show by how much.
+  *Second follow-up (2026-10-22, num_ctx 24576):* two more runs, same
+  fixture, settings and caveats. Records:
+  `decision_debate_20261022_143424_1b11cc` (run C) and
+  `decision_debate_20261022_145342_743bc4` (run D).
+
+  | Reviewer | Run C output tokens | Run D output tokens |
+  |---|---|---|
+  | Round 1 (temp 0.7) | 7,734 (171 s) | 1,506 |
+  | Round 2 (temp 0.05) | **14,811 (`length`, 318 s)**, retry 444 | 10,097 (221 s) |
+  | Round 3 (temp 0.05) | 2,134 | **14,501 (`length`, 310 s)**, retry 420 |
+
+  - **24576 did not remove the failures.** Two of six first attempts
+    ran away, each to exactly the new limit
+    (9,765 + 14,811 = 10,075 + 14,501 = 24,576). At 16384 the rate was
+    one of six.
+  - **The larger window still helped.** Two replies finished at 7,734
+    and 10,097 output tokens, which would have failed at 16384. With the
+    same outputs, runs C and D would have lost four of six first
+    attempts at 16384 instead of two.
+  - **Runaways now cost about twice as long,** ~310 s against ~159 s,
+    and they also occur at temperature 0.05.
+  - **Every retry recovered quickly,** with 420–493 output tokens in
+    10–13 s across all four runs. The "Invalid JSON" correction appears
+    to cut the thinking short. So 3 of the 12 reviewer rounds were
+    decided by a short, low-thinking reply. Treat those rounds as a
+    different mode when scoring blockers.
+  - **Thinking is on in JSON mode.** A JSON-mode probe returned a
+    `thinking` field of ~3,700 chars, counted in `eval_count`. A reply
+    forced to stop at 60 tokens came back with its partial thinking and
+    empty content. That is the shape of the runaways: they fail as
+    "not valid JSON" because the answer never starts.
+
+  **Revised decision.** Keep 24576, because it rescues long replies
+  that do finish. The rejection of an output cap above assumed
+  runaways were long replies that would finish. They are not bounded
+  by the window, so failing fast followed by the reliable retry may be
+  the better trade. Before choosing, telemetry now keeps
+  `thinking_chars` and `content_chars` for every attempt, plus the last
+  400 chars of thinking and content for failed ones. The next runaway
+  will show which case applies:
+  - If the model is looping, cap output with `num_predict`.
+  - If it is reasoning at length, measure Ollama's `think` control.
+
+  *Third follow-up (2026-10-22, first runaway with diagnostics):* run E,
+  `decision_debate_20261022_153943_7a4809`, same fixture and settings.
+  - **The runaway was the engineer** (`gemma4:12b`), in round 2 at
+    temperature 0.05. It produced 14,525 output tokens and 47,046 chars
+    of thinking, and never started its reply (`content_chars` 0). Its
+    retry finished in 2,124 tokens. Runaways therefore occur in both
+    models.
+  - **It was a loop.** The 400-char tail holds one full cycle and
+    starts and ends on the same phrase:
+
+    > *I'll flag it as a blocker.* / *Wait, I'll just follow the
+    > persona.* / *Persona: Senior Engineer advocating for v0.2.0
+    > goals. Goal: Shipping velocity. Action: Approve the roadmap
+    > move.* / *Wait, I'll check the "Blocker" rule again.* / *If I
+    > don't flag it, and it's a violation, I'm wrong.* / *I'll …*
+
+    The engineer prompt pulls two ways. The persona says to argue for
+    roadmap fit and leave implementation correctness to the reviewer.
+    The rules say a demonstrable violation is a blocker. The model
+    alternated between the two without converging.
+  - **Across runs A–E** (34 attempts, 30 of them first attempts),
+    finished replies had a median of 1,506 tokens for the reviewer and
+    1,968 for the engineer. The longest were 10,097 and 5,596. All four
+    runaways were first attempts, and all four retries recovered.
+
+  **Decision:** cap output at `num_predict` 12,288 (`config.NUM_PREDICT`),
+  per the rule recorded above. The cap is above every finished reply,
+  and a runaway now stops ~15% sooner (12,288 against ~14,500 tokens). The reviewer's runaways
+  happened before the diagnostic existed, so it is not yet known
+  whether they loop too. Two follow-ups are filed: stop a loop early by
+  streaming the reply (STATUS backlog #19), and resolve the engineer
+  prompt's persona-versus-blocker conflict (#20).
+
+  *Verification (2026-10-22, num_predict 12288):* runs F
+  (`decision_debate_20261022_160429_15cc3f`) and G
+  (`decision_debate_20261022_161800_5b3f1d`), same fixture and caveats.
+  - **The cap works.** Run F had two runaways, both stopped at exactly
+    12,288 output tokens, after 272 s and 186 s (runaways at 24576
+    uncapped had taken ~310 s). Both retries recovered. Run G had none.
+  - **The second engineer runaway was the same conflict** (run F,
+    round 3): *"If I don't block a data race, I'm ignoring a safety
+    violation. I'll put it in 'blockers'. Wait, if I block, I'm not
+    advocating for 'Shipping Velocity'. … I will approve the intent but
+    list the implementation issues as concerns."* Both engineer
+    runaways are this loop.
+  - **The reviewer runaway did not look like a loop** in its 400-char
+    tail (run F, round 2, 48,034 chars of thinking): *"Now I have
+    identified the blockers. Let me also check for any other potential
+    issues. Looking at the code, I also notice that
+    `m_currentFrameCount` is used in `clearFrames` …"* It reads as an
+    open-ended search for more issues. A repeat cycle longer than 400
+    chars cannot be ruled out.
+  - **The reviewer's retry used no thinking at all** (267 output tokens,
+    `thinking_chars` 0). The engineer's retry did think (8,470 chars).
+    This confirms that a retried reviewer round is a different mode.
+  - **The cap's margin is thin.** Run G's round-1 reviewer reply
+    finished at 9,971 tokens; the longest finished reply is still
+    10,097, ~18% under the cap. Uncapped reviewer runaways reached at
+    least 14,500, so the cap sits in the gap between them.
+  - **Totals for runs A–G:** 6 runaways in 42 first attempts (4
+    reviewer, 2 engineer), all on a first attempt, and all 6 retries
+    recovered.
 
 **Re-adjudication flag (retroactive):** the v1 re-measurement's
 dominant residual class — thread-safety claims on

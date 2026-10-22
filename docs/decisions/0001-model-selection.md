@@ -29,6 +29,17 @@ deepseek-v4.1-flash, glm-5.3, kimi-k3 (cloud-routed only, not local weights).
   num_ctx 16384 (initially raised to 32768 to eliminate done_reason=length
   truncation from thinking tokens; validated back down to 16384 by probe —
   sufficient headroom with materially better latency).
+  *Amended 2026-10-22: debates use num_ctx 24576.* The probe validated
+  16384 on header-only fixtures. On the bridge-refactor diff the prompt
+  alone is ~9.4K tokens, and a round-1 reviewer reply ran out at
+  9,397 + 6,987 = 16,384 tokens (ADR-0002, telemetry follow-up). On the
+  RTX 3060 (12 GB) the model's GPU share drops only from 48% to 46%. The
+  probe and bake-off still use 16384. Runs at 24576 finished two replies
+  of 7.7K and 10.1K output tokens. Runaway thinking still filled the
+  larger window in two of six first attempts (ADR-0002, second
+  follow-up). The num_ctx raise helps but does not end those failures.
+  The runaways are thinking loops, so debates also cap output at
+  `num_predict` 12288 (ADR-0002, third follow-up).
 - Automotive engineer: gemma4:12b.
 - Verdicts are derived from agent content (blockers/questions), never from
   the model's self-reported verdict label — see ADR-0002.

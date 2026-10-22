@@ -8,11 +8,13 @@ from typing import Callable, List, Optional, Tuple
 
 import requests
 
-from config import NUM_CTX, OLLAMA_BASE_URL, REQUEST_TIMEOUT_S, TEMPERATURE_RETRY
+from config import (NUM_CTX, NUM_PREDICT, OLLAMA_BASE_URL, REQUEST_TIMEOUT_S,
+                    TEMPERATURE_RETRY)
 from reviewer_prompt import FAILURE_SENTINEL
 
 MAX_ATTEMPTS = 3
 RETRY_BACKOFF_S = 5
+FAILURE_TAIL_CHARS = 400  # how much of a failed reply telemetry keeps
 
 # validate(parsed) -> (normalized, None) or (None, reason)
 Validator = Callable[[object], Tuple[Optional[dict], Optional[str]]]
@@ -33,17 +35,33 @@ def _attempt_stats(attempt: int, temperature: float, prompt_chars: int,
     prompt is crowding the window; a large eval_count with
     done_reason=length means the output (thinking included) ran out.
     Ollama may count fewer prompt tokens when it reuses a cached prefix,
-    so prompt_chars is recorded as a deterministic size as well."""
-    return {
+    so prompt_chars is recorded as a deterministic size as well.
+
+    eval_count includes the model's thinking, which Ollama returns apart
+    from the reply. A failed attempt also keeps the tail of both, so a
+    runaway shows whether the model was looping or still reasoning."""
+    message = body.get("message")
+    message = message if isinstance(message, dict) else {}
+    thinking = message.get("thinking")
+    thinking = thinking if isinstance(thinking, str) else ""
+    content = message.get("content")
+    content = content if isinstance(content, str) else ""
+    stats = {
         "attempt": attempt,
         "temperature": temperature,
         "prompt_chars": prompt_chars,
         "prompt_eval_count": body.get("prompt_eval_count"),
         "eval_count": body.get("eval_count"),
+        "thinking_chars": len(thinking),
+        "content_chars": len(content),
         "done_reason": body.get("done_reason"),
         "wall_s": round(time.monotonic() - started, 2),
         "outcome": reason or "ok",
     }
+    if reason and (thinking or content):
+        stats["thinking_tail"] = thinking[-FAILURE_TAIL_CHARS:]
+        stats["content_tail"] = content[-FAILURE_TAIL_CHARS:]
+    return stats
 
 
 def call_agent(model: str, system_prompt: str, transcript: str,
@@ -76,6 +94,7 @@ def call_agent(model: str, system_prompt: str, transcript: str,
             "options": {
                 "temperature": attempt_temp,
                 "num_ctx": NUM_CTX,
+                "num_predict": NUM_PREDICT,
             },
         }
         prompt_chars = sum(len(m["content"]) for m in messages)
@@ -134,7 +153,7 @@ def _attempt(payload: dict, validate: Optional[Validator]
             reason += (f" (done_reason=length: output truncated after "
                        f"{body.get('prompt_eval_count')} prompt + "
                        f"{body.get('eval_count')} output tokens; "
-                       f"check NUM_CTX={NUM_CTX})")
+                       f"NUM_PREDICT={NUM_PREDICT}, check NUM_CTX={NUM_CTX})")
         return body, None, reason, "Invalid JSON. Reply with valid JSON only."
     if validate is None:
         return body, parsed, None, None

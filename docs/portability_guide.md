@@ -94,7 +94,7 @@ Total: 3 days from clone to working tribunal in new domain.
 Problem | Likely Cause | Fix
 --------|--------------|-----
 High blocker-FP rate on clean code | Domain expert prompt too aggressive | Add "Do not flag missing implementation as blocker" clause
-Timeout rate > 20% | Context window too large for GPU | Reduce NUM_CTX from 16384 to 8192
+Timeout rate > 20% | Context window too large for GPU | Reduce NUM_CTX (24576 in config.py), but keep room for the prompt plus thinking output; see ADR-0001
 Parse failures frequent | Thinking tokens exhausting budget | Increase num_ctx or reduce system prompt length
 Detection rate < 80% | Model too small for task | Upgrade to frontier model or increase context
 

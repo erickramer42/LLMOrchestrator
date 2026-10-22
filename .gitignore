@@ -40,3 +40,5 @@ logs/
 .env
 .env.local
 repo_context_cache.json
+
+run_commands.md
