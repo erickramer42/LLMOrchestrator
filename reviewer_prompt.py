@@ -1,5 +1,6 @@
-"""Canonical reviewer system prompt — single source of truth.
-Import this from fp_rate_probe.py, bakeoff.py, and orchestrator.py.
+"""Canonical agent system prompts — single source of truth.
+Imported by config.py (prompt composition), debate.py, agent_client.py
+(FAILURE_SENTINEL) and eval_harness/probe.py and bakeoff.py.
 Any edit here must be reflected by bumping PROMPT_VERSION."""
 
 # v5.1 (2026-10-21): same templates as v5; the retrieved pack changed
@@ -9,7 +10,10 @@ Any edit here must be reflected by bumping PROMPT_VERSION."""
 # dropped, related call sites no longer need a direct call site, and
 # truncation measures the real pack length. The bridge fixture's pack is
 # byte-identical to v5.1's, so runs on it stay comparable.
-PROMPT_VERSION = "v5.2-pack-sections"
+# v6 (2026-10-22): the diff is authoritative over the context pack. The
+# template and pack no longer say "ground truth" or "verified facts"; pack
+# entries the diff removes are omitted and named (pack format f3).
+PROMPT_VERSION = "v6-diff-authoritative"
 
 AUTO_ENGINEER_PROMPT = """You are a senior automotive engineer advocating for QtTune's v0.2.0 goals:
 shipping velocity, J2534/ECU domain correctness, and safety.

@@ -25,8 +25,9 @@ from debate import run_debate
 from golden_tests import run_golden_tests
 
 def run_index(target: str, use_llm: bool) -> None:
-    """Build and save the repo context pack. Imported lazily so debate
-    and golden runs never depend on the indexer module."""
+    """Build and save the repo context pack. debate.py imports
+    repo_context for retrieval anyway; the lazy import only keeps the
+    indexer entry points out of this module's namespace."""
     from repo_context import build_index, save_index
 
     index = build_index(target, use_llm=use_llm)

@@ -20,6 +20,7 @@ repo_context.json are relative to the TARGET repo root.
 import hashlib
 import json
 import re
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -84,7 +85,7 @@ _STATEMENT_LEADS = ("connect", "invokeMethod")
 # limits below are part of the prompt. Bump PACK_FORMAT_VERSION (it feeds
 # debate.py's prompt_fingerprint) and PROMPT_VERSION together whenever any
 # of them changes what agents see.
-PACK_FORMAT_VERSION = "f2-sections"
+PACK_FORMAT_VERSION = "f3-diff-authoritative"
 
 # Presentation limits for model-facing pack lines.
 SNIPPET_LIMIT = 300      # one rendered call site
@@ -482,14 +483,34 @@ def _skipped(rel_parts) -> bool:
                for p in rel_parts[:-1])
 
 
+def _git_source(root: Path) -> Tuple[Optional[str], Optional[bool]]:
+    """(commit, dirty) of the indexed checkout, or (None, None) when it is
+    not a git work tree. Records which tree the pack describes; only
+    tracked changes count as dirty."""
+    try:
+        commit = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            capture_output=True, text=True, check=True).stdout.strip()
+        status = subprocess.run(
+            ["git", "-C", str(root), "status", "--porcelain",
+             "--untracked-files=no"],
+            capture_output=True, text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return None, None
+    return commit, bool(status.strip())
+
+
 def build_index(target_root: str, use_llm: bool = True) -> dict:
     root = Path(target_root).resolve()
     if not root.is_dir():
         raise SystemExit(f"ERROR: target repo not found: {root}")
 
     summary_model = MODELS["auto_engineer"]
+    source_commit, source_dirty = _git_source(root)
     index = {
         "index_version": None,
+        "source_commit": source_commit,
+        "source_dirty": source_dirty,
         "llm_summaries": use_llm,
         "summary_model": summary_model if use_llm else None,
         "summary_prompt_version": SUMMARY_PROMPT_VERSION if use_llm else None,
@@ -607,6 +628,32 @@ def _referenced_identifiers(code_diff: str) -> set:
     return set(_IDENT.findall(code_diff))
 
 
+def _removed_identifiers(code_diff: str) -> set:
+    """Identifiers that appear only on the diff's removed lines: on no
+    added line, unchanged context line or hunk-header context. The diff
+    shows no surviving use of them. They may still live in parts of a
+    file the diff does not show, so retrieval acts on them only for
+    entries that belong to a modified file."""
+    removed, kept = set(), set()
+    for line in code_diff.split("\n"):
+        if line.startswith(("--- ", "+++ ", "diff --git", "index ")):
+            continue
+        if line.startswith("@@"):
+            kept |= set(_IDENT.findall(line.rsplit("@@", 1)[-1]))
+        elif line.startswith("-"):
+            removed |= set(_IDENT.findall(line[1:]))
+        else:
+            kept |= set(_IDENT.findall(line[1:]))
+    return removed - kept
+
+
+def _code_like(name: str) -> bool:
+    """A name that reads as code, not an English word: snake_case,
+    camelCase or PascalCase, or containing a digit."""
+    return ("_" in name or any(c.isdigit() for c in name)
+            or any(c.isupper() for c in name[1:]))
+
+
 def _type_line(t: dict) -> str:
     """One KNOWN TYPES line: the compact, comment-free declaration (member
     types and array sizes included, e.g. 'uint8_t data[64]') plus the doc
@@ -640,11 +687,17 @@ def _callsite_line(cs: dict) -> str:
 
 def build_context_pack(code_diff: str, index: dict,
                        budget: int = PACK_BUDGET) -> Tuple[str, dict]:
-    """Retrieve ground-truth context for a given diff. Returns (context_text,
+    """Retrieve indexed context for a given diff. Returns (context_text,
     pack_report). The pack_report holds the budget accounting, section
-    counts, index version and pack format version for the decision record.
-    report['used'] is len(context_text): exactly what the model sees,
-    excluding debate.py's REPO_CONTEXT_TEMPLATE wrapper.
+    counts, index version and commit, and pack format version for the
+    decision record. report['used'] is len(context_text): exactly what
+    the model sees, excluding debate.py's REPO_CONTEXT_TEMPLATE wrapper.
+
+    The index is a snapshot that can predate the diff, so the diff wins:
+    an entry from a modified file that names an identifier only the
+    diff's removed lines use is left out of its section and listed by
+    name under OMITTED, and a purpose that mentions one says so
+    (code review 2026-10-21, finding 1).
 
     Sections in priority order (truncation cuts from the end); a section
     with no entries is left out entirely:
@@ -652,6 +705,7 @@ def build_context_pack(code_diff: str, index: dict,
     2. Types, then constants, referenced by identifier in the diff
     3. Queued-connection call sites in the modified files
     4. Queued-connection call sites in files that define a referenced type
+    5. Omitted entries
     """
     report = {
         "budget": budget,
@@ -659,6 +713,7 @@ def build_context_pack(code_diff: str, index: dict,
         "sections": {},
         "entries": 0,
         "index_version": index.get("index_version"),
+        "index_commit": index.get("source_commit"),
         "format_version": PACK_FORMAT_VERSION,
         "error": None,
     }
@@ -669,37 +724,70 @@ def build_context_pack(code_diff: str, index: dict,
 
     diff_paths = _diff_paths(code_diff)
     ref_ids = _referenced_identifiers(code_diff)
-    sections = []
+    removed = {n for n in _removed_identifiers(code_diff) if _code_like(n)}
+    sections, omitted = [], []
 
     def add_section(title: str, entry_lines: List[str]) -> None:
         if entry_lines:
             sections.append("\n".join([f"--- {title} ---", *entry_lines]) + "\n")
+
+    def removed_in(text: str) -> List[str]:
+        return sorted(set(_IDENT.findall(text)) & removed)
 
     # Section 1: Modified files (purpose + layer)
     mod_files = [f for f in index["files"] if f["path"] in diff_paths]
     # Build/docs/CI files only carry a path-derived hint ("Build
     # configuration"): list them in one line instead of one line each.
     meta = [f["path"] for f in mod_files if f.get("layer") == "meta"]
-    file_lines = [
-        f"[{f['path']}] ({f.get('layer') or 'unknown'}): "
-        + _clip(f.get("purpose") or "(no purpose available)", PURPOSE_LIMIT)
-        for f in [f for f in mod_files if f.get("layer") != "meta"][:20]]
+    file_lines = []
+    for f in [f for f in mod_files if f.get("layer") != "meta"][:20]:
+        purpose = _clip(f.get("purpose") or "(no purpose available)",
+                        PURPOSE_LIMIT)
+        gone = removed_in(purpose)
+        if gone:
+            purpose += f"  [only on the diff's removed lines: {', '.join(gone)}]"
+        file_lines.append(f"[{f['path']}] ({f.get('layer') or 'unknown'}): "
+                          + purpose)
     if meta:
         file_lines.append("Also modified (build/docs/CI, no summary): "
                           + ", ".join(meta))
-    add_section("MODIFIED FILES", file_lines)
+    add_section("MODIFIED FILES (machine-written summaries of the indexed "
+                "version)", file_lines)
 
-    # Section 2: Referenced types/constants
-    type_hits = [t for t in index.get("types", []) if t["name"] in ref_ids]
-    const_hits = [c for c in index.get("constants", []) if c["name"] in ref_ids]
+    # Section 2: Referenced types/constants; ones the diff removes from a
+    # modified file are omitted
+    type_hits, const_hits = [], []
+    for t in index.get("types", []):
+        if t["name"] not in ref_ids:
+            continue
+        if t.get("def_file") in diff_paths and t["name"] in removed:
+            omitted.append(f"{t['name']} (type, {t['def_file']})")
+        else:
+            type_hits.append(t)
+    for c in index.get("constants", []):
+        if c["name"] not in ref_ids:
+            continue
+        if c["file"] in diff_paths and c["name"] in removed:
+            omitted.append(f"{c['name']} (constant, {c['file']})")
+        else:
+            const_hits.append(c)
     add_section("KNOWN TYPES", [_type_line(t) for t in type_hits[:10]])
     add_section("CONSTANTS", [f"{c['name']} = {c['value']} ({c['kind']})"
                               for c in const_hits[:10]])
 
     # Section 3: Queued-connection call sites in the modified files
     all_sites = index.get("callsites", [])
-    call_sites = [cs for cs in all_sites if cs["file"] in diff_paths]
-    add_section("QUEUED CONNECTION CALL SITES",
+    call_sites = []
+    for cs in all_sites:
+        if cs["file"] not in diff_paths:
+            continue
+        gone = removed_in(cs.get("snippet") or "")
+        if gone:
+            omitted.append(f"queued call site in {cs['file']} using "
+                           + ", ".join(gone))
+        else:
+            call_sites.append(cs)
+    add_section("QUEUED CONNECTION CALL SITES (indexed line numbers)",
                 [_callsite_line(cs) for cs in call_sites[:15]])
 
     # Section 4: call sites in files that define a referenced type
@@ -709,9 +797,14 @@ def build_context_pack(code_diff: str, index: dict,
     add_section("RELATED CALL SITES (TYPE DEFINITIONS)",
                 [_callsite_line(cs) for cs in related_sites[:10]])
 
-    # Nothing matched: return no pack at all rather than a bare
-    # "GROUND TRUTH" header with no facts under it.
-    context_text = ("\n".join(["/*** REPO CONTEXT — GROUND TRUTH ***/\n",
+    # Section 5: what was left out, by name only, so its absence reads as
+    # deliberate rather than as a gap in the index
+    add_section("OMITTED (indexed entries this diff removes or rewrites)",
+                omitted)
+
+    # Nothing matched: return no pack at all rather than a bare header
+    # with no facts under it.
+    context_text = ("\n".join(["/*** REPO CONTEXT — INDEXED SNAPSHOT ***/\n",
                                *sections]).strip() if sections else "")
     marker = "\n[... context truncated ...]"
     if len(context_text) > budget:
@@ -727,6 +820,7 @@ def build_context_pack(code_diff: str, index: dict,
         "related_call_sites": len(related_sites),
     }
     report["entries"] = sum(report["sections"].values())
+    report["sections"]["omitted"] = len(omitted)  # named, not counted as facts
 
     return (context_text, report)
 

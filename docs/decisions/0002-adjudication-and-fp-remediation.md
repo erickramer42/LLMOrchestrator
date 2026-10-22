@@ -464,3 +464,200 @@ fall; it migrated to a new hallucination class. The tribunal now
 knows what the code contains; it still cannot reliably reason about
 what a diff removes. Per the standing loop, that is the next class to
 remediate and re-measure.
+## Fifth Measurement (Pending) — Context-Pack Ablation
+
+*Prediction recorded 2026-10-22, before any arm was scored.*
+
+**Question** (code review 2026-10-21, finding 1): does the context pack
+cause the deletion-consistency class? The pack is built from the
+current QtTune tree, but the fixture removes code that tree still has,
+and the transcript labels the pack ground truth that wins over the
+diff. The fourth measurement's design noted this confound and judged it
+noise rather than bias; this measurement tests that judgment.
+
+**Arms** (same fixture, proposal text and models; PROMPT_VERSION
+v5.2-pack-sections; prompt fingerprint `56b27d0a29161c81` for pack
+runs):
+
+1. **Stale pack (records exist).** The six scorable 2026-10-22
+   telemetry runs: bbe168 (num_ctx 16384), 1b11cc, 743bc4, 7a4809
+   (24576), 15cc3f, 5b3f1d (24576, num_predict 12288). All saw the same
+   2,816-char pack (sha256 `e04d13e9…`). 3026b2 is excluded because its
+   round-1 reviewer output came from a retry. The settings differ only
+   in output headroom; every scored first attempt ended normally
+   (`done_reason` stop).
+2. **No pack (to run, N=3).** Retrieval disabled, current settings.
+3. **Post-state pack (to run, N=3).** Index built from QtTune `8ffbf19`,
+   the diff's post-state, current settings.
+
+**Disclosure for arm 1:** these records predate this prediction. Seen
+so far: telemetry, round-1 blocker counts for runs 3026b2 and bbe168,
+and debate-level blocker totals. Not seen: the text of any round-1
+blocker.
+
+**Unit:** round-1 reviewer blockers from first attempts, as stored
+(after hedge demotion).
+
+**Frozen symbol set P** (pack-asserted, removed by the diff): every
+identifier that appears on the diff's minus side, does not appear on
+its plus side, appears in the pack text, and has zero hits in the
+post-state tree (`git grep -w` at `8ffbf19`). That is
+`SignalListModel`, `MaxInFlightFrames` and `m_inFlightFrames`.
+`fetch_sub` also qualifies but is excluded as a generic `std::atomic`
+method. `QttuneSignalDef` and `QttuneSignalSet` survive in the
+post-state and are not in P.
+
+**Metrics:**
+
+- **M1 (mechanical):** blockers whose text contains a P symbol (whole
+  word, case-sensitive).
+- **M2 (adjudicated; deletion-consistency FP):** blockers asserting
+  that something the diff removes still survives (is still declared,
+  referenced, used, tested or exposed) where the post-state shows it
+  does not. Each claimed survivor is checked with `git show` /
+  `git grep` at `8ffbf19`. M2 is split into **M2-P** (cites a P symbol)
+  and **M2-other**.
+- **Scorer check, not a measurement:** M1 applied to the four v5
+  records (ff958c, 276bd0, e4d1b3, 6ce6c0), compared with the review's
+  table (3/4, 2/3, 5/6, 0/1).
+
+**Prediction:**
+
+| Metric (round 1, first attempts) | Stale pack (6 runs) | No pack (N=3) | Post-state pack (N=3) |
+|---|---|---|---|
+| M2, total | 6–18 (mean 1–3 per run) | 0–2 | 0–2 |
+| Runs with M2 ≥ 1 | ≥ 4 of 6 | ≤ 1 of 3 | ≤ 1 of 3 |
+| M2-P as a share of M2 | ≥ 50% | — | — |
+
+**Basis:** the three scored v5 runs had 2, 6 and 0 deletion-consistency
+FPs (mean 2.7), and the review found most of their round-1 blockers
+citing a P symbol. Runs without a pack (014257, 170208) had none. The
+v5.2 pack asserts the same three symbols, now with fuller declarations.
+
+**Decision rule** (on per-run M2 means):
+
+- **Pack-driven:** no-pack mean ≤ stale-pack mean − 1.0, and post-state
+  mean ≤ no-pack mean + 0.7. Remediate in retrieval (finding 1:
+  post-state index, flag removed symbols, invert the precedence
+  wording). Defer backlog #15 until re-measured.
+- **Intrinsic:** no-pack mean ≥ 0.7 × stale-pack mean. The class does
+  not need the pack, so #15 proceeds and the retrieval fixes are
+  hygiene.
+- **Otherwise inconclusive:** add N=3 to each new arm before deciding.
+
+**Power caveat:** with per-run counts as variable as 6/0/1, N=3 per
+arm detects only a large effect. A null result here is weak evidence.
+
+### Arm 1 results (scored 2026-10-22)
+
+| Metric | Predicted | Observed | Outcome |
+|---|---|---|---|
+| M2, total | 6–18 | **3** (2 without the borderline case) | **MISSED LOW** |
+| Runs with M2 ≥ 1 | ≥ 4 of 6 | 2 of 6 | **MISSED** |
+| M2-P as a share of M2 | ≥ 50% | 3 of 3 | HIT |
+| M1 (no prediction) | — | 4 of 19 blockers | — |
+
+| Run | Round-1 blockers | M1 | M2 | Composition |
+|---|---|---|---|---|
+| bbe168 | 5 | 2 | 2 | 2 deletion-consistency, 3 feature-removal objections |
+| 1b11cc | 5 | 1 | 0 | 5 feature-removal objections |
+| 743bc4 | 3 | 1 | 1 | 1 deletion-consistency, 2 feature-removal objections |
+| 7a4809 | 2 | 0 | 0 | 2 × the `m_currentFrameCount` race |
+| 15cc3f | 2 | 0 | 0 | the race; `m_droppedFrames` ordering (unadjudicated) |
+| 5b3f1d | 2 | 0 | 0 | the race; 8-byte decode in removed code |
+
+**The three M2 blockers, checked against the post-state (`8ffbf19`):**
+
+1. **bbe168 #5** — *"Line 390 in app/qttunebridge.cpp: The comment
+   references m_inFlightFrames.fetch_sub but that atomic counter and
+   MaxInFlightFrames constant were removed from the header, creating a
+   dangling reference."* The post-state file has 269 lines, and
+   `m_inFlightFrames` has no hits anywhere in the tree. Line 390 exists
+   only in the indexed tree (`6b58c3a`), where it is the call site the
+   pack shows: `[app/qttunebridge.cpp:390] QMetaObject::invokeMethod(…
+   calls: m_inFlightFrames.fetch_sub, handleFrameInternal …)`. The
+   citation is copied from the pack.
+2. **743bc4 #2** — *"The QML Main.qml previously bound to
+   QtTune.signalModel … with SignalListModel gone, this property no
+   longer exists, creating a broken QML binding."* Post-state `Main.qml`
+   contains no `signal` reference, and `signalModel` has no hits.
+3. **bbe168 #1 (borderline)** — *"SignalListModel class definition was
+   removed from header but referenced in QML."* No post-state QML
+   references `SignalListModel` or `signalModel`. Borderline because the
+   same blocker also notes that `LiveViewPage.qml` was deleted.
+
+**Other observations:**
+
+- **The class was far rarer than in v5:** 0.5 per run against 2.7. A
+  newer composition dominates instead. 10 of 19 blockers object that
+  the diff removes the LiveView feature, signal decoding, batching or
+  tests, without claiming anything survives. 4 report the
+  `m_currentFrameCount` race, the fourth measurement's run-3 TP; they
+  appear in all three of the later runs. With N=6 the cause of the
+  shift cannot be separated from sampling variance (v5 itself was
+  2/6/0).
+- **New confound: the proposal contradicts the diff.** The proposal
+  text used for every bridge-fixture run since the 2026-10-07 baseline,
+  *"Review: coalesced signal updates with LiveView Page v0.3.0 phase
+  2"*, is the subject line of `e0c4c31`. That commit **adds**
+  `LiveViewPage.qml` (+64 lines). The fixture is its reverse patch and
+  **deletes** it. So the debates are told they are reviewing the
+  feature's arrival while the diff removes it. The feature-removal
+  objections are a reasonable reaction to that, and the proposal is a
+  second source, besides the pack, asserting that the removed code
+  exists. The text is constant across all arms, so it does not bias
+  this ablation. The no-pack runs (014257, 170208) used it too and had
+  no deletion-consistency FPs, which points at the pack rather than the
+  proposal.
+- **Scorer check:** M1 on the v5 records gives 1/4, 2/3, 4/6 and 0/1,
+  against the review's 3/4, 2/3, 5/6 and 0/1. Two rows match. The v5
+  records do not store their pack text, so the review's symbol sets
+  for them cannot be reconstructed. Some v5 deletion FPs cite removed
+  symbols outside P (`signalModel`, `forceFrameCountForTesting`).
+
+**Consequence for the decision rule:** with a stale-pack mean of 0.5,
+the rule as written cannot return "pack-driven", because that needs a
+no-pack mean of −0.5 or less. Arms 2 and 3 at N=3 can only return
+"intrinsic" (two or more M2 across the three no-pack runs) or
+"inconclusive". Any change to the rule or to N must be recorded here
+as an amendment before those arms run.
+
+### Amendment (2026-10-22): arms 2 and 3 not run; retrieval fixed instead
+
+**Decision:** skip the no-pack and post-state arms and fix retrieval
+directly. With arm 1 at 0.5 per run, the pre-registered rule could no
+longer return "pack-driven". One arm-1 blocker already shows the stale
+pack injecting a false fact (the line-390 citation). And finding 1's
+retrieval changes are correct whatever the ablation would show: a
+snapshot of another tree should never overrule the diff. Whether the
+class is pack-driven or intrinsic stays unanswered.
+
+**What changed (PROMPT_VERSION v6-diff-authoritative, pack format
+f3-diff-authoritative):**
+
+- **Precedence inverted.** The template calls the pack a snapshot of
+  the indexed tree that may not match the code before or after the
+  diff, says the diff is authoritative for everything it touches, and
+  calls purposes machine-written summaries. The pack header reads
+  "INDEXED SNAPSHOT"; nothing says "ground truth" any more.
+- **Removed entries omitted.** An identifier counts as removed when it
+  appears on the diff's removed lines and on no added line, unchanged
+  context line or hunk header. Constants and types defined in a
+  modified file under a removed name, and call sites in a modified file
+  whose snippet uses one, are left out and listed by name only under an
+  OMITTED section. A purpose that mentions one is annotated
+  `[only on the diff's removed lines: …]`. Entries outside the modified
+  files are never touched, since the diff cannot show whether they
+  survive.
+- **Index aligned with the diff's base.** The committed index is
+  rebuilt from QtTune `e0c4c31`, the fixture's base: every old-side blob
+  in the fixture matches it. The index now records `source_commit` and
+  `source_dirty`, and decision records carry the commit as
+  `repo_context_pack.index_commit`.
+
+**Next measurement:** a v6 baseline on the fixture, prediction first.
+The deletion-consistency rate in arm 1 (0.5 per run) is too low to show
+a reduction at small N, so the comparison should cover round-1 blocker
+composition and precision as well, scored first-attempt only. The
+proposal-text mismatch (STATUS #21) is still present and still
+constant.

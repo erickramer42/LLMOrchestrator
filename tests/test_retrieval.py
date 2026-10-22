@@ -3,6 +3,7 @@ and the queued-connection call-site harvester. No network, no Ollama."""
 
 import unittest
 
+import debate
 import repo_context as rc
 
 
@@ -120,7 +121,7 @@ class BuildContextPack(unittest.TestCase):
         self.assertEqual(report["sections"]["modified_files"], 0)
 
     def test_no_matches_gives_no_pack(self):
-        # A bare "GROUND TRUTH" header with no facts under it is noise.
+        # A bare pack header with no facts under it is noise.
         text, report = rc.build_context_pack("+++ b/docs/unindexed.md\n+hello",
                                              self.INDEX)
         self.assertEqual(text, "")
@@ -281,7 +282,7 @@ class PackAccountingAndSections(unittest.TestCase):
         # codec.c has no call sites of its own; the type it uses does.
         text, report = rc.build_context_pack(
             "+++ b/core/src/codec.c\n+qttune_frame_t f;", index)
-        self.assertNotIn("--- QUEUED CONNECTION CALL SITES ---", text)
+        self.assertNotIn("QUEUED CONNECTION CALL SITES", text)
         self.assertIn("--- RELATED CALL SITES (TYPE DEFINITIONS) ---\n"
                       "[core/include/qttune.h:3]", text)
         self.assertEqual(report["sections"]["related_call_sites"], 1)
@@ -298,6 +299,107 @@ class PackAccountingAndSections(unittest.TestCase):
         text, report = rc.build_context_pack(self.DIFF, index)
         self.assertIn("Bridge between C core and QML UI", text)
         self.assertIsNone(report["error"])
+
+
+# ============ code review 2026-10-21, finding 1: the diff wins ============
+
+class DiffAuthoritativePack(unittest.TestCase):
+    # Shaped like the bridge fixture: the diff deletes a class, a constant
+    # and an in-flight counter that the indexed (pre-change) tree still has.
+    INDEX = {
+        "index_version": "idx_test",
+        "source_commit": "e0c4c31" + "0" * 33,
+        "files": [
+            {"path": "app/qttunebridge.h", "layer": "bridge",
+             "purpose": "Defines QtTuneBridge and SignalListModel for the QML UI."},
+            {"path": "app/qttunebridge.cpp", "layer": "bridge",
+             "purpose": "Implements QtTuneBridge frame handling."},
+        ],
+        "types": [],
+        "constants": [
+            {"name": "MaxInFlightFrames", "value": "1000", "kind": "const",
+             "file": "app/qttunebridge.h"},
+            {"name": "MaxFrames", "value": "10000", "kind": "const",
+             "file": "app/qttunebridge.h"},
+            {"name": "MAX_RETRIES", "value": "3", "kind": "define",
+             "file": "core/include/limits.h"},
+        ],
+        "callsites": [
+            {"file": "app/qttunebridge.cpp", "line": 390, "doc": None,
+             "snippet": "QMetaObject::invokeMethod(self, [self, copy]() { calls: "
+                        "m_inFlightFrames.fetch_sub, handleFrameInternal }, "
+                        "Qt::QueuedConnection);"},
+            {"file": "app/qttunebridge.cpp", "line": 370, "doc": None,
+             "snippet": "QMetaObject::invokeMethod(self, [self]() { calls: "
+                        "flushPending }, Qt::QueuedConnection);"},
+        ],
+    }
+    DIFF = """diff --git a/app/qttunebridge.h b/app/qttunebridge.h
+--- a/app/qttunebridge.h
++++ b/app/qttunebridge.h
+@@ -10,9 +10,4 @@ class QtTuneBridge : public QObject
+-class SignalListModel : public QAbstractListModel {};
+-    static constexpr int MaxInFlightFrames = 1000;
+-    std::atomic<int> m_inFlightFrames{0};
+     static constexpr int MaxFrames = 10000;
++    int m_currentFrameCount = 0;
+diff --git a/app/qttunebridge.cpp b/app/qttunebridge.cpp
+--- a/app/qttunebridge.cpp
++++ b/app/qttunebridge.cpp
+@@ -380,6 +380,4 @@ void QtTuneBridge::onFrame(const qttune_frame_t* f)
+-    if (m_inFlightFrames.load() >= MaxInFlightFrames) return;
+-    if (retries > MAX_RETRIES) return;
++    if (m_currentFrameCount >= MaxFrames) return;"""
+
+    def pack(self):
+        return rc.build_context_pack(self.DIFF, self.INDEX)
+
+    def test_removed_identifiers_ignore_context_and_hunk_headers(self):
+        removed = rc._removed_identifiers(self.DIFF)
+        self.assertTrue({"SignalListModel", "MaxInFlightFrames",
+                         "m_inFlightFrames", "MAX_RETRIES"} <= removed)
+        # on a context line, an added line or a hunk header: still alive
+        self.assertNotIn("MaxFrames", removed)
+        self.assertNotIn("QtTuneBridge", removed)
+        self.assertNotIn("onFrame", removed)
+
+    def test_constant_the_diff_removes_is_omitted_and_named(self):
+        text, report = self.pack()
+        self.assertNotIn("MaxInFlightFrames = 1000", text)
+        self.assertIn("MaxFrames = 10000", text)
+        self.assertIn("--- OMITTED (indexed entries this diff removes or "
+                      "rewrites) ---", text)
+        self.assertIn("MaxInFlightFrames (constant, app/qttunebridge.h)", text)
+        self.assertEqual(report["sections"]["constants"], 2)
+        self.assertEqual(report["sections"]["omitted"], 2)
+
+    def test_constant_outside_the_modified_files_is_kept(self):
+        # Only removed lines use MAX_RETRIES, but its definition is in a
+        # file the diff does not touch, so it still exists.
+        text, _ = self.pack()
+        self.assertIn("MAX_RETRIES = 3 (define)", text)
+
+    def test_call_site_using_a_removed_member_is_omitted(self):
+        text, report = self.pack()
+        self.assertNotIn("[app/qttunebridge.cpp:390]", text)
+        self.assertIn("[app/qttunebridge.cpp:370]", text)
+        self.assertIn("queued call site in app/qttunebridge.cpp using "
+                      "m_inFlightFrames", text)
+        self.assertEqual(report["sections"]["call_sites"], 1)
+
+    def test_purpose_naming_a_removed_class_says_so(self):
+        text, _ = self.pack()
+        self.assertIn("SignalListModel for the QML UI.  [only on the diff's "
+                      "removed lines: SignalListModel]", text)
+        self.assertNotIn("removed lines: QtTuneBridge", text)
+
+    def test_nothing_claims_ground_truth_and_the_diff_wins(self):
+        text, report = self.pack()
+        wording = (text + debate.REPO_CONTEXT_TEMPLATE).lower()
+        self.assertNotIn("ground truth", wording)
+        self.assertIn("the code diff is authoritative", wording)
+        self.assertIn("machine-written", wording)
+        self.assertEqual(report["index_commit"], self.INDEX["source_commit"])
 
 
 if __name__ == "__main__":

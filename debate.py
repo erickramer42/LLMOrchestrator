@@ -35,11 +35,14 @@ CODE CONTEXT:
 {context}
 """
 
-# NEW: retrieved repo context section. Model-facing — part of the
-# v5-context-pack prompt change.
+# Retrieved repo context. The pack is a snapshot of the indexed tree, which
+# need not match the code before or after the diff, so the diff wins
+# (code review 2026-10-21, finding 1; v6).
 REPO_CONTEXT_TEMPLATE = """
-REPO CONTEXT (verified facts extracted from the indexed source —
-ground truth where it conflicts with inference from the diff alone):
+REPO CONTEXT (a snapshot of the indexed source tree; it may not match
+the code before or after this diff. The CODE DIFF is authoritative for
+every file and symbol it touches: where they disagree, trust the diff.
+File purposes are machine-written summaries, not verified facts):
 --------------------------------------------------------------------
 {pack}
 END REPO CONTEXT.

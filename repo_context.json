@@ -1,5 +1,7 @@
 {
-  "index_version": "idx_20261022_030402",
+  "index_version": "idx_20261022_173538",
+  "source_commit": "e0c4c314a8e86b04c563a12232a345549fe9fb4c",
+  "source_dirty": false,
   "llm_summaries": true,
   "summary_model": "gemma4:12b",
   "summary_prompt_version": "s2-json-purpose",
@@ -36,12 +38,12 @@
     },
     {
       "path": "app/qml/HomePage.qml",
-      "purpose": "The `HomePage.qml` file defines the main landing page UI, featuring an animated equalizer logo, branding text, and a status card that reflects the `QtTune.connected` state.",
+      "purpose": "The HomePage.qml file defines the main landing page UI, featuring an animated equalizer logo, branding text, and a status card that displays the connection status and core version using the QtTune\u2026",
       "layer": "app"
     },
     {
       "path": "app/qml/LiveViewPage.qml",
-      "purpose": "LiveViewPage.qml defines a UI page that displays a list of live signals and a real-time chart of their history, consuming data from QtTune.signalModel to provide interactive subscription controls and",
+      "purpose": "LiveViewPage.qml defines a UI page that displays a list of live signals from QtTune.signalModel, providing a ListView to show real-time values and a CheckBox to toggle subscription status.",
       "layer": "app"
     },
     {
@@ -51,12 +53,12 @@
     },
     {
       "path": "app/qml/Main.qml",
-      "purpose": "Main.qml defines the primary ApplicationWindow for the QtTune application, providing a responsive layout that includes a header toolbar for connection management, a navigation sidebar, and a\u2026",
+      "purpose": "Main.qml defines the primary ApplicationWindow for the QtTune application, establishing the main layout structure including a ToolBar header, a navigation sidebar, and a StackLayout to manage\u2026",
       "layer": "app"
     },
     {
       "path": "app/qml/NavButton.qml",
-      "purpose": "The NavButton.qml file defines a custom navigation button component that inherits from AbstractButton, providing a label and an active state visual with a primary-colored accent bar.",
+      "purpose": "The NavButton.qml file defines a custom navigation button component inheriting from AbstractButton that renders a label and provides visual feedback for active and hovered states using Theme\u2026",
       "layer": "app"
     },
     {
@@ -76,12 +78,12 @@
     },
     {
       "path": "app/qttunebridge.cpp",
-      "purpose": "This file implements the `FrameListModel` for managing a rolling buffer of CAN frames, the `FrameSortProxy` for ordering those frames by timestamp, and the `SignalListModel` for representing signal\u2026",
+      "purpose": "This file implements the `FrameListModel` for managing a collection of CAN frames, the `FrameSortProxy` for sorting those frames by timestamp, and the `SignalListModel` for managing signal data.",
       "layer": "bridge"
     },
     {
       "path": "app/qttunebridge.h",
-      "purpose": "This header defines `FrameListModel` for managing frame data, `FrameSortProxy` for sorting those frames, and `SignalListModel` for managing signal subscriptions and providing historical chart data\u2026",
+      "purpose": "This file defines the `QtTuneBridge` class and associated models (`FrameListModel`, `FrameSortProxy`, `SignalListModel`) to bridge core data with the Qt GUI by providing models for frame and signal\u2026",
       "layer": "bridge"
     },
     {
@@ -96,17 +98,12 @@
     },
     {
       "path": "core/include/qttune/core.h",
-      "purpose": "This header file defines the public C API for the qttune library, providing session lifecycle management, synchronous frame transmission/reception, and asynchronous callback registration using\u2026",
+      "purpose": "This header file defines the public C ABI for the qttune library, providing external consumers with session lifecycle management, synchronous frame transmission and reception, and asynchronous\u2026",
       "layer": "core"
     },
     {
       "path": "core/include/qttune/internal.h",
-      "purpose": "This internal header defines the transport abstraction layer (`qttune_transport_t`, `qttune_transport_ops_t`), the `qttune_session_dispatch_callbacks` function, and a mock transport attachment\u2026",
-      "layer": "core"
-    },
-    {
-      "path": "core/include/qttune/j2534.h",
-      "purpose": "This header defines the J2534 vendor discovery API, providing the `qttune_j2534_device_t` structure and functions like `qttune_j2534_discover_devices` to allow the system to enumerate and manage\u2026",
+      "purpose": "This internal header defines functions for dispatching session callbacks and managing mock transport lifecycle, including `qttune_session_dispatch_callbacks`, `qttune_mock_transport_attach`\u2026",
       "layer": "core"
     },
     {
@@ -116,27 +113,22 @@
     },
     {
       "path": "core/include/qttune/signals.h",
-      "purpose": "This header file defines the core signal data structures, including `QttuneSignalDef` and `QttuneSignalSet`, and provides functions like `qttune_decode_signal` and `qttune_validate_signal` to manage,",
+      "purpose": "This header file defines the core signal data structures (`QttuneSignalDef`, `QttuneSignalSet`) and provides functions for decoding raw frame payloads into values and validating signal configurations.",
       "layer": "core"
     },
     {
       "path": "core/src/core.cpp",
-      "purpose": "This file implements the public C API for the qttune library, providing core lifecycle management functions such as qttune_init, qttune_session_create, qttune_session_start, and qttune_session_close.",
-      "layer": "core"
-    },
-    {
-      "path": "core/src/j2534_loader.cpp",
-      "purpose": "This file implements the `qttune_j2534_discover_devices` function, which discovers and de-duplicates J2534 pass-thru devices by enumerating the Windows Registry under the `kPassThruRoot` key using\u2026",
+      "purpose": "This file implements the public C API for the qttune library, providing functions such as qttune_session_create, qttune_session_start, and qttune_session_close to manage the lifecycle of\u2026",
       "layer": "core"
     },
     {
       "path": "core/src/mock_transport.cpp",
-      "purpose": "This file defines the `qttune_mock_transport` structure and a `mock_worker` thread to simulate and encode vehicle telemetry data (such as RPM and coolant temperature) into a mock transport layer for\u2026",
+      "purpose": "This file defines the `qttune_mock_transport` and a background worker thread that simulates vehicle telemetry using a `SimState` model to provide mock data for a `qttune_session_t` for use in\u2026",
       "layer": "core"
     },
     {
       "path": "core/src/session.h",
-      "purpose": "This header defines the `qttune_session` structure, which manages session-specific state including a list of `qttune_frame_callback_t` callbacks and a `qttune_transport_t` pointer.",
+      "purpose": "This header defines the `qttune_session` structure, which manages a collection of `qttune_frame_callback_t` callbacks and a `qttune_mock_transport` pointer to facilitate session-based communication.",
       "layer": "core"
     },
     {
@@ -175,28 +167,18 @@
       "layer": "meta"
     },
     {
-      "path": "tests/fake_j2534.cpp",
-      "purpose": "This file implements a mock SAE J2534-1 vendor DLL by defining exported functions such as PassThruOpen, PassThruConnect, and PassThruReadMsgs to facilitate unit testing of the J2534 loading mechanism.",
-      "layer": "unknown"
-    },
-    {
       "path": "tests/test_bridge.cpp",
-      "purpose": "This file contains unit tests for the `QtTuneBridge` class, which are executed by the Google Test framework to verify session lifecycle, thread-safe frame marshalling from worker threads to the GUI\u2026",
+      "purpose": "This file contains unit tests for the `QtTuneBridge` class, which are executed by the Google Test framework to verify connection lifecycle, thread-safe frame marshalling from worker threads to the\u2026",
       "layer": "bridge"
     },
     {
       "path": "tests/test_core.cpp",
-      "purpose": "This file contains GTest unit tests that verify the core functionality of the qttune library, including status string mappings, versioning, session lifecycle management, and callback registration\u2026",
-      "layer": "unknown"
-    },
-    {
-      "path": "tests/test_j2534_discovery.cpp",
-      "purpose": "This file contains GTest unit and integration tests for the J2534 discovery API, verifying that `qttune_j2534_discover_devices` correctly handles null arguments, returns consistent results, and\u2026",
+      "purpose": "This file defines a suite of GTest unit tests to verify the core lifecycle, session management, and callback registration logic of the `qttune` library, including tests for `qttune_session_create`\u2026",
       "layer": "unknown"
     },
     {
       "path": "tests/test_signals.cpp",
-      "purpose": "This file contains unit tests for the `qttune` library, specifically verifying the functionality of `qttune_decode_signal` and `qttune_validate_signal` to ensure correct data extraction from raw byte",
+      "purpose": "This file contains unit tests for the `qttune` library, defining test cases to verify that `qttune_decode_signal` correctly extracts values from raw byte frames and `qttune_validate_signal` properly\u2026",
       "layer": "unknown"
     }
   ],
@@ -220,7 +202,7 @@
         "is_extended",
         "rsvd"
       ],
-      "decl": "typedef struct qttune_frame {\n    uint64_t timestamp_us;    /* Microseconds since epoch or session start */\n    uint32_t channel_id;      /* Logical channel (e.g., CAN bus ID) */\n    uint8_t data[64];         /* Max CAN-FD payload size */\n    uint8_t data_length;      /* Actual bytes used (0-64) */\n    uint8_t is_extended;      /* Extended frame flag (29-bit address) */\n    uint8_t rsvd[3];          /* Padding for alignment */\n} qttune_frame_t;",
+      "decl": "typedef struct {\n    uint64_t timestamp_us;    /* Microseconds since epoch or session start */\n    uint32_t channel_id;      /* Logical channel (e.g., CAN bus ID) */\n    uint8_t data[64];         /* Max CAN-FD payload size */\n    uint8_t data_length;      /* Actual bytes used (0-64) */\n    uint8_t is_extended;      /* Extended frame flag (29-bit address) */\n    uint8_t rsvd[3];          /* Padding for alignment */\n} qttune_frame_t;",
       "doc": "Frame structure - POD only, no pointers except length",
       "def_file": "core/include/qttune/core.h"
     },
@@ -242,8 +224,7 @@
         "QT_ERR_NO_TRANSPORT",
         "QT_ERR_OUT_OF_MEMORY",
         "QT_ERR_SESSION_CLOSED",
-        "QT_ERR_ALREADY_REGISTERED",
-        "QT_ERR_LOAD_FAILED"
+        "QT_ERR_ALREADY_REGISTERED"
       ],
       "values": {
         "QT_OK": "0",
@@ -252,48 +233,11 @@
         "QT_ERR_NO_TRANSPORT": "3",
         "QT_ERR_OUT_OF_MEMORY": "4",
         "QT_ERR_SESSION_CLOSED": "5",
-        "QT_ERR_ALREADY_REGISTERED": "6",
-        "QT_ERR_LOAD_FAILED": "7"
+        "QT_ERR_ALREADY_REGISTERED": "6"
       },
-      "decl": "typedef enum {\n    QT_OK = 0,\n    QT_ERR_NULL_ARGUMENT = 1,\n    QT_ERR_NOT_IMPLEMENTED = 2,\n    QT_ERR_NO_TRANSPORT = 3,\n    QT_ERR_OUT_OF_MEMORY = 4,\n    QT_ERR_SESSION_CLOSED = 5,\n    QT_ERR_ALREADY_REGISTERED = 6,  /* Kept for backward compat if needed */\n    QT_ERR_LOAD_FAILED = 7          /* New: DLL load/export resolution failed */\n} qttune_status_t;",
+      "decl": "typedef enum {\n    QT_OK = 0,\n    QT_ERR_NULL_ARGUMENT = 1,\n    QT_ERR_NOT_IMPLEMENTED = 2,\n    QT_ERR_NO_TRANSPORT = 3,\n    QT_ERR_OUT_OF_MEMORY = 4,\n    QT_ERR_SESSION_CLOSED = 5,\n    QT_ERR_ALREADY_REGISTERED = 6   /* Kept for backward compat if needed */\n} qttune_status_t;",
       "doc": "Status codes - append-only evolution for ABI stability",
       "def_file": "core/include/qttune/core.h"
-    },
-    {
-      "name": "qttune_transport_ops_t",
-      "kind": "struct",
-      "members": [
-        "start",
-        "detach"
-      ],
-      "decl": "typedef struct qttune_transport_ops {\n    qttune_status_t (*start)(qttune_session_t* session, void* impl);\n    void (*detach)(qttune_session_t* session, void* impl);\n} qttune_transport_ops_t;",
-      "doc": "Transport abstraction (internal): sessions own a transport instance polymorphically. ops is a pointer to static, immutable vtable storage owned by the transport implementation TU; impl is the implementation's private state. Both start() and detach() are invoked by the session, never by transports themselves \u2014 no re-entry into session lifecycle. Contract: - start(): called from qttune_session_start. Must be idempotent (second call on a running transport returns QT_OK). - detach(): called exactly once from qttune_session_close, AFTER the closed flag is set. Must stop any worker threads and free impl + the qttune_transport wrapper itself. May not touch session afterwards.",
-      "def_file": "core/include/qttune/internal.h"
-    },
-    {
-      "name": "qttune_transport_t",
-      "kind": "struct",
-      "members": [
-        "ops",
-        "impl"
-      ],
-      "decl": "typedef struct qttune_transport {\n    const qttune_transport_ops_t* ops;\n    void* impl;\n} qttune_transport_t;",
-      "doc": null,
-      "def_file": "core/include/qttune/internal.h"
-    },
-    {
-      "name": "qttune_j2534_device_t",
-      "kind": "struct",
-      "members": [
-        "vendor_id",
-        "vendor_name",
-        "dll_path",
-        "supported_protocols",
-        "reserved"
-      ],
-      "decl": "typedef struct qttune_j2534_device {\n    uint32_t vendor_id;           /* Index in discovery order (0-based) */\n    char vendor_name[QTTUNE_J2534_VENDOR_NAME_LEN];\n    char dll_path[QTTUNE_J2534_DLL_PATH_LEN];\n    uint32_t supported_protocols; /* 0 \u2014 reserved for PROTOCOLS bitmask parse */\n    uint32_t reserved[8];         /* ABI-stable expansion room */\n} qttune_j2534_device_t;",
-      "doc": null,
-      "def_file": "core/include/qttune/j2534.h"
     },
     {
       "name": "QttuneSignalType",
@@ -342,7 +286,7 @@
         "flags",
         "reserved"
       ],
-      "decl": "typedef struct QttuneSignalDef {\n    uint16_t id;\n    char name[32];\n    QttuneSignalType type;\n    uint8_t start_byte;\n    uint8_t num_bytes;\n    uint8_t bit_offset;\n    uint8_t bit_length;\n    float scale;\n    float offset;\n    char unit[16];\n    uint8_t decimal_places;\n    uint32_t flags;\n    uint32_t reserved[3];\n} QttuneSignalDef;",
+      "decl": "typedef struct {\n    uint16_t id;\n    char name[32];\n    QttuneSignalType type;\n    uint8_t start_byte;\n    uint8_t num_bytes;\n    uint8_t bit_offset;\n    uint8_t bit_length;\n    float scale;\n    float offset;\n    char unit[16];\n    uint8_t decimal_places;\n    uint32_t flags;\n    uint32_t reserved[3];\n} QttuneSignalDef;",
       "doc": null,
       "def_file": "core/include/qttune/signals.h"
     },
@@ -354,7 +298,7 @@
         "count",
         "defs"
       ],
-      "decl": "typedef struct QttuneSignalSet {\n    uint32_t version;\n    uint32_t count;\n    const QttuneSignalDef* defs;\n} QttuneSignalSet;",
+      "decl": "typedef struct {\n    uint32_t version;\n    uint32_t count;\n    const QttuneSignalDef* defs;\n} QttuneSignalSet;",
       "doc": "Single canonical definition \u2014 no duplicates",
       "def_file": "core/include/qttune/signals.h"
     }
@@ -367,34 +311,10 @@
       "file": "app/qttunebridge.h"
     },
     {
-      "name": "HistoryCapacity",
-      "value": "120",
-      "kind": "const",
-      "file": "app/qttunebridge.h"
-    },
-    {
       "name": "MaxInFlightFrames",
       "value": "1000",
       "kind": "const",
       "file": "app/qttunebridge.h"
-    },
-    {
-      "name": "QTTUNE_J2534_MAX_VENDORS",
-      "value": "16",
-      "kind": "define",
-      "file": "core/include/qttune/j2534.h"
-    },
-    {
-      "name": "QTTUNE_J2534_VENDOR_NAME_LEN",
-      "value": "64",
-      "kind": "define",
-      "file": "core/include/qttune/j2534.h"
-    },
-    {
-      "name": "QTTUNE_J2534_DLL_PATH_LEN",
-      "value": "256",
-      "kind": "define",
-      "file": "core/include/qttune/j2534.h"
     },
     {
       "name": "MOCK_SIG_RPM_ID",
@@ -439,66 +359,6 @@
       "file": "core/src/mock_transport.cpp"
     },
     {
-      "name": "PASSTHRU_ISO15765",
-      "value": "0x00000100",
-      "kind": "define",
-      "file": "tests/fake_j2534.cpp"
-    },
-    {
-      "name": "PASSTHRU_ISO9141",
-      "value": "0x00000020",
-      "kind": "define",
-      "file": "tests/fake_j2534.cpp"
-    },
-    {
-      "name": "PASSTHRU_J1850VPW",
-      "value": "0x00000010",
-      "kind": "define",
-      "file": "tests/fake_j2534.cpp"
-    },
-    {
-      "name": "PASSTHRU_J1850SPWM",
-      "value": "0x00000040",
-      "kind": "define",
-      "file": "tests/fake_j2534.cpp"
-    },
-    {
-      "name": "PASSTHRU_CAN",
-      "value": "0x00000080",
-      "kind": "define",
-      "file": "tests/fake_j2534.cpp"
-    },
-    {
-      "name": "STATUS_NOERROR",
-      "value": "0",
-      "kind": "define",
-      "file": "tests/fake_j2534.cpp"
-    },
-    {
-      "name": "STATUS_NOTUSED",
-      "value": "1",
-      "kind": "define",
-      "file": "tests/fake_j2534.cpp"
-    },
-    {
-      "name": "STATUS_FAILED",
-      "value": "0xC0000000L",
-      "kind": "define",
-      "file": "tests/fake_j2534.cpp"
-    },
-    {
-      "name": "STATUS_BUFFER_OVERFLOW",
-      "value": "0xC0000001L",
-      "kind": "define",
-      "file": "tests/fake_j2534.cpp"
-    },
-    {
-      "name": "STATUS_NOT_SUPPORTED",
-      "value": "0xC0000002L",
-      "kind": "define",
-      "file": "tests/fake_j2534.cpp"
-    },
-    {
       "name": "kMaxFrames",
       "value": "20",
       "kind": "const",
@@ -508,17 +368,10 @@
   "callsites": [
     {
       "file": "app/qttunebridge.cpp",
-      "line": 370,
-      "snippet": "QMetaObject::invokeMethod(self, [self]() { calls: m_dropNotifyPending.store, notifyDropped }, Qt::QueuedConnection);",
-      "connection": "Qt::QueuedConnection",
-      "doc": null
-    },
-    {
-      "file": "app/qttunebridge.cpp",
-      "line": 390,
+      "line": 313,
       "snippet": "QMetaObject::invokeMethod(self, [self, copy]() { calls: m_inFlightFrames.fetch_sub, handleFrameInternal }, Qt::QueuedConnection);",
       "connection": "Qt::QueuedConnection",
-      "doc": "Lifetime contract: invoking with `self` as context object means the queued lambda is dropped if the bridge is destroyed before it runs. DO NOT change to a context-free postEvent pattern without revisiting destruction ordering."
+      "doc": null
     }
   ]
 }

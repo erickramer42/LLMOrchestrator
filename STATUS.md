@@ -1,13 +1,13 @@
-# STATUS — Project Map & Continuation Notes
+# STATUS — Project Map & Backlog
 
-Last updated: 2026-10-22 (code review 2026-10-21 findings 5–8: record
-provenance and telemetry, pack accounting, judge-proposal constraints,
-num_ctx attribution; NUM_CTX raised to 24576 from live telemetry;
-runaway-thinking diagnostics)
+Last updated: 2026-10-22 (record provenance and per-attempt telemetry;
+context window raised to 24576 and output capped at 12288 from live
+telemetry; v6 diff-authoritative retrieval with the index rebuilt from
+the fixture's base; backlog #18–#21 filed)
 
-Purpose of this file: anyone picking up this repo can
-orient in five minutes, run the existing validation, and continue the
-queued work without reverse-engineering the ADRs.
+Purpose of this file: anyone picking up this repo can orient in five
+minutes, run the existing validation, and continue the queued work
+without reverse-engineering the ADRs.
 
 ---
 
@@ -25,13 +25,15 @@ queued work without reverse-engineering the ADRs.
 - Hedge-language demotion guardrail (deterministic, regression-tested)
 - Golden suite: 3 model fixtures + 7 deterministic guardrail units = 10/10
   (re-run live 2026-10-10 after the fixes below)
-- Deterministic regression suite: 74 stdlib unittest cases in `tests/`,
+- Deterministic regression suite: 83 stdlib unittest cases in `tests/`,
   with Ollama faked at the HTTP layer. No model needed; CI-ready.
 - FP-rate probe (5-run aggregates), model bake-off
 - Repo indexer (`--index`): typedefs, constants, layer map, LLM purpose
-  summaries and queued-connection call sites for QtTune (rebuilt
-  2026-10-21 from QtTune `6b58c3a`, the same tree as the 2026-10-13
-  build: 39 files, 28/28 source purposes, 2 call sites).
+  summaries and queued-connection call sites for QtTune. The index
+  records the commit it was built from. The committed index was rebuilt
+  2026-10-22 from QtTune `e0c4c31`, the bridge fixture's base: 35 files,
+  24/24 source purposes, 7 types, 10 constants, 1 call site. Earlier
+  builds used `6b58c3a`, a later tree than the fixture.
 - **Repo-context retrieval, measured (2026-10-13, v5-context-pack):**
   `build_context_pack()` in repo_context.py retrieves purposes, types,
   constants and queued-connection call sites tied to the diff;
@@ -64,17 +66,18 @@ queued work without reverse-engineering the ADRs.
   UTF-8 input reads.
 - GitHub Actions CI (2026-10-13): compile checks + deterministic
   regression suite, no Ollama needed.
-- **Retrieval fixes (2026-10-21, PROMPT_VERSION v5.1-retrieval-fidelity;**). 
-  Index and cache paths are module-relative, so retrieval works from any 
-  working directory; an unavailable index prints a warning and returns 
-  `retrieval_error`. Identifier matching is an exact intersection with indexed 
+- **Retrieval fixes (2026-10-21, PROMPT_VERSION v5.1-retrieval-fidelity).**
+  Index and cache paths are module-relative, so retrieval works from any
+  working directory; an unavailable index prints a warning and returns
+  `retrieval_error`. Identifier matching is an exact intersection with indexed
   names (ALL_CAPS `#define`s were unreachable). The pack now shows comment-free
   typedef declarations with doc comments, call-site summaries that keep
   the connection type, word-boundary purpose clipping, and one line for
   build/docs files; nothing is injected when nothing matches. The index
   was rebuilt from QtTune `6b58c3a` (verified against all 28 cached
   digests; cached purposes reused, zero model calls). The fixture's pack
-  grew from 2,023 to 2,816 chars. Not yet measured live.
+  grew from 2,023 to 2,816 chars. Precision not yet re-scored: the seven
+  2026-10-22 telemetry runs below are unscored.
 - **Provenance and telemetry (2026-10-22, PROMPT_VERSION
   v5.2-pack-sections; code review 2026-10-21 findings 5, 6, 8).**
   - Records keep the exact pack text, its SHA-256, the index version and
@@ -83,39 +86,57 @@ queued work without reverse-engineering the ADRs.
     `REPO_CONTEXT_TEMPLATE` and `PACK_FORMAT_VERSION` when a pack was
     used. Runs of one prompt on different diffs now share a fingerprint.
   - Each round records `telemetry`: one entry per agent attempt with
-    `prompt_eval_count`, `eval_count`, `done_reason`, prompt chars, wall
-    time and outcome (backlog #4).
+    `prompt_eval_count`, `eval_count`, thinking and reply sizes,
+    `done_reason`, prompt chars, wall time and outcome (backlog #4).
+    Failed attempts also keep the last 400 chars of thinking and reply,
+    to tell a loop from long reasoning.
   - `build_context_pack` reports `used` as the real pack length and
     truncates on it. Empty section headers are gone. Related call sites
     no longer need a direct call site and are counted. A malformed index
     degrades the debate to no retrieval instead of crashing it.
   - The bridge fixture's pack is byte-identical to v5.1's.
-- **NUM_CTX 16384 → 24576 (2026-10-22, backlog #16).** Two live
-  telemetry runs on the bridge fixture (3026b2, bbe168) showed a stable
-  ~9.4K–10.2K-token prompt. One round-1 reviewer reply ran out at
-  9,397 + 6,987 = 16,384 tokens, so the output, thinking included,
-  fills the window. Evidence and decision: ADR-0002 telemetry
-  follow-up. Debates only; probe and bake-off keep 16384. Two re-runs
-  at 24576 (1b11cc, 743bc4) finished replies of 7.7K and 10.1K output
-  tokens, but two of six first attempts still ran away to the new
-  limit. See the next entry and ADR-0002's second follow-up.
-- **Runaway diagnostics (2026-10-22).** Telemetry now records
-  `thinking_chars` and `content_chars` for every attempt. For failed
-  attempts it also keeps the last 400 chars of thinking and content
-  (`thinking_tail`, `content_tail`). This tells looping from long
-  reasoning on the next runaway (backlog #16).
-- **Output cap, NUM_PREDICT 12288 (2026-10-22).** Engineer runaways
-  are a thinking loop. Every attempt is now capped above every finished
-  reply (longest 10,097). Verified live (runs 15cc3f, 5b3f1d): two
-  runaways stopped at exactly 12,288 tokens after 272 s and 186 s, and
-  both retries recovered. ADR-0002, third follow-up.
+- **Context window and output cap (2026-10-22, backlog #16; ADR-0002
+  telemetry follow-ups).** Seven live telemetry runs on the bridge
+  fixture showed a stable ~9.4K–10.2K-token prompt, while the output,
+  thinking included, varies widely.
+  - **`NUM_CTX` 16384 → 24576:** finished reviewer replies reach 10,097
+    output tokens, which 16384 cannot hold.
+  - **`NUM_PREDICT` 12288:** some attempts loop in their thinking and
+    would fill any window. The cap stops them, and the retry recovers.
+    Verified live (15cc3f, 5b3f1d): two runaways stopped at exactly
+    12,288 tokens, and both retries recovered.
+  - Debates only; probe and bake-off keep 16384, uncapped.
+- **Diff-authoritative retrieval (2026-10-22, PROMPT_VERSION
+  v6-diff-authoritative, pack format f3; code review 2026-10-21
+  finding 1).**
+  - The template calls the pack a snapshot of the indexed tree and the
+    diff authoritative. "Ground truth" and "verified facts" are gone.
+  - Constants, types and call sites from a modified file that use an
+    identifier only the diff's removed lines contain are omitted and
+    named under OMITTED. Purposes that mention one are annotated.
+  - The index records `source_commit`/`source_dirty`; records carry
+    `repo_context_pack.index_commit`.
+  - Fixture pack (2,562 chars): `MaxInFlightFrames` and the
+    `m_inFlightFrames` call site are omitted, and both `SignalListModel`
+    purposes are annotated. Not yet measured live.
 
 **Known limitations (by design or pending):**
-- **Deletion-hallucination is now the dominant FP class** (8 total
-  across the N=3 context-pack runs, 6/0/1 by run): the reviewer
-  fabricates surviving references to code removed together in the diff.
-  Candidate fix: ground removed symbols from the diff's minus side
-  (backlog #15).
+- **Deletion hallucination: the reviewer fabricates surviving
+  references to code the diff removes.** It was the dominant FP class
+  in the v5 N=3 (8 total, 6/0/1 by run). In six scorable v5.2 runs it
+  fell to 3 (0.5 per run), every one citing a symbol the stale context
+  pack asserts. One cites a line number that exists only in the indexed
+  tree (ADR-0002, fifth measurement, arm 1). v6 fixes the retrieval
+  side: the diff is authoritative and removed entries are omitted. The
+  ablation was skipped, so whether the class needs the pack is
+  unanswered; #15 (a pre-judge check) waits on the v6 baseline.
+- **The bridge fixture's proposal contradicts its diff.** Every run
+  since 2026-10-07 used *"Review: coalesced signal updates with
+  LiveView Page v0.3.0 phase 2"*, the subject of `e0c4c31`, which adds
+  the LiveView page. The fixture is its reverse and deletes it. Many
+  round-1 blockers object to the removal (10 of 19 in the v5.2 runs).
+  The text is constant across arms, so comparisons stand, but absolute
+  rates on this fixture are affected (backlog #21).
 - **Hedge demotion can demote true claims.** It fired once in the N=3
   measurement, on a hedged formulation of a genuine thread-safety
   finding. "Hedged" does not imply "wrong" (backlog #12).
@@ -171,10 +192,10 @@ queued work without reverse-engineering the ADRs.
 | `adjudication.py` | Pure adjudication logic, no I/O: `normalize_agent_output()`, `derive_verdict()`, `demote_hedged_blockers()`. CI-importable. |
 | `debate.py` | The debate loop. Transcript templates incl. `REPO_CONTEXT_TEMPLATE`; loads `repo_context.json`, calls `build_context_pack` (never fatal: errors degrade to no retrieval), injects retrieval into the transcript, records `repo_context_pack` (report, pack text, hash, index version) and per-round telemetry in decision records. Ends with AGENT_FAILURE on exhausted agent calls. |
 | `golden_tests.py` | Golden suite: 3 LLM-backed model fixtures + `run_hedge_unit_tests()` (7 deterministic guardrail cases, production-derived texts). |
-| `reviewer_prompt.py` | Single source of truth for agent system prompts. PROMPT_VERSION (currently v5.2-pack-sections). Also holds FAILURE_SENTINEL. |
+| `reviewer_prompt.py` | Single source of truth for agent system prompts. PROMPT_VERSION (currently v6-diff-authoritative). Also holds FAILURE_SENTINEL. |
 | `file_metadata.py` | File-path → layer mapping and layer constraint notes. |
-| `repo_context.py` | Offline indexer (`orchestrator.py --index ../qttune [--no-llm]`) AND debate-time retrieval (`harvest_callsites`, `build_context_pack`): modified-file purposes, referenced types/constants, queued-connection call sites with paren-depth statement scanning, budget-enforced truncation. Consumed by debate.py since v5-context-pack. |
-| `repo_context.json` | Committed context pack for QtTune (39 files, 28 LLM purposes, 2 queued-connection call sites; rebuilt 2026-10-21 from QtTune `6b58c3a`; repo_root field removed 2026-10-13 — local-path leak). Read by debate.py at runtime from next to repo_context.py, regardless of CWD. |
+| `repo_context.py` | Offline indexer (`orchestrator.py --index ../qttune [--no-llm]`) AND debate-time retrieval (`harvest_callsites`, `build_context_pack`): modified-file purposes, referenced types/constants, queued-connection call sites with paren-depth statement scanning, budget-enforced truncation. Since v6, entries the diff removes are omitted and named, and the index records its source commit. Consumed by debate.py since v5-context-pack. |
+| `repo_context.json` | Committed context pack for QtTune, built from the bridge fixture's base (`source_commit` `e0c4c31`, 2026-10-22: 35 files, 24 LLM purposes, 1 queued-connection call site). Reviewing a different diff needs an index of that diff's base. repo_root field removed 2026-10-13 (local-path leak). Read by debate.py at runtime from next to repo_context.py, regardless of CWD. |
 | `eval_harness/probe.py` | FP-rate probe: N runs against a clean fixture. CLEAN / BORDERLINE / SYSTEMATIC / NO_DATA. |
 | `eval_harness/bakeoff.py` | Side-by-side model comparison on bug + clean fixtures. |
 | `eval_harness/__init__.py` | Package marker. |
@@ -192,7 +213,7 @@ queued work without reverse-engineering the ADRs.
 
 **Module dependency direction (acyclic):** reviewer_prompt + file_metadata
 (leaves) → config → agent_client and adjudication (parallel layers) →
-debate + golden_tests + repo_context → orchestrator. `tests/` sits on
+repo_context → debate + golden_tests → orchestrator. `tests/` sits on
 top of everything.
 
 ---
@@ -209,7 +230,7 @@ top of everything.
    PROMPT_VERSION. Transcript templates and the pack format are prompts
    too: a change to `build_context_pack`'s output also bumps
    `PACK_FORMAT_VERSION`, which feeds the fingerprint. Currently
-   v5.2-pack-sections.
+   v6-diff-authoritative.
 5. **Evidence pairs.** Every committed decision record needs its input
    fixture committed alongside (docs/fixtures/).
 6. **Predict before measuring.** Expected outcome written to the ADR
@@ -225,11 +246,11 @@ top of everything.
 
 ## Backlog (ideas, loosely ordered)
 
-Suggested order as of 2026-10-22: #16 runaway output (read the
-diagnostics from the next live runs; cheap) → #15 deletion-hallucination
-(after code review 2026-10-21 finding 1's ablation) → #12 hedge gate →
-#2 judge → #18 early reject → #11 transcript v6 → #17 re-triage → the
-rest.
+Suggested order as of 2026-10-22: v6 baseline on the bridge fixture
+(predict first; ADR-0002, fifth measurement amendment) → #15 if the
+deletion class persists → #21 fixture proposal → #16 runaway output →
+#12 hedge gate → #2 judge → #18 early reject → #11 transcript protocol
+→ #17 re-triage → the rest.
 
 1. **Repo context pack — DONE (2026-10-13).** Indexer, callsite
    harvester, debate-time retrieval and the third measurement are all
@@ -258,7 +279,7 @@ rest.
    inject a layer map keyed by file.
 9. **Retire the orchestrator re-export shim.**
 10. **Codebase abstraction.** Move QtTune-specific bits behind config.
-11. **Transcript protocol v6** (one versioned prompt change, predicted
+11. **Transcript protocol** (one versioned prompt change, predicted
     and measured as a unit): move prior critique out of PROPOSAL into
     an unverified section; uphold-or-withdraw with citation; feed back
     reviewer questions and engineer blockers; fence untrusted diff/
@@ -272,12 +293,14 @@ rest.
 14. **Client hardening.** Pass the JSON schema as Ollama's `format`
     (structured outputs); route golden fixtures through the transcript
     builder.
-15. **Deletion-hallucination remediation (NEW, top priority).** Ground
+15. **Deletion-hallucination remediation.** Ground
     "removed symbols" from the diff's minus side: a blocker claiming a
     surviving reference to symbol X must verify X is not in the removed
     set. Deterministic pre-judge check in adjudication.py, or retrieval
     that lists removed symbols alongside survivors. Predict + measure
-    per convention 7 — this is the new dominant FP class (8 in N=3).
+    per convention 7. In the v5.2 runs every instance cited a symbol
+    the stale pack asserted; v6 now omits those from the pack. Do this
+    only if the v6 baseline still shows the class.
 16. **Context budget and runaway output — IN PROGRESS (2026-10-22).**
     - **Prompt side, settled:** the prompt is a stable ~9.4K–10.2K
       tokens. The diff is ~83% of it, the pack ~820 tokens, feedback
@@ -353,48 +376,16 @@ rest.
     sees a correctness violation, e.g. report it as a concern for the
     reviewer. This is a prompt change: bump PROMPT_VERSION and measure
     per convention 6.
+21. **Bridge fixture proposal mismatch (NEW, 2026-10-22).** The
+    proposal text describes `e0c4c31` adding the LiveView feature; the
+    fixture diff is its reverse and removes it (ADR-0002, fifth
+    measurement). Keep the text for the v6 baseline, so that it
+    compares with every earlier run. Afterwards, decide
+    whether new fixture runs use a matching proposal, e.g. *"Revert
+    e0c4c31: remove coalesced signal updates and the LiveView page"*.
+    That breaks comparability with every earlier run, so treat it as a
+    new baseline (predict, then measure). The stable corpus (#7) should
+    take its proposal text from the diff's actual direction.
 
 Deliberately deferred: MAX_DEBATE_ROUNDS / loop-shape tuning — #2
 supersedes.
-
----
-
-## Notes for Continuing Agents
-
-- Models are assigned in the `MODELS` dict in config.py:
-  reviewer = `laguna-xs-2.1`, engineer = `gemma4:12b`, both at num_ctx
-  24576 with output capped at num_predict 12288 (16384 and uncapped
-  until 2026-10-22; probe and bake-off still use 16384, uncapped).
-- Temperature: 0.7 first round, 0.05 retries and later rounds.
-- Round-1 output is the scored arm for measurements: the live feedback
-  loop demonstrably carries engineer concerns back into reviewer
-  blockers (pilot round 3, 2026-10-13), so rounds 2+ mix retrieval and
-  anchoring effects.
-- Decision records include `hedge_demotions` per round and (v5 on)
-  `repo_context_pack` retrieval diagnostics. From v5.2 they also carry
-  per-round `telemetry` and the exact pack text. When grouping runs,
-  compare `prompt_fingerprint`, not only PROMPT_VERSION. v5 and v5.1
-  fingerprints also hashed the pack text, so they group by diff as
-  well as by prompt. From v5.2 they hash templates only.
-- The judge derives "conditional" whenever questions/concerns exist.
-- If an agent failure reason mentions `done_reason=length`, output was
-  truncated. The reason and that round's `telemetry` give the prompt
-  and output token counts: check which side filled NUM_CTX (see #16)
-  before assuming the model is bad. For a runaway, `thinking_tail`
-  shows whether the model was repeating itself.
-- Run ad-hoc debates from a scratch directory: `coach_artifacts/` is
-  CWD-relative. Retrieval reads the index from next to repo_context.py,
-  so this no longer disables it (fixed 2026-10-21).
-- Pin every fix with a case in `tests/`; `fake_ollama()` drives the
-  real client and debate code.
-- To modify judging or guardrails: adjudication.py. To change what
-  agents are asked: reviewer_prompt.py or the templates in debate.py
-  (+ bump PROMPT_VERSION). Retrieval logic: repo_context.py. To swap
-  models or knobs: config.py.
-- Fixture provenance (2026-10-13, forensics): the bridge-refactor
-  fixture is the reverse patch of QtTune commit `e0c4c31`; post-state
-  byte-identical to committed `8ffbf19` (blob `1c195f8`, verified via
-  `git log --all --find-object=1c195f8`). Both N=3 TPs are real
-  previously-shipped bugs, later fixed in QtTune. Any future triage of
-  this fixture must score against the diff's post-state, NOT current
-  QtTune — that mistake is what #17 corrects.

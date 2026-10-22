@@ -12,6 +12,7 @@ import contextlib
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -544,6 +545,23 @@ class RepoContextTests(unittest.TestCase):
             (repo / "build" / "gen.h").write_text("#define GEN 1\n", encoding="utf-8")
             idx = repo_context.build_index(str(repo), use_llm=False)
         self.assertEqual([f["path"] for f in idx["files"]], ["core/x.h"])
+        self.assertIsNone(idx["source_commit"])  # not a git checkout
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_index_records_the_commit_it_describes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            git = ["git", "-C", tmp, "-c", "user.name=t", "-c", "user.email=t@t"]
+            subprocess.run(["git", "init", "-q", tmp], check=True)
+            Path(tmp, "x.h").write_text("#define LIMIT 8\n", encoding="utf-8")
+            subprocess.run(git + ["add", "x.h"], check=True)
+            subprocess.run(git + ["commit", "-q", "-m", "c"], check=True)
+            head = subprocess.run(git + ["rev-parse", "HEAD"], capture_output=True,
+                                  text=True, check=True).stdout.strip()
+            clean = repo_context.build_index(tmp, use_llm=False)
+            Path(tmp, "x.h").write_text("#define LIMIT 9\n", encoding="utf-8")
+            dirty = repo_context.build_index(tmp, use_llm=False)
+        self.assertEqual((clean["source_commit"], clean["source_dirty"]), (head, False))
+        self.assertEqual((dirty["source_commit"], dirty["source_dirty"]), (head, True))
 
 
 # ============ CLI ============

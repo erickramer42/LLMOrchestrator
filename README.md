@@ -170,9 +170,13 @@ measured N=3 — see ADR-0002.
    (`repo_context_pack`) and any agent failure reasons, so a record can
    be matched to its fixture and re-run.
 
-9. **Repo-context retrieval** — Retrieved ground truth (file purposes,
-   type definitions, constants, queued-connection call sites) keyed to
-   the diff is injected into the transcript under a char budget. The
+9. **Repo-context retrieval** — Indexed context (file purposes, type
+   definitions, constants, queued-connection call sites) keyed to the
+   diff is injected into the transcript under a char budget. The diff
+   stays authoritative: the pack is labelled a snapshot, and indexed
+   entries the diff removes are omitted and named rather than asserted
+   (v6, after a reviewer cited a line that existed only in the stale
+   index). The
    pack's template and format version participate in the prompt
    fingerprint; the pack text itself is recorded separately, because it
    depends on the reviewed diff. Rationale:
@@ -264,7 +268,7 @@ These patterns work on ANY codebase:
 - Schema validation before judging → a malformed reply must never read as "no findings"
 - Hedge demotion → enforce taxonomy discipline on any LLM output
 - Layer/role metadata injection → applies wherever file-level rules differ
-- Repo-context retrieval → give reviewers ground truth keyed to the diff, not the whole repo
+- Repo-context retrieval → give reviewers indexed facts keyed to the diff, not the whole repo, and never let a stale index overrule the diff
 - Artifact-type prompting → headers vs. implementations differ everywhere
 - Multi-run probes → stability is a property of the eval harness, not the model
 - Measure → remediate per class → re-measure → publish the trend → this loop is the repo's core contribution
@@ -282,10 +286,10 @@ by running the debate command three times against the committed fixture
 and index. The regression suite in tests/ runs without any LLM and is
 suitable for CI.
 
-## Project Map and Continuation Notes
+## Project Map and Backlog
 
-See [STATUS.md](STATUS.md) for a full file map, current state, open
-issues, and notes for continuing development.
+See [STATUS.md](STATUS.md) for a full file map, current state, known
+limitations, conventions and the backlog.
 
 ## Links
 
