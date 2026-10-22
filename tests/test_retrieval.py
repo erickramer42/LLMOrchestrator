@@ -119,6 +119,128 @@ class BuildContextPack(unittest.TestCase):
         self.assertIsNone(report["error"])
         self.assertEqual(report["sections"]["modified_files"], 0)
 
+    def test_no_matches_gives_no_pack(self):
+        # A bare "GROUND TRUTH" header with no facts under it is noise.
+        text, report = rc.build_context_pack("+++ b/docs/unindexed.md\n+hello",
+                                             self.INDEX)
+        self.assertEqual(text, "")
+        self.assertEqual(report["entries"], 0)
+
+
+# ============ code review 2026-10-21, finding 3: identifier matching ============
+
+class IdentifierMatching(unittest.TestCase):
+    def test_all_identifier_styles_are_collected(self):
+        ids = rc._referenced_identifiers(
+            "+ if (n > MAX_FRAMES || n > kMaxFrames) { snake_type_t t; }")
+        self.assertTrue({"MAX_FRAMES", "kMaxFrames", "snake_type_t"} <= ids)
+
+    def test_all_caps_constant_is_retrieved(self):
+        diff = BuildContextPack.DIFF + "\n+  if (n > MAX_FRAMES) return;"
+        text, report = rc.build_context_pack(diff, BuildContextPack.INDEX)
+        self.assertIn("MAX_FRAMES = 512", text)
+        self.assertEqual(report["sections"]["constants"], 1)
+
+    def test_english_words_match_nothing(self):
+        index = dict(BuildContextPack.INDEX,
+                     types=[{"name": "The", "kind": "alias", "members": []}])
+        # 'The' is only retrieved if the diff mentions an indexed name 'The',
+        # which is fine: matching is exact intersection, not a heuristic.
+        text, _ = rc.build_context_pack("+++ b/x.c\n+// nothing here", index)
+        self.assertEqual(text, "")
+
+
+# ============ code review 2026-10-21, finding 4: presentation fidelity ============
+
+class CallsiteRendering(unittest.TestCase):
+    SRC = """
+void Bridge::onFrame(const qttune_frame_t* f) {
+    QMetaObject::invokeMethod(self, [self, copy]() {
+        // A long explanatory comment that used to fill the snippet window
+        // and push the connection type out of view in the context pack.
+        self->m_inFlightFrames.fetch_sub(1, std::memory_order_relaxed);
+        if (copy.ok()) { self->handleFrameInternal(&copy); }
+    }, Qt::QueuedConnection);
+}
+"""
+
+    def test_lambda_is_summarized_from_comment_free_text(self):
+        site = rc.harvest_callsites(self.SRC, "app/b.cpp")[0]
+        self.assertEqual(
+            site["snippet"],
+            "QMetaObject::invokeMethod(self, [self, copy]() { calls: "
+            "m_inFlightFrames.fetch_sub, copy.ok, handleFrameInternal }, "
+            "Qt::QueuedConnection);")
+        self.assertNotIn("explanatory comment", site["snippet"])
+        self.assertEqual(site["connection"], "Qt::QueuedConnection")
+        self.assertEqual(site["line"], 3)
+
+    def test_long_call_keeps_connection_within_limit(self):
+        args = ", ".join(f"argument_number_{i}" for i in range(40))
+        src = f"connect({args}, Qt::BlockingQueuedConnection);"
+        site = rc.harvest_callsites(src, "a.cpp")[0]
+        self.assertLessEqual(len(site["snippet"]), rc.SNIPPET_LIMIT)
+        self.assertTrue(site["snippet"].endswith("Qt::BlockingQueuedConnection);"))
+
+    def test_old_index_snippet_is_clipped_without_losing_connection(self):
+        old = {"file": "app/b.cpp", "line": 9, "doc": None,
+               "snippet": "QMetaObject::invokeMethod(self, [self]() { // "
+                          + "commentary " * 60 + "}, Qt::QueuedConnection);"}
+        line = rc._callsite_line(old)
+        self.assertIn("Qt::QueuedConnection", line)
+        self.assertLessEqual(len(line), rc.SNIPPET_LIMIT + len("[app/b.cpp:9] "))
+
+
+class TypeAndPurposeRendering(unittest.TestCase):
+    TYPE = {"name": "qttune_frame_t", "kind": "struct",
+            "members": ["timestamp_us", "data", "data_length"],
+            "decl": "typedef struct qttune_frame {\n"
+                    "    uint64_t timestamp_us; /* usec */\n"
+                    "    uint8_t data[64];      /* Max CAN-FD payload */\n"
+                    "    uint8_t data_length;\n} qttune_frame_t;",
+            "doc": "Frame structure - POD only",
+            "def_file": "core/include/qttune/core.h"}
+
+    def test_type_shows_declaration_and_doc_without_comments(self):
+        line = rc._type_line(self.TYPE)
+        self.assertIn("uint8_t data[64];", line)
+        self.assertIn("// Frame structure - POD only", line)
+        self.assertNotIn("usec", line)
+        self.assertNotIn("Max CAN-FD payload", line)
+
+    def test_long_enum_is_cut_at_a_member_boundary(self):
+        values = ", ".join(f"QT_STATUS_VALUE_{i} = {i}" for i in range(60))
+        enum = {"name": "big_t", "kind": "enum", "members": [],
+                "decl": f"typedef enum {{ {values} }} big_t;", "doc": None}
+        line = rc._type_line(enum)
+        body = line.split(": ", 1)[1]
+        self.assertTrue(body.endswith(", …"), body[-30:])
+        self.assertLessEqual(len(body), rc.TYPE_DECL_LIMIT + 2)
+
+    def test_type_without_decl_falls_back_to_all_members(self):
+        line = rc._type_line({k: v for k, v in self.TYPE.items() if k != "decl"})
+        self.assertIn("timestamp_us, data, data_length", line)
+
+    def test_purpose_cut_mid_word_is_clipped_at_a_word_boundary(self):
+        purpose = ("Implements frame marshalling " * 10)[:200]
+        self.assertTrue(purpose.endswith("marshalli"))  # cut mid-word, as stored
+        clipped = rc._clip(purpose, rc.PURPOSE_LIMIT)
+        self.assertTrue(clipped.endswith("frame…"), clipped[-20:])
+
+    def test_complete_sentence_is_left_alone(self):
+        self.assertEqual(rc._clip("A short purpose.", rc.PURPOSE_LIMIT),
+                         "A short purpose.")
+
+    def test_meta_files_collapse_into_one_line(self):
+        index = dict(BuildContextPack.INDEX, files=BuildContextPack.INDEX["files"] + [
+            {"path": "app/CMakeLists.txt", "purpose": "Build configuration",
+             "layer": "meta"}])
+        diff = "+++ b/app/CMakeLists.txt\n" + BuildContextPack.DIFF
+        text, _ = rc.build_context_pack(diff, index)
+        self.assertIn("Also modified (build/docs/CI, no summary): app/CMakeLists.txt",
+                      text)
+        self.assertNotIn("Build configuration", text)
+
 
 if __name__ == "__main__":
     unittest.main()

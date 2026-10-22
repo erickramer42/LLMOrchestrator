@@ -8,6 +8,8 @@ replaced by a fake HTTP layer, so the real agent_client / adjudication /
 debate code paths run end to end.
 """
 
+import contextlib
+import io
 import json
 import os
 import subprocess
@@ -266,6 +268,44 @@ class DebateTests(NoSleep):
         self.assertEqual(len(rec["inputs"]["diff_sha256"]), 64)
         self.assertEqual(len(rec["metadata"]["prompt_fingerprint"]), 16)
         self.assertEqual(rec["outputs"]["agent_failures"], [])
+
+    # ---- retrieval inside the debate (code review 2026-10-21, finding 2) ----
+
+    def write_index(self, files):
+        path = Path(self._tmp.name) / "index.json"
+        path.write_text(json.dumps({"files": files, "types": [], "constants": [],
+                                    "callsites": []}), encoding="utf-8")
+        return path
+
+    def test_committed_index_loads_from_any_working_directory(self):
+        # setUp moved the CWD into a temp dir; the index must still load.
+        index = debate._load_repo_index()
+        self.assertNotIn("_load_error", index)
+        self.assertTrue(index["files"])
+
+    def test_pack_reaches_the_transcript_and_the_record(self):
+        path = self.write_index([{"path": "app/x.cpp", "layer": "bridge",
+                                  "purpose": "Sentinel purpose for retrieval."}])
+        with mock.patch.object(debate, "CONTEXT_PATH", path), \
+                fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN) as post:
+            result = debate.run_debate("p", "+++ b/app/x.cpp\n+int y;\n", "")
+        transcript = post.call_args_list[0].kwargs["json"]["messages"][1]["content"]
+        self.assertIn("REPO CONTEXT", transcript)
+        self.assertIn("Sentinel purpose for retrieval.", transcript)
+        self.assertNotIn("retrieval_error", result)
+        self.assertIsNone(self.record(result)["metadata"]["repo_context_pack"]["error"])
+
+    def test_missing_index_warns_and_is_reported(self):
+        missing = Path(self._tmp.name) / "nope.json"
+        stderr = io.StringIO()
+        with mock.patch.object(debate, "CONTEXT_PATH", missing), \
+                contextlib.redirect_stderr(stderr), \
+                fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN) as post:
+            result = debate.run_debate("p", "+++ b/app/x.cpp\n", "")
+        self.assertIn("FileNotFoundError", result["retrieval_error"])
+        self.assertIn("WARNING: repo context retrieval unavailable", stderr.getvalue())
+        transcript = post.call_args_list[0].kwargs["json"]["messages"][1]["content"]
+        self.assertNotIn("REPO CONTEXT", transcript)
 
 
 # ============ eval scoring ============

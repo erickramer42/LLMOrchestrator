@@ -1,5 +1,5 @@
 {
-  "index_version": "idx_20261013_194450",
+  "index_version": "idx_20261022_030402",
   "llm_summaries": true,
   "summary_model": "gemma4:12b",
   "summary_prompt_version": "s2-json-purpose",
@@ -51,7 +51,7 @@
     },
     {
       "path": "app/qml/Main.qml",
-      "purpose": "Main.qml defines the primary ApplicationWindow for the QtTune application, providing a responsive layout that includes a header toolbar for connection management, a navigation sidebar, and a StackLayo",
+      "purpose": "Main.qml defines the primary ApplicationWindow for the QtTune application, providing a responsive layout that includes a header toolbar for connection management, a navigation sidebar, and a\u2026",
       "layer": "app"
     },
     {
@@ -66,7 +66,7 @@
     },
     {
       "path": "app/qml/Theme.qml",
-      "purpose": "Theme.qml is a singleton that defines a central palette of colors (such as bg, primary, and text) and layout constants (radius, spacing) to provide consistent styling across the application's QML comp",
+      "purpose": "Theme.qml is a singleton that defines a central palette of colors (such as bg, primary, and text) and layout constants (radius, spacing) to provide consistent styling across the application's QML\u2026",
       "layer": "app"
     },
     {
@@ -76,12 +76,12 @@
     },
     {
       "path": "app/qttunebridge.cpp",
-      "purpose": "This file implements the `FrameListModel` for managing a rolling buffer of CAN frames, the `FrameSortProxy` for ordering those frames by timestamp, and the `SignalListModel` for representing signal en",
+      "purpose": "This file implements the `FrameListModel` for managing a rolling buffer of CAN frames, the `FrameSortProxy` for ordering those frames by timestamp, and the `SignalListModel` for representing signal\u2026",
       "layer": "bridge"
     },
     {
       "path": "app/qttunebridge.h",
-      "purpose": "This header defines `FrameListModel` for managing frame data, `FrameSortProxy` for sorting those frames, and `SignalListModel` for managing signal subscriptions and providing historical chart data for",
+      "purpose": "This header defines `FrameListModel` for managing frame data, `FrameSortProxy` for sorting those frames, and `SignalListModel` for managing signal subscriptions and providing historical chart data\u2026",
       "layer": "bridge"
     },
     {
@@ -96,17 +96,17 @@
     },
     {
       "path": "core/include/qttune/core.h",
-      "purpose": "This header file defines the public C API for the qttune library, providing session lifecycle management, synchronous frame transmission/reception, and asynchronous callback registration using `qttune",
+      "purpose": "This header file defines the public C API for the qttune library, providing session lifecycle management, synchronous frame transmission/reception, and asynchronous callback registration using\u2026",
       "layer": "core"
     },
     {
       "path": "core/include/qttune/internal.h",
-      "purpose": "This internal header defines the transport abstraction layer (`qttune_transport_t`, `qttune_transport_ops_t`), the `qttune_session_dispatch_callbacks` function, and a mock transport attachment utility",
+      "purpose": "This internal header defines the transport abstraction layer (`qttune_transport_t`, `qttune_transport_ops_t`), the `qttune_session_dispatch_callbacks` function, and a mock transport attachment\u2026",
       "layer": "core"
     },
     {
       "path": "core/include/qttune/j2534.h",
-      "purpose": "This header defines the J2534 vendor discovery API, providing the `qttune_j2534_device_t` structure and functions like `qttune_j2534_discover_devices` to allow the system to enumerate and manage regis",
+      "purpose": "This header defines the J2534 vendor discovery API, providing the `qttune_j2534_device_t` structure and functions like `qttune_j2534_discover_devices` to allow the system to enumerate and manage\u2026",
       "layer": "core"
     },
     {
@@ -126,12 +126,12 @@
     },
     {
       "path": "core/src/j2534_loader.cpp",
-      "purpose": "This file implements the `qttune_j2534_discover_devices` function, which discovers and de-duplicates J2534 pass-thru devices by enumerating the Windows Registry under the `kPassThruRoot` key using the",
+      "purpose": "This file implements the `qttune_j2534_discover_devices` function, which discovers and de-duplicates J2534 pass-thru devices by enumerating the Windows Registry under the `kPassThruRoot` key using\u2026",
       "layer": "core"
     },
     {
       "path": "core/src/mock_transport.cpp",
-      "purpose": "This file defines the `qttune_mock_transport` structure and a `mock_worker` thread to simulate and encode vehicle telemetry data (such as RPM and coolant temperature) into a mock transport layer for t",
+      "purpose": "This file defines the `qttune_mock_transport` structure and a `mock_worker` thread to simulate and encode vehicle telemetry data (such as RPM and coolant temperature) into a mock transport layer for\u2026",
       "layer": "core"
     },
     {
@@ -141,12 +141,12 @@
     },
     {
       "path": "core/src/signal_sets.cpp",
-      "purpose": "This file defines a mock signal set for testing purposes via `qttune_mock_signal_set` and provides a validation utility `qttune_validate_signal_set` to verify the integrity of `QttuneSignalSet` defini",
+      "purpose": "This file defines a mock signal set for testing purposes via `qttune_mock_signal_set` and provides a validation utility `qttune_validate_signal_set` to verify the integrity of `QttuneSignalSet`\u2026",
       "layer": "core"
     },
     {
       "path": "core/src/signals.cpp",
-      "purpose": "This file provides the core logic for signal processing by defining `qttune_decode_signal` to extract and scale numeric values (UINT, INT, FLOAT32) from raw binary payloads and `qttune_validate_signal",
+      "purpose": "This file provides the core logic for signal processing by defining `qttune_decode_signal` to extract and scale numeric values (UINT, INT, FLOAT32) from raw binary payloads and\u2026",
       "layer": "core"
     },
     {
@@ -181,17 +181,17 @@
     },
     {
       "path": "tests/test_bridge.cpp",
-      "purpose": "This file contains unit tests for the `QtTuneBridge` class, which are executed by the Google Test framework to verify session lifecycle, thread-safe frame marshalling from worker threads to the GUI th",
+      "purpose": "This file contains unit tests for the `QtTuneBridge` class, which are executed by the Google Test framework to verify session lifecycle, thread-safe frame marshalling from worker threads to the GUI\u2026",
       "layer": "bridge"
     },
     {
       "path": "tests/test_core.cpp",
-      "purpose": "This file contains GTest unit tests that verify the core functionality of the qttune library, including status string mappings, versioning, session lifecycle management, and callback registration logi",
+      "purpose": "This file contains GTest unit tests that verify the core functionality of the qttune library, including status string mappings, versioning, session lifecycle management, and callback registration\u2026",
       "layer": "unknown"
     },
     {
       "path": "tests/test_j2534_discovery.cpp",
-      "purpose": "This file contains GTest unit and integration tests for the J2534 discovery API, verifying that `qttune_j2534_discover_devices` correctly handles null arguments, returns consistent results, and provid",
+      "purpose": "This file contains GTest unit and integration tests for the J2534 discovery API, verifying that `qttune_j2534_discover_devices` correctly handles null arguments, returns consistent results, and\u2026",
       "layer": "unknown"
     },
     {
@@ -509,13 +509,15 @@
     {
       "file": "app/qttunebridge.cpp",
       "line": 370,
-      "snippet": "QMetaObject::invokeMethod(self, [self]() { // Clear the flag FIRST: if new drops arrive while we process, // a fresh notification is allowed to be queued and will read // a newer value. Reset-after-read could suppress a drop report. self->m_dropNotifyPending.store(false, std::memory_order_release); self->notifyDropped(); }, Qt::QueuedConnection);",
+      "snippet": "QMetaObject::invokeMethod(self, [self]() { calls: m_dropNotifyPending.store, notifyDropped }, Qt::QueuedConnection);",
+      "connection": "Qt::QueuedConnection",
       "doc": null
     },
     {
       "file": "app/qttunebridge.cpp",
       "line": 390,
-      "snippet": "QMetaObject::invokeMethod(self, [self, copy]() { self->m_inFlightFrames.fetch_sub(1, std::memory_order_relaxed); self->handleFrameInternal(&copy); }, Qt::QueuedConnection);",
+      "snippet": "QMetaObject::invokeMethod(self, [self, copy]() { calls: m_inFlightFrames.fetch_sub, handleFrameInternal }, Qt::QueuedConnection);",
+      "connection": "Qt::QueuedConnection",
       "doc": "Lifetime contract: invoking with `self` as context object means the queued lambda is dropped if the bridge is destroyed before it runs. DO NOT change to a context-free postEvent pattern without revisiting destruction ordering."
     }
   ]

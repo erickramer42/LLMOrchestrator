@@ -28,6 +28,11 @@ from agent_client import call_agent
 from config import MODELS, TEMPERATURE_RETRY
 
 CONTEXT_FILE = "repo_context.json"
+# Module-relative, so --index writes and debates read the same file
+# regardless of the working directory they run from.
+_HERE = Path(__file__).resolve().parent
+CONTEXT_PATH = _HERE / CONTEXT_FILE
+CACHE_PATH = _HERE / "repo_context_cache.json"
 
 # Layer keywords used to hint purpose summaries (fast path when --no-llm)
 _PURPOSE_HINTS = {
@@ -76,6 +81,37 @@ _DECL_NAME = re.compile(r"(\w+)\s*(?:\[[^\]]*\]\s*)*(?::\s*\w+\s*)?$")
 
 QUEUED_CONN_RE = re.compile(r"\bQt::(?:Blocking)?QueuedConnection\b")
 _STATEMENT_LEADS = ("connect", "invokeMethod")
+
+# Presentation limits for model-facing pack lines (part of the prompt:
+# changing them changes what agents see).
+SNIPPET_LIMIT = 300      # one rendered call site
+TYPE_DECL_LIMIT = 400    # one compact typedef declaration
+PURPOSE_LIMIT = 200      # one file purpose
+DOC_LIMIT = 160          # one doc comment
+
+_IDENT = re.compile(r"\b[A-Za-z_]\w*\b")
+# A called name with at most one receiver: 'm_flag.store(', 'self->run('.
+_CALLED = re.compile(r"\b((?:[A-Za-z_]\w*(?:->|\.))?[A-Za-z_]\w*)\s*\(")
+_NOT_CALLS = {"if", "for", "while", "switch", "return", "sizeof", "catch",
+              "static_cast", "reinterpret_cast", "const_cast", "dynamic_cast",
+              "decltype", "alignof", "noexcept", "new", "delete"}
+
+
+def _clip(text: str, limit: int) -> str:
+    """Shorten text to at most `limit` chars at a word boundary, marking the
+    cut with an ellipsis. Text that is exactly `limit` long and does not
+    end a sentence is treated as already cut (older indexes truncated
+    purposes mid-word at 200)."""
+    text = " ".join(text.split())
+    cut = len(text) > limit or (len(text) == limit
+                                and text[-1] not in ".!?)\"'")
+    if not cut:
+        return text
+    head = text[:limit - 1]
+    space = head.rfind(" ")
+    if space > limit // 2:
+        head = head[:space]
+    return head.rstrip(" ,;:-") + "…"
 
 def _match_paren_forward(s: str, open_idx: int) -> int:
     depth = 0
@@ -194,12 +230,15 @@ def _match_brace(s: str, open_idx: int) -> int:
     return -1
 
 
-def _split_top_level(body: str, sep: str) -> List[str]:
+def _split_top_level(body: str, sep: str, openers: str = "{(",
+                     closers: str = "})") -> List[str]:
+    """Split on sep, ignoring separators nested inside openers/closers.
+    Call arguments need '[' too, for lambda capture lists."""
     parts, depth, cur = [], 0, []
     for ch in body:
-        if ch in "{(":
+        if ch in openers:
             depth += 1
-        elif ch in "})":
+        elif ch in closers:
             depth -= 1
         if ch == sep and depth == 0:
             parts.append("".join(cur))
@@ -324,55 +363,87 @@ def harvest_constants(text: str, file_path: str) -> List[Dict]:
                     "file": file_path})
     return out
 
+def _lambda_summary(arg: str) -> str:
+    """Compact form of a lambda argument: its capture list and parameters,
+    plus the functions its body calls, e.g.
+    '[self, copy]() { calls: fetch_sub, handleFrameInternal }'.
+    The body itself is dropped: it is long and mostly irrelevant to WHERE
+    work is handed off to."""
+    brace = arg.find("{")
+    head = " ".join(arg[:brace].split())
+    close = _match_brace(arg, brace)
+    body = arg[brace + 1:close if close != -1 else len(arg)]
+    calls: List[str] = []
+    for m in _CALLED.finditer(body):
+        name = m.group(1)
+        if re.split(r"->|\.", name)[-1] in _NOT_CALLS:
+            continue
+        for owner in ("self->", "this->"):  # the context object is implied
+            if name.startswith(owner):
+                name = name[len(owner):]
+        if name not in calls:
+            calls.append(name)
+    inner = f"calls: {', '.join(calls[:6])}" if calls else "..."
+    return f"{head} {{ {inner} }}"
+
+
+def _render_call(callee: str, args_text: str, connection: str,
+                 semicolon: bool) -> str:
+    """One-line rendering of a queued call from comment-blanked source.
+    Lambda arguments are summarized; the connection type is always kept
+    visible, even when the line has to be shortened."""
+    parts = []
+    for arg in _split_top_level(args_text, ",", "{([", "})]"):
+        arg = arg.strip()
+        parts.append(_lambda_summary(arg) if arg.startswith("[") and "{" in arg
+                     else " ".join(arg.split()))
+    end = ");" if semicolon else ")"
+    rendered = f"{callee}({', '.join(parts)}{end}"
+    if len(rendered) <= SNIPPET_LIMIT:
+        return rendered
+    keep = SNIPPET_LIMIT - len(connection) - len(end) - 3
+    return f"{rendered[:keep].rstrip(' ,')} … {connection}{end}"
+
+
 def harvest_callsites(text: str, file_path: str) -> List[Dict]:
     """Cross-thread handoff points: connect()/invokeMethod() statements
-    using a queued connection. Snippet spans the WHOLE call statement,
-    found by paren matching — lambda bodies of any length included.
-    Commented-out calls are ignored (comments blanked before scanning).
-    
-    If the statement exceeds 400 chars, the snippet shows:
-      begin (connect signature) + " ..." + end (Qt::QueuedConnection part)"""
+    using a queued connection. The whole call is located by paren
+    matching (lambda bodies of any length included) and rendered from
+    COMMENT-BLANKED text, so comments inside lambda bodies never crowd
+    out the call itself. Commented-out calls are ignored.
+
+    Each entry: file, line, snippet (rendered call, <= SNIPPET_LIMIT,
+    connection type always visible), connection, doc (comment above)."""
     blanked = _blank_comments(text)
     out = []
     for m in QUEUED_CONN_RE.finditer(blanked):
+        connection = m.group(0)
         bounds = _enclosing_lead_call(blanked, m.start())
         if bounds is None:
-            # not inside a recognized call: fall back to line bounds
+            # not inside a recognized call: fall back to the line itself
             start = blanked.rfind("\n", 0, m.start()) + 1
             nl = blanked.find("\n", m.start())
-            end = nl if nl != -1 else len(blanked)
+            line_text = " ".join(blanked[start:nl if nl != -1 else len(blanked)].split())
+            snippet = line_text
+            if len(snippet) > SNIPPET_LIMIT:
+                at = snippet.find(connection)
+                lo = max(0, at + len(connection) - SNIPPET_LIMIT + 2)
+                snippet = "…" + snippet[lo:lo + SNIPPET_LIMIT - 2] + "…"
         else:
-            start, _, close = bounds
-            end = close + 1
-            j = end
-            while j < len(blanked) and blanked[j] in " \t":
+            start, open_paren, close = bounds
+            callee = blanked[_callee_start(blanked, open_paren):open_paren]
+            j = close + 1
+            while j < len(blanked) and blanked[j] in " \t\r":
                 j += 1
-            if j < len(blanked) and blanked[j] == ";":
-                end = j + 1
-        
-        full_snippet = " ".join(text[start:end].split())
-        
-        if len(full_snippet) > 400:
-            begin = full_snippet[:150]
-            tail = full_snippet[-250:]
-            if "QueuedConnection" in tail:
-                # Tail already carries the connection type: head + ellipsis + tail
-                snippet = begin + " ... " + tail
-            else:
-                # Connection type is buried mid-body: splice it in explicitly
-                queueloc = full_snippet.find("QueuedConnection")
-                if queueloc != -1:
-                    snippet = (begin + " ... "
-                               + full_snippet[max(0, queueloc - 20):queueloc + 30])
-                else:
-                    snippet = full_snippet[:400]
-        else:
-            snippet = full_snippet
-        
+            semicolon = j < len(blanked) and blanked[j] == ";"
+            snippet = _render_call(callee, blanked[open_paren + 1:close],
+                                   connection, semicolon)
+
         out.append({
             "file": file_path,
             "line": blanked.count("\n", 0, start) + 1,
             "snippet": snippet,
+            "connection": connection,
             "doc": _doc_comment(text, start),
         })
     return out
@@ -394,7 +465,7 @@ def llm_purpose(model: str, file_path: str, text: str) -> Optional[str]:
                         validate=_validate_purpose)
     if result.get("verdict") == "PARSE_FAILURE":
         return None
-    return result["purpose"][:200]
+    return _clip(result["purpose"], 500)  # presentation clips further
 
 
 # ============ INDEX BUILD ============
@@ -465,7 +536,7 @@ def build_index(target_root: str, use_llm: bool = True) -> dict:
 
         index["files"].append({
             "path": rel,
-            "purpose": (purpose or "").strip()[:200],
+            "purpose": _clip(purpose or "", PURPOSE_LIMIT),
             "layer": None,
         })
 
@@ -493,7 +564,7 @@ def build_index(target_root: str, use_llm: bool = True) -> dict:
 
 
 def _cache_path() -> Path:
-    return Path("repo_context_cache.json")
+    return CACHE_PATH
 
 
 def _load_cache() -> dict:
@@ -510,9 +581,8 @@ def _save_cache(cache: dict) -> None:
 def save_index(index: dict) -> Path:
     index["index_version"] = (
         f"idx_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}")
-    out = Path(CONTEXT_FILE)
-    out.write_text(json.dumps(index, indent=2), encoding="utf-8")
-    return out
+    CONTEXT_PATH.write_text(json.dumps(index, indent=2), encoding="utf-8")
+    return CONTEXT_PATH
 
 
 # ============ RETRIEVAL FUNCTION (NEW SECTION) ============
@@ -526,16 +596,43 @@ def _diff_paths(code_diff: str) -> List[str]:
     return paths
 
 
-def _referenced_identifiers(code_diff: str) -> List[str]:
-    """Pull identifiers that look like qttune_* or CamelCase type names."""
-    ids = set()
-    for m in re.finditer(r"\b(qttune_[A-Za-z_]\w*)\b", code_diff):
-        ids.add(m.group(1))
-    for m in re.finditer(r"\b([A-Z][A-Za-z0-9_]*)(?:<[^\s>]+>)?", code_diff):
-        if m.group(1).isupper():
-            continue
-        ids.add(m.group(1))
-    return list(ids)
+def _referenced_identifiers(code_diff: str) -> set:
+    """Every identifier token in the diff. Retrieval intersects this set
+    with the indexed names, so no naming heuristics are needed: ALL_CAPS
+    #defines, k-prefixed constants and snake_case types all match, and
+    English words in comments match nothing."""
+    return set(_IDENT.findall(code_diff))
+
+
+def _type_line(t: dict) -> str:
+    """One KNOWN TYPES line: the compact, comment-free declaration (member
+    types and array sizes included, e.g. 'uint8_t data[64]') plus the doc
+    comment above it. Falls back to member names for index entries that
+    carry no declaration."""
+    decl = " ".join(_blank_comments(t.get("decl") or "").split())
+    if decl and len(decl) > TYPE_DECL_LIMIT:
+        cut = max(decl.rfind(";", 0, TYPE_DECL_LIMIT),
+                  decl.rfind(",", 0, TYPE_DECL_LIMIT))
+        decl = (decl[:cut + 1] if cut > 0 else decl[:TYPE_DECL_LIMIT]) + " …"
+    body = decl or ", ".join(t.get("members", []))
+    doc = t.get("doc")
+    return (f"{t['name']} ({t.get('kind', '?')}): {body}"
+            + (f"  // {_clip(doc, DOC_LIMIT)}" if doc else ""))
+
+
+def _callsite_line(cs: dict) -> str:
+    """One call-site line. Current indexes store a rendered call that
+    already fits; snippets from older indexes can be long, so clip them
+    without ever losing the connection type."""
+    snippet = " ".join((cs.get("snippet") or "").split())
+    if len(snippet) > SNIPPET_LIMIT:
+        found = QUEUED_CONN_RE.search(snippet)
+        conn = cs.get("connection") or (found.group(0) if found else "")
+        head = _clip(snippet, SNIPPET_LIMIT - len(conn) - 1)
+        snippet = head if conn in head else f"{head} {conn}"
+    doc = cs.get("doc")
+    return (f"[{cs['file']}:{cs['line']}] {snippet}"
+            + (f"  // {_clip(doc, DOC_LIMIT)}" if doc else ""))
 
 
 def build_context_pack(code_diff: str, index: dict,
@@ -571,10 +668,17 @@ def build_context_pack(code_diff: str, index: dict,
     mod_files = [f for f in index["files"] if f["path"] in diff_paths]
     if mod_files:
         section_lines = ["--- MODIFIED FILES ---"]
-        for f in mod_files[:20]:  # cap per-file
-            purpose = f.get("purpose") or "(no purpose available)"
+        # Build/docs/CI files only carry a path-derived hint ("Build
+        # configuration"): list them in one line instead of one line each.
+        meta = [f["path"] for f in mod_files if f.get("layer") == "meta"]
+        for f in [f for f in mod_files if f.get("layer") != "meta"][:20]:
+            purpose = _clip(f.get("purpose") or "(no purpose available)",
+                            PURPOSE_LIMIT)
             layer = f.get("layer") or "unknown"
             section_lines.append(f"[{f['path']}] ({layer}): {purpose}")
+        if meta:
+            section_lines.append("Also modified (build/docs/CI, no summary): "
+                                 + ", ".join(meta))
         section_text = "\n".join(section_lines) + "\n"
         chars_used += len(section_text)
         lines.append(section_text)
@@ -585,9 +689,7 @@ def build_context_pack(code_diff: str, index: dict,
     if type_hits or const_hits:
         section_lines = ["--- KNOWN TYPES ---"]
         for t in type_hits[:10]:  # cap types
-            doc = t.get("doc") or ""
-            members = ", ".join(t.get("members", [])[:5])
-            section_lines.append(f"{t['name']} ({t['kind']}): {members}"[:100])
+            section_lines.append(_type_line(t))
         section_lines.append("\n--- CONSTANTS ---")
         for c in const_hits[:10]:  # cap constants
             section_lines.append(f"{c['name']} = {c['value']} ({c['kind']})")
@@ -602,12 +704,7 @@ def build_context_pack(code_diff: str, index: dict,
     if call_sites:
         section_lines = ["--- QUEUED CONNECTION CALL SITES ---"]
         for cs in call_sites[:15]:
-            snippet = (cs.get("snippet") or "")[:120]
-            doc = cs.get("doc") or ""
-            section_lines.append(
-                f"[{cs['file']}:{cs['line']}] {snippet}"
-                + (f" // {doc}" if doc else "")
-            )
+            section_lines.append(_callsite_line(cs))
         section_text = "\n".join(section_lines) + "\n"
         chars_used += len(section_text)
         lines.append(section_text)
@@ -619,14 +716,15 @@ def build_context_pack(code_diff: str, index: dict,
         if extra_sites:
             section_lines = ["--- RELATED CALL SITES (TYPE DEFINITIONS) ---"]
             for cs in extra_sites[:10]:
-                snippet = (cs.get("snippet") or "")[:120]
-                section_lines.append(f"[{cs['file']}:{cs['line']}] {snippet}")
+                section_lines.append(_callsite_line(cs))
             section_text = "\n".join(section_lines) + "\n"
             chars_used += len(section_text)
             lines.append(section_text)
 
     marker = "\n[... context truncated ...]"
-    context_text = "\n".join(lines)
+    # Nothing matched: return no pack at all rather than a bare
+    # "GROUND TRUTH" header with no facts under it.
+    context_text = "\n".join(lines) if len(lines) > 1 else ""
     if chars_used > budget:
         # Marker lives INSIDE the budget: report['used'] must match
         # what the model actually sees, per-ADR accounting.

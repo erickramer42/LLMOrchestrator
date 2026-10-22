@@ -4,10 +4,11 @@ and decision-record persistence."""
 import hashlib
 import json
 import re
+import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from adjudication import (demote_hedged_blockers, derive_verdict,
                           normalize_agent_output)
@@ -16,7 +17,7 @@ from config import (MAX_DEBATE_ROUNDS, MODELS, NUM_CTX, REVIEWER_HEADER_PROMPT,
                     REVIEWER_IMPL_PROMPT, TEMPERATURE_EXPLORATION,
                     TEMPERATURE_RETRY)
 from file_metadata import get_layer_constraints, identify_layer
-from repo_context import CONTEXT_FILE, build_context_pack  # NEW
+from repo_context import CONTEXT_PATH, build_context_pack
 from reviewer_prompt import PROMPT_VERSION, AUTO_ENGINEER_PROMPT
 
 # ============ TRANSCRIPT TEMPLATES ============
@@ -101,12 +102,14 @@ def _is_failure(agent_out: dict) -> bool:
     return agent_out.get("verdict") == "PARSE_FAILURE"
 
 
-def _load_repo_index() -> dict:
-    """Load the checked-in context pack. Fail visible, not fatal: a
-    missing/corrupt index yields an empty dict and the debate proceeds
-    WITHOUT retrieval, with the fact recorded in the decision record."""
+def _load_repo_index(path: Optional[Path] = None) -> dict:
+    """Load the checked-in context pack from next to repo_context.py, so
+    retrieval works from any working directory. Fail visible, not fatal:
+    a missing/corrupt index yields {'_load_error': ...}; the debate then
+    proceeds WITHOUT retrieval, warns on stderr, and records the reason."""
+    path = path or CONTEXT_PATH
     try:
-        return json.loads(Path(CONTEXT_FILE).read_text(encoding="utf-8"))
+        return json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         return {"_load_error": f"{type(exc).__name__}: {exc}"}
 
@@ -135,13 +138,16 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
     reviewer_prompt = (REVIEWER_HEADER_PROMPT if header_artifact
                        else REVIEWER_IMPL_PROMPT)
 
-    # ============ CONTEXT PACK RETRIEVAL (NEW) ============
+    # ============ CONTEXT PACK RETRIEVAL ============
     repo_index = _load_repo_index()
-    pack_text, pack_report = "", {"error": "index not loaded"}
     if "_load_error" not in repo_index:
         pack_text, pack_report = build_context_pack(code_diff, repo_index)
     else:
-        pack_report = {"error": repo_index["_load_error"]}
+        pack_text, pack_report = "", {"error": repo_index["_load_error"]}
+    retrieval_error = pack_report.get("error")
+    if retrieval_error:
+        print(f"WARNING: repo context retrieval unavailable "
+              f"({retrieval_error}); debating without it.", file=sys.stderr)
     if pack_text:
         repo_context_section = REPO_CONTEXT_TEMPLATE.format(pack=pack_text)
     else:
@@ -297,6 +303,8 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
     }
     if agent_failures:
         result["agent_failures"] = agent_failures
+    if retrieval_error:
+        result["retrieval_error"] = retrieval_error
     return result
 
 

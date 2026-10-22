@@ -2,7 +2,10 @@
 Import this from fp_rate_probe.py, bakeoff.py, and orchestrator.py.
 Any edit here must be reflected by bumping PROMPT_VERSION."""
 
-PROMPT_VERSION = "v5-context-pack"
+# v5.1 (2026-10-21): same templates as v5; the retrieved pack changed
+# (all identifiers matched, full typedef declarations + doc comments,
+# comment-free call-site summaries, word-boundary clipping, no empty pack).
+PROMPT_VERSION = "v5.1-retrieval-fidelity"
 
 AUTO_ENGINEER_PROMPT = """You are a senior automotive engineer advocating for QtTune's v0.2.0 goals:
 shipping velocity, J2534/ECU domain correctness, and safety.
