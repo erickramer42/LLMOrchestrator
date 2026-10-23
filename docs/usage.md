@@ -82,8 +82,11 @@ CLEAN, BORDERLINE or SYSTEMATIC, or NO DATA when every run times out or
 fails to parse; failed runs count against the model.
 
 ```sh
-python -m eval_harness.probe --model laguna-xs-2.1 --fixture ../qttune/core/include/qttune/core.h
+python -m eval_harness.probe --model laguna-xs-2.1 --fixture docs/fixtures/qttune_core_e08b455.h
 ```
+
+That fixture is the header the logs in `probe_logs/` were taken on.
+QtTune's current `core.h` has changed since.
 
 **Bake-off**, detection against false positives. A parse failure or
 timeout on a bug case counts as a miss.
@@ -108,7 +111,8 @@ naming the given symbols and lists candidates for hand review: blockers
 naming code the diff removed that the post-change tree lacks (ADR-0002,
 fifth measurement).
 
-**Round-2 pairs** compare a feedback format with a debate's own. Each
+**Round-2 pairs** compare two round-2 formats: the CRITIQUES section a
+debate sends since v11.1, and the feedback debates sent before it. Each
 sample runs a debate's round 1, then the round-2 reviewer twice on the
 same round-1 replies, once per format:
 
@@ -119,8 +123,9 @@ python -m eval_harness.round2 score --diff docs/fixtures/qttune_bridge_refactor.
 ```
 
 The scorer tags each round-2 blocker by where its subject first appeared
-(ADR-0002, eleventh measurement). The scorers expand globs themselves, so
-the quoted patterns work in PowerShell too.
+and counts each arm's first attempts that ran away (ADR-0002, eleventh
+and twelfth measurements). The scorers expand globs themselves, so the
+quoted patterns work in PowerShell too.
 
 ## Reading a decision record
 

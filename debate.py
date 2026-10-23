@@ -80,37 +80,44 @@ RESPOND WITH JSON ONLY using your role specification.
 
 [DEBATE ROUND {round_num}]"""
 
-# Feedback: the round's critiques, appended to the proposal, so they
-# accumulate round on round and read as the author's text (backlog #11).
+# The feedback debates sent before v11.1: the round's critiques appended
+# to the proposal, accumulating round on round and reading as the
+# author's text. Since v11.1 only the pair measurement's V9_ARM sends it,
+# as the comparison arm (ADR-0002, eleventh and twelfth measurements).
 FEEDBACK_TEMPLATE = """{proposal}
 
 REVISE ADDRESSING:
 - Reviewer blockers: {blockers}
 - Engineer concerns: {concerns}"""
 
-# A candidate for backlog #11: the previous round's replies in their own
-# section. Sent only by the round-2 pair measurement's candidate arm. As
+# The previous round's replies in their own section, sent from round 2 on
+# (backlog #11; v11.1): every channel but nits, the last round only. As
 # v10 it kept the race but dropped the in-flight-gate blocker and ran
-# away more often, so debates do not use it (ADR-0002, eleventh
-# measurement).
+# away more often, so debates kept v9's feedback (ADR-0002, eleventh
+# measurement). v11 lets a reviewer blocker, whose quote the evidence
+# check has passed, stand unless the code contradicts it, and asks for no
+# re-check; it measured as not worse and shipped (twelfth measurement).
 CRITIQUES_TEMPLATE = """
-ROUND {round_num} CRITIQUES (what the agents said last round; claims,
-not verified facts):
-Reviewer blockers:{reviewer_blockers}
+ROUND {round_num} CRITIQUES (what the agents said last round):
+Reviewer blockers (each quote was checked against the code):{reviewer_blockers}
 Reviewer questions:{reviewer_questions}
 Engineer blockers:{engineer_blockers}
 Engineer concerns:{engineer_concerns}
 Engineer questions:{engineer_questions}
-Check each point against the CODE DIFF before you rely on it. Keep a
-point only if the code shows it, with the evidence any new point needs.
-Drop a point the code does not support, or ask it as a question.
+A reviewer blocker above stands unless the code contradicts it; then
+drop it, or ask it as a question. Its quote was already checked, so do
+not search the diff again to re-confirm it. A defect that a removal
+causes is quoted from the code that now runs without the removed part.
+Any other point becomes a blocker only with the evidence your
+instructions require.
 """
 
 DEBATE_MODE = "debate"
 MEASUREMENT_MODE = "round1_reviewer"
 PAIR_MODE = "round2_pair"
-# Round-2 arms of the pair measurement: the candidate, and a debate's own
-# feedback (v9's format; the name is kept for the eleventh measurement)
+# Round-2 arms of the pair measurement: the CRITIQUES section, which a
+# debate's round 2 sends since v11.1, and the format debates sent before
+# it (v9's). The names are kept so records compare across measurements.
 CRITIQUES_ARM = "critiques_section"
 V9_ARM = "v9_proposal_feedback"
 
@@ -310,7 +317,9 @@ def _record_inputs(setup: _Setup, proposal: str, original_proposal: str,
                    code_diff: str, code_context: str,
                    header_artifact: bool) -> dict:
     return {
-        "proposal": proposal,  # final, feedback-grown (archived meaning)
+        # the final proposal: grown by feedback before v11.1, since then
+        # the original, kept so records read alike
+        "proposal": proposal,
         "original_proposal": original_proposal,
         "header_artifact": header_artifact,
         "file_path": setup.file_path or None,
@@ -343,10 +352,10 @@ def _run_settings(setup: _Setup, mode: str, max_rounds: int,
         "repo_context_pack": setup.pack_report,
         "prompt_fingerprint": _prompt_fingerprint(
             setup.reviewer_prompt, AUTO_ENGINEER_PROMPT, STATIC_TEMPLATE,
-            TRUNCATION_NOTE, TRANSCRIPT_TEMPLATE, FEEDBACK_TEMPLATE,
-            setup.layer_note,
-            # the pair measurement also sends its candidate arm's section
-            CRITIQUES_TEMPLATE if mode == PAIR_MODE else "",
+            TRUNCATION_NOTE, TRANSCRIPT_TEMPLATE,
+            # only the pair measurement's V9_ARM still sends v9's feedback
+            FEEDBACK_TEMPLATE if mode == PAIR_MODE else "",
+            setup.layer_note, CRITIQUES_TEMPLATE,
             # the pack's template and format, not its input-derived text
             REPO_CONTEXT_TEMPLATE + PACK_FORMAT_VERSION if setup.pack_text else ""),
     }
@@ -358,15 +367,16 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
     with audit trail. header_artifact selects the header-scoped reviewer
     prompt (interface definitions) instead of implementation standards.
 
-    Every round re-renders the transcript from the current proposal, so
-    the feedback appended to it reaches both agents. Records from before
+    From round 2 on, the transcript shows the previous round's replies in
+    a CRITIQUES section after the code (v11.1; ADR-0002, twelfth
+    measurement), and the proposal stays the author's text. Before v11.1
+    the feedback was appended to the proposal, and records from before
     2026-10-09 ran with a frozen transcript, so their rounds 2+ were
     blind resamples (ADR-0002 erratum).
 
     Input that _input_check refuses gets its verdict without any round.
     """
     debate_id = _new_id("debate")
-    original_proposal = proposal
     setup = _prepare(code_diff, code_context, header_artifact)
     check = _input_check(setup, proposal, code_diff, code_context)
 
@@ -374,8 +384,9 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
     agent_failures: List[str] = []
     final_verdict = check["verdict"]  # set only when the input is refused
     rounds = range(1, MAX_DEBATE_ROUNDS + 1) if final_verdict is None else ()
+    critiques = ""
     for round_num in rounds:
-        entry = _run_round(setup, proposal, round_num)
+        entry = _run_round(setup, proposal, round_num, critiques=critiques)
         round_history.append(entry)
 
         # ============ FAIL CLOSED on unusable agent output ============
@@ -388,14 +399,14 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
         if final_verdict:
             break
 
-        # Feed critiques back: proposal grows, next round's transcript
-        # re-renders from it — this is the debate actually functioning
-        proposal = _with_feedback(proposal, entry)
+        # Feed the critiques back: the next round's transcript shows this
+        # round's replies, and only this round's, after the code
+        critiques = _critiques_section(entry)
 
     decision_record = _save_decision_record(
         debate_id,
-        _record_inputs(setup, proposal, original_proposal, code_diff,
-                       code_context, header_artifact),
+        _record_inputs(setup, proposal, proposal, code_diff, code_context,
+                       header_artifact),
         final_verdict, round_history,
         _run_settings(setup, DEBATE_MODE, MAX_DEBATE_ROUNDS, check),
         agent_failures)
@@ -482,9 +493,10 @@ def _judge(entry: dict) -> Optional[str]:
 
 
 def _critiques_section(entry: dict) -> str:
-    """The candidate arm's CRITIQUES section: every channel of this
-    round's replies, one item per line (reviewer nits excepted). Demoted
-    blockers appear as the questions they became."""
+    """The CRITIQUES section the next round sends (v11.1), also the pair
+    measurement's CRITIQUES_ARM: every channel of this round's replies,
+    one item per line (reviewer nits excepted). Demoted blockers appear
+    as the questions they became."""
     def items(out: dict, key: str) -> str:
         return ("".join("\n- " + str(v).replace("\n", "\n  ")
                         for v in out.get(key, []) or []) or " (none)")
@@ -499,8 +511,10 @@ def _critiques_section(entry: dict) -> str:
 
 
 def _with_feedback(proposal: str, entry: dict) -> str:
-    """The next round's proposal: this one plus the round's reviewer
-    blockers and engineer concerns and questions."""
+    """v9's feedback, the pair measurement's V9_ARM: the proposal plus the
+    round's reviewer blockers and engineer concerns and questions, never
+    reviewer questions or engineer blockers. Debates sent it before
+    v11.1."""
     engineer = entry["auto_engineer"]
     concerns = ((engineer.get("concerns", []) or []) +
                 (engineer.get("questions", []) or []))
@@ -596,12 +610,13 @@ def review_round1(proposal: str, code_diff: str = "", code_context: str = "",
 
 def run_round2_pair(proposal: str, code_diff: str = "", code_context: str = "",
                     header_artifact: bool = False) -> dict:
-    """The feedback-format measurement (ADR-0002, eleventh measurement):
-    a debate's round 1, both agents, then the round-2 reviewer twice on
-    the same round-1 replies. The CRITIQUES_ARM gets them in the
-    candidate CRITIQUES section; the V9_ARM gets the request a debate's
-    round 2 sends, feedback appended to the proposal. Pairing removes
-    round-1 variance from the comparison.
+    """The feedback-format measurement (ADR-0002, eleventh and twelfth
+    measurements): a debate's round 1, both agents, then the round-2
+    reviewer twice on the same round-1 replies. The CRITIQUES_ARM gets
+    the request a debate's round 2 sends since v11.1, the CRITIQUES
+    section; the V9_ARM gets the format debates sent before it, feedback
+    appended to the proposal. Pairing removes round-1 variance from the
+    comparison.
 
     Round 2 runs only when a debate would reach it: no agent failed and
     round 1 did not converge. The record is

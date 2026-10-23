@@ -33,7 +33,19 @@ Any edit to a prompt here must be reflected by bumping PROMPT_VERSION."""
 # v10.2 (2026-10-23, code review finding 19): input with no file path
 # gets the unknown-layer note instead of no layer note. Input with a path
 # is sent exactly as under v10.1, so the bridge fixture's runs compare.
-PROMPT_VERSION = "v10.2-unknown-layer-note"
+# v11 (2026-10-23, ADR-0002 twelfth measurement; backlog #11): the
+# candidate CRITIQUES section, revised. A reviewer blocker stands unless
+# the code contradicts it, its checked quote is not searched for again,
+# and a removal-caused defect is quoted from the code left unprotected.
+# Only the pair measurement's candidate arm sent it, as the twelfth
+# measurement's samples.
+# v11.1 (2026-10-23, ADR-0002 twelfth measurement): v11 measured as not
+# worse than v9's feedback and shipped. From round 2 on a debate sends
+# the previous round's replies in the CRITIQUES section, the last round
+# only, engineer blockers included, and the proposal stays the author's
+# text. Round 1 is unchanged. The pair measurement's V9_ARM keeps the
+# old format for comparison.
+PROMPT_VERSION = "v11.1-critiques-feedback"
 
 AUTO_ENGINEER_PROMPT = """You are a senior automotive engineer advocating for QtTune's v0.2.0 goals:
 shipping velocity, J2534/ECU domain correctness, and safety.

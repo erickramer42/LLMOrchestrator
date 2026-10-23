@@ -21,14 +21,14 @@ before each run, and published the failures next to the fixes.
   - Every failure ends in manual review, never approval: a malformed
     reply, a timeout, empty input, or input too large for the model.
 - **Measured and fixed, failure class by failure class.** On its first
-  real diff, 1 of 12 blockers was correct. After the fixes, 80–94% of
+  real diff, 2 of 12 blockers were correct. After the fixes, 80–94% of
   the reviewer's blockers are valid over 10-sample measurements.
 - **It found real bugs.** The test diff turned out to recreate an older
   state of QtTune. From the diff alone, the reviewer found two bugs that
   had shipped there and were fixed later: a data race on a frame
   counter, and a frame freeze past 10,000 frames.
 - **Built to be trusted.**
-  - 154 regression tests run with no model, by faking Ollama at the
+  - 156 regression tests run with no model, by faking Ollama at the
     HTTP layer, in CI on Python 3.11 and 3.13.
   - Prompts and judge rules are versioned and stamped into every
     decision record.
@@ -67,14 +67,18 @@ More: [design and key decisions](docs/design.md).
 
 All on the same real diff, a 300-line refactor of QtTune's Qt bridge:
 
-| Stage | Correct blockers in round 1 |
+| Stage | Correct blockers |
 |---|---|
-| First real run | 1 of 12 (8%) |
-| Layer rules and a hedge guardrail | 1 of 6 (17%) |
-| Facts retrieved from a repo index (3 runs) | 2 of 10 (20%): both real shipped bugs |
-| Blockers must quote post-change code (10 samples) | 17 of 18 (94%) |
-| Reviewed code fenced as data, current (10 samples) | 20 of 25 (80%); the data race found in 10 of 10 runs |
+| First real run (one debate, 3 rounds) | 2 of 12 (17%) |
+| Layer rules and a hedge guardrail (one debate, 3 rounds) | 4 of 6 (67%), one bug stated four times |
+| Facts retrieved from a repo index (round 1, 3 runs) | 3 of 10 (30%) |
+| Blockers must quote post-change code (round 1, 10 samples) | 17 of 18 (94%) |
+| Reviewed code fenced as data, current (round 1, 10 samples) | 20 of 25 (80%); the data race found in 10 of 10 runs |
 
+The early rows were re-labelled against the code the diff leaves; the
+first labels had used the current QtTune tree. That turned the data-race
+blockers from false positives into true ones, and the first run's only
+"true positive" into a false one, a bug in code the diff removes.
 The table only shows the wins. The same measurements recorded a new
 class of false positives, a run that ran out of context, and a true
 claim demoted for hedging. They are all published, with the fixes:

@@ -607,8 +607,9 @@ class DebateTests(NoSleep):
             result = debate.run_debate("p", QUOTED_DIFF, "")
         self.assertEqual(result["final_verdict"],
                          "MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED")
-        self.assertIn("line: 4; rule: buffer", transcripts(post)[2])
-        self.assertIn("line: 4; rule: buffer", self.record(result)["inputs"]["proposal"])
+        # the flattened blocker and the null concerns reach round 2's section
+        self.assertIn("\n- line: 4; rule: buffer", transcripts(post)[2])
+        self.assertIn("Engineer concerns: (none)\n", transcripts(post)[2])
 
     def test_schema_invalid_agents_never_approve(self):
         bad = {"verdict": "approve", "summary": "looks fine"}
@@ -949,19 +950,46 @@ class DebateTests(NoSleep):
                       f"{debate.CONTEXT_CHAR_LIMIT + 1000} characters are shown", long_)
         self.assertNotIn("is truncated", short)
 
-    def test_debate_round_two_is_the_pair_measurements_v9_arm(self):
-        # v10.1 ships v9's feedback because its round 2 was measured as the
-        # v9 arm (ADR-0002, eleventh measurement); the requests must match.
+    def test_debate_round_two_is_the_pair_measurements_critiques_arm(self):
+        # v11.1 ships the CRITIQUES section because its round 2 was measured
+        # as the pair's candidate arm (ADR-0002, twelfth measurement); the
+        # requests must match. The v9 arm is the format debates sent before.
         rev = {**REVIEWER_CLEAN, "blockers": [quoted("memcpy overflows buf[8]")]}
         eng = {**ENGINEER_CLEAN, "concerns": ["no changelog entry"]}
         with fake_ollama(rev, eng, rev, eng, rev, eng) as post:
             debate.run_debate("p", QUOTED_DIFF, "ctx")
         debate_round2 = post.call_args_list[2].kwargs["json"]
+        engineer_round2 = transcripts(post)[3]
         with fake_ollama(rev, eng, rev, rev) as post:
             debate.run_round2_pair("p", QUOTED_DIFF, "ctx")
-        self.assertEqual(post.call_args_list[3].kwargs["json"], debate_round2)
-        self.assertIn("REVISE ADDRESSING", debate_round2["messages"][1]["content"])
-        self.assertNotIn("CRITIQUES (", debate_round2["messages"][1]["content"])
+        self.assertEqual(post.call_args_list[2].kwargs["json"], debate_round2)
+        reviewer_round2 = debate_round2["messages"][1]["content"]
+        self.assertIn("ROUND 1 CRITIQUES", reviewer_round2)
+        self.assertNotIn("REVISE ADDRESSING", reviewer_round2)
+        self.assertEqual(engineer_round2, reviewer_round2)  # both agents see it
+
+    def test_later_rounds_show_the_last_round_only_and_keep_the_proposal(self):
+        rev1 = {**REVIEWER_CLEAN, "blockers": [quoted("memcpy overflows buf[8]")],
+                "questions": ["R1 question"]}
+        rev2 = {**rev1, "questions": ["R2 question"]}
+        eng1 = {**ENGINEER_CLEAN, "blockers": ["E1 blocker at line 4"]}
+        eng2 = {**ENGINEER_CLEAN, "concerns": ["E2 concern"]}
+        with fake_ollama(rev1, eng1, rev2, eng2, rev2, eng2) as post:
+            result = debate.run_debate("p", QUOTED_DIFF, "")
+        round2, round3 = transcripts(post)[2], transcripts(post)[4]
+        # v9's feedback omitted engineer blockers and reviewer questions
+        self.assertIn("\n- E1 blocker at line 4", round2)
+        self.assertIn("\n- R1 question", round2)
+        self.assertIn("ROUND 2 CRITIQUES", round3)
+        self.assertIn("\n- R2 question", round3)
+        self.assertIn("\n- E2 concern", round3)
+        self.assertNotIn("R1 question", round3)
+        self.assertNotIn("E1 blocker", round3)
+        for transcript in transcripts(post):
+            self.assertIn("QTTUNE PROPOSAL FOR DEBATE\n==========================\np\n",
+                          transcript)
+            self.assertNotIn("REVISE ADDRESSING", transcript)
+        self.assertEqual(self.record(result)["inputs"]["proposal"], "p")
 
     def test_candidate_arm_gets_every_channel_but_nits(self):
         rev = {**REVIEWER_CLEAN, "blockers": [quoted("R1 blocker")],
@@ -983,7 +1011,8 @@ class DebateTests(NoSleep):
         section = debate._critiques_section(
             {"round": 1, "reviewer": {**REVIEWER_CLEAN, "blockers": ["b\nsecond line"]},
              "auto_engineer": ENGINEER_CLEAN})
-        self.assertIn("Reviewer blockers:\n- b\n  second line\n", section)
+        self.assertIn("Reviewer blockers (each quote was checked against the code):"
+                      "\n- b\n  second line\n", section)
         self.assertIn("Engineer concerns: (none)\n", section)
 
     # ---- round-2 pair measurement ----
@@ -1028,7 +1057,8 @@ class DebateTests(NoSleep):
         self.assertEqual(result["final_verdict"], debate.AGENT_FAILURE_VERDICT)
 
     def test_feedback_keeps_v9s_text(self):
-        # v10.1's round 2 was measured only as long as it sends v9's format.
+        # The pair measurement's v9 arm is the format debates sent before
+        # v11.1, pinned so new pair samples compare with the earlier ones.
         self.assertEqual(debate.FEEDBACK_TEMPLATE,
                          "{proposal}\n\nREVISE ADDRESSING:\n- Reviewer blockers: "
                          "{blockers}\n- Engineer concerns: {concerns}")
@@ -1269,13 +1299,19 @@ class Round1ScoringTests(unittest.TestCase):
                 common.post_state_lacks(tmp, "no-such-rev")
 
 
-def pair_arm(blockers, attempts=(0,), questions=(), evidence_demoted=0):
+def pair_arm(blockers, attempts=(0,), questions=(), evidence_demoted=0,
+             ran_away=False):
+    """ran_away: the first attempt hit the output cap, so a retry follows."""
+    if ran_away:
+        attempts = (0, 1)
+    calls = [{"attempt": a, "done_reason": "length" if ran_away and a == 0 else "stop"}
+             for a in attempts]
     return {"round": 2,
             "reviewer": {**REVIEWER_CLEAN, "blockers": list(blockers),
                          "questions": list(questions)},
             "evidence_demotions": {"reviewer_demoted": evidence_demoted},
             "hedge_demotions": {"reviewer_demoted": 0},
-            "telemetry": {"reviewer": [{"attempt": a} for a in attempts]}}
+            "telemetry": {"reviewer": calls}}
 
 
 def pair_record(record_id, arms, diff=ROUND1_DIFF, failures=()):
@@ -1327,6 +1363,24 @@ class Round2ScoringTests(unittest.TestCase):
         self.assertEqual(scores["converged"], ["converged"])
         self.assertEqual([r for r, _ in scores["excluded"]],
                          ["retry", "other", "failed", "round1"])
+
+    def test_runaways_count_over_every_sample_reaching_round_two(self):
+        # A runaway's retry excludes its pair, so pairs alone would hide it.
+        def arms(critiques=False, v9=False):
+            return {debate.CRITIQUES_ARM: pair_arm(["b"], ran_away=critiques),
+                    debate.V9_ARM: pair_arm(["b"], ran_away=v9)}
+        records = [("p", pair_record("ok", arms())),
+                   ("p", pair_record("retried", arms(critiques=True))),
+                   ("p", pair_record("failed", arms(critiques=True, v9=True),
+                                     failures=["round 2 reviewer: x"])),
+                   ("p", pair_record("converged", {})),
+                   ("p", pair_record("other", arms(v9=True), diff="+++ b/y.cpp\n"))]
+        scores = round2.score_pairs(records, ROUND1_DIFF, [], None)
+        self.assertEqual([r["id"] for r in scores["rows"]], ["ok"])
+        self.assertEqual(scores["reached"], 3)
+        self.assertEqual(scores["runaways"], {debate.CRITIQUES_ARM: 2, debate.V9_ARM: 1})
+        # a retry after a reply that was not valid JSON is no runaway
+        self.assertFalse(round2.ran_away(pair_arm(["b"], attempts=(0, 1))))
 
     def test_refused_input_is_excluded_not_converged(self):
         rec = pair_record("refused", {})

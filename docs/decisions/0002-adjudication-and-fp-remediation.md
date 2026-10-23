@@ -33,6 +33,11 @@ report starvation under saturation; last-write-wins in the staging
 buffer coalescing path. Diff-only review without full-repo context has
 a blind spot that cuts both ways.
 
+*Re-triaged 2026-10-23 against the post-state (see "Re-Triage of the
+Early Runs"): 2 of 12 valid, both the race (R1 #4 and #5, counted here as
+layer-rule). The real defect is in code the diff removes, and so is the
+staging buffer.*
+
 **Key diagnostic:** in round 2, the reviewer asked "What is the exact
 structure of qttune_frame_t?" in its questions channel while filing a
 stack-memory-use blocker. The model's epistemic state was correct —
@@ -87,6 +92,10 @@ hardcoded-8 catch retained.
 | Real defect | 1 | 1 | Retained (hardcoded 8-byte buffer) |
 
 Precision: 1/12 (~8%) → 1/6 (~17%). Blocker volume halved (12 → 6).
+
+*Re-triaged 2026-10-23: 2/12 → 4/6. The four confident-but-wrong
+blockers are the race, and the real defect is in removed code (see
+"Re-Triage of the Early Runs").*
 
 ## Consequences
 
@@ -158,6 +167,10 @@ Result: prediction MISSED on volume and placement.
 
 Round-1 precision: 0/1. Across all rounds: 0/5. Real defect visible
 in-channel but mis-classified as an optional improvement.
+
+*Re-triaged 2026-10-23: 1/1 and 5/5, all the race. The decode defect
+this row tracked is in removed code (see "Re-Triage of the Early
+Runs").*
 
 Findings:
 
@@ -251,14 +264,18 @@ Round-1 precision: **2/10 (20%)**; run-level 1/3, 0/6, 1/1. Run 2
 ended `AGENT_FAILURE` at round 2 (num_ctx truncation); its round-1 arm
 completed cleanly and is scored as pre-declared.
 
+*Re-triaged 2026-10-23: 3/10. 276bd0 #2 is the in-flight gate, and #1 a
+removal objection. The thread-safety class held no false positives to
+remove (see "Re-Triage of the Early Runs").*
+
 **True positives (both adjudicated against the diff's post-state and
 QtTune real history):**
 
 1. Run 1: the cumulative `m_currentFrameCount` gate drops every frame
    permanently after 10,000 total frames — and the diff deletes
    `StreamingContinuesPastTenThousandFrames`, the regression test
-   guarding exactly this regression. Maintainer-confirmed as the
-   historical freeze bug.
+   guarding exactly this regression. Confirmed against QtTune's
+   history as the freeze bug.
 2. Run 3: data race on plain `int m_currentFrameCount` — read in
    `onFrame()` on the worker thread (backpressure check), written in
    `handleFrameInternal()` on the GUI thread; unsynchronized in the
@@ -455,6 +472,12 @@ because the triage refutation was drawn from maintained QtTune rather
 than the diff's post-state. Those runs warrant re-triage against
 their blocker texts before their historical FP counts stand. This
 measurement's numbers are unaffected — scored against the diff text.
+
+*Executed 2026-10-23 (backlog #17): all four v1 blockers and every
+control blocker are the race, so the interpretation below does not hold
+for the thread-safety class. This measurement's own labels changed too,
+because the gate became a valid class later (see "Re-Triage of the Early
+Runs").*
 
 **Interpretation:** the context pack did what it was designed to do —
 eliminated the targeted information-deficit class in 3/3 runs, with
@@ -903,6 +926,9 @@ any held-out blocker. Draft for review: nothing is implemented yet.*
   - the ninth, G, makes each blocker quote verifiable evidence.
 - **Kept as a fallback if G fails.** The held-out sets A and B are
   still unread, so this design can be scored later as written.
+  *(2026-10-23: no longer so. Backlog #17's re-triage read A's and B's
+  blocker texts; see "Re-Triage of the Early Runs". The rule stays
+  frozen.)*
 
 **Problem:** the sixth measurement found deletion-consistency FPs at
 0.5 per run without the pack asserting the symbols. A blocker of this
@@ -1033,7 +1059,7 @@ The scorer rebuilds that from `survival_demotions`.
 
 *Prediction recorded 2026-10-22, before any H sample was run.*
 
-**Hypothesis** (the project owner's): the reviewer prompt's ban on
+**Hypothesis:** the reviewer prompt's ban on
 hedged language in blockers pushes the model into confident wrong
 guesses.
 - **The mechanism:** the rule checks wording. A model can comply by
@@ -1126,8 +1152,8 @@ arises by chance about 1 time in 8.
 - **Those samples cannot reach "supported".** M2 ≤ 0.2 over 14 runs
   would need at most 2 M2, and 3 are already counted. They can only
   decide between "not supported" and "unresolved", and both mean
-  reverting to v6. Whether to run them anyway is recorded below as the
-  owner's decision.
+  reverting to v6. Whether to run them anyway is decided in the
+  amendment below.
 
 **Composition** (26 stored blockers):
 
@@ -1191,7 +1217,7 @@ it:**
 
 ### Amendment (2026-10-22): the extra samples are skipped; H is reverted
 
-**Decision (project owner):** H is recorded as not supported, without
+**Decision:** H is recorded as not supported, without
 the 5 extra samples, since they cannot change the action. The reviewer
 prompt goes back to the v6 text, ban included. The ninth measurement, G,
 builds on v6, so it compares directly with the sixth. The unpredicted
@@ -1367,7 +1393,7 @@ for the second arm running.
 
 ### Amendment (2026-10-22): revise to G3, post-change quotes
 
-**Decision (project owner):** G is not shipped. Its revision, G3, is
+**Decision:** G is not shipped. Its revision, G3, is
 predicted and measured on 10 fresh samples. G's samples are now dev
 data, and the replay above is not evidence for G3.
 
@@ -1636,8 +1662,8 @@ approval. Backlog #12 is closed.
 
 *Design and prediction recorded 2026-10-22. v10 and the pair mode were
 implemented and unit-tested before this was written, and no v10 sample
-had been run. The user chose the scope (all five parts of #11) and the
-paired design.*
+had been run. Scope: all five parts of #11, measured with the paired
+design.*
 
 **Change** (PROMPT_VERSION `v10-transcript-protocol`, prompt fingerprint
 `0e6f4ef2bcdfe385`, JUDGE_VERSION `j6-hedge-reads-claim`; built on v9;
@@ -1824,8 +1850,8 @@ for the fence.
 
 ### Amendment (2026-10-22): fence only (v10.1)
 
-The user chose to ship the fence and the truncation marker without the
-CRITIQUES section, deviating from the recorded rule toward the measured
+The fence and the truncation marker shipped without the CRITIQUES
+section. This deviates from the recorded rule, toward the measured
 side. PROMPT_VERSION `v10.1-fenced-input` (prompt fingerprint
 `30f7aeff90e8ec76` for debates):
 - round 1 is v10's, measured above;
@@ -1851,7 +1877,7 @@ the evidence check reads diffs without file headers. These are findings
   name,** as a supplied context is. Under j6 such a diff had no
   evidence, so every reviewer blocker on it was demoted, and the debate
   could approve in round 1. This is j5's reasoning for hunkless diffs,
-  one step further. The user chose it over refusing such a diff.
+  one step further. It was chosen over refusing such a diff.
   - A `+++` header that follows no `---` now starts a new file. Under
     j6 the next file's lines also counted as the previous file's.
 - **Oversized input is refused** as `INPUT_TOO_LARGE -
@@ -1874,7 +1900,7 @@ the evidence check reads diffs without file headers. These are findings
   An engineer reply carrying one reached the hedge check. A list of
   strings crashed the debate, and confident claims in it kept a hedged
   blocker.
-- **Unchanged, by the user's choice:** the hedge check still reads every
+- **Deliberately unchanged:** the hedge check still reads every
   blocker field but the quote, the `file` path included. No recorded
   path has tripped it, so it is revisited only if one does.
 
@@ -1911,15 +1937,15 @@ debate would demote.
 - **Proposal:** the fixed, neutral *"Review the code in the CODE
   CONTEXT."* A fixture's name, such as `buffer_overflow_can_fd`, would
   tell the reviewer what to find.
-- **Temperature: 0.05 on the first attempt, as before** (the user's
-  choice). The suite stays a repeatable reviewer unit test. A debate's
+- **Temperature: 0.05 on the first attempt, as before.** The suite
+  stays a repeatable reviewer unit test. A debate's
   round 1 samples at 0.7, so a golden result describes the reviewer at
   low temperature, not a debate's round-1 sample.
 - **Run log:** `gold_tests/run_*.json` now records the prompt and judge
   versions, the model, the temperature and the proposal. Each fixture
   also records its evidence and hedge demotion counts and its attempts.
-- **Prediction for the first run** (drafted with the change; the user
-  may amend it before the run): the three fixtures pass as on
+- **Prediction for the first run** (drafted with the change; open to
+  amendment until the run): the three fixtures pass as on
   2026-10-10. The CAN-FD and ABI fixtures each have a quotable line, and
   the clean header has nothing to block. A failure on a fixture
   expected to block would show the evidence check demoting a real hit
@@ -1930,6 +1956,14 @@ debate would demote.
   by one space before "(public C ABI header)"; the bake-off's text was
   kept, so the bake-off's input is unchanged and the suite's ABI fixture
   gains a space. The prediction stands.
+
+**Result (2026-10-23, first run; PROMPT_VERSION
+`v10.2-unknown-layer-note`, judge j7): HIT, 10 of 10.** The 7 hedge units
+pass. Each model fixture was answered on the first attempt, with no
+evidence or hedge demotion. The CAN-FD and ABI fixtures were blocked, and
+the clean header was not. The run log is
+`gold_tests/run_20261023_180817.json` (gitignored). It keeps pass flags
+and counts, not the blocker texts.
 
 ## Unknown-Layer Note v10.2 (2026-10-23)
 
@@ -1948,3 +1982,364 @@ reviewed core.h, which names its path on line 1. Input with a path is
 sent byte for byte as under v10.1, so the bridge fixture's debate
 fingerprint stays `30f7aeff90e8ec76`, and v10.2 runs on it compare with
 v10.1 runs.
+
+## Re-Triage of the Early Runs (2026-10-23; backlog #17)
+
+**Why:** the first six scored runs were triaged before the 2026-10-13
+forensics established the fixture's post-state, against maintained
+QtTune. The fourth measurement's re-adjudication flag asked for the
+thread-safety labels to be redone. This section redoes every blocker of
+those runs, with the classes used since the sixth measurement, against
+the post-state at `8ffbf19`. The original tables above stay as recorded.
+
+**Classes:** valid means **the race** (`m_currentFrameCount`, read on the
+worker thread in `onFrame`, written on the GUI thread) or **the gate**
+(the removed in-flight bound; the cumulative check that replaces it
+bounds nothing). The false positives are:
+- **layer:** a Qt include in bridge code;
+- **removed code:** a defect in code the diff removes, presented as
+  current;
+- **deletion class:** a claim that removed code survives;
+- **removal objection:** objects to a removal (the fifth measurement's
+  definition);
+- **other.**
+
+Each run keeps its original unit. The baseline and v1 counted all three
+rounds of one debate. The feedback loop was not yet wired, so each round
+resampled round 1 (see the erratum). The fourth measurement counted
+round 1 of three debates.
+
+**Baseline, 203917** (12 blockers). The 2026-10-07 triage kept class
+counts only. By elimination, its 7 layer-rule FPs were round 1's #1–#5,
+#7 and #8.
+
+| Blocker | Claim | 2026-10-07 | Re-triage |
+|---|---|---|---|
+| R1 #1–#3 | Qt headers in qttunebridge.h/.cpp | layer | layer |
+| R1 #4 | `onFrame` reads non-atomic `m_currentFrameCount` unsynchronized | layer | **the race** |
+| R1 #5 | `handleFrameInternal` writes `m_currentFrameCount` without a mutex | layer | **the race**, write side |
+| R1 #6 | `m_lastReportedDropped` is non-atomic | pedantic | other: GUI thread only |
+| R1 #7 | `qttune/signals.h` still included | layer | deletion class: the include is removed |
+| R1 #8 | `data_length` used without a CAN/CAN-FD size check | layer | other: `data` is an inline 64-byte array |
+| R2 #1 | `frame->data` may point to freed stack memory | definition | other: the copy is deep |
+| R2 #2 | anonymous structs unsafe across the C ABI | definition | other |
+| R3 #1 | `qttune_decode_signal` gets a hardcoded 8 | **real defect** | removed code |
+| R3 #2 | `setSignalSet` takes `void*` | definition | removed code |
+
+**v1, 014257** (6 blockers): R1 #1, the hardcoded 8, was the real
+defect and is removed code. R1 #2, a shallow-copy use-after-free, is
+other. R2 #1–#2 and R3 #1–#2, the four "confident-but-wrong" blockers,
+are **the race**.
+
+**Control, 170208** (1 round-1 blocker, 5 in all): every one is **the
+race**.
+
+**Fourth measurement, v5** (10 round-1 blockers):
+
+| Blocker | Claim | 2026-10-13 | Re-triage |
+|---|---|---|---|
+| 276bd0 #1 | signal batching removed without replacement | deletion-consistency | removal objection |
+| 276bd0 #2 | in-flight tracking removed, so the queued backlog is unbounded | deletion-consistency | **the gate** |
+| 276bd0 #3 | the check compares the cumulative count, not the queued backlog | TP | **the gate** (the TP stands) |
+| e4d1b3 #1–#6 | removed members and methods "still declared" | deletion-consistency | deletion class; none is in the post-state |
+| 6ce6c0 #1 | the race | TP | **the race** |
+
+**Result:**
+
+| Run | Unit | Valid before | Valid after |
+|---|---|---|---|
+| Baseline 203917 | 3 rounds | 1 of 12 (the 8-byte decode) | **2 of 12** (the race) |
+| v1 014257 | 3 rounds | 1 of 6 (the 8-byte decode) | **4 of 6** (the race) |
+| Control 170208 | round 1; 3 rounds | 0 of 1; 0 of 5 | **1 of 1; 5 of 5** (the race) |
+| v5, 3 runs | round 1 | 2 of 10 | **3 of 10** (the gate 2, the race 1) |
+
+**What changes:**
+- **The thread-safety false positives were the race.** v1's four
+  "confident-but-wrong" blockers and the control's blockers are true
+  positives. So the fourth measurement's headline result, "thread-safety
+  FP class collapsed in 3/3 runs", removed no false positives. With the
+  pack, the race was missing from every channel of round 1 in runs 1 and
+  2, and run 3 still found it. Without a pack, it had appeared in the
+  baseline, in v1 and in the control. The pack's stale call site, the
+  post-fix hand-off for code the diff reverts (code review 2026-10-21,
+  finding 1), may have suppressed
+  it; three runs cannot tell.
+- **The 8-byte decode was the only true positive of the baseline and
+  v1, and it is in removed code.** It is a real QtTune bug, later fixed.
+  But the fixture deletes the call, and the post-state has no decode
+  call, so as a blocker on this diff it is wrong. Labels from the fifth
+  measurement on already say so ("8-byte decode in removed code").
+- **The layer note removed 3 false positives, not 7.** The other 4 of
+  the baseline's layer-rule count were the race twice, a deletion-class
+  claim and an other FP.
+- **The gate sub-class dates from v5, not v6.** 276bd0 #2 was counted
+  as deletion-consistency. 276bd0 #3, the run-1 TP, names the freeze's
+  cause, the cumulative check. It does not name the freeze itself: the
+  "drops every frame permanently after 10,000 frames" wording and the
+  deleted test in the fourth measurement's description came from the
+  triage and from the run's round-2 nit. Its confirmation as the
+  freeze's cause stands. So b0756d (eighth measurement) is the first blocker
+  that states the freeze, not its first appearance since v5, and the
+  sixth measurement's remark that the gate blockers do not name the
+  freeze applies to 276bd0 #3 as well.
+- **The two bugs the review "missed".** The 2026-10-07 triage found two
+  defects the reviewer did not report:
+  - Last-write-wins in the staging buffer is in removed code:
+    `m_stagingBuffer` exists only on removed lines.
+  - The dropped-frame report starving under saturation is in the
+    post-state. The drop count reaches QML only from
+    `handleFrameInternal`. That function stops running once the
+    cumulative check drops every frame, so the displayed count freezes
+    with the frames. It is a symptom of the freeze, not a third bug.
+
+  So the post-state has two known defects, the race and the
+  gate-and-freeze. No exhaustive triage of it has been done.
+
+**Effect on later measurements:** none. From the fifth measurement on,
+blockers were labelled against `8ffbf19`, and from the sixth with these
+classes.
+
+**Process note:** this re-triage read the blocker texts of the seventh
+measurement's held-out sets A (the v5 runs) and B (014257 and 170208).
+That rule stays frozen as recorded. If #15 is ever scored, A and B are
+no longer unseen by the labeller.
+
+## Twelfth Measurement (Pending) — Feedback Section v11 (backlog #11)
+
+*Design and prediction recorded 2026-10-23, before any v11 sample was
+run. Drafted in the 2026-10-23 code review (finding 9) and approved as
+drafted: the template text, 10 samples with the +5 rule, and the gate
+condition with one pair read by hand. v11 was implemented and
+unit-tested before this was written.*
+
+**Change** (PROMPT_VERSION `v11-critiques-candidate`, pair-record prompt
+fingerprint `87997863073facd8`, JUDGE_VERSION `j7-input-checks`): only
+`CRITIQUES_TEMPLATE` in `debate.py` changes, and only the pair
+measurement's candidate arm sends it. Debates still send v10.2's
+requests: their fingerprint stays `30f7aeff90e8ec76`. What changes from
+v10, and why:
+- **A reviewer blocker stands unless the code contradicts it.** v10
+  said "keep a point only if the code shows it", so each point had to be
+  proven again. The gate did not survive that, because the code does
+  not show a removed part directly.
+- **No re-confirmation.** Every stored reviewer blocker has passed the
+  evidence check, and the section now says so. It asks the reviewer not
+  to search the diff again to re-confirm one. The runaway tails in the
+  eleventh measurement were this search: "Let me also check…".
+- **A removal-caused defect is quoted from the code that now runs
+  without the removed part.** That is how the round-1 gate blockers
+  that survived were quoted: 751a8f R#1 quoted the
+  `QMetaObject::invokeMethod(…, Qt::QueuedConnection)` call that no
+  longer has a gate.
+- **Kept from v10:** its own section after the code, so feedback no
+  longer reads as the author's text; the last round only; every channel
+  but nits, engineer blockers included. v9's feedback omits engineer
+  blockers, which alone keep a debate going.
+
+```
+ROUND {round_num} CRITIQUES (what the agents said last round):
+Reviewer blockers (each quote was checked against the code):{reviewer_blockers}
+Reviewer questions:{reviewer_questions}
+Engineer blockers:{engineer_blockers}
+Engineer concerns:{engineer_concerns}
+Engineer questions:{engineer_questions}
+A reviewer blocker above stands unless the code contradicts it; then
+drop it, or ask it as a question. Its quote was already checked, so do
+not search the diff again to re-confirm it. A defect that a removal
+causes is quoted from the code that now runs without the removed part.
+Any other point becomes a blocker only with the evidence your
+instructions require.
+```
+
+**Risk:** "stands unless the code contradicts it" may keep false
+blockers that v10 withdrew. In the eleventh measurement both arms
+withdrew the same two round-1 FPs (c55779 #2 and #4).
+
+**Design:** the eleventh's, unchanged (`python -m eval_harness.round2`).
+- **Samples:** 10, on the bridge fixture, with the original proposal
+  text (#21) and default settings. Add 5 samples if fewer than 5 pairs
+  are compared, or if fewer than 2 compared pairs stored the gate in
+  round 1. If the gate condition still has fewer than 2 such pairs after
+  that, the rule cannot test it. The decision is then made outside the
+  rule and recorded as an amendment.
+- **Arms:** v11 (recorded as `critiques_section`) against the v9 arm, a
+  debate's own round 2, on the same round-1 replies.
+- **Round 1** is v10.2's, which on this fixture is byte for byte
+  v10.1's and v10's. So it also replicates the eleventh's round 1, where
+  the fence showed 4 other FPs against G3's 0.
+- **Scoring and labels** as in the eleventh: first-attempt pairs only;
+  labels for the race, the gate, the deletion class, removal objections,
+  deleted-test objections and other FPs; origin tags confirmed by hand.
+  Hand labels use the post-state at `8ffbf19`.
+- **New registered metric:** round-2 first attempts that ran away (hit
+  `NUM_PREDICT`), per arm, over every sample that reached round 2. A
+  runaway's retry excludes its pair, so the compared pairs alone would
+  hide it. `eval_harness.round2 score` counts them since 2026-10-23; on
+  the eleventh's records it gives 3 and 1, the hand count.
+- **Records:** `coach_artifacts/measurement_round2_*.json` with the
+  fingerprint above. The eleventh's carry `0e6f4ef2bcdfe385`, so score
+  the two sets apart.
+- **Cost:** about 2 hours on the RTX 3060. Each sample makes three
+  reviewer calls and one engineer call, at 1–4 minutes each; a runaway
+  adds 3–5 minutes.
+
+**Prediction:**
+
+| Metric | Eleventh: v10 arm / v9 arm | Predicted for v11 |
+|---|---|---|
+| Round-2 first attempts that ran away, all samples | 3 / 1 of 10 | ≤ the v9 arm's + 1 |
+| Gate kept, of compared pairs whose round 1 stored it | 0 / 2 of 2 | in every pair where the v9 arm keeps it |
+| Race kept, of compared pairs | 6 / 6 of 6 | ≥ the v9 arm's − 1 |
+| Round-1 FPs withdrawn | 2 / 2 | ≥ the v9 arm's − 1 |
+| Echo and from-question FPs, confirmed | 0 / 0 | ≤ the v9 arm's + 1 |
+| Valid share of round-2 blockers | 93% / 93% | both ≥ 80%; v11 ≥ the v9 arm's − 10 points |
+| Round-2 blockers per pair | 2.33 / 2.5 | ≤ the v9 arm's + 0.5 |
+| Round 1 (replication) | v10.1: deletion 0.1 per run, race 10 of 10, valid 80%, other FPs 0.4 per run | deletion ≤ 0.2 per run, race in ≥ 3 runs, valid ≥ 70%; other FPs reported |
+
+**Ship rule:** v11 replaces v9's feedback in debates if all of these
+hold:
+- runaways are at most the v9 arm's + 1;
+- the gate is dropped in at most one pair where the v9 arm keeps it,
+  and that pair is read by hand and reported. In 751a8f, v10 reworded
+  the gate as a race instead of dropping it;
+- the eleventh's race, valid-share and echo conditions: race retention
+  ≥ the v9 arm's − 1 pair, a valid share ≥ 80% in both arms and ≥ the
+  v9 arm's − 10 points, and confirmed echo and from-question FPs ≤ the
+  v9 arm's + 1.
+
+If v11 ships, debates send the section from round 2 on, PROMPT_VERSION
+is bumped again, and the debate fingerprint changes. If it does not, the
+section is not tried a third time. #11 then narrows to the one defect
+left in v9's feedback, the omitted engineer blockers. Adding them to
+`FEEDBACK_TEMPLATE` is a smaller prompt change with its own
+measurement.
+
+**Power caveat:** as in the eleventh, only large differences show with
+5–9 pairs. The gate condition rests on the few pairs whose round 1
+stored it, 2 of 6 in the eleventh.
+
+### Results (scored 2026-10-23)
+
+10 samples, `coach_artifacts/measurement_round2_20261023_18*` and
+`19*` (record IDs are UTC; fingerprint `87997863073facd8`). Every
+sample reached round 2. 3 pairs were excluded because a round-2 reply
+came from a retry (4ee454 in the v9 arm; d693ca and e52a94 in the v11
+arm), which leaves 7 pairs. Neither trigger of the +5 rule fired: 7
+pairs were compared, and 4 of them stored the gate in round 1. Hand
+labels used the post-state at `8ffbf19`.
+
+**Round 1, the fencing replication** (8 first attempts, 18 stored
+blockers; 42ec47 and e52a94 are excluded as retries):
+- the race: 11 blockers, in 5 runs;
+- the in-flight gate: 6, in 3 runs (9ef325 #1 and #2, 8dc61a #1,
+  802999 #1–#3);
+- the deletion class: 0;
+- other FPs: 1. 61e3c6 #2 says the `payloadHex` conversion can read past
+  the 64-byte array, though `data_length` is a `uint8_t` documented as
+  0–64, and says CAN-FD payloads exceed 64 bytes.
+
+Valid: 17 of 18 (94%), at 2.25 blockers per run. 3 blockers were
+evidence-demoted: 8dc61a #e1, a valid race claim whose quote joined
+lines across a function boundary; 8dc61a #e2, a removal objection
+quoting removed lines; and 61e3c6 #e1, a false lifetime claim. One was
+hedge-demoted (9ef325 #h1, "may hide", about the removed decode call).
+
+Against the eleventh's round 1 (race 10 of 10, other FPs 4, valid 80%)
+this is quieter: the fence's 4 other FPs were not replicated. Over the
+fence's 18 first-attempt round-1 runs so far: 43 stored blockers, 37
+valid (86%), the race in 15 runs, the deletion class once (0.06 per
+run), other FPs 5 (0.28 per run).
+
+**Round 2** (7 pairs; origin tags confirmed by hand):
+
+| | v11 arm | v9 arm |
+|---|---|---|
+| Stored blockers | 17 (2.43 per pair) | 16 (2.29 per pair) |
+| Race, gate, FP | 10, 6, 1 | 9, 6, 1 |
+| Carried, from-question, echo, new | 15, 2, 0, 0 | 16, 0, 0, 0 |
+| Race kept, of the 4 pairs whose round 1 stored it | 4 | 4 |
+| Gate kept, of the 4 pairs whose round 1 stored it | 3 | 3 |
+| Round-1 FPs withdrawn (61e3c6 #2) | 0 of 1 | 0 of 1 |
+| Valid share | 94% (16 of 17) | 94% (15 of 16) |
+| Evidence- or hedge-demoted | 0 | 0 |
+| First attempts that ran away (all 10 samples) | 2 | 1 |
+
+**The gate, read by hand.** Each arm dropped it once, in different
+pairs, and each time it became a question:
+- **8dc61a:** round 1 stored the gate (R#1) and evidence-demoted a race
+  blocker (#e1). The v11 arm's blockers are two race claims; the first
+  is #e1 restated with a quote that passes. Its questions include "What
+  is the intended backpressure strategy now that m_inFlightFrames
+  tracking was removed?" The v9 arm kept the gate as two blockers and
+  stated no race. This is the one pair the ship rule allows. The section
+  told the reviewer the blocker stands unless the code contradicts it;
+  the code does not, so moving it to a question is not what the
+  instruction asked. It did keep the point visible.
+- **42ec47:** round 1 stored the race (R#1) and the gate (R#2). The v11
+  arm kept both. The v9 arm's blockers are three race claims, and its
+  questions ask whether the backpressure change "should … be restored".
+
+**The two from-question blockers** are 8dc61a's race claims above, both
+valid. v9's feedback carries no reviewer questions, so that arm never
+saw the demoted claim. This is the first recorded case of round 2
+recovering a valid blocker the evidence check demoted. The same channel
+could return a demoted false positive; none did here.
+
+**Runaways.** The tails of two of the three end the same way. The v9
+arm's (4ee454): "…So this is not an issue. Now let me also check if
+there are any other issues." The v11 arm's (e52a94): "Now let me also
+check if there are any other issues: 1. The removal of signal batching
+… 2. The removal of `forceFrameCountForTesting`…". The third (v11,
+d693ca) is prose about the deleted test file. So the open-ended search
+is not caused by the section, and v11's "do not search the diff again
+to re-confirm it" did not stop it. In the compared pairs the two arms'
+thinking is of a size, 2.8–6.7K chars against 2.7–9.4K.
+
+**Round 1 ran away too:** the reviewer's first attempt in 42ec47 and
+e52a94, against 0 of 10 in the eleventh. In e52a94 the retry ran away as
+well, the first retry on record that did not recover; the second retry
+did. The engineer did not run away.
+
+| Metric | Predicted | Observed | Outcome |
+|---|---|---|---|
+| Round-2 first attempts that ran away | ≤ the v9 arm's + 1 | 2 against 1 | HIT, at the limit |
+| Gate kept where the v9 arm keeps it | every pair | 2 of 3 (8dc61a, asked as a question) | MISSED; within the ship rule's allowance |
+| Race kept | ≥ the v9 arm's − 1 | 4 and 4 of 4 | HIT |
+| Round-1 FPs withdrawn | ≥ the v9 arm's − 1 | 0 and 0 of 1 | HIT |
+| Echo and from-question FPs | ≤ the v9 arm's + 1 | 0 and 0 | HIT |
+| Valid share, round 2 | both ≥ 80%; v11 ≥ v9 − 10 | 94% and 94% | HIT |
+| Round-2 blockers per pair | ≤ the v9 arm's + 0.5 | 2.43 against 2.29 | HIT |
+| Round 1 | deletion ≤ 0.2, race in ≥ 3 runs, valid ≥ 70% | 0, 5 of 8, 94%; other FPs 0.13 per run | HIT |
+
+**By the recorded rule: ship.** Every condition holds. The two that
+sank v10 hold at their limits: runaways 2 against 1, and the gate
+dropped once where the v9 arm kept it, read above. The arms are even on
+the gate (3 of 4 each), and the eleventh's two costs did not repeat as
+costs: the gate survived the section, and the runaway tails show the
+same search in both arms.
+
+### Amendment (2026-10-23): shipped as v11.1
+
+The rule's verdict stands: PROMPT_VERSION `v11.1-critiques-feedback`.
+From round 2 on a debate sends the previous round's replies in the
+CRITIQUES section after the code: every channel but reviewer nits,
+engineer blockers included, the last round only. The proposal stays the
+author's text, so `inputs.proposal` now equals
+`inputs.original_proposal`. Round 1 is unchanged byte for byte, so
+round-1 samples and the golden suite compare across the change. A
+debate's round 2 is the pair measurement's critiques arm, pinned
+identical by a test, so the twelfth's samples are the shipped format's
+own. The pair measurement keeps v9's feedback as its comparison arm.
+
+Fingerprints: debates and round-1 measurements move from
+`30f7aeff90e8ec76` to `8e76794ac4946aab`, since their templates now
+include the section and no longer v9's feedback; pair records stay at
+`87997863073facd8`. Fake-driven runs on the bridge fixture send
+byte-identical round-1 requests before and after, and identical pair
+requests; a debate's rounds 2 and 3 differ as designed, and its record
+also differs in `inputs.proposal`.
+
+The section's measured benefit on this fixture was one recovered
+blocker; the rest is protocol, feedback no longer reading as the
+author's text. Round-2 runaways in live debates are the number to
+watch (STATUS #16). Backlog #11 is closed.

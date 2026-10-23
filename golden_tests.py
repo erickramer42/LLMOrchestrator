@@ -20,8 +20,8 @@ from reviewer_prompt import PROMPT_VERSION
 # Each fixture's proposal. Neutral on purpose: a fixture name such as
 # "buffer_overflow_can_fd" would tell the reviewer what to find.
 GOLDEN_PROPOSAL = "Review the code in the CODE CONTEXT."
-# 0.05 keeps the suite a repeatable reviewer unit test; a debate's round 1
-# samples at 0.7 (the user's choice, 2026-10-23).
+# 0.05 keeps the suite a repeatable reviewer unit test, though a debate's
+# round 1 samples at 0.7 (ADR-0002, "Golden Suite Routing").
 GOLDEN_TEMPERATURE = TEMPERATURE_RETRY
 
 

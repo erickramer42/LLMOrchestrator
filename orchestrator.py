@@ -16,11 +16,6 @@ import json
 import os
 from pathlib import Path
 
-# Re-exports: keeps older scripts / one-liners importing from
-# orchestrator working during the transition.
-from adjudication import derive_verdict, demote_hedged_blockers  # noqa: F401
-from agent_client import call_agent  # noqa: F401
-from config import MODELS  # noqa: F401
 from debate import run_debate
 from golden_tests import print_summary, run_golden_tests
 

@@ -70,8 +70,23 @@ numbers below can be trusted:
 | Verdict distribution | 1 approve / 4 conditional / 0 reject |
 | Median questions | 5 per run |
 | Parse failures | 0/5 (0%) |
-| Timeouts | 0/5 (0%) |
+| Timeouts | 0/5 (0%)* |
 | Per-run latency | ~90–180s |
+
+Fixture: QtTune's `core/include/qttune/core.h` at `e08b455`, committed as
+[docs/fixtures/qttune_core_e08b455.h](../fixtures/qttune_core_e08b455.h)
+on 2026-10-23. The logs record only the path `..\core.h`, and that copy
+is gone. `e08b455` was the committed version during both probe runs and
+header review 194320 (2026-10-07; the next change, `b975457`, came at
+18:02 that day). It has every detail the replies cite: the anonymous
+frame struct, `rsvd[3]`, `is_extended`, `data_length` 0–64 and
+`out_frame` with a timeout.
+
+\* The 2026-10-07 probe could not count a timeout. Its counter looked
+for a TIMEOUT verdict that no code path produced, and a request timeout
+raised an uncaught exception that ended the probe before it wrote a log.
+So a complete five-run log does mean no timeouts. The probe has counted
+timeouts against the model since 2026-10-12 (`d15801e`).
 
 ### Bake-Off Results (v3-engineer-added prompt, 2026-10-07)
 
@@ -90,7 +105,8 @@ context (e.g., "#include <vector> violates C ABI integrity" vs. just
   throughput at 63.9 tok/s despite 50% split.
 - Thinking models pay per-call latency (~15-25s); a 3-round debate ≈ 2 min.
 - Fixture-validation numbers (0% FP) did NOT transfer to production
-  workloads — measured at 1/12 precision on the first real diff. That
+  workloads — measured at 1/12 precision on the first real diff (2/12
+  after the 2026-10-23 re-triage against the diff's post-state). That
   finding and its remediation are the subject of ADR-0002.
 
 ## Model Provenance

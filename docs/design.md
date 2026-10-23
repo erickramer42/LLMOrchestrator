@@ -10,7 +10,7 @@ Each debate runs up to three rounds:
 
 ```
 TRANSCRIPT (proposal + fenced diff/context + layer note + retrieved repo facts
-            + prior-round feedback)
+            + the previous round's critiques, in their own section)
     → AGENTS CRITIQUE (same transcript; neither sees the other's reply)
     → SCHEMA VALIDATION (retry with a correction, then fail closed)
     → EVIDENCE CHECK (blockers that don't quote post-change code → questions)

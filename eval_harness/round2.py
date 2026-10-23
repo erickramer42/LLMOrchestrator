@@ -8,7 +8,8 @@ measurement): collect samples, list them for scoring.
 
 `run` calls debate.run_round2_pair: a debate's round 1, both agents, then
 the round-2 reviewer twice on the same round-1 replies, once in each
-feedback format (debate.CRITIQUES_ARM, debate.V9_ARM).
+feedback format: debate.CRITIQUES_ARM, the section a debate's round 2
+sends since v11.1, and debate.V9_ARM, the format it sent before.
 
 `score` lists each sample's round-1 replies and each arm's round-2
 reviewer blockers as stored. A sample is compared only when both arms
@@ -23,6 +24,11 @@ claim (never its quote):
 The tags are candidates for hand labelling, like round1's M2 candidates.
 M1 (--symbols) and M2 work as in round1. Score round 1 itself with
 eval_harness.round1, which reads these records too.
+
+It also counts, per arm, the round-2 first attempts that ran away (hit
+the output cap) over every sample that reached round 2. A runaway's
+retry excludes its pair, so the compared pairs alone would hide it
+(ADR-0002, twelfth measurement).
 """
 
 import re
@@ -68,14 +74,24 @@ def origin(blocker: str, first: dict) -> str:
     return "new"
 
 
+def ran_away(entry: dict) -> bool:
+    """True when the reviewer's first attempt in this round entry hit the
+    output cap (done_reason 'length')."""
+    calls = (entry.get("telemetry") or {}).get("reviewer") or []
+    return (bool(calls) and calls[0]["attempt"] == 0
+            and calls[0].get("done_reason") == "length")
+
+
 def score_pairs(records: List[tuple], code_diff: str, symbols: List[str],
                 lacks: Optional[Callable[[str], bool]]) -> dict:
     """records: (path, record) pairs. Returns the compared pairs, the
-    samples whose round 1 converged, and the excluded records with the
-    reason."""
+    samples whose round 1 converged, the excluded records with the
+    reason, and per arm the first attempts that ran away over the
+    samples that reached round 2."""
     diff_hash = text_sha256(code_diff)
     removed = removed_identifiers(code_diff)
     rows, converged, excluded = [], [], []
+    reached, runaways = 0, dict.fromkeys(ARMS, 0)
     for path, rec in records:
         record_id = rec["metadata"]["debate_id"]
         outputs = rec["outputs"]
@@ -85,6 +101,10 @@ def score_pairs(records: List[tuple], code_diff: str, symbols: List[str],
         if rec.get("inputs", {}).get("diff_sha256") != diff_hash:
             excluded.append((record_id, "another diff"))
             continue
+        if outputs["round2_arms"]:
+            reached += 1
+            for name in ARMS:
+                runaways[name] += ran_away(outputs["round2_arms"][name])
         if outputs.get("agent_failures"):
             excluded.append((record_id, "agent failure"))
             continue
@@ -116,7 +136,8 @@ def score_pairs(records: List[tuple], code_diff: str, symbols: List[str],
         rows.append({"id": record_id, "path": str(path),
                      "round1_status": reviewer_status(first),
                      "round1": first, "arms": scored})
-    return {"rows": rows, "converged": converged, "excluded": excluded}
+    return {"rows": rows, "converged": converged, "excluded": excluded,
+            "reached": reached, "runaways": runaways}
 
 
 def print_report(scores: dict, symbols: List[str], m2_on: bool) -> None:
@@ -152,6 +173,9 @@ def print_report(scores: dict, symbols: List[str], m2_on: bool) -> None:
               + (f", M1 {t['m1']}" if symbols else "")
               + (f", M2 candidates {t['m2']}" if m2_on else "")
               + f", evidence-demoted {t['e']}, hedge-demoted {t['h']}")
+    print(f"round-2 first attempts that ran away, of {scores['reached']} sample(s) "
+          "reaching round 2: "
+          + ", ".join(f"{name} {n}" for name, n in scores["runaways"].items()))
     retried = [r["id"] for r in rows if r["round1_status"] != "first"]
     if retried:
         print(f"note: round 1's reviewer reply came from a retry in "
