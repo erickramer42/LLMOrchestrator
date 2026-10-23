@@ -33,12 +33,14 @@ retrieval)*,
 | `golden_tests.py` | Golden suite: LLM fixtures + deterministic guardrail units |
 | `reviewer_prompt.py` | Agent system prompts (versioned, single source of truth) |
 | `file_metadata.py` | File-path → layer mapping (core / bridge / app) |
+| `diff_reader.py` | The one unified-diff reader, shared by the evidence check, retrieval and layer mapping |
 | `eval_harness/` | FP-rate probe, model bake-off, round-1 measurement runner and scorer |
 | `repo_context.py` | Offline indexer: typedefs, constants, layer map, queued-connection call sites → `repo_context.json`; builds retrieved context packs |
 | `tests/` | Deterministic regression tests (fake Ollama, no model needed) |
 
-Dependency direction is acyclic: prompts/layer maps are leaves → config
-composes them → agent_client and adjudication are independent layers
+Dependency direction is acyclic: prompts, layer maps and the diff
+reader are leaves → config composes the prompts → agent_client and
+adjudication are independent layers
 (callers hand adjudication's validators to the client as callbacks) →
 debate, golden_tests and repo_context sit on top → orchestrator is just
 the handle. `adjudication.py` imports nothing with side effects, and
@@ -109,7 +111,7 @@ Possible outcomes: `APPROVED_FOR_MERGE`, `APPROVED_WITH_OPEN_QUESTIONS`,
 `AGENT_FAILURE - MANUAL_REVIEW_REQUIRED`. A round converges once
 neither agent has a blocker: `APPROVED_FOR_MERGE` when both replies are
 empty, `APPROVED_WITH_OPEN_QUESTIONS` when questions or concerns remain
-(judge `j2-no-blockers`, 2026-10-22). Until then convergence also
+(since judge `j2-no-blockers`, 2026-10-22). Until then convergence also
 required the engineer to raise zero concerns, so every recorded debate
 ended at max rounds.
 
@@ -169,7 +171,7 @@ measured N=3 — see ADR-0002.
 
 8. **Self-describing decision records** — Each record holds the original
    proposal, SHA-256 hashes of the diff and context, the detected layer,
-   sampling settings, per-round hedge-demotion counts, per-attempt token
+   sampling settings, per-round evidence- and hedge-demotion counts, per-attempt token
    telemetry (`prompt_eval_count`, `eval_count`, `done_reason`, wall
    time), the exact retrieved pack with its hash and index version
    (`repo_context_pack`) and any agent failure reasons, so a record can
@@ -193,7 +195,8 @@ measured N=3 — see ADR-0002.
     the change, and the prompt says a wrong blocker costs more than a
     question. `demote_unverified_blockers()` moves any blocker whose
     quote is not in that file's post-change lines to the questions
-    channel (judge `j4-post-change-quotes`). This makes guessing
+    channel (judge j4, measured; j5 also reads diffs that have no hunk
+    headers and is otherwise the same). This makes guessing
     expensive mechanically instead of by asking for confidence. Arm H
     found that the reviewer did not hedge more when the hedging ban was
     lifted: its wrong blockers are confident misreadings, and only a

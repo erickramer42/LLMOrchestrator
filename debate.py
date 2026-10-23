@@ -19,6 +19,7 @@ from agent_client import call_agent, failure_result
 from config import (MAX_DEBATE_ROUNDS, MODELS, NUM_CTX, NUM_PREDICT,
                     REVIEWER_HEADER_PROMPT, REVIEWER_IMPL_PROMPT,
                     TEMPERATURE_EXPLORATION, TEMPERATURE_RETRY)
+from diff_reader import diff_paths
 from file_metadata import get_layer_constraints, identify_layer
 from repo_context import CONTEXT_PATH, PACK_FORMAT_VERSION, build_context_pack
 from reviewer_prompt import PROMPT_VERSION, AUTO_ENGINEER_PROMPT
@@ -85,10 +86,9 @@ def extract_file_path(code_diff: str = "", code_context: str = "") -> str:
     Checks diff headers ('+++ b/...') first, then path tokens inside '//'
     comment lines near the top of the context.
     Known limitation: multi-file diffs yield only the first file's layer."""
-    if code_diff:
-        for line in code_diff.split('\n'):
-            if line.startswith('+++ b/'):
-                return line.replace('+++ b/', '').strip()
+    paths = diff_paths(code_diff)
+    if paths:
+        return paths[0]
     if code_context:
         for line in code_context.split('\n')[:_CONTEXT_PATH_SCAN_LINES]:
             stripped = line.strip()
@@ -274,19 +274,64 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
     setup = _prepare(code_diff, code_context, header_artifact)
 
     round_history: List[dict] = []
-    agent_failures: List[str] = []
-
     for round_num in range(1, MAX_DEBATE_ROUNDS + 1):
-        transcript = _render_transcript(proposal, setup.static_section, round_num)
-        temperature = (TEMPERATURE_EXPLORATION if round_num == 1
-                       else TEMPERATURE_RETRY)
+        entry = _run_round(setup, proposal, round_num)
+        round_history.append(entry)
 
-        # Both agents critique the same transcript; they do not see
-        # each other's responses until the judge feeds feedback back
-        telemetry = {"reviewer": [], "auto_engineer": []}
-        reviewer = call_agent(MODELS["code_reviewer"], setup.reviewer_prompt,
-                              transcript, temperature, validate=_validate_reviewer,
-                              telemetry=telemetry["reviewer"])
+        # ============ FAIL CLOSED on unusable agent output ============
+        agent_failures = _agent_failures(entry)
+        if agent_failures:
+            final_verdict = AGENT_FAILURE_VERDICT
+            break
+
+        final_verdict = _judge(entry)
+        if final_verdict:
+            break
+
+        # Feed critiques back: proposal grows, next round's transcript
+        # re-renders from it — this is the debate actually functioning
+        proposal = _with_feedback(proposal, entry)
+
+    decision_record = _save_decision_record(
+        debate_id,
+        _record_inputs(setup, proposal, original_proposal, code_diff,
+                       code_context, header_artifact),
+        final_verdict, round_history,
+        _run_settings(setup, DEBATE_MODE, MAX_DEBATE_ROUNDS), agent_failures)
+
+    result = {
+        "debate_id": debate_id,
+        "final_verdict": final_verdict,
+        "rounds_completed": len(round_history),
+        "decision_record_path": str(decision_record),
+        "critique_summary": _critique_summary(round_history),
+    }
+    return _with_diagnostics(result, agent_failures, setup)
+
+
+def _run_round(setup: _Setup, proposal: str, round_num: int,
+               with_engineer: bool = True) -> dict:
+    """One round's round_history entry. Both agents critique the same
+    transcript; neither sees the other's reply until the feedback of a
+    later round. with_engineer=False calls the reviewer alone (round-1
+    measurement)."""
+    transcript = _render_transcript(proposal, setup.static_section, round_num)
+    temperature = (TEMPERATURE_EXPLORATION if round_num == 1
+                   else TEMPERATURE_RETRY)
+    telemetry = {"reviewer": []}
+    reviewer = call_agent(MODELS["code_reviewer"], setup.reviewer_prompt,
+                          transcript, temperature, validate=_validate_reviewer,
+                          telemetry=telemetry["reviewer"])
+
+    # ============ GUARDRAILS: unquoted, then hedged blockers (before storing) ============
+    reviewer, unquoted = demote_unverified_blockers(reviewer, setup.evidence,
+                                                    "questions")
+    reviewer, rev_demoted = demote_hedged_blockers(reviewer, "questions")
+    entry = {"round": round_num, "reviewer": reviewer}
+    hedge_stats = {"reviewer_demoted": rev_demoted}
+
+    if with_engineer:
+        telemetry["auto_engineer"] = []
         if _is_failure(reviewer):
             # The round cannot be judged either way; don't spend another
             # (possibly 30-minute) failing call on the engineer.
@@ -296,84 +341,70 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
                                   transcript, temperature,
                                   validate=_validate_engineer,
                                   telemetry=telemetry["auto_engineer"])
+        entry["auto_engineer"], hedge_stats["engineer_demoted"] = (
+            demote_hedged_blockers(engineer, "concerns"))
 
-        # ============ GUARDRAILS: unquoted, then hedged blockers (before storing) ============
-        reviewer, rev_unquoted = demote_unverified_blockers(
-            reviewer, setup.evidence, "questions")
-        reviewer, rev_demoted = demote_hedged_blockers(reviewer, "questions")
-        engineer, eng_demoted = demote_hedged_blockers(engineer, "concerns")
-        hedge_stats = {"reviewer_demoted": rev_demoted,
-                       "engineer_demoted": eng_demoted}
+    entry.update({
+        "evidence_demotions": {"reviewer_demoted": unquoted},
+        "hedge_demotions": hedge_stats,
+        "telemetry": telemetry,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+    return entry
 
-        round_history.append({
-            "round": round_num,
-            "reviewer": reviewer,
-            "auto_engineer": engineer,
-            "evidence_demotions": {"reviewer_demoted": rev_unquoted},
-            "hedge_demotions": hedge_stats,
-            "telemetry": telemetry,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
 
-        # ============ FAIL CLOSED on unusable agent output ============
-        for role, out in (("reviewer", reviewer), ("auto_engineer", engineer)):
-            if _is_failure(out):
-                agent_failures.append(
-                    f"round {round_num} {role}: "
-                    f"{out.get('failure_reason', 'unknown')}")
-        if agent_failures:
-            final_verdict = AGENT_FAILURE_VERDICT
-            break
+def _agent_failures(entry: dict) -> List[str]:
+    """Why each agent of a round_history entry failed; empty if none did."""
+    return [f"round {entry['round']} {role}: "
+            f"{entry[role].get('failure_reason', 'unknown')}"
+            for role in ("reviewer", "auto_engineer")
+            if role in entry and _is_failure(entry[role])]
 
-        # ============ JUDGE LOGIC (Rule-Based, Not Model) ============
-        reviewer_v = derive_verdict(reviewer, "questions")
-        engineer_v = derive_verdict(engineer, "concerns")
-        reviewer_blockers = reviewer.get("blockers", []) or []
-        engineer_concerns = ((engineer.get("concerns", []) or []) +
-                             (engineer.get("questions", []) or []))
 
-        # Termination conditions
-        converged = convergence_verdict(reviewer_v, engineer_v)
-        if converged:
-            final_verdict = converged
-            break
-        if round_num >= MAX_DEBATE_ROUNDS:
-            final_verdict = "MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED"
-            break
+def _judge(entry: dict) -> Optional[str]:
+    """The final verdict if this round ends the debate, else None.
+    Rule-based: derived from the agents' arrays, never their labels.
+    Agent failures are handled before this is called."""
+    converged = convergence_verdict(
+        derive_verdict(entry["reviewer"], "questions"),
+        derive_verdict(entry["auto_engineer"], "concerns"))
+    if converged:
+        return converged
+    if entry["round"] >= MAX_DEBATE_ROUNDS:
+        return "MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED"
+    return None
 
-        # Feed critiques back: proposal grows, next round's transcript
-        # re-renders from it — this is the debate actually functioning
-        proposal = FEEDBACK_TEMPLATE.format(
-            proposal=proposal,
-            blockers='; '.join(str(b) for b in reviewer_blockers),
-            concerns='; '.join(str(c) for c in engineer_concerns))
 
-    decision_record = _save_decision_record(
-        debate_id,
-        _record_inputs(setup, proposal, original_proposal, code_diff,
-                       code_context, header_artifact),
-        final_verdict, round_history,
-        _run_settings(setup, DEBATE_MODE, MAX_DEBATE_ROUNDS), agent_failures)
+def _with_feedback(proposal: str, entry: dict) -> str:
+    """The next round's proposal: this one plus the round's reviewer
+    blockers and engineer concerns and questions."""
+    engineer = entry["auto_engineer"]
+    concerns = ((engineer.get("concerns", []) or []) +
+                (engineer.get("questions", []) or []))
+    return FEEDBACK_TEMPLATE.format(
+        proposal=proposal,
+        blockers='; '.join(str(b) for b in entry["reviewer"].get("blockers", []) or []),
+        concerns='; '.join(str(c) for c in concerns))
 
+
+def _critique_summary(round_history: List[dict]) -> dict:
+    """Blocker and concern counts. Summed over rounds: a blocker repeated
+    each round counts each time."""
+    def count(h, role, key):
+        return len(h[role].get(key, []) or [])
     last = round_history[-1]
-    result = {
-        "debate_id": debate_id,
-        "final_verdict": final_verdict,
-        "rounds_completed": len(round_history),
-        "decision_record_path": str(decision_record),
-        "critique_summary": {
-            # Summed over rounds: a blocker repeated each round counts each time.
-            "total_blockers": sum(
-                len(h["reviewer"].get("blockers", []) or [])
-                for h in round_history),
-            "total_concerns": sum(
-                len(h["auto_engineer"].get("concerns", []) or [])
-                for h in round_history),
-            "final_round_blockers": len(last["reviewer"].get("blockers", []) or []),
-            "final_round_concerns": len(
-                last["auto_engineer"].get("concerns", []) or []),
-        },
+    return {
+        "total_blockers": sum(count(h, "reviewer", "blockers") for h in round_history),
+        "total_concerns": sum(count(h, "auto_engineer", "concerns")
+                              for h in round_history),
+        "final_round_blockers": count(last, "reviewer", "blockers"),
+        "final_round_concerns": count(last, "auto_engineer", "concerns"),
     }
+
+
+def _with_diagnostics(result: dict, agent_failures: List[str],
+                      setup: _Setup) -> dict:
+    """The result plus any agent failures and retrieval error."""
     if agent_failures:
         result["agent_failures"] = agent_failures
     if setup.pack_report.get("error"):
@@ -388,52 +419,32 @@ def run_round1_review(proposal: str, code_diff: str = "", code_context: str = ""
     reviewer never sees the engineer, so this samples the same output as
     a debate's first call without running the rest of the debate.
 
-    Retries, evidence and hedge demotion work as in a debate; nothing is judged. The
-    record is coach_artifacts/measurement_<id>.json, with mode
-    round1_reviewer, verdict MEASUREMENT_VERDICT (AGENT_FAILURE_VERDICT if
-    every attempt failed), and no engineer entry in its one round."""
+    It runs a debate's first round without the engineer: retries, evidence
+    and hedge demotion work as in a debate; nothing is judged. The record
+    is coach_artifacts/measurement_<id>.json, with mode round1_reviewer,
+    verdict MEASUREMENT_VERDICT (AGENT_FAILURE_VERDICT if every attempt
+    failed), and no engineer entry in its one round."""
     measurement_id = _new_id("round1")
     setup = _prepare(code_diff, code_context, header_artifact)
 
-    telemetry = {"reviewer": []}
-    reviewer = call_agent(MODELS["code_reviewer"], setup.reviewer_prompt,
-                          _render_transcript(proposal, setup.static_section, 1),
-                          TEMPERATURE_EXPLORATION, validate=_validate_reviewer,
-                          telemetry=telemetry["reviewer"])
-    reviewer, unquoted = demote_unverified_blockers(reviewer, setup.evidence,
-                                                    "questions")
-    reviewer, demoted = demote_hedged_blockers(reviewer, "questions")
-    agent_failures = ([f"round 1 reviewer: "
-                       f"{reviewer.get('failure_reason', 'unknown')}"]
-                      if _is_failure(reviewer) else [])
+    entry = _run_round(setup, proposal, 1, with_engineer=False)
+    agent_failures = _agent_failures(entry)
     verdict = AGENT_FAILURE_VERDICT if agent_failures else MEASUREMENT_VERDICT
-    round_history = [{
-        "round": 1,
-        "reviewer": reviewer,
-        "evidence_demotions": {"reviewer_demoted": unquoted},
-        "hedge_demotions": {"reviewer_demoted": demoted},
-        "telemetry": telemetry,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }]
     record = _save_decision_record(
         measurement_id,
         _record_inputs(setup, proposal, proposal, code_diff, code_context,
                        header_artifact),
-        verdict, round_history, _run_settings(setup, MEASUREMENT_MODE, 1),
+        verdict, [entry], _run_settings(setup, MEASUREMENT_MODE, 1),
         agent_failures)
 
     result = {
         "measurement_id": measurement_id,
         "final_verdict": verdict,
         "record_path": str(record),
-        "blockers": len(reviewer.get("blockers", []) or []),
-        "attempts": len(telemetry["reviewer"]),
+        "blockers": len(entry["reviewer"].get("blockers", []) or []),
+        "attempts": len(entry["telemetry"]["reviewer"]),
     }
-    if agent_failures:
-        result["agent_failures"] = agent_failures
-    if setup.pack_report.get("error"):
-        result["retrieval_error"] = setup.pack_report["error"]
-    return result
+    return _with_diagnostics(result, agent_failures, setup)
 
 
 # mode -> (file name prefix, artifact type, intended consumer)

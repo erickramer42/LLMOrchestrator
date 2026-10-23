@@ -1575,3 +1575,25 @@ two GUI-thread accesses. It is false, so the demotion was correct.
   (#7) is needed before the precision claim generalizes.
 - **The live golden suite has not been run with v9.** Its fixtures do
   not apply the evidence check, but they read the new blocker format.
+
+## Evidence Reader j5 (2026-10-23)
+
+**Decision:** the evidence check reads diffs with the shared
+`diff_reader` (code review 2026-10-21, finding 12). Inside a hunk, lines
+are still counted by the hunk header. Outside a hunk, a line is now read
+by its first character. j4 read only lines inside counted hunks, which
+had two consequences:
+- A diff without `@@` headers, such as a hand-written snippet passed
+  with `--diff`, had no post-change lines. Every reviewer blocker on it
+  was demoted, so the reviewer could never block such a diff.
+- A file header ending in a tab and a timestamp (`diff -u`) was not
+  read as a header.
+
+Otherwise j5 is j4.
+
+**Effect on recorded results:** none. Every record with a diff reviewed
+the bridge fixture, whose hunks all have headers. On it, the evidence
+sources are identical under j4 and j5. So are the pack text and every
+request: compared byte for byte on 2026-10-23 for a fake-driven
+three-round debate, a round-2 agent failure and a measurement. The
+eighth to tenth measurements stand under j5.

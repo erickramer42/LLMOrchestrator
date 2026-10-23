@@ -5,13 +5,19 @@ in CI."""
 import re
 from typing import Dict, List, Optional, Tuple
 
+from diff_reader import DEV_NULL, read_diff
+
 # Stamped into every decision record: a judge change alters final verdicts
 # and round counts without touching any prompt, so the prompt fingerprint
 # cannot show it. j1 (until 2026-10-22) also required the engineer to have
 # zero concerns and questions. j2 (2026-10-22) did not check that reviewer
 # blockers quote their evidence. j3 (ADR-0002 arm G, not shipped) accepted
-# quotes from either side of the diff, matched in interleaved order.
-JUDGE_VERSION = "j4-post-change-quotes"
+# quotes from either side of the diff, matched in interleaved order. j4
+# (2026-10-23) read only lines inside hunks, so a diff without hunk headers
+# had no evidence and every reviewer blocker on it was demoted; it also
+# missed file headers that end in a tab and a timestamp. j5 reads both
+# with the shared diff_reader and is otherwise j4.
+JUDGE_VERSION = "j5-hunkless-evidence"
 
 
 # ============ SCHEMA VALIDATION ============
@@ -128,7 +134,7 @@ HEDGE_PATTERNS = re.compile(
     r"\b(may|might|could|possibly|potentially|speculative|"
     r"needs? verification|unverifiable|suspected|appears to|"
     r"seems to|likely|uncertain|check if|need to confirm|is it|"
-    r"doesn't appear to|may cause|risk of|might introduce)\b",
+    r"doesn't appear to|risk of)\b",
     re.IGNORECASE)
 
 
@@ -166,8 +172,6 @@ MIN_QUOTE_CHARS = 8  # non-space characters in the longest quote line
 # Ends each hunk in a file's lines, so a quote cannot join two hunks.
 _HUNK_BREAK = "\x00"
 
-_HUNK = re.compile(r"^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@")
-_FILE_HEADER = re.compile(r"^(?:---|\+\+\+) (?:[ab]/)?([^\t]+?)\s*$")
 _ELLIPSIS = re.compile(r"\.\.\.|…")
 _LINE_SUFFIX = re.compile(r"(?::\d+(?:-\d+)?)+$")
 
@@ -180,41 +184,23 @@ def evidence_sources(code_diff: str, code_context: str = "") -> Dict[str, List[s
     """What blocker quotes are checked against: each file's code as it
     reads after the change (context and added lines in order; removed
     lines are not evidence), as non-blank lines with whitespace collapsed,
-    keyed by path. A deleted file has no lines. Lines are read by hunk
-    length, so a removed line that starts with '--' is not taken for a
-    file header."""
+    keyed by path. A deleted file has no lines. A renamed file's lines are
+    under both its paths."""
     files: Dict[str, List[str]] = {}
     paths: List[str] = []
-    old_left = new_left = 0
-    for line in code_diff.split("\n"):
-        if old_left > 0 or new_left > 0:
-            tag = line[:1]
-            if tag == "\\":  # "\ No newline at end of file"
-                continue
-            if tag in (" ", "", "-", "+"):  # "" is a context line stripped of its space
-                if tag != "+":
-                    old_left -= 1
-                if tag != "-":
-                    new_left -= 1
-                    for p in paths:
-                        files[p].append(line[1:])
-                continue
-            old_left = new_left = 0  # malformed hunk: read the line as a header
-        hunk = _HUNK.match(line)
-        if hunk:
-            old_left = int(hunk.group(1) or 1)
-            new_left = int(hunk.group(2) or 1)
+    for tag, text in read_diff(code_diff):
+        if tag in ("---", "+++"):
+            if tag == "---":
+                paths = []
+            if text != DEV_NULL and text not in paths:
+                paths.append(text)
+                files.setdefault(text, [])
+        elif tag == "@@":
             for p in paths:
                 files[p].append(_HUNK_BREAK)
-            continue
-        header = _FILE_HEADER.match(line)
-        if header:
-            if line.startswith("--- "):
-                paths = []
-            path = header.group(1)
-            if path != "/dev/null" and path not in paths:
-                paths.append(path)
-                files.setdefault(path, [])
+        elif tag != "-":
+            for p in paths:
+                files[p].append(text)
     sources = {p: [s for s in map(_squash, lines) if s] for p, lines in files.items()}
     if code_context:
         sources[CONTEXT_SOURCE] = [s for s in map(_squash, code_context.split("\n")) if s]

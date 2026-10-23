@@ -28,6 +28,7 @@ from typing import Dict, List, Optional, Tuple
 
 from agent_client import call_agent
 from config import MODELS, TEMPERATURE_RETRY
+from diff_reader import diff_paths, read_diff
 
 CONTEXT_FILE = "repo_context.json"
 # Module-relative, so --index writes and debates read the same file
@@ -623,15 +624,6 @@ def save_index(index: dict) -> Path:
 
 # ============ RETRIEVAL FUNCTION (NEW SECTION) ============
 
-def _diff_paths(code_diff: str) -> List[str]:
-    """Extract all +++ b/ paths from a diff."""
-    paths = []
-    for line in code_diff.split("\n"):
-        if line.startswith("+++ b/"):
-            paths.append(line.replace("+++ b/", "").strip())
-    return paths
-
-
 def _referenced_identifiers(code_diff: str) -> set:
     """Every identifier token in the diff. Retrieval intersects this set
     with the indexed names, so no naming heuristics are needed: ALL_CAPS
@@ -647,15 +639,11 @@ def _removed_identifiers(code_diff: str) -> set:
     file the diff does not show, so retrieval acts on them only for
     entries that belong to a modified file."""
     removed, kept = set(), set()
-    for line in code_diff.split("\n"):
-        if line.startswith(("--- ", "+++ ", "diff --git", "index ")):
-            continue
-        if line.startswith("@@"):
-            kept |= set(_IDENT.findall(line.rsplit("@@", 1)[-1]))
-        elif line.startswith("-"):
-            removed |= set(_IDENT.findall(line[1:]))
-        else:
-            kept |= set(_IDENT.findall(line[1:]))
+    for tag, text in read_diff(code_diff):
+        if tag == "-":
+            removed |= set(_IDENT.findall(text))
+        elif tag in (" ", "+", "@@"):
+            kept |= set(_IDENT.findall(text))
     return removed - kept
 
 
@@ -734,7 +722,7 @@ def build_context_pack(code_diff: str, index: dict,
         report["error"] = "empty or missing index"
         return ("", report)
 
-    diff_paths = _diff_paths(code_diff)
+    changed = diff_paths(code_diff)
     ref_ids = _referenced_identifiers(code_diff)
     removed = {n for n in _removed_identifiers(code_diff) if _code_like(n)}
     sections, omitted = [], []
@@ -747,7 +735,7 @@ def build_context_pack(code_diff: str, index: dict,
         return sorted(set(_IDENT.findall(text)) & removed)
 
     # Section 1: Modified files (purpose + layer)
-    mod_files = [f for f in index["files"] if f["path"] in diff_paths]
+    mod_files = [f for f in index["files"] if f["path"] in changed]
     # Build/docs/CI files only carry a path-derived hint ("Build
     # configuration"): list them in one line instead of one line each.
     meta = [f["path"] for f in mod_files if f.get("layer") == "meta"]
@@ -772,14 +760,14 @@ def build_context_pack(code_diff: str, index: dict,
     for t in index.get("types", []):
         if t["name"] not in ref_ids:
             continue
-        if t.get("def_file") in diff_paths and t["name"] in removed:
+        if t.get("def_file") in changed and t["name"] in removed:
             omitted.append(f"{t['name']} (type, {t['def_file']})")
         else:
             type_hits.append(t)
     for c in index.get("constants", []):
         if c["name"] not in ref_ids:
             continue
-        if c["file"] in diff_paths and c["name"] in removed:
+        if c["file"] in changed and c["name"] in removed:
             omitted.append(f"{c['name']} (constant, {c['file']})")
         else:
             const_hits.append(c)
@@ -791,7 +779,7 @@ def build_context_pack(code_diff: str, index: dict,
     all_sites = index.get("callsites", [])
     call_sites = []
     for cs in all_sites:
-        if cs["file"] not in diff_paths:
+        if cs["file"] not in changed:
             continue
         gone = removed_in(cs.get("snippet") or "")
         if gone:
@@ -805,7 +793,7 @@ def build_context_pack(code_diff: str, index: dict,
     # Section 4: call sites in files that define a referenced type
     type_files = {t["def_file"] for t in type_hits if "def_file" in t}
     related_sites = [cs for cs in all_sites
-                     if cs["file"] in type_files and cs["file"] not in diff_paths]
+                     if cs["file"] in type_files and cs["file"] not in changed]
     add_section("RELATED CALL SITES (TYPE DEFINITIONS)",
                 [_callsite_line(cs) for cs in related_sites[:10]])
 

@@ -34,6 +34,7 @@ from adjudication import (JUDGE_VERSION, convergence_verdict,  # noqa: E402
                           demote_hedged_blockers, derive_verdict,
                           normalize_agent_output)
 from agent_client import call_agent, failure_result  # noqa: E402
+from diff_reader import diff_paths, read_diff  # noqa: E402
 from eval_harness import round1  # noqa: E402
 from eval_harness.bakeoff import tally  # noqa: E402
 from eval_harness.probe import summarize  # noqa: E402
@@ -156,6 +157,13 @@ class VerdictTests(unittest.TestCase):
         self.assertEqual(failed, [])
         self.assertEqual(len(results), 7)
 
+    def test_phrases_dropped_from_the_pattern_still_demote(self):
+        # "may cause" and "might introduce" were subsumed by "may" and "might".
+        _, n = demote_hedged_blockers(
+            {"blockers": ["this may cause a leak", "it might introduce a race"],
+             "questions": []})
+        self.assertEqual(n, 2)
+
     def test_demotion_passes_non_dicts_through(self):
         self.assertEqual(demote_hedged_blockers(["x"]), (["x"], 0))
 
@@ -186,6 +194,42 @@ class ConvergenceTests(unittest.TestCase):
     def test_only_two_clean_replies_approve_for_merge(self):
         self.assertEqual(convergence_verdict("approve", "approve"),
                          "APPROVED_FOR_MERGE")
+
+    def test_a_blocked_round_ends_the_debate_only_at_the_round_limit(self):
+        def entry(round_num, reviewer):
+            return {"round": round_num, "reviewer": reviewer,
+                    "auto_engineer": ENGINEER_CLEAN}
+        blocked = {**REVIEWER_CLEAN, "blockers": ["memcpy overflows buf[8] at line 4"]}
+        self.assertIsNone(debate._judge(entry(1, blocked)))
+        self.assertEqual(debate._judge(entry(debate.MAX_DEBATE_ROUNDS, blocked)),
+                         "MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED")
+        self.assertEqual(debate._judge(entry(1, REVIEWER_CLEAN)), "APPROVED_FOR_MERGE")
+
+
+# ============ diff reading ============
+
+class DiffReaderTests(unittest.TestCase):
+    def test_hunk_lines_are_counted_not_taken_for_headers(self):
+        # A removed "-- note" and an added "++ b/..." read as file headers
+        # line by line, as repo_context's parsers read them before.
+        diff = ("--- a/db/x.sql\n+++ b/db/x.sql\n@@ -1,2 +1,2 @@ CREATE TABLE t\n"
+                "--- m_old_note\n+++ b/fake.sql\n keep\n")
+        self.assertEqual(list(read_diff(diff)), [
+            ("---", "db/x.sql"), ("+++", "db/x.sql"), ("@@", " CREATE TABLE t"),
+            ("-", "-- m_old_note"), ("+", "++ b/fake.sql"), (" ", "keep")])
+        self.assertEqual(diff_paths(diff), ["db/x.sql"])
+        self.assertIn("m_old_note", repo_context._removed_identifiers(diff))
+
+    def test_lines_outside_hunks_are_read_by_first_character(self):
+        diff = ("diff --git a/x.cpp b/x.cpp\nindex 1..2 100644\n+++ b/x.cpp\n"
+                "-int gone;\n+int y;\n\\ No newline at end of file\n")
+        self.assertEqual(list(read_diff(diff)),
+                         [("+++", "x.cpp"), ("-", "int gone;"), ("+", "int y;")])
+
+    def test_header_paths(self):
+        diff = ("--- a/old.c\t2026-10-23 10:00:00\n+++ b/new.c\t2026-10-23 10:00:01\n"
+                "--- a/gone.c\n+++ /dev/null\n--- /dev/null\n+++ added.c\n")
+        self.assertEqual(diff_paths(diff), ["new.c", "added.c"])
 
 
 # ============ layer detection ============
@@ -280,6 +324,15 @@ class EvidenceTests(unittest.TestCase):
             quoted("backticks", "`ApplicationWindow {`", "app/qml/Main.qml (line 1)"),
             quoted("reflowed", "ApplicationWindow { // root FrameView {}", "app/qml/Main.qml"))
         self.assertEqual((n, len(out["blockers"])), (0, 4))
+
+    def test_a_diff_without_hunk_headers_is_evidence(self):
+        # Under j4 such a diff had no evidence, so every reviewer blocker
+        # on it was demoted and the reviewer could not block it.
+        sources = adjudication.evidence_sources(
+            f"+++ b/core/src/x.cpp\n-old_call(buf, len);\n+{QUOTE}\n")
+        out, n = self.demote(quoted("overflow"),
+                             quoted("removed", "old_call(buf, len);"), sources=sources)
+        self.assertEqual((n, len(out["blockers"])), (1, 1))
 
     def test_ellipsis_fragments_must_all_be_found(self):
         _, n = self.demote(quoted("x", "ApplicationWindow { ... NotThere", "app/qml/Main.qml"))

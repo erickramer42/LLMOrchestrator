@@ -1,0 +1,60 @@
+"""Unified-diff reading, shared by layer identification (debate.py),
+retrieval (repo_context.py) and the evidence check (adjudication.py).
+Pure: no I/O."""
+
+import re
+from typing import Iterator, List, Tuple
+
+DEV_NULL = "/dev/null"
+
+_HUNK = re.compile(r"^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@(.*)")
+# The path ends at a tab: git adds one after a path with spaces, diff -u
+# a timestamp.
+_FILE_HEADER = re.compile(r"^(?:---|\+\+\+) (?:[ab]/)?([^\t]*[^\t\s])")
+
+
+def read_diff(code_diff: str) -> Iterator[Tuple[str, str]]:
+    """Each line of a unified diff as (tag, text):
+    - '---' or '+++': a file header; text is the path without its a/ or
+      b/ prefix, or '/dev/null' for an added or deleted file's other side;
+    - '@@': a hunk header; text is what follows it (git's enclosing line);
+    - ' ', '-' or '+': a context, removed or added line, without its marker.
+    Other lines (diff --git, index, mode lines, '\\ No newline at end of
+    file') are skipped.
+
+    Inside a hunk, lines are counted by the header's lengths, so a removed
+    line that starts with '--' is not taken for a file header. Outside one
+    (a hand-written diff without hunk headers, or past a miscounted hunk),
+    a line is read by its first character."""
+    old_left = new_left = 0
+    for line in code_diff.split("\n"):
+        tag = line[:1]
+        if old_left > 0 or new_left > 0:
+            if tag == "\\":
+                continue
+            if tag in (" ", "", "-", "+"):  # "" is a context line stripped of its space
+                if tag != "+":
+                    old_left -= 1
+                if tag != "-":
+                    new_left -= 1
+                yield tag or " ", line[1:]
+                continue
+            old_left = new_left = 0  # malformed hunk: read the line as a header
+        hunk = _HUNK.match(line)
+        if hunk:
+            old_left = int(hunk.group(1) or 1)
+            new_left = int(hunk.group(2) or 1)
+            yield "@@", hunk.group(3)
+            continue
+        header = _FILE_HEADER.match(line)
+        if header:
+            yield line[:3], header.group(1)
+        elif tag in (" ", "-", "+"):
+            yield tag, line[1:]
+
+
+def diff_paths(code_diff: str) -> List[str]:
+    """The paths of the diff's '+++' headers, in order: each changed file
+    as it reads after the change. A deleted file has none."""
+    return [text for tag, text in read_diff(code_diff)
+            if tag == "+++" and text != DEV_NULL]
