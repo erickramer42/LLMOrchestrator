@@ -23,8 +23,7 @@ Last updated: 2026-10-22. That day, in order:
 - `1dbe31b` pushed, CI green on 3.11 and 3.13; the docs, the backlog
   and the code review re-checked against it.
 
-2026-10-23 (code review 2026-10-23, findings 13–18; uncommitted at
-writing):
+2026-10-23 (code review 2026-10-23, findings 13–18; `6f020f2`):
 - judge j7: empty and oversized input refused before any model call,
   and diff lines outside any file header made evidence; no recorded
   result changes (ADR-0002, "Input Checks j7");
@@ -389,7 +388,10 @@ without reverse-engineering the ADRs.
 | `tests/test_retrieval.py` | Retrieval unit tests: paren-depth scanning, multiline lambda connects, truncation-budget accounting, matched and shown counts, section headers, related call sites, identifier matching, call-site/type/purpose rendering. |
 | `docs/decisions/0001-model-selection.md` | ADR-0001: model selection rationale, bake-off numbers. |
 | `docs/decisions/0002-adjudication-and-fp-remediation.md` | ADR-0002: the false-positive arc. Baseline triage, v1 guardrails, re-measurement, live-loop control, and context-pack N=3 results with the retroactive re-adjudication flag. Then the round-1 measurements (fifth to tenth: diff-authoritative retrieval, the hedging ban, evidence quotes), the judge versions j2 to j6, and the eleventh measurement (the transcript protocol, shipped as the fence only). |
-| `docs/portability_guide.md` | Running on other machines / codebases. Predates the module split. |
+| `docs/design.md` | The pipeline, outcomes, code layout and key design decisions, for readers who want depth after the README. |
+| `docs/results.md` | The measured precision story, its costs, the evidence files and how to reproduce them. Summarizes ADR-0002. |
+| `docs/usage.md` | Every command: tests, reviews, golden suite, indexer, eval harness, reading a record. |
+| `docs/portability_guide.md` | Adapting the tribunal to other codebases. Model keys and troubleshooting corrected 2026-10-23; the walkthrough is illustrative. |
 | `docs/fixtures/qttune_bridge_refactor.diff` | Input diff for all bridge-refactor debates. Provenance (established 2026-10-13): reverse patch of QtTune `e0c4c31`; post-state identical to committed `8ffbf19` (blob `1c195f8`). |
 | `coach_artifacts/decision_debate_*.json` | Decision records. Nine archived: header review (194320), baseline (203917), v1 re-measurement (014257), feedback smoke (153541, see erratum caveat), live-loop control (170208), context-pack pilot (201540, unscored), and three scored context-pack runs (203802, 204845, 210548). Plus seven v5.2 telemetry runs on the bridge fixture, from 20261022, whose six scorable round 1s are the fifth measurement's arm 1: two at num_ctx 16384 (134539_3026b2, 140943_bbe168), three at 24576 (143424_1b11cc, 145342_743bc4, 153943_7a4809), and two at 24576 with num_predict 12288 (160429_15cc3f, 161800_5b3f1d). Records from 2026-10-10 on carry `prompt_fingerprint`, sampling settings, input hashes, layer, `agent_failures`; v5 records carry `repo_context_pack`; v5.2 records add the pack text and per-attempt `telemetry`. |
 | `coach_artifacts/measurement_round1_*.json` | Round-1 measurement records (`metadata.mode` `round1_reviewer`): one reviewer round, no engineer, no merge decision. Same provenance fields as decision records. Forty, all on input fixture `docs/fixtures/qttune_bridge_refactor.diff`. The v6 baseline: 2026-10-22, 205145_5d2fc3 to 210647_dc4008. Arm H (v7): `20261022_22*`. Arm G (v8 / j3): `20261023_00*`. Arm G3 (v9 / j4): `20261023_01*`. |
@@ -501,7 +503,7 @@ references elsewhere stay valid.
     control (170208) thread-safety blockers against the fixture's
     actual post-state (which does read m_currentFrameCount on the
     worker thread); correct the FP/TP labels in ADR-0002 and the
-    README precision table. The re-adjudication flag is already
+    precision table in docs/results.md. The re-adjudication flag is already
     recorded; this executes it.
 - **#18 Early-reject termination (design, not code).** Filed 2026-10-22
     from the 2026-10-21 STATUS note, with code review 2026-10-21 finding

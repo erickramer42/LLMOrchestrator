@@ -8,12 +8,14 @@ Clone this repo and update these three places:
 
 ### Step 1: Update Models
 
-Edit MODELS in orchestrator.py:
+Edit MODELS in config.py:
 
 MODELS = {
     "code_reviewer": "your-reviewer-model",
-    "domain_expert": "your-domain-model",
+    "auto_engineer": "your-domain-model",
 }
+
+The second key is the domain engineer's seat; its prompt is AUTO_ENGINEER_PROMPT.
 
 ### Step 2: Configure Domain Expert Prompt
 
@@ -48,10 +50,13 @@ Target thresholds: blocker-FP rate < 5%, timeout rate < 20%.
 ## Universal Patterns (Don't Change These)
 
 - Derived verdicts — Never trust model self-reported labels; derive from content
+- Evidence-quoted blockers — A blocker quotes the code that shows it, and the quote is checked against the diff
 - Prompt versioning — Stamp PROMPT_VERSION in every decision record
 - Multi-run probes — Single runs are anecdotes; aggregates are data
 - Parse failures fail closed — Unusable reviews block rather than slip through
 - Artifact-type scoping — Different standards for interfaces vs. implementations
+
+The reasoning behind each is in [design.md](design.md).
 
 ## Domain-Specific Customization (Only These Need Changes)
 
@@ -95,7 +100,7 @@ Problem | Likely Cause | Fix
 --------|--------------|-----
 High blocker-FP rate on clean code | Domain expert prompt too aggressive | Add "Do not flag missing implementation as blocker" clause
 Timeout rate > 20% | Context window too large for GPU | Reduce NUM_CTX (24576 in config.py), but keep room for the prompt plus thinking output; see ADR-0001
-Parse failures frequent | Thinking tokens exhausting budget | Increase num_ctx or reduce system prompt length
+Parse failures frequent | Thinking tokens exhausting budget | Check the decision record's telemetry first. If output fills NUM_PREDICT, the model is looping and the retry usually recovers; raise NUM_CTX only if finished replies don't fit (ADR-0001)
 Detection rate < 80% | Model too small for task | Upgrade to frontier model or increase context
 
 ## Questions?
