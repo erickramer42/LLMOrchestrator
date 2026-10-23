@@ -2343,3 +2343,159 @@ The section's measured benefit on this fixture was one recovered
 blocker; the rest is protocol, feedback no longer reading as the
 author's text. Round-2 runaways in live debates are the number to
 watch (STATUS #16). Backlog #11 is closed.
+
+## Thirteenth Measurement (Pending) — Offline Replay of Judge Variants
+
+*Design and prediction recorded 2026-10-23, before any variant was
+scored. The replay tool, the labels and the reproduction check below
+were built and run first; no variant's numbers had been printed.*
+
+**Why:** the three changes most likely to raise precision further are
+deterministic. They can be scored on archived replies without a model
+call, before any live run. This is the first step of a roadmap: score
+the variants here, measure the survivors on a corpus of triaged diffs
+(backlog #7), and only then change debates.
+
+**Tool:** `python -m eval_harness.replay` (no model). It rebuilds each
+round-1 reply's raw blockers: the stored ones, plus those the evidence
+and hedge checks demoted, recovered from the end of its questions. It
+then re-judges them under each variant. Hand labels per blocker are in
+`eval_harness/labels.json`, transcribed from the tenth, eleventh and
+twelfth measurements. 10 demoted items that the ADR never classified
+are labelled by hand and marked as such.
+
+**Reproduction check (done):** re-applying the current judge to all 84
+raw blockers of the 28 first-attempt samples reproduces every record's
+stored split exactly, including G3's, which ran under j4.
+
+**Samples:** first attempts on the bridge fixture: G3 (10), the
+eleventh's round 1 (10) and the twelfth's round 1 (8). All have quoted
+blockers and the post-change evidence check. The sixth (v6, no quotes)
+is left out.
+
+**Variants**, each on top of the current evidence and hedge checks:
+- **gapped:** a quote's lines may skip post-change lines, in order,
+  within one hunk. Target: the 3 valid race blockers demoted because
+  their quotes skipped lines (2f2843 #e1, 5ef90b #e1, 8dc61a #e1).
+- **linked:** a blocker is demoted when its claim names code
+  identifiers (`retrieval.code_like`) and none of them occurs anywhere
+  in the hunk its quote matched (removed lines and the hunk header
+  included). A claim that names none passes. Target: real quotes that do
+  not support the claim (55c897 #1, c55779 #4).
+- **gapped+linked.**
+- **vote k-of-n @variant:** a review is n samples, each judged by the
+  variant. Two blockers are linked when their quotes matched a shared
+  post-change line of 8 or more non-space characters. A group of linked
+  blockers is kept when it spans at least k samples. Scored on every
+  3-subset of each set, with k = 2. Cost: n reviewer round-1 calls per
+  debate.
+
+**Metrics, per review** (a single sample, or one 3-subset when voting):
+blockers, the valid share (race or gate), FP blockers (deletion,
+removal objection, other), and whether the race and the gate are among
+the kept blockers. Results are pooled over the three sets and given per
+set.
+
+**Baseline, the current judge on single samples** (pooled; from the
+recorded labels): 2.18 blockers per review, 89% valid (54 of 61), 0.25
+FPs per review, race found 0.79, gate found 0.29.
+
+**Prediction:**
+
+| Variant | FPs per review | Race found | Gate found | Valid blockers demoted |
+|---|---|---|---|---|
+| gapped | 0.25–0.29 (0–1 readmitted) | 0.79–0.83 | 0.29 | — (3 readmitted) |
+| linked | 0.15–0.22 | ≥ 0.75 | ≥ 0.25 | 0–1 |
+| vote 2-of-3 @j7 | 0.05–0.15 | 0.75–0.90 | 0.30–0.50 | — |
+
+Reasons: most false positives quote a line that no other sample quotes,
+while the race recurs. Gate blockers that quote the backpressure check
+are linked to the race's group. Under voting, 6e7367 #1 is the
+expected surviving FP: it quotes `++m_currentFrameCount;` like the race
+blockers.
+
+**Rule:** a variant passes if, pooled, FPs per review fall and both
+race-found and gate-found drop by at most 0.1 against the baseline. A
+passing variant becomes a candidate to measure on the corpus (#7).
+Nothing changes in debates on the replay alone.
+
+**Limits:**
+- **Dev data.** The labels, and the variants' design, come from people
+  who had read these replies, and the records come from one fixture. The
+  replay can rule a variant out, or make it a candidate; it cannot ship
+  one.
+- **Demotions are recovered, not observed:** the tail of `questions`,
+  as the scorers read it.
+- **Voting's recall comparison** sets three samples against one. The
+  same table at k = 1 (the union of three samples, no vote) is reported
+  as a reference.
+
+### Results (scored 2026-10-23)
+
+Pooled over the 28 samples (296 voted reviews: every 3-subset of each
+set):
+
+| Variant | Blockers per review | Valid | FPs per review | Race found | Gate found |
+|---|---|---|---|---|---|
+| current judge (j7) | 2.18 | 89% | 0.25 | 0.79 | 0.29 |
+| gapped | 2.29 | 89% | 0.25 | 0.82 | 0.29 |
+| linked | 2.11 | 92% | 0.18 | 0.79 | 0.29 |
+| gapped+linked | 2.21 | 92% | 0.18 | 0.82 | 0.29 |
+| vote 2-of-3 @j7 | 4.48 | 96% | 0.16 | 0.92 | 0.47 |
+| vote 2-of-3 @gapped+linked | 4.85 | 97% | 0.16 | 0.93 | 0.47 |
+| reference: union of 3, no vote @j7 | 6.51 | 88% | 0.80 | 0.99 | 0.66 |
+
+**What each variant changed, blocker by blocker:**
+- **gapped** readmitted exactly its three targets, all valid race
+  blockers (2f2843 #e1, 5ef90b #e1, 8dc61a #e1), and nothing else. Of
+  the other 13 evidence-demoted blockers, no quote matched even with
+  gaps, since they quote removed lines or code that does not exist.
+- **linked** demoted exactly its two targets, both deletion-class FPs
+  (55c897 #1, c55779 #4), and no valid blocker. It also catches 9ef325
+  #h1, which hedging demoted anyway.
+- **vote** removed 5 of the 7 FPs kept by the current judge. Two survive
+  in the subsets where their group recurs:
+  - 6e7367 #1 (26 of 120 subsets), as predicted. It quotes
+    `++m_currentFrameCount;` like the race blockers.
+  - 61e3c6 #2 (21 of 56). The same reply's race blocker quoted 14 lines
+    of `handleFrameInternal`, the `payloadHex` line included, and that
+    linked the false "buffer overflow" claim to the race's group. So a
+    long quote can carry an unrelated claim through the vote. In the
+    twelfth's set this raised FPs per review from 0.12 to 0.38.
+- A voted review keeps every member of a kept group, so it repeats
+  blockers across samples, at 4.5–4.9 per review. A debate would show
+  one per group.
+
+| Prediction | Predicted | Observed | Outcome |
+|---|---|---|---|
+| gapped: FPs per review | 0.25–0.29 | 0.25 (0 readmitted) | HIT |
+| gapped: race found | 0.79–0.83 | 0.82 | HIT |
+| linked: FPs per review | 0.15–0.22 | 0.18 | HIT |
+| linked: valid blockers demoted | 0–1 | 0 | HIT |
+| linked: race, gate found | ≥ 0.75, ≥ 0.25 | 0.79, 0.29 | HIT |
+| vote 2-of-3: FPs per review | 0.05–0.15 | 0.16 | MISSED HIGH |
+| vote 2-of-3: race found | 0.75–0.90 | 0.92 | MISSED HIGH |
+| vote 2-of-3: gate found | 0.30–0.50 | 0.47 | HIT |
+
+**By the rule** (FPs fall; race and gate each drop by at most 0.1):
+- **linked, gapped+linked, and voting over either: pass.** They become
+  candidates for the corpus.
+- **gapped alone: does not pass.** Its FPs do not fall; it is a recall
+  fix with no false-positive cost on this data. It is carried as part
+  of gapped+linked.
+
+**Reading:**
+- **The single-sample judge has room for two cheap fixes, at no model
+  cost.** gapped+linked takes the stored valid share from 89% to 92%
+  and race-found from 0.79 to 0.82.
+- **Voting is the larger lever.** Against the union of the same three
+  samples it cuts FPs per review from 0.80 to 0.16 and keeps most of the
+  recall: race 0.99 → 0.92, gate 0.66 → 0.47. Against today's single
+  sample it is better on all three counts, at three times the
+  reviewer's round-1 calls.
+- **Its weak point is the bridge a long quote makes.** One fix is to
+  link on each blocker's first quoted line only. Choosing it here would
+  be tuning on these data, so it is left as a variant to pre-register
+  for the corpus.
+- **None of this ships from the replay.** The corpus measurement decides
+  (ADR-0002's next measurement; backlog #7).

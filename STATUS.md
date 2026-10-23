@@ -58,7 +58,10 @@ Last updated: 2026-10-22. That day, in order:
   and the first triage's one true positive is in code the diff removes;
 - backlog #13, all but the probe rerun: the core.h fixture committed,
   ADR-0001's timeout row explained;
-- backlog #9: orchestrator.py's re-export shim retired.
+- backlog #9: orchestrator.py's re-export shim retired;
+- an offline replay of judge variants over 28 archived round-1 samples
+  (ADR-0002, thirteenth measurement): two cheap judge fixes and 2-of-3
+  voting are candidates for the corpus (#7).
 
 Purpose of this file: anyone picking up this repo can orient in five
 minutes, run the existing validation, and continue the queued work
@@ -85,7 +88,7 @@ without reverse-engineering the ADRs.
   path, evidence check included. Run live that way on 2026-10-23 at
   v10.2: 10/10, as predicted, every fixture answered on the first
   attempt with no demotion (ADR-0002, "Golden Suite Routing").
-- Deterministic regression suite: 156 stdlib unittest cases in `tests/`,
+- Deterministic regression suite: 161 stdlib unittest cases in `tests/`,
   with Ollama faked at the HTTP layer. No model needed; CI-ready.
 - FP-rate probe (5-run aggregates), model bake-off
 - Repo indexer (`--index`): typedefs, constants, layer map, LLM purpose
@@ -336,6 +339,24 @@ without reverse-engineering the ADRs.
     round 1 returned in round 2 with a passing quote, because the
     section shows demoted blockers as questions; v9's feedback never
     carried them.
+- **Offline replay of judge variants (2026-10-23; ADR-0002, thirteenth
+  measurement).** `python -m eval_harness.replay` re-judges archived
+  round-1 replies with no model, using hand labels in
+  `eval_harness/labels.json`. The current judge reproduces every stored
+  split of the 28 samples. Pooled, against today's 0.25 FPs per review,
+  race found 0.79 and gate found 0.29:
+  - **gapped quotes** (quote lines may skip lines within a hunk)
+    readmit the 3 valid race blockers demoted for skipping lines, and no
+    FP;
+  - **claim–quote linkage** (a claim's code identifiers must occur in
+    its quote's hunk) demotes the 2 deletion-class FPs with unrelated
+    quotes, and no valid blocker. Together: 0.18 FPs, race 0.82;
+  - **2-of-3 voting** (keep blockers whose quoted lines recur across 3
+    samples): 0.16 FPs, race 0.92, gate 0.47, at 3x the reviewer's
+    round-1 calls. A long quote can carry an unrelated claim through the
+    vote.
+
+  These are candidates for the corpus (#7); nothing changed in debates.
 
 **Known limitations (by design or pending):**
 - **Diffs above about 30K chars are refused** at `NUM_CTX` 24576 and
@@ -454,6 +475,8 @@ without reverse-engineering the ADRs.
 | `eval_harness/raw_call.py` | The probe's and the bake-off's model call: a raw Ollama request with the settings their records were taken with (num_ctx 16384, no output cap, temperature 0.2 then 0.05, 600s), independent of agent_client and config. An HTTP error keeps Ollama's message. |
 | `eval_harness/common.py` | What the two measurement scripts share: the `run`/`score` command line, the sample runner (stops on refused input or an unreachable server), record loading, the reviewer's attempt status, demoted-blocker recovery, M1 and M2 candidates. |
 | `eval_harness/round1.py` | Round-1 measurements. `run` collects samples through `debate.run_round1_review`, so unlike the probe and bake-off it uses agent_client and config. `score` counts M1 and lists M2 candidates over measurement or debate records, first attempts on one diff only, and lists evidence-demoted (`#e`) and hedge-demoted (`#h`) items separately. |
+| `eval_harness/replay.py` | Offline replay, no model: rebuilds each round-1 reply's raw blockers (stored plus demoted) from archived records and re-judges them under deterministic variants: gapped quotes, claim–quote linkage, k-of-n voting. Scores them with the hand labels; checks that the current judge reproduces every stored split (ADR-0002, thirteenth measurement). |
+| `eval_harness/labels.json` | Hand labels per round-1 reviewer blocker (race, gate, deletion, removal objection, deleted test, other FP) for G3 and the eleventh's and twelfth's round 1, transcribed from ADR-0002; the few not in the ADR are marked `hand`. |
 | `eval_harness/round2.py` | The round-2 pair measurement. `run` collects samples through `debate.run_round2_pair`: a debate's round 1, then the round-2 reviewer twice on the same round-1 replies, once with the CRITIQUES section a debate's round 2 sends (v11.1) and once with the feedback format debates sent before it. `score` compares the arms on first-attempt pairs, counts each arm's first attempts that ran away, and tags each round-2 blocker carried, from-question, echo? or new, from its claim's identifiers. |
 | `eval_harness/__init__.py` | Package marker. |
 | `tests/test_deterministic.py` | Stdlib unittest regression suite: adjudication, agent client (incl. telemetry and log records), diff reading (incl. base blobs), the evidence check and hedge check, debate (incl. the input checks, the layer note, retrieval in the transcript, the index-base warning, record provenance, malformed-index degradation, round-1 measurement mode, demotion order, the fence, the round-2 pair mode, the golden suite's path and its fixtures), eval scoring (incl. the round-1 and round-2 scorers, and the probe's and bake-off's raw call), indexer harvesting, CLI and module boundaries. Fake Ollama HTTP layer. CI-ready. |
@@ -479,7 +502,9 @@ diff_reader and review_fixtures (leaves) → config → agent_client and
 adjudication (parallel layers) → retrieval → debate → golden_tests →
 orchestrator. indexer sits on retrieval and agent_client, and only
 orchestrator's `--index` mode imports it. eval_harness.common sits on
-retrieval; round1 and round2 on common and debate. `tests/` sits on top
+retrieval; round1 and round2 on common and debate; replay on common,
+adjudication and diff_reader (it reads debate only for `text_sha256`).
+`tests/` sits on top
 of everything. probe.py and bakeoff.py import only reviewer_prompt,
 eval_harness.raw_call and (the bake-off) review_fixtures.
 
@@ -519,10 +544,14 @@ eval_harness.raw_call and (the bake-off) review_fixtures.
 ## Backlog (ideas, loosely ordered)
 
 Suggested order as of 2026-10-23 (the live golden suite passed; #9,
-#11 and #17 done, #13 all but the probe rerun): #7 stable corpus, so
-the evidence check's precision is tested beyond one fixture; the
-index-base warning and the size limit are in place for it → #21 fixture
-proposal → #16 runaway output → #18 early reject → the rest.
+#11 and #17 done, #13 all but the probe rerun; the replay scored):
+#7 stable corpus, with known bugs per diff so recall is measured too,
+and proposals in each diff's real direction (#21). On it, measure the
+replay's candidates (gapped quotes with claim–quote linkage, then 2-of-3
+voting) → recall levers, one measurement each: the call-site caveat
+(code review finding 9), #8 per-file layer notes, #14 structured
+outputs, #19 early runaway abort → a local-model bake-off on the corpus
+→ #18 early reject → the rest.
 
 Done items are removed (#1, #3, #4, #5, #9, #11, #12, #15 and #17 so far); their history
 is in Current State, the ADRs and git. Numbers are not reused, so

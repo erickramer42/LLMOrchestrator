@@ -47,6 +47,37 @@ def load_records(patterns: List[str]) -> List[tuple]:
 
 # ============ scoring helpers ============
 
+# Where a field starts in a flattened {claim, file, quote} blocker
+# (adjudication._coerce_item joins "key: value" pairs with "; ").
+_FIELD = re.compile(r"(?:^|; )(claim|file|quote): ")
+
+
+def parse_blocker(item: str) -> dict:
+    """A stored reviewer blocker back as its fields: claim, file and quote,
+    plus hedge_text, the blocker without its quote, which is what the hedge
+    check reads (adjudication._evidence). A plain string is all claim."""
+    marks = list(_FIELD.finditer(item))
+    if not marks:
+        return {"claim": item, "file": "", "quote": "", "hedge_text": item}
+    fields, quote_span = {}, None
+    for m, nxt in zip(marks, marks[1:] + [None]):
+        end = nxt.start() if nxt else len(item)
+        fields[m.group(1)] = item[m.end():end]
+        if m.group(1) == "quote":
+            quote_span = (m.start(), end)
+    hedge_text = item
+    if quote_span:
+        hedge_text = (item[:quote_span[0]] + item[quote_span[1]:]).lstrip("; ")
+    return {"claim": fields.get("claim", ""), "file": fields.get("file", ""),
+            "quote": fields.get("quote", ""), "hedge_text": hedge_text}
+
+
+def claim_text(item: str) -> str:
+    """The claim of a flattened {claim, file, quote} blocker; a plain
+    string is all claim."""
+    return parse_blocker(item)["claim"] or item
+
+
 def reviewer_status(entry: dict) -> str:
     """How a round entry's reviewer reply was obtained: 'first', 'retry'
     or 'failed'. 'unknown' for records without telemetry (before v5.2)."""

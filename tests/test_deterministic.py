@@ -39,7 +39,7 @@ from adjudication import (JUDGE_VERSION, convergence_verdict,  # noqa: E402
                           normalize_agent_output)
 from agent_client import FAILURE_SENTINEL, call_agent, failure_result  # noqa: E402
 from diff_reader import base_blobs, diff_paths, read_diff  # noqa: E402
-from eval_harness import bakeoff, common, probe, raw_call, round1, round2  # noqa: E402
+from eval_harness import bakeoff, common, probe, raw_call, replay, round1, round2  # noqa: E402
 from eval_harness.bakeoff import tally  # noqa: E402
 from eval_harness.probe import summarize  # noqa: E402
 from file_metadata import get_layer_constraints, identify_layer  # noqa: E402
@@ -1397,6 +1397,110 @@ class Round2ScoringTests(unittest.TestCase):
                                     [], None)["rows"]
         self.assertEqual([d["text"] for d in row["arms"][debate.CRITIQUES_ARM]["unquoted"]],
                          ["unquoted"])
+
+
+# ============ offline replay (ADR-0002, thirteenth measurement) ============
+
+# Two hunks. The first removes m_inFlight; the gate check and its return
+# are a line apart, so a quote of both skips one.
+REPLAY_DIFF = ("--- a/app/x.cpp\n+++ b/app/x.cpp\n"
+               "@@ -1,4 +1,4 @@ void onFrame()\n"
+               " if (self->m_count >= MaxFrames) {\n"
+               "-    m_inFlight.fetch_add(1);\n"
+               "+    m_dropped.fetch_add(1);\n"
+               "     return;\n"
+               " }\n"
+               "@@ -10,2 +10,3 @@ void handle()\n"
+               "     appendFrame(vm);\n"
+               "     ++m_count;\n"
+               "+    emit changed();\n")
+GATE_LINE = "if (self->m_count >= MaxFrames) {"
+
+
+def flat(claim, quote, file="app/x.cpp"):
+    """A reviewer blocker as normalization stores it."""
+    return f"claim: {claim}; file: {file}; quote: {quote}"
+
+
+class ReplayTests(unittest.TestCase):
+    def setUp(self):
+        self.diff = replay.load_diff(REPLAY_DIFF)
+
+    def blocker(self, claim, quote):
+        return common.parse_blocker(flat(claim, quote))
+
+    def test_parse_blocker_splits_the_fields_and_drops_the_quote_for_hedging(self):
+        b = common.parse_blocker("claim: a; b; file: f.cpp; quote: x; y")
+        self.assertEqual((b["claim"], b["file"], b["quote"]), ("a; b", "f.cpp", "x; y"))
+        self.assertEqual(b["hedge_text"], "claim: a; b; file: f.cpp")
+        plain = common.parse_blocker("x may race")
+        self.assertEqual((plain["claim"], plain["quote"], plain["hedge_text"]),
+                         ("x may race", "", "x may race"))
+
+    def test_gapped_quotes_skip_lines_within_one_hunk_only(self):
+        skipping = self.blocker("m_count races", f"{GATE_LINE}\nreturn;")
+        self.assertIsNone(replay.verify(skipping, self.diff))
+        self.assertIsNotNone(replay.verify(skipping, self.diff, gapped=True))
+        across = self.blocker("m_count races", "return;\nappendFrame(vm);")
+        self.assertIsNone(replay.verify(across, self.diff, gapped=True))
+        # without gaps, verify agrees with the evidence check it mirrors
+        for quote in (GATE_LINE, "appendFrame(vm);\n++m_count;", "m_inFlight.fetch_add(1);"):
+            b = self.blocker("c", quote)
+            self.assertEqual(replay.verify(b, self.diff) is not None,
+                             adjudication._quote_verified(b, self.diff.sources), quote)
+
+    def test_linkage_reads_the_whole_hunk_of_the_quote(self):
+        def linked(claim):
+            b = self.blocker(claim, GATE_LINE)
+            return replay.linked(b, self.diff, replay.verify(b, self.diff))
+        self.assertTrue(linked("removing m_inFlight leaves the queue unbounded"))  # a removed line
+        self.assertFalse(linked("m_lastReported races between threads"))
+        self.assertTrue(linked("nothing bounds the queue"))  # no code identifier to check
+
+    def test_replay_reproduces_the_stored_split_and_scores_variants(self):
+        stored = flat("m_count is read on the worker thread", GATE_LINE)
+        unquoted = flat("m_count is written off-thread", f"{GATE_LINE}\nreturn;")
+        hedged = flat("m_dropped might race", "m_dropped.fetch_add(1);")
+        unlinked = flat("m_lastReported races", "appendFrame(vm);")
+        rec = round1_record("r1", [stored, unlinked], diff=REPLAY_DIFF,
+                            questions=["q?", unquoted, hedged],
+                            evidence_demoted=1, hedge_demoted=1)
+        labels = {"records": {"r1": {"set": "s", "labels": {
+            "#1": "race", "#2": "other-fp", "#e1": "race", "#h1": "other-fp"}}}}
+        out = replay.replay([("p", rec)], REPLAY_DIFF, labels, n=1, k=1)
+        self.assertEqual(out["mismatches"], [])
+        r = out["results"]
+        self.assertEqual((r["j7"]["pooled"]["blockers_per_review"],
+                          r["j7"]["pooled"]["fp_per_review"]), (2, 1))
+        self.assertEqual(r["gapped"]["pooled"]["blockers_per_review"], 3)  # #e1 readmitted
+        self.assertEqual(r["linked"]["pooled"]["fp_per_review"], 0)  # #2 demoted
+        self.assertEqual([c[:2] for c in out["changes"]["gapped+linked"]],
+                         [("r1", "#2"), ("r1", "#e1")])
+        # a stored blocker this judge would demote is reported
+        rec["outputs"]["round_history"][0]["reviewer"]["blockers"][0] = flat(
+            "m_count races", "no such line in the diff")
+        out = replay.replay([("p", rec)], REPLAY_DIFF, labels, n=1, k=1)
+        self.assertEqual(out["mismatches"], [("r1", "#1", None, "evidence")])
+
+    def test_vote_keeps_groups_that_recur_across_samples(self):
+        def kept(claim, quote, label):
+            b = self.blocker(claim, quote)
+            item = replay.Item("s", "#1", claim, b, label)
+            return item, replay.verify(b, self.diff)
+        race_a = kept("m_count races", GATE_LINE, "race")
+        race_b = kept("m_count read off-thread", f"{GATE_LINE}\nm_dropped.fetch_add(1);", "race")
+        lone_fp = kept("m_count overflows", "appendFrame(vm);", "other-fp")
+        voted = replay.vote([[race_a, lone_fp], [race_b], []], self.diff, k=2)
+        self.assertEqual([i.label for i in voted], ["race", "race"])
+        self.assertEqual(replay.vote([[lone_fp], [lone_fp]], self.diff, k=2), [lone_fp[0]] * 2)
+        # sharing only lines under 8 non-space characters ('return;', '}')
+        # links nothing
+        tail = kept("m_dropped races", "m_dropped.fetch_add(1);\nreturn;\n}", "other-fp")
+        gapped = self.blocker("m_count races", f"{GATE_LINE}\nreturn;\n}}")
+        head = (replay.Item("s", "#1", "", gapped, "race"),
+                replay.verify(gapped, self.diff, gapped=True))
+        self.assertEqual((sorted(tail[1][1]), sorted(head[1][1])), ([2, 3, 4], [1, 3, 4]))
+        self.assertEqual(replay.vote([[tail], [head]], self.diff, k=2), [])
 
 
 # ============ indexer ============

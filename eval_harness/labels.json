@@ -1,0 +1,300 @@
+{
+ "about": "Hand labels of round-1 reviewer items on docs/fixtures/qttune_bridge_refactor.diff, judged against the post-state at QtTune 8ffbf19. Keys: #n stored blocker, #en evidence-demoted, #hn hedge-demoted, numbered as the round-1 scorer lists them. Transcribed from ADR-0002 (tenth, eleventh and twelfth measurements); items in 'hand' were labelled for the replay (thirteenth measurement), not in the ADR.",
+ "classes": {
+  "race": "valid: m_currentFrameCount read on the worker thread, written on the GUI thread",
+  "gate": "valid: the removed in-flight bound; the cumulative check bounds nothing",
+  "deletion": "false: removed code presented as current, or claimed to survive",
+  "removal-objection": "false: objects to a removal the diff intends",
+  "deleted-test": "an objection to the deleted regression test; reported apart",
+  "other-fp": "false: any other claim the post-state refutes"
+ },
+ "valid": [
+  "race",
+  "gate"
+ ],
+ "records": {
+  "round1_20261023_012351_55c897": {
+   "set": "g3",
+   "labels": {
+    "#1": "deletion",
+    "#e1": "gate",
+    "#e2": "deleted-test",
+    "#e3": "removal-objection"
+   },
+   "hand": []
+  },
+  "round1_20261023_012521_7ee39f": {
+   "set": "g3",
+   "labels": {},
+   "hand": []
+  },
+  "round1_20261023_012610_80f1be": {
+   "set": "g3",
+   "labels": {
+    "#1": "race",
+    "#2": "gate",
+    "#3": "race",
+    "#4": "gate"
+   },
+   "hand": []
+  },
+  "round1_20261023_012726_6b4d1a": {
+   "set": "g3",
+   "labels": {
+    "#1": "race",
+    "#2": "gate",
+    "#3": "race"
+   },
+   "hand": []
+  },
+  "round1_20261023_012856_819df9": {
+   "set": "g3",
+   "labels": {
+    "#e1": "deletion",
+    "#e2": "other-fp",
+    "#e3": "deletion"
+   },
+   "hand": []
+  },
+  "round1_20261023_013007_950415": {
+   "set": "g3",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "race"
+   },
+   "hand": []
+  },
+  "round1_20261023_013254_698a1c": {
+   "set": "g3",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#e1": "deletion"
+   },
+   "hand": []
+  },
+  "round1_20261023_013519_e032ba": {
+   "set": "g3",
+   "labels": {
+    "#1": "race",
+    "#2": "race"
+   },
+   "hand": []
+  },
+  "round1_20261023_013748_2eb07e": {
+   "set": "g3",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#h1": "other-fp"
+   },
+   "hand": []
+  },
+  "round1_20261023_013952_2f2843": {
+   "set": "g3",
+   "labels": {
+    "#1": "race",
+    "#e1": "race"
+   },
+   "hand": []
+  },
+  "round2_20261023_031353_77f24d": {
+   "set": "eleventh",
+   "labels": {
+    "#1": "race",
+    "#2": "race"
+   },
+   "hand": []
+  },
+  "round2_20261023_032159_751a8f": {
+   "set": "eleventh",
+   "labels": {
+    "#1": "gate",
+    "#2": "race",
+    "#3": "race"
+   },
+   "hand": []
+  },
+  "round2_20261023_032638_cc30ec": {
+   "set": "eleventh",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "race"
+   },
+   "hand": []
+  },
+  "round2_20261023_033100_97c2dd": {
+   "set": "eleventh",
+   "labels": {
+    "#1": "race",
+    "#2": "gate",
+    "#e1": "deleted-test"
+   },
+   "hand": [
+    "#e1"
+   ]
+  },
+  "round2_20261023_033932_6b1987": {
+   "set": "eleventh",
+   "labels": {
+    "#1": "race",
+    "#2": "race"
+   },
+   "hand": []
+  },
+  "round2_20261023_034449_6e7367": {
+   "set": "eleventh",
+   "labels": {
+    "#1": "other-fp",
+    "#2": "race"
+   },
+   "hand": []
+  },
+  "round2_20261023_040201_5ef90b": {
+   "set": "eleventh",
+   "labels": {
+    "#1": "race",
+    "#2": "gate",
+    "#e1": "race",
+    "#e2": "removal-objection"
+   },
+   "hand": [
+    "#e2"
+   ]
+  },
+  "round2_20261023_040738_407954": {
+   "set": "eleventh",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#e1": "deletion",
+    "#e2": "deletion"
+   },
+   "hand": [
+    "#e1"
+   ]
+  },
+  "round2_20261023_041137_410daf": {
+   "set": "eleventh",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "other-fp",
+    "#e1": "other-fp"
+   },
+   "hand": [
+    "#e1"
+   ]
+  },
+  "round2_20261023_042000_c55779": {
+   "set": "eleventh",
+   "labels": {
+    "#1": "race",
+    "#2": "other-fp",
+    "#3": "other-fp",
+    "#4": "deletion",
+    "#e1": "deletion",
+    "#e2": "deleted-test"
+   },
+   "hand": [
+    "#e2"
+   ]
+  },
+  "round2_20261023_181035_4ee454": {
+   "set": "twelfth",
+   "labels": {
+    "#1": "race",
+    "#2": "race"
+   },
+   "hand": []
+  },
+  "round2_20261023_181741_42ec47": {
+   "set": "twelfth",
+   "labels": {
+    "#1": "race",
+    "#2": "gate"
+   },
+   "hand": [
+    "#1",
+    "#2"
+   ]
+  },
+  "round2_20261023_182616_9ef325": {
+   "set": "twelfth",
+   "labels": {
+    "#1": "gate",
+    "#2": "gate",
+    "#h1": "other-fp"
+   },
+   "hand": [
+    "#h1"
+   ]
+  },
+  "round2_20261023_183210_1d8391": {
+   "set": "twelfth",
+   "labels": {
+    "#1": "race",
+    "#2": "race"
+   },
+   "hand": []
+  },
+  "round2_20261023_183559_8dc61a": {
+   "set": "twelfth",
+   "labels": {
+    "#1": "gate",
+    "#e1": "race",
+    "#e2": "removal-objection"
+   },
+   "hand": []
+  },
+  "round2_20261023_183923_e51acf": {
+   "set": "twelfth",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "race"
+   },
+   "hand": []
+  },
+  "round2_20261023_184310_802999": {
+   "set": "twelfth",
+   "labels": {
+    "#1": "gate",
+    "#2": "gate",
+    "#3": "gate"
+   },
+   "hand": []
+  },
+  "round2_20261023_184729_d693ca": {
+   "set": "twelfth",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "race"
+   },
+   "hand": []
+  },
+  "round2_20261023_185451_e52a94": {
+   "set": "twelfth",
+   "labels": {
+    "#1": "race",
+    "#2": "race"
+   },
+   "hand": [
+    "#1",
+    "#2"
+   ]
+  },
+  "round2_20261023_191044_61e3c6": {
+   "set": "twelfth",
+   "labels": {
+    "#1": "race",
+    "#2": "other-fp",
+    "#e1": "other-fp"
+   },
+   "hand": []
+  }
+ }
+}

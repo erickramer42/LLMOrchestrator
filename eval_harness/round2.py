@@ -31,29 +31,19 @@ retry excludes its pair, so the compared pairs alone would hide it
 (ADR-0002, twelfth measurement).
 """
 
-import re
 import textwrap
 from typing import Callable, List, Optional
 
 from debate import CRITIQUES_ARM, V9_ARM, run_round2_pair, text_sha256
-from eval_harness.common import (demoted_tail, m1_hits, m2_candidates, main,
-                                 reviewer_status)
+from eval_harness.common import (claim_text, demoted_tail, m1_hits,
+                                 m2_candidates, main, reviewer_status)
 from retrieval import IDENT, code_like, removed_identifiers
 
 ARMS = (CRITIQUES_ARM, V9_ARM)
 ORIGINS = ("carried", "from-question", "echo?", "new")
 
-_CLAIM = re.compile(r"claim: (.*?)(?=; file: |; quote: |$)", re.S)
-
 
 # ============ score ============
-
-def claim_text(item: str) -> str:
-    """The claim of a flattened {claim, file, quote} blocker; a plain
-    string is all claim."""
-    m = _CLAIM.search(item)
-    return m.group(1) if m else item
-
 
 def names(item: str) -> set:
     return {n for n in IDENT.findall(claim_text(item)) if code_like(n)}

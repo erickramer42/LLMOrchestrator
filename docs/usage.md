@@ -127,6 +127,20 @@ and counts each arm's first attempts that ran away (ADR-0002, eleventh
 and twelfth measurements). The scorers expand globs themselves, so the
 quoted patterns work in PowerShell too.
 
+**Offline replay**, no model: re-judges archived round-1 replies under
+deterministic judge variants (gapped quotes, claim–quote linkage, k-of-n
+voting) and scores them with the hand labels in
+`eval_harness/labels.json` (ADR-0002, thirteenth measurement):
+
+```sh
+python -m eval_harness.replay --diff docs/fixtures/qttune_bridge_refactor.diff --n 3 --k 2 \
+    "coach_artifacts/measurement_round1_20261023_01*.json" \
+    "coach_artifacts/measurement_round2_20261023_*.json"
+```
+
+It first checks that the current judge reproduces every record's stored
+split. Records without labels are listed and left out.
+
 ## Reading a decision record
 
 ```sh
