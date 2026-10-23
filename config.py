@@ -1,5 +1,7 @@
 """Central configuration — models, runtime parameters, prompt composition.
-Single place to swap models or tune knobs; nothing else hardcodes these."""
+Single place to swap models or tune knobs for debates, the measurements,
+the golden suite and the indexer. eval_harness/probe.py and bakeoff.py
+still hardcode their own (code review finding 9)."""
 
 from reviewer_prompt import (REVIEWER_SYSTEM, IMPL_SCOPE_CLAUSE,
                              HEADER_SCOPE_CLAUSE)
@@ -23,6 +25,14 @@ NUM_CTX = 24576
 # so the cap makes them fail early and the retry recovers. It sits above
 # every finished reply seen so far (longest 10,097 tokens).
 NUM_PREDICT = 12288
+# Input check (judge j7): a round-1 request is estimated at one token per
+# this many chars, and refused above NUM_CTX - NUM_PREDICT tokens, so every
+# reply has its full output cap and Ollama never has to cut the prompt.
+# Below every ratio on record (2026-10-23, bridge fixture): laguna-xs-2.1
+# 3.43-3.52 chars per token, gemma4:12b 3.21-3.30. At 24576 / 12288 the
+# limit is 36,864 chars. The bridge fixture's request is ~33.3K chars, so
+# with its prompt, pack and proposal a diff above ~30K chars is refused.
+CHARS_PER_TOKEN_FLOOR = 3.0
 REQUEST_TIMEOUT_S = 600    # Kept at 600s per probe latency discussion
 TEMPERATURE_EXPLORATION = 0.7
 TEMPERATURE_RETRY = 0.05

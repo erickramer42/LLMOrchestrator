@@ -65,6 +65,9 @@ def run(proposal: str, code_diff: str, code_context: str, header: bool,
         failures = res.get("agent_failures", [])
         for failure in failures:
             print(f"    {failure}")
+        # Refused input would be refused on every run.
+        if "input_refused" in res:
+            raise SystemExit(f"Stopping: input refused: {res['input_refused']}")
         # A runaway that exhausts its retries is a result worth keeping;
         # an unreachable server would only fill coach_artifacts/ with
         # failure records.
@@ -147,6 +150,9 @@ def score_records(records: List[tuple], code_diff: str, symbols: List[str],
         if recorded_hash != diff_hash:
             excluded.append((record_id, "no diff hash" if recorded_hash is None
                              else "another diff"))
+            continue
+        if not rec["outputs"]["round_history"]:
+            excluded.append((record_id, "input refused, no round"))
             continue
         status = attempt_status(rec)
         if status in ("retry", "failed"):

@@ -59,6 +59,8 @@ def run(proposal: str, code_diff: str, code_context: str, header: bool,
         failures = res.get("agent_failures", [])
         for failure in failures:
             print(f"    {failure}")
+        if "input_refused" in res:
+            raise SystemExit(f"Stopping: input refused: {res['input_refused']}")
         if any("request failed" in f for f in failures):
             raise SystemExit("Stopping: the Ollama request failed. Is the "
                              "server up and both models pulled?")
@@ -119,6 +121,9 @@ def score_pairs(records: List[tuple], code_diff: str, symbols: List[str],
             continue
         if outputs.get("agent_failures"):
             excluded.append((record_id, "agent failure"))
+            continue
+        if not outputs["round_history"]:
+            excluded.append((record_id, "input refused, no round"))
             continue
         first, arms = outputs["round_history"][0], outputs["round2_arms"]
         if not arms:

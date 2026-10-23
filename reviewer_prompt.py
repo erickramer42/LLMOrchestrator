@@ -1,7 +1,7 @@
 """Canonical agent system prompts — single source of truth.
-Imported by config.py (prompt composition), debate.py, agent_client.py
-(FAILURE_SENTINEL) and eval_harness/probe.py and bakeoff.py.
-Any edit here must be reflected by bumping PROMPT_VERSION."""
+Imported by config.py (prompt composition), debate.py, golden_tests.py
+and eval_harness/probe.py and bakeoff.py.
+Any edit to a prompt here must be reflected by bumping PROMPT_VERSION."""
 
 # v5.1 (2026-10-21): same templates as v5; the retrieved pack changed
 # (all identifiers matched, full typedef declarations + doc comments,
@@ -58,9 +58,6 @@ Rules:
 - A "blocker" is a DEMONSTRABLE violation. Uncertainty goes in "questions".
 - Do not flag missing implementation as a blocker — QtTune is at v0.2.0 stub
   stage; sequencing concerns belong in "concerns".""".strip()
-
-FAILURE_SENTINEL = {"verdict": "PARSE_FAILURE", "blockers": [],
-                    "concerns": [], "questions": []}
 
 REVIEWER_SYSTEM = """You are a rigorous C++/Qt code reviewer with no loyalty to the project.
 Your job: flag unsafe, buggy, or untestable code regardless of whether the feature is wanted.

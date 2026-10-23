@@ -1,9 +1,9 @@
 """Unified-diff reading, shared by layer identification (debate.py),
-retrieval (repo_context.py) and the evidence check (adjudication.py).
-Pure: no I/O."""
+retrieval and its index-base check (repo_context.py) and the evidence
+check (adjudication.py). Pure: no I/O."""
 
 import re
-from typing import Iterator, List, Tuple
+from typing import Dict, Iterator, List, Tuple
 
 DEV_NULL = "/dev/null"
 
@@ -11,6 +11,8 @@ _HUNK = re.compile(r"^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@(.*)")
 # The path ends at a tab: git adds one after a path with spaces, diff -u
 # a timestamp.
 _FILE_HEADER = re.compile(r"^(?:---|\+\+\+) (?:[ab]/)?([^\t]*[^\t\s])")
+# git's 'index <pre-image>..<post-image> [mode]' line
+_BLOB_LINE = re.compile(r"^index ([0-9a-f]{7,64})\.\.[0-9a-f]{7,64}\b")
 
 
 def read_diff(code_diff: str) -> Iterator[Tuple[str, str]]:
@@ -58,3 +60,28 @@ def diff_paths(code_diff: str) -> List[str]:
     as it reads after the change. A deleted file has none."""
     return [text for tag, text in read_diff(code_diff)
             if tag == "+++" and text != DEV_NULL]
+
+
+def base_blobs(code_diff: str) -> Dict[str, str]:
+    """Each changed file's git blob id before the change, keyed by its
+    path before the change, as the diff abbreviates it (git's
+    'index <before>..<after>' line). Only git diffs have one, and a file
+    the diff adds has none. The line belongs to the '---' header that
+    follows it within the same 'diff --git' block, so a binary file's
+    line, which has no header, is dropped."""
+    blobs: Dict[str, str] = {}
+    pending = None
+    for line in code_diff.split("\n"):
+        if line.startswith("diff --git "):
+            pending = None
+            continue
+        blob = _BLOB_LINE.match(line)
+        if blob:
+            pending = blob.group(1)
+            continue
+        header = _FILE_HEADER.match(line) if pending else None
+        if header and line.startswith("---"):
+            if header.group(1) != DEV_NULL:  # an added file has no base
+                blobs[header.group(1)] = pending
+            pending = None
+    return blobs

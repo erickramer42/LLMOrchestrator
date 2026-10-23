@@ -3,7 +3,8 @@
 Run from the repo root:
     python -m unittest discover -s tests -v
 
-Each test pins a bug fixed on 2026-10-10 (see STATUS.md). The model is
+Each test pins a fixed bug or a guarded rule; comments name the code
+review finding, measurement or judge version behind it. The model is
 replaced by a fake HTTP layer, so the real agent_client / adjudication /
 debate code paths run end to end.
 """
@@ -11,6 +12,7 @@ debate code paths run end to end.
 import contextlib
 import io
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -29,18 +31,22 @@ if str(REPO_ROOT) not in sys.path:
 import adjudication  # noqa: E402
 import agent_client  # noqa: E402
 import debate  # noqa: E402
+import golden_tests  # noqa: E402
 import repo_context  # noqa: E402
 from adjudication import (JUDGE_VERSION, convergence_verdict,  # noqa: E402
                           demote_hedged_blockers, derive_verdict,
                           normalize_agent_output)
-from agent_client import call_agent, failure_result  # noqa: E402
-from diff_reader import diff_paths, read_diff  # noqa: E402
+from agent_client import FAILURE_SENTINEL, call_agent, failure_result  # noqa: E402
+from diff_reader import base_blobs, diff_paths, read_diff  # noqa: E402
 from eval_harness import round1, round2  # noqa: E402
 from eval_harness.bakeoff import tally  # noqa: E402
 from eval_harness.probe import summarize  # noqa: E402
 from file_metadata import identify_layer  # noqa: E402
 from golden_tests import run_hedge_unit_tests, score_fixture  # noqa: E402
-from reviewer_prompt import FAILURE_SENTINEL  # noqa: E402
+
+# The client's retry notes are warnings on its logger; keep them out of
+# the test output. assertLogs still sees them.
+logging.getLogger("agent_client").addHandler(logging.NullHandler())
 
 REVIEWER_CLEAN = {"verdict": "approve", "blockers": [], "questions": [], "nits": []}
 ENGINEER_CLEAN = {"verdict": "approve", "blockers": [], "concerns": [], "questions": []}
@@ -134,6 +140,23 @@ class SchemaValidationTests(unittest.TestCase):
         out, _ = normalize_agent_output(
             {"blockers": ["None", "n/a", "", "None."], "questions": []}, "reviewer")
         self.assertEqual(out["blockers"], [])
+
+    def test_a_reply_cannot_supply_blocker_evidence(self):
+        # Judge j7: an engineer reply's own blocker_evidence crashed the
+        # hedge check, or vouched for a hedged blocker (code review
+        # 2026-10-23, finding 17).
+        for supplied in (["a"], [{"claim": "confident text"}]):
+            eng = {**ENGINEER_CLEAN, "blockers": ["x might race"],
+                   "blocker_evidence": supplied}
+            out, _ = normalize_agent_output(eng, "engineer")
+            self.assertNotIn("blocker_evidence", out)
+            out, n = demote_hedged_blockers(out, "concerns")
+            self.assertEqual((n, out["blockers"]), (1, []))
+        rev, _ = normalize_agent_output(
+            {**REVIEWER_CLEAN, "blockers": [quoted("kept")],
+             "blocker_evidence": [{"claim": "spoofed", "file": "f", "quote": "q"}]},
+            "reviewer")
+        self.assertEqual([e["quote"] for e in rev["blocker_evidence"]], [QUOTE])
 
     def test_non_list_array_is_a_failure(self):
         out, err = normalize_agent_output({"blockers": 3, "questions": []}, "reviewer")
@@ -245,6 +268,19 @@ class DiffReaderTests(unittest.TestCase):
                 "--- a/gone.c\n+++ /dev/null\n--- /dev/null\n+++ added.c\n")
         self.assertEqual(diff_paths(diff), ["new.c", "added.c"])
 
+    def test_base_blobs(self):
+        diff = ("diff --git a/x.cpp b/x.cpp\nindex 7d81ffb..1c195f8 100644\n"
+                "--- a/x.cpp\n+++ b/x.cpp\n@@ -1 +1 @@\n--- not a header\n++++ nor this\n"
+                "diff --git a/img.png b/img.png\nindex 1111111..2222222 100644\n"
+                "Binary files a/img.png and b/img.png differ\n"
+                "diff --git a/y.c b/y.c\n--- a/y.c\n+++ b/y.c\n"  # no index line
+                "diff --git a/new.h b/new.h\nnew file mode 100644\n"
+                "index 0000000..3333333\n--- /dev/null\n+++ b/new.h\n"
+                "diff --git a/gone.h b/gone.h\ndeleted file mode 100644\n"
+                "index 4444444..0000000\n--- a/gone.h\n+++ /dev/null\n")
+        self.assertEqual(base_blobs(diff), {"x.cpp": "7d81ffb", "gone.h": "4444444"})
+        self.assertEqual(base_blobs("--- a/x.cpp\n+++ b/x.cpp\n"), {})  # not a git diff
+
 
 # ============ layer detection ============
 
@@ -349,6 +385,25 @@ class EvidenceTests(unittest.TestCase):
                              quoted("removed", "old_call(buf, len);"), sources=sources)
         self.assertEqual((n, len(out["blockers"])), (1, 1))
 
+    def test_lines_outside_any_file_are_evidence_for_any_file(self):
+        # Judge j7: under j6 a diff without file headers had no evidence,
+        # so the reviewer could not block it (code review 2026-10-23,
+        # finding 13). No path can name such lines, so any file name does.
+        for diff in (f"@@ -1 +1 @@\n-old_call(buf, len);\n+{QUOTE}\n",
+                     f"-old_call(buf, len);\n+{QUOTE}\n"):
+            sources = adjudication.evidence_sources(diff)
+            out, n = self.demote(quoted("overflow", file="anything.cpp"),
+                                 quoted("removed", "old_call(buf, len);"),
+                                 sources=sources)
+            self.assertEqual((n, len(out["blockers"])), (1, 1), diff)
+
+    def test_a_plus_header_without_a_minus_header_starts_a_new_file(self):
+        # Under j6 b.cpp's lines were also a.cpp's evidence (finding 18).
+        sources = adjudication.evidence_sources(
+            "+++ b/a.cpp\n+int alpha_value = 1;\n+++ b/b.cpp\n+int beta_value = 2;\n")
+        self.assertEqual(sources, {"a.cpp": ["int alpha_value = 1;"],
+                                   "b.cpp": ["int beta_value = 2;"]})
+
     def test_ellipsis_fragments_must_all_be_found(self):
         _, n = self.demote(quoted("x", "ApplicationWindow { ... NotThere", "app/qml/Main.qml"))
         self.assertEqual(n, 1)
@@ -422,10 +477,13 @@ class AgentClientTests(NoSleep):
 
     def test_timeout_reason_and_no_sleep_after_last_attempt(self):
         t = requests.exceptions.Timeout()
-        with fake_ollama(t, t, t):
+        with fake_ollama(t, t, t), self.assertLogs("agent_client", "WARNING") as notes:
             out = call_agent("m", "sys", "t", 0.7)
         self.assertTrue(out["failure_reason"].startswith("timeout"))
         self.assertEqual(self.sleep.call_count, 2)
+        # retry notes are log records, so callers can silence or capture them
+        self.assertEqual(len(notes.records), 3)
+        self.assertIn("m attempt 0: timeout", notes.output[0])
 
     def test_truncated_output_points_at_num_ctx(self):
         cut = FakeResp('{"verdict": "reject", "blockers": ["unterminated',
@@ -435,6 +493,16 @@ class AgentClientTests(NoSleep):
             out = call_agent("m", "sys", "t", 0.7)
         self.assertIn("NUM_CTX", out["failure_reason"])
         self.assertIn("9000 prompt + 7384 output tokens", out["failure_reason"])
+
+    def test_non_string_content_fails_closed(self):
+        # Code review 2026-10-23, finding 17: json.loads raised a TypeError
+        # out of call_agent, so the debate died without a record.
+        null = FakeResp("")
+        null._body["message"]["content"] = None
+        with fake_ollama(null, null, null):
+            out = call_agent("m", "sys", "t", 0.7)
+        self.assertEqual(out["verdict"], "PARSE_FAILURE")
+        self.assertIn("malformed Ollama response: TypeError", out["failure_reason"])
 
     # ---- telemetry (code review 2026-10-21, finding 8) ----
 
@@ -531,7 +599,7 @@ class DebateTests(NoSleep):
     def test_schema_invalid_agents_never_approve(self):
         bad = {"verdict": "approve", "summary": "looks fine"}
         with fake_ollama(bad, bad, bad) as post:
-            result = debate.run_debate("p", "", "")
+            result = debate.run_debate("p", QUOTED_DIFF, "")
         self.assertEqual(result["final_verdict"], debate.AGENT_FAILURE_VERDICT)
         self.assertEqual(result["rounds_completed"], 1)
         self.assertEqual(post.call_count, 3)  # engineer skipped once reviewer failed
@@ -540,7 +608,7 @@ class DebateTests(NoSleep):
     def test_server_down_is_reported_as_agent_failure(self):
         err = requests.exceptions.ConnectionError("refused")
         with fake_ollama(err, err, err):
-            result = debate.run_debate("p", "", "")
+            result = debate.run_debate("p", QUOTED_DIFF, "")
         self.assertEqual(result["final_verdict"], debate.AGENT_FAILURE_VERDICT)
         self.assertIn("request failed", result["agent_failures"][0])
 
@@ -632,6 +700,93 @@ class DebateTests(NoSleep):
                          ["claim: Main.qml still binds it", "plain string blocker",
                           "claim: x might overflow"])
 
+    # ---- input checks (judge j7; code review 2026-10-23, findings 13 and 16) ----
+
+    def test_empty_input_is_refused_without_a_model_call(self):
+        # Under j6 a clean reply to no code at all approved for merge.
+        with fake_ollama() as post:
+            results = [debate.run_debate("p", "", " \n"),
+                       debate.run_round1_review("p", "", ""),
+                       debate.run_round2_pair("p", "", "")]
+        self.assertEqual(post.call_count, 0)
+        for result in results:
+            self.assertEqual(result["final_verdict"], adjudication.NO_INPUT_VERDICT)
+            self.assertIn("no code to review", result["input_refused"])
+            path = result.get("decision_record_path") or result["record_path"]
+            rec = json.loads(Path(path).read_text(encoding="utf-8"))
+            self.assertEqual(rec["outputs"]["round_history"], [])
+            self.assertEqual(rec["metadata"]["input_check"]["verdict"],
+                             adjudication.NO_INPUT_VERDICT)
+        self.assertEqual(results[0]["rounds_completed"], 0)
+        self.assertEqual(results[0]["critique_summary"]["final_round_blockers"], 0)
+
+    def test_a_diff_without_file_headers_can_be_blocked(self):
+        # Under j6 every reviewer blocker on it was evidence-demoted, and
+        # the debate approved in round 1.
+        rev = {**REVIEWER_CLEAN, "blockers": [quoted("memcpy overflows buf[8]")]}
+        with fake_ollama(*[rev, ENGINEER_CLEAN] * debate.MAX_DEBATE_ROUNDS):
+            result = debate.run_debate("p", f"@@ -0,0 +1 @@\n+{QUOTE}\n", "")
+        self.assertEqual(result["final_verdict"], adjudication.MAX_ROUNDS_VERDICT)
+
+    def test_oversized_input_is_refused_and_the_bridge_fixture_is_not(self):
+        big = QUOTED_DIFF + "".join(f"+int padding_{i} = {i};\n" for i in range(2000))
+        with fake_ollama() as post:
+            result = debate.run_debate("p", big, "")
+        self.assertEqual(post.call_count, 0)
+        self.assertEqual(result["final_verdict"], adjudication.INPUT_TOO_LARGE_VERDICT)
+        self.assertIn("NUM_CTX", result["input_refused"])
+        fixture = (REPO_ROOT / "docs" / "fixtures" /
+                   "qttune_bridge_refactor.diff").read_text(encoding="utf-8")
+        with fake_ollama(REVIEWER_CLEAN) as post:
+            result = debate.run_round1_review(
+                "Review: coalesced signal updates with LiveView Page v0.3.0 phase 2",
+                fixture, "")
+        self.assertEqual(post.call_count, 1)
+        rec = json.loads(Path(result["record_path"]).read_text(encoding="utf-8"))
+        check = rec["metadata"]["input_check"]
+        self.assertLessEqual(check["estimated_tokens"], check["token_limit"])
+        # the estimate measures the request the reviewer was sent
+        sent = post.call_args.kwargs["json"]["messages"]
+        self.assertEqual(check["request_chars"], sum(len(m["content"]) for m in sent))
+
+    def test_a_measurement_batch_stops_on_refused_input(self):
+        for module in (round1, round2):
+            with fake_ollama() as post, contextlib.redirect_stdout(io.StringIO()), \
+                    self.assertRaises(SystemExit) as stop:
+                module.run("p", "", "", False, 5)
+            self.assertIn("input refused", str(stop.exception))
+            self.assertEqual(post.call_count, 0)
+        self.assertEqual(len(list(Path("coach_artifacts").glob("*.json"))), 2)
+
+    # ---- golden suite (backlog #14; code review 2026-10-23, finding 14) ----
+
+    def test_golden_fixtures_are_reviewed_as_a_debate_reviews_them(self):
+        # The suite sent the bare snippet, with no fence and no evidence
+        # check, so it counted blockers a debate would demote.
+        shown = {**REVIEWER_CLEAN, "blockers": [
+            quoted("overflow", "uint8_t buf[8];", "core/src/frame_decode.cpp")]}
+        not_shown = {**REVIEWER_CLEAN, "blockers": [
+            quoted("leak", "std::vector<std::string> names;", "core/x.h")]}
+        with fake_ollama(shown, not_shown, REVIEWER_CLEAN) as post:
+            summary = golden_tests.run_golden_tests()
+        first = transcripts(post)[0]
+        self.assertIn("<<<BEGIN DATA", first)
+        self.assertIn("uint8_t buf[8];", first)
+        self.assertIn("FILE LAYER: core", first)
+        self.assertIn(golden_tests.GOLDEN_PROPOSAL, first)
+        self.assertNotIn("buffer_overflow", first)  # the name would give it away
+        self.assertEqual([c.kwargs["json"]["options"]["temperature"]
+                          for c in post.call_args_list],
+                         [golden_tests.GOLDEN_TEMPERATURE] * 3)
+        by_name = {r["test_name"]: r for r in summary["individual_results"]}
+        self.assertTrue(by_name["buffer_overflow_can_fd"]["test_passed"])
+        leak = by_name["abi_type_leak"]
+        self.assertEqual((leak["detected"], leak["evidence_demoted"]), (False, 1))
+        self.assertTrue(by_name["clean_abi_pattern"]["test_passed"])
+        self.assertEqual(summary["metadata"]["judge_version"], JUDGE_VERSION)
+        self.assertEqual(len(list(Path("gold_tests").glob("run_*.json"))), 1)
+        self.assertFalse(Path("coach_artifacts").exists())  # no records
+
     # ---- retrieval inside the debate (code review 2026-10-21, finding 2) ----
 
     def write_index(self, files):
@@ -657,6 +812,25 @@ class DebateTests(NoSleep):
         self.assertIn("Sentinel purpose for retrieval.", transcript)
         self.assertNotIn("retrieval_error", result)
         self.assertIsNone(self.record(result)["metadata"]["repo_context_pack"]["error"])
+
+    def test_an_index_of_another_base_warns_and_keeps_the_pack(self):
+        # Code review 2026-10-23, finding 15: nothing checked that the
+        # index describes the version the diff starts from.
+        diff = ("diff --git a/app/x.cpp b/app/x.cpp\nindex 7d81ffb..1c195f8 100644\n"
+                "--- a/app/x.cpp\n+++ b/app/x.cpp\n@@ -1 +1 @@\n-int y;\n+int z;\n")
+        for blob, mismatch in (("7d81ffb" + "0" * 33, []), ("f" * 40, ["app/x.cpp"])):
+            path = self.write_index([{"path": "app/x.cpp", "layer": "bridge", "blob": blob,
+                                      "purpose": "Sentinel purpose for retrieval."}])
+            stderr = io.StringIO()
+            with mock.patch.object(debate, "CONTEXT_PATH", path), \
+                    contextlib.redirect_stderr(stderr), \
+                    fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN) as post:
+                result = debate.run_debate("p", diff, "")
+            self.assertEqual(result.get("index_base_mismatch", []), mismatch)
+            self.assertEqual("holds another version" in stderr.getvalue(), bool(mismatch))
+            self.assertEqual(self.record(result)["metadata"]["repo_context_pack"]
+                             ["base_check"], {"checked": 1, "mismatched": mismatch})
+            self.assertIn("Sentinel purpose for retrieval.", transcripts(post)[0])
 
     def test_missing_index_warns_and_is_reported(self):
         missing = Path(self._tmp.name) / "nope.json"
@@ -725,7 +899,7 @@ class DebateTests(NoSleep):
     def test_skipped_engineer_has_no_telemetry(self):
         bad = {"verdict": "approve", "summary": "looks fine"}
         with fake_ollama(bad, bad, bad):
-            result = debate.run_debate("p", "", "")
+            result = debate.run_debate("p", QUOTED_DIFF, "")
         telemetry = self.record(result)["outputs"]["round_history"][0]["telemetry"]
         self.assertEqual(len(telemetry["reviewer"]), 3)
         self.assertEqual(telemetry["auto_engineer"], [])
@@ -881,7 +1055,7 @@ class DebateTests(NoSleep):
     def test_round1_measurement_fails_closed(self):
         bad = {"verdict": "approve", "summary": "looks fine"}
         with fake_ollama(bad, bad, bad) as post:
-            result = debate.run_round1_review("p", "", "")
+            result = debate.run_round1_review("p", QUOTED_DIFF, "")
         self.assertEqual(post.call_count, 3)
         self.assertEqual(result["final_verdict"], debate.AGENT_FAILURE_VERDICT)
         self.assertIn("schema violation", result["agent_failures"][0])
@@ -1003,6 +1177,12 @@ class Round1ScoringTests(unittest.TestCase):
         self.assertEqual([d["text"] for d in row["unquoted"]], ["unquoted 1", "unquoted 2"])
         self.assertEqual([d["text"] for d in row["demoted"]], ["hedged"])
 
+    def test_refused_input_is_excluded(self):
+        rec = round1_record("refused", [])
+        rec["outputs"]["round_history"] = []
+        scores = round1.score_records([("p", rec)], ROUND1_DIFF, [], None)
+        self.assertEqual(scores["excluded"], [("refused", "input refused, no round")])
+
     @unittest.skipUnless(shutil.which("git"), "git not installed")
     def test_post_state_check_greps_the_given_commit(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1078,6 +1258,13 @@ class Round2ScoringTests(unittest.TestCase):
         self.assertEqual(scores["converged"], ["converged"])
         self.assertEqual([r for r, _ in scores["excluded"]],
                          ["retry", "other", "failed", "round1"])
+
+    def test_refused_input_is_excluded_not_converged(self):
+        rec = pair_record("refused", {})
+        rec["outputs"]["round_history"] = []
+        scores = round2.score_pairs([("p", rec)], ROUND1_DIFF, [], None)
+        self.assertEqual((scores["converged"], scores["excluded"]),
+                         ([], [("refused", "input refused, no round")]))
 
     def test_demoted_round2_blockers_are_listed_apart(self):
         arms = {debate.CRITIQUES_ARM: pair_arm([], questions=["own", "unquoted"],
@@ -1193,11 +1380,17 @@ class RepoContextTests(unittest.TestCase):
             subprocess.run(git + ["commit", "-q", "-m", "c"], check=True)
             head = subprocess.run(git + ["rev-parse", "HEAD"], capture_output=True,
                                   text=True, check=True).stdout.strip()
+            committed_blob = subprocess.run(git + ["rev-parse", "HEAD:x.h"],
+                                            capture_output=True, text=True,
+                                            check=True).stdout.strip()
             clean = repo_context.build_index(tmp, use_llm=False)
             Path(tmp, "x.h").write_text("#define LIMIT 9\n", encoding="utf-8")
             dirty = repo_context.build_index(tmp, use_llm=False)
         self.assertEqual((clean["source_commit"], clean["source_dirty"]), (head, False))
         self.assertEqual((dirty["source_commit"], dirty["source_dirty"]), (head, True))
+        # blob ids are what a diff from the tree names as its base
+        self.assertEqual(clean["files"][0]["blob"], committed_blob)
+        self.assertNotEqual(dirty["files"][0]["blob"], committed_blob)
 
 
 # ============ CLI ============
@@ -1216,6 +1409,11 @@ class CliTests(unittest.TestCase):
     def test_diff_requires_proposal(self):
         r = self.run_cli("--golden", "--diff", "x.diff")
         self.assertEqual(r.returncode, 2)
+
+    def test_proposal_requires_code(self):
+        r = self.run_cli("--proposal", "x")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("no code to review", r.stderr)
 
     def test_round1_score_needs_repo_and_rev_together(self):
         r = subprocess.run([sys.executable, "-m", "eval_harness.round1", "score",

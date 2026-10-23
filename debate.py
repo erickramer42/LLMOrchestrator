@@ -6,6 +6,7 @@ debate's own."""
 
 import hashlib
 import json
+import math
 import re
 import sys
 import uuid
@@ -13,13 +14,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Tuple
 
-from adjudication import (JUDGE_VERSION, convergence_verdict,
-                          demote_hedged_blockers, demote_unverified_blockers,
-                          derive_verdict, evidence_sources,
-                          normalize_agent_output)
+from adjudication import (AGENT_FAILURE_VERDICT, INPUT_TOO_LARGE_VERDICT,
+                          JUDGE_VERSION, MAX_ROUNDS_VERDICT,
+                          MEASUREMENT_VERDICT, NO_INPUT_VERDICT, PAIR_VERDICT,
+                          convergence_verdict, demote_hedged_blockers,
+                          demote_unverified_blockers, derive_verdict,
+                          evidence_sources, normalize_agent_output)
 from agent_client import call_agent, failure_result
-from config import (MAX_DEBATE_ROUNDS, MODELS, NUM_CTX, NUM_PREDICT,
-                    REVIEWER_HEADER_PROMPT, REVIEWER_IMPL_PROMPT,
+from config import (CHARS_PER_TOKEN_FLOOR, MAX_DEBATE_ROUNDS, MODELS, NUM_CTX,
+                    NUM_PREDICT, REVIEWER_HEADER_PROMPT, REVIEWER_IMPL_PROMPT,
                     TEMPERATURE_EXPLORATION, TEMPERATURE_RETRY)
 from diff_reader import diff_paths
 from file_metadata import get_layer_constraints, identify_layer
@@ -103,12 +106,6 @@ point only if the code shows it, with the evidence any new point needs.
 Drop a point the code does not support, or ask it as a question.
 """
 
-AGENT_FAILURE_VERDICT = "AGENT_FAILURE - MANUAL_REVIEW_REQUIRED"
-# A measurement judges nothing, so its record must never read as a merge
-# decision, approving or otherwise.
-MEASUREMENT_VERDICT = "NOT_ADJUDICATED - ROUND1_MEASUREMENT"
-PAIR_VERDICT = "NOT_ADJUDICATED - ROUND2_PAIR_MEASUREMENT"
-
 DEBATE_MODE = "debate"
 MEASUREMENT_MODE = "round1_reviewer"
 PAIR_MODE = "round2_pair"
@@ -188,6 +185,12 @@ def _retrieve_pack(code_diff: str) -> Tuple[str, dict]:
         return "", {"error": f"malformed index: {type(exc).__name__}: {exc}"}
 
 
+def _base_mismatch(pack_report: dict) -> List[str]:
+    """Changed files the index holds in another version than the diff's
+    base (repo_context._base_check); empty when none or not checked."""
+    return (pack_report.get("base_check") or {}).get("mismatched") or []
+
+
 class _Setup(NamedTuple):
     """What every transcript of one review is built from. Shared by
     run_debate and run_round1_review, so a measurement sends the reviewer
@@ -214,6 +217,13 @@ def _prepare(code_diff: str, code_context: str, header_artifact: bool) -> _Setup
     if pack_report.get("error"):
         print(f"WARNING: repo context retrieval unavailable "
               f"({pack_report['error']}); continuing without it.",
+              file=sys.stderr)
+    mismatched = _base_mismatch(pack_report)
+    if mismatched:
+        print(f"WARNING: the repo context index (commit "
+              f"{pack_report.get('index_commit')}) holds another version of "
+              f"{', '.join(mismatched)} than this diff starts from, so its "
+              f"pack may describe other code. Index the diff's base.",
               file=sys.stderr)
     # The record keeps the exact pack the agents saw: repo_context.json is
     # overwritten on every re-index, so this is the only surviving copy.
@@ -254,6 +264,37 @@ def _render_transcript(proposal: str, static_section: str, round_num: int,
         critiques=critiques, round_num=round_num)
 
 
+def _input_check(setup: _Setup, proposal: str, code_diff: str,
+                 code_context: str) -> dict:
+    """Whether the input can be reviewed, decided before any model call
+    (judge j7). 'verdict' and 'reason' are set when it cannot:
+    - no diff and no context: there is no code, so no model may approve it;
+    - a round-1 request estimated above NUM_CTX - NUM_PREDICT tokens: the
+      reply might not get its full output cap, and past NUM_CTX Ollama may
+      cut the prompt instead of failing, so the model would review part
+      of the diff.
+    The estimate covers the larger of the two agents' requests, so the
+    measurements refuse exactly what a debate refuses. Later rounds grow
+    by the feedback only and are not checked again: if one overflows, its
+    reply ends on done_reason=length and fails closed."""
+    request_chars = (max(len(setup.reviewer_prompt), len(AUTO_ENGINEER_PROMPT))
+                     + len(_render_transcript(proposal, setup.static_section, 1)))
+    check = {"request_chars": request_chars,
+             "estimated_tokens": math.ceil(request_chars / CHARS_PER_TOKEN_FLOOR),
+             "token_limit": NUM_CTX - NUM_PREDICT,
+             "verdict": None, "reason": None}
+    if not code_diff.strip() and not code_context.strip():
+        check.update(verdict=NO_INPUT_VERDICT,
+                     reason="no diff and no context: there is no code to review")
+    elif check["estimated_tokens"] > check["token_limit"]:
+        check.update(verdict=INPUT_TOO_LARGE_VERDICT, reason=(
+            f"the round-1 request is {request_chars} chars, estimated at up to "
+            f"{check['estimated_tokens']} tokens, over the limit of "
+            f"{check['token_limit']} (NUM_CTX {NUM_CTX} - NUM_PREDICT "
+            f"{NUM_PREDICT}); split the diff, or raise NUM_CTX"))
+    return check
+
+
 def _validate_reviewer(raw):
     return normalize_agent_output(raw, "reviewer")
 
@@ -279,12 +320,14 @@ def _record_inputs(setup: _Setup, proposal: str, original_proposal: str,
     }
 
 
-def _run_settings(setup: _Setup, mode: str, max_rounds: int) -> dict:
+def _run_settings(setup: _Setup, mode: str, max_rounds: int,
+                  input_check: dict) -> dict:
     """Sampling settings and prompt provenance. A measurement's
     fingerprint covers the engineer's templates too, though it never sends
     them: the fingerprint names the prompt revision, so measurement
     samples group with the debates of the same revision, and `mode` tells
-    them apart."""
+    them apart. input_check keeps the size estimate, so it can be
+    compared with the telemetry's prompt_eval_count."""
     return {
         "mode": mode,
         "max_rounds": max_rounds,
@@ -293,6 +336,7 @@ def _run_settings(setup: _Setup, mode: str, max_rounds: int) -> dict:
         "num_ctx": NUM_CTX,
         "num_predict": NUM_PREDICT,
         "context_char_limit": CONTEXT_CHAR_LIMIT,
+        "input_check": input_check,
         "repo_context_pack": setup.pack_report,
         "prompt_fingerprint": _prompt_fingerprint(
             setup.reviewer_prompt, AUTO_ENGINEER_PROMPT, STATIC_TEMPLATE,
@@ -315,13 +359,19 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
     the feedback appended to it reaches both agents. Records from before
     2026-10-09 ran with a frozen transcript, so their rounds 2+ were
     blind resamples (ADR-0002 erratum).
+
+    Input that _input_check refuses gets its verdict without any round.
     """
     debate_id = _new_id("debate")
     original_proposal = proposal
     setup = _prepare(code_diff, code_context, header_artifact)
+    check = _input_check(setup, proposal, code_diff, code_context)
 
     round_history: List[dict] = []
-    for round_num in range(1, MAX_DEBATE_ROUNDS + 1):
+    agent_failures: List[str] = []
+    final_verdict = check["verdict"]  # set only when the input is refused
+    rounds = range(1, MAX_DEBATE_ROUNDS + 1) if final_verdict is None else ()
+    for round_num in rounds:
         entry = _run_round(setup, proposal, round_num)
         round_history.append(entry)
 
@@ -344,7 +394,8 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
         _record_inputs(setup, proposal, original_proposal, code_diff,
                        code_context, header_artifact),
         final_verdict, round_history,
-        _run_settings(setup, DEBATE_MODE, MAX_DEBATE_ROUNDS), agent_failures)
+        _run_settings(setup, DEBATE_MODE, MAX_DEBATE_ROUNDS, check),
+        agent_failures)
 
     result = {
         "debate_id": debate_id,
@@ -353,19 +404,23 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
         "decision_record_path": str(decision_record),
         "critique_summary": _critique_summary(round_history),
     }
-    return _with_diagnostics(result, agent_failures, setup)
+    return _with_diagnostics(result, agent_failures, setup, check)
 
 
 def _run_round(setup: _Setup, proposal: str, round_num: int,
-               with_engineer: bool = True, critiques: str = "") -> dict:
+               with_engineer: bool = True, critiques: str = "",
+               temperature: Optional[float] = None) -> dict:
     """One round's round_history entry. Both agents critique the same
     transcript; neither sees the other's reply until the feedback of a
     later round. with_engineer=False calls the reviewer alone (the
-    measurements); critiques is the pair measurement's candidate arm."""
+    measurements); critiques is the pair measurement's candidate arm.
+    temperature overrides the first attempt's (the golden suite); by
+    default it is a debate's, exploratory in round 1 only."""
     transcript = _render_transcript(proposal, setup.static_section, round_num,
                                     critiques)
-    temperature = (TEMPERATURE_EXPLORATION if round_num == 1
-                   else TEMPERATURE_RETRY)
+    if temperature is None:
+        temperature = (TEMPERATURE_EXPLORATION if round_num == 1
+                       else TEMPERATURE_RETRY)
     telemetry = {"reviewer": []}
     reviewer = call_agent(MODELS["code_reviewer"], setup.reviewer_prompt,
                           transcript, temperature, validate=_validate_reviewer,
@@ -419,7 +474,7 @@ def _judge(entry: dict) -> Optional[str]:
     if converged:
         return converged
     if entry["round"] >= MAX_DEBATE_ROUNDS:
-        return "MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED"
+        return MAX_ROUNDS_VERDICT
     return None
 
 
@@ -454,10 +509,10 @@ def _with_feedback(proposal: str, entry: dict) -> str:
 
 def _critique_summary(round_history: List[dict]) -> dict:
     """Blocker and concern counts. Summed over rounds: a blocker repeated
-    each round counts each time."""
+    each round counts each time. All zero when the input was refused."""
     def count(h, role, key):
-        return len(h[role].get(key, []) or [])
-    last = round_history[-1]
+        return len((h.get(role) or {}).get(key, []) or [])
+    last = round_history[-1] if round_history else {}
     return {
         "total_blockers": sum(count(h, "reviewer", "blockers") for h in round_history),
         "total_concerns": sum(count(h, "auto_engineer", "concerns")
@@ -468,12 +523,18 @@ def _critique_summary(round_history: List[dict]) -> dict:
 
 
 def _with_diagnostics(result: dict, agent_failures: List[str],
-                      setup: _Setup) -> dict:
-    """The result plus any agent failures and retrieval error."""
+                      setup: _Setup, input_check: dict) -> dict:
+    """The result plus why the input was refused, any agent failures, any
+    retrieval error and any files whose indexed version is not the diff's
+    base."""
+    if input_check["reason"]:
+        result["input_refused"] = input_check["reason"]
     if agent_failures:
         result["agent_failures"] = agent_failures
     if setup.pack_report.get("error"):
         result["retrieval_error"] = setup.pack_report["error"]
+    if _base_mismatch(setup.pack_report):
+        result["index_base_mismatch"] = _base_mismatch(setup.pack_report)
     return result
 
 
@@ -488,28 +549,46 @@ def run_round1_review(proposal: str, code_diff: str = "", code_context: str = ""
     and hedge demotion work as in a debate; nothing is judged. The record
     is coach_artifacts/measurement_<id>.json, with mode round1_reviewer,
     verdict MEASUREMENT_VERDICT (AGENT_FAILURE_VERDICT if every attempt
-    failed), and no engineer entry in its one round."""
+    failed), and no engineer entry in its one round. Refused input, as in
+    a debate, gets its verdict and no round."""
     measurement_id = _new_id("round1")
     setup = _prepare(code_diff, code_context, header_artifact)
+    check = _input_check(setup, proposal, code_diff, code_context)
 
-    entry = _run_round(setup, proposal, 1, with_engineer=False)
-    agent_failures = _agent_failures(entry)
-    verdict = AGENT_FAILURE_VERDICT if agent_failures else MEASUREMENT_VERDICT
+    rounds: List[dict] = []
+    agent_failures: List[str] = []
+    verdict = check["verdict"]
+    if verdict is None:
+        rounds = [_run_round(setup, proposal, 1, with_engineer=False)]
+        agent_failures = _agent_failures(rounds[0])
+        verdict = AGENT_FAILURE_VERDICT if agent_failures else MEASUREMENT_VERDICT
     record = _save_decision_record(
         measurement_id,
         _record_inputs(setup, proposal, proposal, code_diff, code_context,
                        header_artifact),
-        verdict, [entry], _run_settings(setup, MEASUREMENT_MODE, 1),
+        verdict, rounds, _run_settings(setup, MEASUREMENT_MODE, 1, check),
         agent_failures)
 
     result = {
         "measurement_id": measurement_id,
         "final_verdict": verdict,
         "record_path": str(record),
-        "blockers": len(entry["reviewer"].get("blockers", []) or []),
-        "attempts": len(entry["telemetry"]["reviewer"]),
+        "blockers": sum(len(e["reviewer"].get("blockers", []) or []) for e in rounds),
+        "attempts": sum(len(e["telemetry"]["reviewer"]) for e in rounds),
     }
-    return _with_diagnostics(result, agent_failures, setup)
+    return _with_diagnostics(result, agent_failures, setup, check)
+
+
+def review_round1(proposal: str, code_diff: str = "", code_context: str = "",
+                  header_artifact: bool = False,
+                  temperature: Optional[float] = None) -> dict:
+    """A debate's round-1 reviewer call with both guardrails, as its
+    round_history entry, saved nowhere: the golden suite's path (backlog
+    #14), so a fixture is reviewed as a debate reviews it. No input check:
+    the fixtures are fixed and small."""
+    setup = _prepare(code_diff, code_context, header_artifact)
+    return _run_round(setup, proposal, 1, with_engineer=False,
+                      temperature=temperature)
 
 
 def run_round2_pair(proposal: str, code_diff: str = "", code_context: str = "",
@@ -524,39 +603,47 @@ def run_round2_pair(proposal: str, code_diff: str = "", code_context: str = "",
     Round 2 runs only when a debate would reach it: no agent failed and
     round 1 did not converge. The record is
     coach_artifacts/measurement_round2_<id>.json, mode round2_pair, with
-    round 1 as round_history and the arms under outputs.round2_arms."""
+    round 1 as round_history and the arms under outputs.round2_arms.
+    Refused input, as in a debate, gets its verdict and no round."""
     pair_id = _new_id("round2")
     setup = _prepare(code_diff, code_context, header_artifact)
+    check = _input_check(setup, proposal, code_diff, code_context)
 
-    first = _run_round(setup, proposal, 1)
-    agent_failures = _agent_failures(first)
+    rounds: List[dict] = []
+    agent_failures: List[str] = []
     arms = {}
-    if not agent_failures and _judge(first) is None:
-        arms[CRITIQUES_ARM] = _run_round(setup, proposal, 2, with_engineer=False,
-                                         critiques=_critiques_section(first))
-        arms[V9_ARM] = _run_round(setup, _with_feedback(proposal, first), 2,
-                                  with_engineer=False)
-        for name, entry in arms.items():
-            agent_failures += [f"{f} ({name})" for f in _agent_failures(entry)]
-    verdict = AGENT_FAILURE_VERDICT if agent_failures else PAIR_VERDICT
+    if check["verdict"] is None:
+        first = _run_round(setup, proposal, 1)
+        rounds = [first]
+        agent_failures = _agent_failures(first)
+        if not agent_failures and _judge(first) is None:
+            arms[CRITIQUES_ARM] = _run_round(setup, proposal, 2, with_engineer=False,
+                                             critiques=_critiques_section(first))
+            arms[V9_ARM] = _run_round(setup, _with_feedback(proposal, first), 2,
+                                      with_engineer=False)
+            for name, entry in arms.items():
+                agent_failures += [f"{f} ({name})" for f in _agent_failures(entry)]
+    verdict = check["verdict"] or (AGENT_FAILURE_VERDICT if agent_failures
+                                   else PAIR_VERDICT)
     record = _save_decision_record(
         pair_id,
         _record_inputs(setup, proposal, proposal, code_diff, code_context,
                        header_artifact),
-        verdict, [first], _run_settings(setup, PAIR_MODE, 2), agent_failures,
-        round2_arms=arms)
+        verdict, rounds, _run_settings(setup, PAIR_MODE, 2, check),
+        agent_failures, round2_arms=arms)
 
     result = {
         "measurement_id": pair_id,
         "final_verdict": verdict,
         "record_path": str(record),
-        "round1_blockers": len(first["reviewer"].get("blockers", []) or []),
+        "round1_blockers": sum(len(e["reviewer"].get("blockers", []) or [])
+                               for e in rounds),
         "round2_blockers": {name: len(e["reviewer"].get("blockers", []) or [])
                             for name, e in arms.items()},
-        "attempts": sum(len(calls) for e in [first, *arms.values()]
+        "attempts": sum(len(calls) for e in [*rounds, *arms.values()]
                         for calls in e["telemetry"].values()),
     }
-    return _with_diagnostics(result, agent_failures, setup)
+    return _with_diagnostics(result, agent_failures, setup, check)
 
 
 # mode -> (file name prefix, artifact type, intended consumer)
@@ -592,7 +679,6 @@ def _save_decision_record(record_id: str, inputs: dict, verdict: str,
         "audit_trail": {
             "artifact_type": artifact_type,
             "intended_consumer": consumer,
-            "validation_method": "golden_test_suite",
         },
     }
     output_dir = Path("coach_artifacts")

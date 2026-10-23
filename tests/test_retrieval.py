@@ -46,8 +46,8 @@ void Worker::setup() {
         # Check the snippet starts with connect AND contains QueuedConnection
         self.assertIn("connect(this, &Worker::frameReady", sites[0]["snippet"])
         self.assertIn("Qt::QueuedConnection", sites[0]["snippet"])
-        # Allow either full or truncated representation
-        self.assertTrue(");" in sites[0]["snippet"] or " ... " in sites[0]["snippet"])
+        # The lambda is summarized, so the whole call fits, semicolon included
+        self.assertTrue(sites[0]["snippet"].endswith("}, Qt::QueuedConnection);"))
         self.assertEqual(sites[0]["line"], 1)
 
 class BuildContextPack(unittest.TestCase):
@@ -109,6 +109,25 @@ class BuildContextPack(unittest.TestCase):
         self.assertEqual(len(text), 50)  # the marker counts against the budget
         self.assertEqual(report["used"], 50)
         self.assertIn("truncated", text.lower())
+
+    def test_report_counts_what_the_model_sees(self):
+        # Code review 2026-10-23: the report counted every match, so a
+        # capped or truncated pack read as if it showed them all.
+        index = dict(self.INDEX, types=[
+            {"name": f"type_{i}_t", "kind": "struct", "members": [],
+             "def_file": "core/t.h"} for i in range(rc.MAX_TYPES + 5)])
+        diff = self.DIFF + "\n+" + " ".join(t["name"] for t in index["types"])
+        text, report = rc.build_context_pack(diff, index)
+        self.assertEqual(report["sections"]["types"], rc.MAX_TYPES + 5)
+        self.assertEqual(report["shown"]["types"], rc.MAX_TYPES)
+        self.assertEqual(report["shown"]["types"], text.count("(struct):"))
+        self.assertFalse(report["truncated"])
+        cut = text.index("type_3_t (struct)")  # the budget ends inside the 4th type
+        text, report = rc.build_context_pack(diff, index, budget=cut + 30)
+        self.assertTrue(report["truncated"])
+        self.assertEqual(report["shown"]["types"], 3)
+        self.assertEqual(report["shown"]["call_sites"], 0)
+        self.assertEqual(report["shown"]["modified_files"], 1)
 
     def test_missing_index_fails_visible_not_fatal(self):
         text, report = rc.build_context_pack(self.DIFF, {})

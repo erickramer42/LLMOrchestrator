@@ -17,8 +17,29 @@ from diff_reader import DEV_NULL, read_diff
 # had no evidence and every reviewer blocker on it was demoted; it also
 # missed file headers that end in a tab and a timestamp. j5 (2026-10-22)
 # read both with the shared diff_reader, and its hedge check still read a
-# reviewer blocker's quoted code. j6 reads the blocker without its quote.
-JUDGE_VERSION = "j6-hedge-reads-claim"
+# reviewer blocker's quoted code. j6 (2026-10-22) read the blocker without
+# its quote, but a diff without file headers gave the evidence check no
+# lines, so the reviewer could not block it, and empty or oversized input
+# still went to the models. j7 refuses such input, reads lines outside any
+# file as evidence for any file, and ignores a reply's own
+# blocker_evidence (code review 2026-10-23, findings 13, 16 and 17).
+JUDGE_VERSION = "j7-input-checks"
+
+
+# ============ VERDICTS ============
+
+# Every final verdict a record can carry. Only the first two approve.
+APPROVED_FOR_MERGE = "APPROVED_FOR_MERGE"
+APPROVED_WITH_OPEN_QUESTIONS = "APPROVED_WITH_OPEN_QUESTIONS"
+MAX_ROUNDS_VERDICT = "MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED"
+AGENT_FAILURE_VERDICT = "AGENT_FAILURE - MANUAL_REVIEW_REQUIRED"
+# Input refused before any model call (judge j7)
+NO_INPUT_VERDICT = "NO_INPUT - MANUAL_REVIEW_REQUIRED"
+INPUT_TOO_LARGE_VERDICT = "INPUT_TOO_LARGE - MANUAL_REVIEW_REQUIRED"
+# A measurement judges nothing, so its record must never read as a merge
+# decision, approving or otherwise.
+MEASUREMENT_VERDICT = "NOT_ADJUDICATED - ROUND1_MEASUREMENT"
+PAIR_VERDICT = "NOT_ADJUDICATED - ROUND2_PAIR_MEASUREMENT"
 
 
 # ============ SCHEMA VALIDATION ============
@@ -80,6 +101,9 @@ def normalize_agent_output(raw, role: str) -> Tuple[Optional[dict], Optional[str
         return None, f"missing required keys: {', '.join(missing)}"
 
     out = dict(raw)
+    # Only normalization writes blocker_evidence; one the model supplied
+    # would steer the guardrails (judge j7).
+    out.pop("blocker_evidence", None)
     for key in spec["required"] + spec["optional"]:
         if key not in out:
             continue
@@ -128,8 +152,8 @@ def convergence_verdict(reviewer_v: str, engineer_v: str) -> Optional[str]:
     if reviewer_v == "reject" or engineer_v == "reject":
         return None
     if reviewer_v == "approve" and engineer_v == "approve":
-        return "APPROVED_FOR_MERGE"
-    return "APPROVED_WITH_OPEN_QUESTIONS"
+        return APPROVED_FOR_MERGE
+    return APPROVED_WITH_OPEN_QUESTIONS
 
 
 # ============ HEDGE LANGUAGE DEMOTION ============
@@ -175,8 +199,12 @@ def demote_hedged_blockers(agent_out: dict,
 
 # ============ EVIDENCE QUOTES (judge j4, ADR-0002 arms G and G3) ============
 
-# A supplied code context accepts a quote whatever file the blocker names.
+# A supplied code context accepts a quote whatever file the blocker names,
+# and so do diff lines under no file header (judge j7), since no path can
+# name them.
 CONTEXT_SOURCE = "<code context>"
+UNFILED_SOURCE = "<diff lines outside any file>"
+_ANY_FILE_SOURCES = (CONTEXT_SOURCE, UNFILED_SOURCE)
 MIN_QUOTE_CHARS = 8  # non-space characters in the longest quote line
 # Ends each hunk in a file's lines, so a quote cannot join two hunks.
 _HUNK_BREAK = "\x00"
@@ -194,22 +222,27 @@ def evidence_sources(code_diff: str, code_context: str = "") -> Dict[str, List[s
     reads after the change (context and added lines in order; removed
     lines are not evidence), as non-blank lines with whitespace collapsed,
     keyed by path. A deleted file has no lines. A renamed file's lines are
-    under both its paths."""
+    under both its paths. Lines before any file header, as in a diff
+    without file headers, are under UNFILED_SOURCE. A '+++' header that
+    does not follow a '---' starts a new file."""
     files: Dict[str, List[str]] = {}
     paths: List[str] = []
+    after_minus = False
     for tag, text in read_diff(code_diff):
         if tag in ("---", "+++"):
-            if tag == "---":
+            if tag == "---" or not after_minus:
                 paths = []
+            after_minus = tag == "---"
             if text != DEV_NULL and text not in paths:
                 paths.append(text)
                 files.setdefault(text, [])
-        elif tag == "@@":
-            for p in paths:
-                files[p].append(_HUNK_BREAK)
-        elif tag != "-":
-            for p in paths:
-                files[p].append(text)
+            continue
+        after_minus = False
+        if tag == "-":
+            continue
+        line = _HUNK_BREAK if tag == "@@" else text
+        for p in paths or [UNFILED_SOURCE]:
+            files.setdefault(p, []).append(line)
     sources = {p: [s for s in map(_squash, lines) if s] for p, lines in files.items()}
     if code_context:
         sources[CONTEXT_SOURCE] = [s for s in map(_squash, code_context.split("\n")) if s]
@@ -224,9 +257,9 @@ def _match_file(name: str, sources: Dict[str, List[str]]) -> Optional[str]:
     if not tokens:
         return None
     n = _LINE_SUFFIX.sub("", re.sub(r"^[ab]/", "", tokens[0].strip("`'\",()")))
-    if n in sources and n != CONTEXT_SOURCE:
+    if n in sources and n not in _ANY_FILE_SOURCES:
         return n
-    hits = [p for p in sources if p != CONTEXT_SOURCE and p.endswith("/" + n)]
+    hits = [p for p in sources if p not in _ANY_FILE_SOURCES and p.endswith("/" + n)]
     return hits[0] if len(hits) == 1 else None
 
 
@@ -272,8 +305,7 @@ def _quote_verified(evidence: Optional[dict], sources: Dict[str, List[str]]) -> 
     path = _match_file(evidence.get("file", ""), sources)
     if path:
         texts.append(sources[path])
-    if CONTEXT_SOURCE in sources:
-        texts.append(sources[CONTEXT_SOURCE])
+    texts += [sources[s] for s in _ANY_FILE_SOURCES if s in sources]
     return any(all(_fragment_found(f, text) for f in fragments) for text in texts)
 
 
@@ -282,7 +314,8 @@ def demote_unverified_blockers(agent_out: dict, sources: Dict[str, List[str]],
     """Guardrail (judge j4): a blocker must quote its evidence from the
     code as it reads after the change. A blocker whose quote is not found
     in the post-change lines of the file it names (or in the supplied
-    context) moves to the end of concern_key, as hedge demotion does.
+    context, or in diff lines under no file header) moves to the end of
+    concern_key, as hedge demotion does.
     Reads blocker_evidence from normalize_agent_output and keeps it
     aligned with the kept blockers, for demote_hedged_blockers.
     Returns (output, number of blockers demoted)."""

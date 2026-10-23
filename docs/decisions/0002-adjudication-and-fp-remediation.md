@@ -1836,3 +1836,91 @@ as the pair measurement's candidate arm only, and backlog #11 keeps it
 with two design constraints:
 - a defect caused by a removal must stay quotable as a blocker;
 - the check instruction must not invite open-ended re-checking.
+
+## Input Checks j7 (2026-10-23)
+
+**Decision:** before any model call, the debate checks its input, and
+the evidence check reads diffs without file headers. These are findings
+13, 16, 17 and 18 of the 2026-10-23 code review. JUDGE_VERSION is
+`j7-input-checks`. No prompt changed.
+- **No code, no review.** With no diff and no context, the debate ends
+  as `NO_INPUT - MANUAL_REVIEW_REQUIRED` without a model call. Under j6
+  a clean reply to no code approved it for merge, against the
+  fail-closed convention.
+- **Diff lines outside any file header are evidence for any file
+  name,** as a supplied context is. Under j6 such a diff had no
+  evidence, so every reviewer blocker on it was demoted, and the debate
+  could approve in round 1. This is j5's reasoning for hunkless diffs,
+  one step further. The user chose it over refusing such a diff.
+  - A `+++` header that follows no `---` now starts a new file. Under
+    j6 the next file's lines also counted as the previous file's.
+- **Oversized input is refused** as `INPUT_TOO_LARGE -
+  MANUAL_REVIEW_REQUIRED`.
+  - The round-1 request (the larger agent's system prompt plus the
+    transcript) is estimated at 3 chars per token. That is below every
+    ratio on record: 3.43–3.52 for laguna-xs-2.1 and 3.21–3.30 for
+    gemma4:12b, over 134 calls.
+  - The limit is `NUM_CTX - NUM_PREDICT`, 12,288 tokens. Every reply
+    keeps its full output cap, so `NUM_PREDICT`, not the window, ends a
+    runaway, and Ollama never has to cut the prompt.
+  - **Cost:** with the bridge fixture's prompt, pack and proposal, a
+    diff above about 30K chars is refused. The fixture's request is
+    33,294 chars, estimated at 11,098 tokens.
+  - Later rounds grow by the feedback only and are not checked again.
+    An overflow there ends on `done_reason=length` and fails closed.
+  - Records keep the estimate as `metadata.input_check`, so it can be
+    calibrated against the telemetry's `prompt_eval_count`.
+- **A reply's own `blocker_evidence` key is dropped** in normalization.
+  An engineer reply carrying one reached the hedge check. A list of
+  strings crashed the debate, and confident claims in it kept a hedged
+  blocker.
+- **Unchanged, by the user's choice:** the hedge check still reads every
+  blocker field but the quote, the `file` path included. No recorded
+  path has tripped it, so it is revisited only if one does.
+
+**Effect on recorded results:** none.
+- **Inputs.** All 62 records with a diff hash reviewed the bridge
+  fixture, which has file headers. Its evidence sources are identical
+  under j6 and j7. The four older records without hashes reviewed the
+  same fixture, or QtTune's core.h as context. No record had empty
+  input.
+- **Sizes.** The largest round-1 reviewer request on record is 33,294
+  chars, under the 36,864-char limit.
+- **Replies.** Stored replies cannot show whether an engineer ever
+  sent `blocker_evidence`, because the hedge check removed the key
+  before storing. A crash would have left no record.
+- **Requests.** Five fake-driven runs on the bridge fixture sent
+  byte-identical requests before and after the change: a three-round
+  debate, a round-2 agent failure, a measurement, a round-2 pair and a
+  context-only header review. Their records differ only in
+  `judge_version`, the new `input_check`, and the dropped
+  `audit_trail.validation_method`.
+
+## Golden Suite Routing (2026-10-23; backlog #14)
+
+*Recorded before the suite's first live run since v9.*
+
+**Decision:** each golden model fixture is reviewed as a debate's round-1
+reviewer reviews it (`debate.review_round1`). Its snippet is the CODE
+CONTEXT, inside the fence, with its layer note. The evidence check and
+hedge demotion then run as in a debate. Until now the suite sent the
+bare snippet as the whole message. Since v9 the reviewer prompt asks for
+a quote "copied exactly from the CODE DIFF", which that message did not
+contain. Nothing checked quotes, so a pass counted blockers that a
+debate would demote.
+- **Proposal:** the fixed, neutral *"Review the code in the CODE
+  CONTEXT."* A fixture's name, such as `buffer_overflow_can_fd`, would
+  tell the reviewer what to find.
+- **Temperature: 0.05 on the first attempt, as before** (the user's
+  choice). The suite stays a repeatable reviewer unit test. A debate's
+  round 1 samples at 0.7, so a golden result describes the reviewer at
+  low temperature, not a debate's round-1 sample.
+- **Run log:** `gold_tests/run_*.json` now records the prompt and judge
+  versions, the model, the temperature and the proposal. Each fixture
+  also records its evidence and hedge demotion counts and its attempts.
+- **Prediction for the first run** (drafted with the change; the user
+  may amend it before the run): the three fixtures pass as on
+  2026-10-10. The CAN-FD and ABI fixtures each have a quotable line, and
+  the clean header has nothing to block. A failure on a fixture
+  expected to block would show the evidence check demoting a real hit
+  and would need reading before anything changes.

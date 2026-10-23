@@ -13,8 +13,10 @@ debate.py retrieves from at review time (build_context_pack below).
 Regenerate explicitly:
     python orchestrator.py --index ../qttune [--no-llm]
 
-IMPORTANT: run --index from the LLMOrchestrator directory. Paths in
-repo_context.json are relative to the TARGET repo root.
+The index and the summary cache are written next to this module, from
+any working directory; the target path is relative to the working
+directory. Paths in repo_context.json are relative to the TARGET repo
+root.
 """
 
 import hashlib
@@ -28,7 +30,7 @@ from typing import Dict, List, Optional, Tuple
 
 from agent_client import call_agent
 from config import MODELS, TEMPERATURE_RETRY
-from diff_reader import diff_paths, read_diff
+from diff_reader import base_blobs, diff_paths, read_diff
 
 CONTEXT_FILE = "repo_context.json"
 # Module-relative, so --index writes and debates read the same file
@@ -94,6 +96,12 @@ SNIPPET_LIMIT = 300      # one rendered call site
 TYPE_DECL_LIMIT = 400    # one compact typedef declaration
 PURPOSE_LIMIT = 200      # one file purpose
 DOC_LIMIT = 160          # one doc comment
+# Entries per pack section.
+MAX_FILES = 20
+MAX_TYPES = 10
+MAX_CONSTANTS = 10
+MAX_CALL_SITES = 15
+MAX_RELATED_CALL_SITES = 10
 
 _IDENT = re.compile(r"\b[A-Za-z_]\w*\b")
 # A called name with at most one receiver: 'm_flag.store(', 'self->run('.
@@ -120,6 +128,8 @@ def _clip(text: str, limit: int) -> str:
     return head.rstrip(" ,;:-") + "…"
 
 def _match_paren_forward(s: str, open_idx: int) -> int:
+    """Index of the ')' closing the '(' at open_idx, or -1. Run on
+    comment-blanked text, so parentheses in comments do not count."""
     depth = 0
     for i in range(open_idx, len(s)):
         if s[i] == "(":
@@ -172,13 +182,18 @@ def _enclosing_lead_call(blanked: str, pos: int) -> Optional[Tuple[int, int, int
         cursor = open_paren  # keep scanning outward (e.g. SLOT(run()) args)
 
 
-def _sha256(path: Path) -> str:
+def _file_digest(path: Path) -> str:
+    """The first 12 hex chars of the file's SHA-256: the summary cache's
+    key for its content."""
     h = hashlib.sha256()
     h.update(path.read_bytes())
     return h.hexdigest()[:12]
 
 
 def _header_purpose(text: str) -> Optional[str]:
+    """The --no-llm purpose: the first '//' comment line that reads as
+    prose (8+ chars, mostly letters), so banners and separators are
+    skipped. None when there is none."""
     for line in text.split("\n"):
         s = line.strip()
         if not (s.startswith("//") and len(s) > 10):
@@ -197,6 +212,9 @@ def _header_purpose(text: str) -> Optional[str]:
 # ============ C/C++ SOURCE SCANNING ============
 
 def _blank_comments(text: str) -> str:
+    """text with every // and /* */ comment replaced by spaces, newlines
+    kept, so offsets and line numbers still match the original. String
+    and char literals are skipped over, so '//' inside them stays."""
     out = list(text)
     i, n = 0, len(text)
     while i < n:
@@ -225,6 +243,7 @@ def _blank_comments(text: str) -> str:
 
 
 def _match_brace(s: str, open_idx: int) -> int:
+    """Index of the '}' closing the '{' at open_idx, or -1."""
     depth = 0
     for i in range(open_idx, len(s)):
         if s[i] == "{":
@@ -258,6 +277,9 @@ def _split_top_level(body: str, sep: str, openers: str = "{(",
 
 
 def _member_names(body: str) -> List[str]:
+    """Member names of a struct or union body, in order: 'int a, b;'
+    gives a and b, a function-pointer member its name, and a nested
+    aggregate the name after its closing brace."""
     names = []
     for decl in _split_top_level(body, ";"):
         for i, part in enumerate(_split_top_level(decl, ",")):
@@ -277,6 +299,7 @@ def _member_names(body: str) -> List[str]:
 
 
 def _enum_values(body: str) -> Dict[str, Optional[str]]:
+    """Enumerator name -> its initializer text, or None when implicit."""
     values = {}
     for part in _split_top_level(body, ","):
         name, _, value = part.partition("=")
@@ -287,6 +310,9 @@ def _enum_values(body: str) -> Dict[str, Optional[str]]:
 
 
 def _doc_comment(text: str, start: int) -> Optional[str]:
+    """The comment directly above offset start, as one line: a /* */
+    block that ends just before it and starts its own line, or the run of
+    '//' lines just before it. None when there is none."""
     before = text[:start].rstrip()
     if before.endswith("*/"):
         j = before.rfind("/*")
@@ -306,6 +332,10 @@ def _doc_comment(text: str, start: int) -> Optional[str]:
 
 
 def harvest_typedefs(text: str) -> List[Dict]:
+    """Every C typedef in a source file. Each entry: name, kind (struct,
+    union, enum, opaque, function_pointer or alias), members (and values
+    for an enum), decl (the original declaration, at most 2000 chars) and
+    doc (the comment above it). Commented-out typedefs are ignored."""
     blanked = _blank_comments(text)
     out = []
     for m in re.finditer(r"\btypedef\b", blanked):
@@ -356,6 +386,10 @@ def harvest_typedefs(text: str) -> List[Dict]:
 
 
 def harvest_constants(text: str, file_path: str) -> List[Dict]:
+    """Numeric constants of a source file, in source order: '#define N 64'
+    and const/constexpr declarations with a numeric initializer. Each
+    entry: name, value (as written), kind ('define' or 'const') and file.
+    Names starting with 'q_' or '_' are skipped."""
     blanked = _blank_comments(text)
     found = []
     for kind, regex in (("define", DEFINE_RE), ("const", CONST_DECL_RE)):
@@ -458,6 +492,8 @@ def harvest_callsites(text: str, file_path: str) -> List[Dict]:
 # ============ LLM PURPOSE SUMMARIES ============
 
 def _validate_purpose(raw) -> Tuple[Optional[dict], Optional[str]]:
+    """call_agent validator: a reply with a 'purpose' string over 10
+    chars, or a reason that triggers a corrective retry."""
     if isinstance(raw, dict) and isinstance(raw.get("purpose"), str) \
             and len(raw["purpose"].strip()) > 10:
         return {"purpose": raw["purpose"].strip()}, None
@@ -465,6 +501,9 @@ def _validate_purpose(raw) -> Tuple[Optional[dict], Optional[str]]:
 
 
 def llm_purpose(model: str, file_path: str, text: str) -> Optional[str]:
+    """A one-sentence purpose for the file, from its first 120 lines, or
+    None when every attempt fails. Clipped at 500 chars; the pack clips
+    further."""
     snippet = "\n".join(text.split("\n")[:120])
     result = call_agent(model, SUMMARY_PROMPT,
                         f"FILE: {file_path}\n\n{snippet}", TEMPERATURE_RETRY,
@@ -481,6 +520,9 @@ _SKIP_DIR_PREFIXES = ("build-", "cmake-build-")
 
 
 def _skipped(rel_parts) -> bool:
+    """Whether a path relative to the target root lies under a VCS, build,
+    virtualenv or cache directory. Only the target's own directories
+    count, so a checkout under a 'build' directory still indexes."""
     return any(p in _SKIP_DIRS or p.startswith(_SKIP_DIR_PREFIXES)
                for p in rel_parts[:-1])
 
@@ -502,7 +544,30 @@ def _git_source(root: Path) -> Tuple[Optional[str], Optional[bool]]:
     return commit, bool(status.strip())
 
 
+def _git_blobs(root: Path, rels: List[str]) -> Dict[str, str]:
+    """Each file's git blob id, as git would store its current content
+    (line-ending conversion and clean filters applied), so it matches the
+    'index' lines of diffs made from this tree. {} when git fails."""
+    if not rels:
+        return {}
+    try:
+        ids = subprocess.run(
+            ["git", "-C", str(root), "hash-object", "--stdin-paths"],
+            input="\n".join(rels) + "\n", capture_output=True, text=True,
+            check=True).stdout.split()
+    except (OSError, subprocess.CalledProcessError):
+        return {}
+    return dict(zip(rels, ids)) if len(ids) == len(rels) else {}
+
+
 def build_index(target_root: str, use_llm: bool = True) -> dict:
+    """Walk the target repo and harvest its context index: per file the
+    purpose, layer and git blob id; C typedefs; numeric constants; queued
+    connection call sites; and the commit and dirty flag of the tree.
+    Purposes come from the summary model (cached) or, with
+    use_llm=False, from each file's first prose comment. Build, docs and
+    CI files get a path-derived hint and layer 'meta'. Not saved; see
+    save_index."""
     root = Path(target_root).resolve()
     if not root.is_dir():
         raise SystemExit(f"ERROR: target repo not found: {root}")
@@ -519,7 +584,7 @@ def build_index(target_root: str, use_llm: bool = True) -> dict:
         "files": [],
         "types": [],
         "constants": [],
-        "callsites": [],  # NEW: queued-connection call sites
+        "callsites": [],  # queued-connection call sites
     }
 
     src_exts = {".c", ".cpp", ".h", ".hpp", ".qml"}
@@ -542,7 +607,7 @@ def build_index(target_root: str, use_llm: bool = True) -> dict:
             continue
 
         text = path.read_text(encoding="utf-8", errors="replace")
-        digest = _sha256(path)
+        digest = _file_digest(path)
 
         purpose = None
         if not use_llm:
@@ -574,7 +639,6 @@ def build_index(target_root: str, use_llm: bool = True) -> dict:
             key = (c["name"], c["file"])
             if key not in seen_consts:
                 seen_consts[key] = c
-        # HARVESTER ADDED HERE
         for cs in harvest_callsites(text, rel):
             index["callsites"].append(cs)
 
@@ -582,14 +646,19 @@ def build_index(target_root: str, use_llm: bool = True) -> dict:
     index["constants"] = list(seen_consts.values())
 
     from file_metadata import identify_layer
+    # Blob ids let retrieval check that a diff's base is this tree.
+    blobs = (_git_blobs(root, [f["path"] for f in index["files"]])
+             if source_commit else {})
     for f in index["files"]:
         if f.get("layer") is None:
             f["layer"] = identify_layer(f["path"])
+        f["blob"] = blobs.get(f["path"])
 
     return index
 
 
 def _cache_path() -> Path:
+    """The summary cache's path: CACHE_PATH, next to this module."""
     return CACHE_PATH
 
 
@@ -612,17 +681,21 @@ def _load_cache() -> dict:
 
 
 def _save_cache(cache: dict) -> None:
+    """Write the whole summary cache; called after every new summary, so
+    an interrupted index run keeps what it paid for."""
     _cache_path().write_text(json.dumps(cache, indent=2), encoding="utf-8")
 
 
 def save_index(index: dict) -> Path:
+    """Stamp index_version with the UTC time and write the index to
+    CONTEXT_PATH, next to this module. Returns the path."""
     index["index_version"] = (
         f"idx_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}")
     CONTEXT_PATH.write_text(json.dumps(index, indent=2), encoding="utf-8")
     return CONTEXT_PATH
 
 
-# ============ RETRIEVAL FUNCTION (NEW SECTION) ============
+# ============ RETRIEVAL ============
 
 def _referenced_identifiers(code_diff: str) -> set:
     """Every identifier token in the diff. Retrieval intersects this set
@@ -685,13 +758,31 @@ def _callsite_line(cs: dict) -> str:
             + (f"  // {_clip(doc, DOC_LIMIT)}" if doc else ""))
 
 
+def _base_check(code_diff: str, index: dict) -> dict:
+    """Whether the index describes the diff's base: for each changed file
+    whose blob id both the diff and the index record, does the index hold
+    the version the diff starts from? 'mismatched' lists the files where
+    it does not; the pack may then describe other code (code review
+    2026-10-23, finding 15). Diffs without blob ids, and indexes built
+    before blob ids were recorded, check nothing."""
+    indexed = {f["path"]: f.get("blob") for f in index.get("files", [])}
+    checked = {path: blob for path, blob in base_blobs(code_diff).items()
+               if indexed.get(path)}
+    return {"checked": len(checked),
+            "mismatched": sorted(path for path, blob in checked.items()
+                                 if not indexed[path].startswith(blob))}
+
+
 def build_context_pack(code_diff: str, index: dict,
                        budget: int = PACK_BUDGET) -> Tuple[str, dict]:
     """Retrieve indexed context for a given diff. Returns (context_text,
     pack_report). The pack_report holds the budget accounting, section
-    counts, index version and commit, and pack format version for the
-    decision record. report['used'] is len(context_text): exactly what
-    the model sees, excluding debate.py's REPO_CONTEXT_TEMPLATE wrapper.
+    counts (matches in 'sections', lines left after the caps and
+    truncation in 'shown'), index version and commit, the base check
+    (_base_check) and pack format version for the decision record.
+    report['used'] is
+    len(context_text): exactly what the model sees, excluding debate.py's
+    REPO_CONTEXT_TEMPLATE wrapper. The base check never changes the pack.
 
     The index is a snapshot that can predate the diff, so the diff wins:
     an entry from a modified file that names an identifier only the
@@ -721,17 +812,20 @@ def build_context_pack(code_diff: str, index: dict,
     if not index.get("files"):
         report["error"] = "empty or missing index"
         return ("", report)
+    report["base_check"] = _base_check(code_diff, index)
 
     changed = diff_paths(code_diff)
     ref_ids = _referenced_identifiers(code_diff)
     removed = {n for n in _removed_identifiers(code_diff) if _code_like(n)}
     sections, omitted = [], []
 
-    def add_section(title: str, entry_lines: List[str]) -> None:
+    def add_section(key: str, title: str, entry_lines: List[str]) -> None:
+        """Queue a section under its report key; an empty one is left out."""
         if entry_lines:
-            sections.append("\n".join([f"--- {title} ---", *entry_lines]) + "\n")
+            sections.append((key, title, entry_lines))
 
     def removed_in(text: str) -> List[str]:
+        """The removed-only code identifiers that text names."""
         return sorted(set(_IDENT.findall(text)) & removed)
 
     # Section 1: Modified files (purpose + layer)
@@ -740,7 +834,7 @@ def build_context_pack(code_diff: str, index: dict,
     # configuration"): list them in one line instead of one line each.
     meta = [f["path"] for f in mod_files if f.get("layer") == "meta"]
     file_lines = []
-    for f in [f for f in mod_files if f.get("layer") != "meta"][:20]:
+    for f in [f for f in mod_files if f.get("layer") != "meta"][:MAX_FILES]:
         purpose = _clip(f.get("purpose") or "(no purpose available)",
                         PURPOSE_LIMIT)
         gone = removed_in(purpose)
@@ -751,8 +845,8 @@ def build_context_pack(code_diff: str, index: dict,
     if meta:
         file_lines.append("Also modified (build/docs/CI, no summary): "
                           + ", ".join(meta))
-    add_section("MODIFIED FILES (machine-written summaries of the indexed "
-                "version)", file_lines)
+    add_section("modified_files", "MODIFIED FILES (machine-written summaries "
+                "of the indexed version)", file_lines)
 
     # Section 2: Referenced types/constants; ones the diff removes from a
     # modified file are omitted
@@ -771,9 +865,11 @@ def build_context_pack(code_diff: str, index: dict,
             omitted.append(f"{c['name']} (constant, {c['file']})")
         else:
             const_hits.append(c)
-    add_section("KNOWN TYPES", [_type_line(t) for t in type_hits[:10]])
-    add_section("CONSTANTS", [f"{c['name']} = {c['value']} ({c['kind']})"
-                              for c in const_hits[:10]])
+    add_section("types", "KNOWN TYPES",
+                [_type_line(t) for t in type_hits[:MAX_TYPES]])
+    add_section("constants", "CONSTANTS",
+                [f"{c['name']} = {c['value']} ({c['kind']})"
+                 for c in const_hits[:MAX_CONSTANTS]])
 
     # Section 3: Queued-connection call sites in the modified files
     all_sites = index.get("callsites", [])
@@ -787,31 +883,44 @@ def build_context_pack(code_diff: str, index: dict,
                            + ", ".join(gone))
         else:
             call_sites.append(cs)
-    add_section("QUEUED CONNECTION CALL SITES (indexed line numbers)",
-                [_callsite_line(cs) for cs in call_sites[:15]])
+    add_section("call_sites", "QUEUED CONNECTION CALL SITES (indexed line numbers)",
+                [_callsite_line(cs) for cs in call_sites[:MAX_CALL_SITES]])
 
     # Section 4: call sites in files that define a referenced type
     type_files = {t["def_file"] for t in type_hits if "def_file" in t}
     related_sites = [cs for cs in all_sites
                      if cs["file"] in type_files and cs["file"] not in changed]
-    add_section("RELATED CALL SITES (TYPE DEFINITIONS)",
-                [_callsite_line(cs) for cs in related_sites[:10]])
+    add_section("related_call_sites", "RELATED CALL SITES (TYPE DEFINITIONS)",
+                [_callsite_line(cs) for cs in related_sites[:MAX_RELATED_CALL_SITES]])
 
     # Section 5: what was left out, by name only, so its absence reads as
     # deliberate rather than as a gap in the index
-    add_section("OMITTED (indexed entries this diff removes or rewrites)",
-                omitted)
+    add_section("omitted", "OMITTED (indexed entries this diff removes or "
+                "rewrites)", omitted)
 
     # Nothing matched: return no pack at all rather than a bare header
-    # with no facts under it.
-    context_text = ("\n".join(["/*** REPO CONTEXT — INDEXED SNAPSHOT ***/\n",
-                               *sections]).strip() if sections else "")
+    # with no facts under it. Each entry line's end offset in the text is
+    # kept, so the report can count what truncation leaves.
+    header = "/*** REPO CONTEXT — INDEXED SNAPSHOT ***/\n"
+    texts, line_ends, offset = [header], [], len(header)
+    for key, title, entry_lines in sections:
+        offset += 1 + len(f"--- {title} ---")  # the join's newline, the title
+        for line in entry_lines:
+            offset += 1 + len(line)
+            line_ends.append((key, offset))
+        offset += 1  # the section's closing newline
+        texts.append("\n".join([f"--- {title} ---", *entry_lines]) + "\n")
+    context_text = "\n".join(texts).strip() if sections else ""
+    kept = len(context_text)
     marker = "\n[... context truncated ...]"
-    if len(context_text) > budget:
+    truncated = kept > budget
+    if truncated:
         # The marker lives inside the budget.
-        context_text = context_text[:max(0, budget - len(marker))] + marker
+        kept = max(0, budget - len(marker))
+        context_text = context_text[:kept] + marker
 
     report["used"] = len(context_text)
+    # Matches per section; the caps and truncation decide what is shown.
     report["sections"] = {
         "modified_files": len(mod_files),
         "types": len(type_hits),
@@ -821,15 +930,11 @@ def build_context_pack(code_diff: str, index: dict,
     }
     report["entries"] = sum(report["sections"].values())
     report["sections"]["omitted"] = len(omitted)  # named, not counted as facts
+    # Lines per section in the text the model sees: a meta-file line names
+    # several files, and a line cut by truncation is not counted.
+    report["shown"] = {key: sum(1 for k, end in line_ends if k == key and end <= kept)
+                       for key in report["sections"]}
+    report["truncated"] = truncated
 
     return (context_text, report)
-
-
-if __name__ == "__main__":
-    target =sys.argv[1] if len(sys.argv) > 1 else "../qttune"
-    idx = build_index(target, use_llm="--no-llm" not in sys.argv)
-    p = save_index(idx)
-    print(f"Wrote {p}: {len(idx['files'])} files, "
-          f"{len(idx['types'])} types, {len(idx['constants'])} constants, "
-          f"{len(idx['callsites'])} call sites")
     

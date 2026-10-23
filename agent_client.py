@@ -1,8 +1,11 @@
 """Ollama client — single agent turn with JSON-mode enforcement and retries.
-The only module that talks to the network."""
+The only module that talks to the network. Retry notes go to the
+'agent_client' logger as warnings; with no logging configured, Python
+prints them to stderr."""
 
 import copy
 import json
+import logging
 import time
 from typing import Callable, List, Optional, Tuple
 
@@ -10,7 +13,13 @@ import requests
 
 from config import (NUM_CTX, NUM_PREDICT, OLLAMA_BASE_URL, REQUEST_TIMEOUT_S,
                     TEMPERATURE_RETRY)
-from reviewer_prompt import FAILURE_SENTINEL
+
+log = logging.getLogger(__name__)
+
+# What a call returns when every attempt failed. Its verdict fails closed
+# in the judge (adjudication.derive_verdict) and in every scorer.
+FAILURE_SENTINEL = {"verdict": "PARSE_FAILURE", "blockers": [],
+                    "concerns": [], "questions": []}
 
 MAX_ATTEMPTS = 3
 RETRY_BACKOFF_S = 5
@@ -108,11 +117,11 @@ def call_agent(model: str, system_prompt: str, transcript: str,
         if correction:
             # The model replied, but unusably: say why and retry at once.
             messages.append({"role": "user", "content": correction})
-            print(f"    ({model} attempt {attempt}: {reason})")
+            log.warning("    (%s attempt %d: %s)", model, attempt, reason)
             continue
 
-        print(f"    ({model} attempt {attempt}: {reason}"
-              f"{'' if last else ', retrying'})")
+        log.warning("    (%s attempt %d: %s%s)", model, attempt, reason,
+                    "" if last else ", retrying")
         if not last:
             time.sleep(RETRY_BACKOFF_S)
 
@@ -133,6 +142,9 @@ def _attempt(payload: dict, validate: Optional[Validator]
         resp.raise_for_status()
         body = resp.json()
         content = body["message"]["content"]
+        if not isinstance(content, str):
+            raise TypeError(f"message.content is {type(content).__name__}, "
+                            "expected a string")
     except requests.exceptions.Timeout:
         return {}, None, f"timeout after {REQUEST_TIMEOUT_S}s", None
     except requests.exceptions.RequestException as e:

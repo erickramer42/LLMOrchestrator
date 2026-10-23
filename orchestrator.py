@@ -22,7 +22,7 @@ from adjudication import derive_verdict, demote_hedged_blockers  # noqa: F401
 from agent_client import call_agent  # noqa: F401
 from config import MODELS  # noqa: F401
 from debate import run_debate
-from golden_tests import run_golden_tests
+from golden_tests import print_summary, run_golden_tests
 
 def run_index(target: str, use_llm: bool) -> None:
     """Build and save the repo context pack. debate.py imports
@@ -63,6 +63,9 @@ if __name__ == "__main__":
 
     if not args.proposal and (args.diff or args.context or args.header):
         parser.error("--diff, --context and --header require --proposal")
+    if args.proposal and not (args.diff or args.context):
+        parser.error("--proposal needs --diff or --context: there is no code "
+                     "to review")
     if args.no_llm and not args.index:
         parser.error("--no-llm applies only to --index")
 
@@ -74,7 +77,7 @@ if __name__ == "__main__":
     if args.index:
         run_index(args.index, use_llm=not args.no_llm)
     elif args.golden:
-        run_golden_tests()
+        print_summary(run_golden_tests())
     elif args.proposal:
         if args.diff and not os.path.exists(args.diff):
             raise SystemExit(f"ERROR: --diff path not found: {args.diff}\n"

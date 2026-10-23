@@ -8,9 +8,10 @@ eval harnesses to produce verified merge decisions. Built to demonstrate
 what's possible beyond LangChain/AutoGen abstractions — including
 publishing its own measured failure rates and fixing them.
 
-**Artifacts produced:** [Decision records](coach_artifacts/) *(incl. a real
-300-line refactor debate, re-run after remediation, then N=3 after context
-retrieval)*,
+**Artifacts produced:** [Decision and measurement records](coach_artifacts/)
+*(incl. a real 300-line refactor debate, re-run after remediation, then
+N=3 after context retrieval, then 10-sample round-1 and round-2
+measurements per prompt revision)*,
 [Eval logs](probe_logs/),
 [Measured precision data](docs/decisions/0002-adjudication-and-fp-remediation.md),
 [Input fixtures](docs/fixtures/)
@@ -34,7 +35,7 @@ retrieval)*,
 | `reviewer_prompt.py` | Agent system prompts (versioned, single source of truth) |
 | `file_metadata.py` | File-path → layer mapping (core / bridge / app) |
 | `diff_reader.py` | The one unified-diff reader, shared by the evidence check, retrieval and layer mapping |
-| `eval_harness/` | FP-rate probe, model bake-off, round-1 measurement runner and scorer |
+| `eval_harness/` | FP-rate probe, model bake-off, and the runners and scorers for round-1 and round-2 pair measurements |
 | `repo_context.py` | Offline indexer: typedefs, constants, layer map, queued-connection call sites → `repo_context.json`; builds retrieved context packs |
 | `tests/` | Deterministic regression tests (fake Ollama, no model needed) |
 
@@ -59,7 +60,8 @@ Run the deterministic regression tests (no Ollama needed; CI-safe):
     python -m unittest discover -s tests -v
 
 Run the golden test suite (3 live-model fixtures + 7 deterministic
-guardrail regression tests):
+guardrail regression tests). Each fixture is reviewed as a debate's
+round-1 reviewer reviews it, evidence check included:
 
     python orchestrator.py --golden
 
@@ -107,8 +109,11 @@ TRANSCRIPT (proposal + fenced diff/context + layer note + prior-round feedback)
 
 
 Possible outcomes: `APPROVED_FOR_MERGE`, `APPROVED_WITH_OPEN_QUESTIONS`,
-`MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED`, and
-`AGENT_FAILURE - MANUAL_REVIEW_REQUIRED`. A round converges once
+`MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED`,
+`AGENT_FAILURE - MANUAL_REVIEW_REQUIRED`, and, before any model call,
+`NO_INPUT - MANUAL_REVIEW_REQUIRED` (no diff and no context) or
+`INPUT_TOO_LARGE - MANUAL_REVIEW_REQUIRED` (a request that would leave
+the reply less than its full output cap). A round converges once
 neither agent has a blocker: `APPROVED_FOR_MERGE` when both replies are
 empty, `APPROVED_WITH_OPEN_QUESTIONS` when questions or concerns remain
 (since judge `j2-no-blockers`, 2026-10-22). Until then convergence also
@@ -163,7 +168,9 @@ measured N=3 — see ADR-0002.
    retried with a corrective message, then end the debate as
    `AGENT_FAILURE - MANUAL_REVIEW_REQUIRED` with the reason recorded.
    They block merges rather than slipping through (see agent_client.py
-   and `normalize_agent_output()` in adjudication.py).
+   and `normalize_agent_output()` in adjudication.py). Unusable input
+   fails closed too: no code at all, or a request too large for the
+   context window, ends the run before any model sees it (judge j7).
 
 7. **Prompts as versioned single source of truth** — PROMPT_VERSION
    stamps appear in every decision record, enabling correlation between
@@ -190,7 +197,9 @@ measured N=3 — see ADR-0002.
    index). The
    pack's template and format version participate in the prompt
    fingerprint; the pack text itself is recorded separately, because it
-   depends on the reviewed diff. Rationale:
+   depends on the reviewed diff. The index stores each file's git blob
+   id, and a debate warns when the diff starts from a different version
+   than the index holds. Rationale:
    no output filter can fix a model confidently asserting facts it
    cannot see — only showing it the facts can.
 
@@ -200,8 +209,9 @@ measured N=3 — see ADR-0002.
     question. `demote_unverified_blockers()` moves any blocker whose
     quote is not in that file's post-change lines to the questions
     channel (judge j4, measured; j5 also reads diffs that have no hunk
-    headers, and j6's hedge check skips the quote; neither changes a
-    recorded result). This makes guessing
+    headers, j6's hedge check skips the quote, and j7 reads diffs that
+    have no file headers; none changes a recorded result). This makes
+    guessing
     expensive mechanically instead of by asking for confidence. Arm H
     found that the reviewer did not hedge more when the hedging ban was
     lifted: its wrong blockers are confident misreadings, and only a
@@ -308,6 +318,13 @@ Command examples:
   `python -m eval_harness.round1 score --diff docs/fixtures/qttune_bridge_refactor.diff --symbols SignalListModel,MaxInFlightFrames,m_inFlightFrames --repo ../qttune --rev 8ffbf19 "coach_artifacts/*.json"`
   First attempts on that exact diff only. It counts M1 and lists M2
   candidates for confirming by hand (ADR-0002, fifth measurement).
+- Round-2 pairs, a feedback format against a debate's own:
+  `python -m eval_harness.round2 run --proposal "..." --diff docs/fixtures/qttune_bridge_refactor.diff --runs 10`
+  Each sample runs a debate's round 1, then the round-2 reviewer twice
+  on the same round-1 replies, once per format. Score it with
+  `python -m eval_harness.round2 score --diff docs/fixtures/qttune_bridge_refactor.diff --symbols m_currentFrameCount "coach_artifacts/measurement_round2_*.json"`,
+  which tags each round-2 blocker by where its subject came from
+  (ADR-0002, eleventh measurement).
 
 ## What Makes This Different From Tutorial Projects
 
@@ -343,7 +360,10 @@ parse failures and timeouts count against a model; ADR-0001's timeout
 row predates a working timeout counter (details in STATUS.md). The
 context-pack measurement (ADR-0002, fourth measurement) is reproducible
 by running the debate command three times against the committed fixture
-and index. The regression suite in tests/ runs without any LLM and is
+and index. The fifth to eleventh measurements are reproducible with
+`eval_harness.round1` and `eval_harness.round2` against the same fixture;
+each record names its prompt and judge version and its prompt
+fingerprint. The regression suite in tests/ runs without any LLM and is
 suitable for CI.
 
 ## Project Map and Backlog

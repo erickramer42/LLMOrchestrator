@@ -1,15 +1,27 @@
 """Golden test suite — reviewer unit tests via live model, plus
-deterministic guardrail regression tests (no LLM)."""
+deterministic guardrail regression tests (no LLM).
+
+Each model fixture is reviewed as a debate's round-1 reviewer reviews it
+(debate.review_round1): the fenced transcript, the layer note, then the
+evidence check and hedge demotion. Only the first attempt's temperature
+differs (GOLDEN_TEMPERATURE)."""
 
 import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
-from adjudication import demote_hedged_blockers, normalize_agent_output
-from agent_client import call_agent
-from config import (MODELS, REVIEWER_HEADER_PROMPT, REVIEWER_IMPL_PROMPT,
-                    TEMPERATURE_RETRY)
+from adjudication import JUDGE_VERSION, demote_hedged_blockers
+from config import MODELS, TEMPERATURE_RETRY
+from debate import review_round1
+from reviewer_prompt import PROMPT_VERSION
+
+# Each fixture's proposal. Neutral on purpose: a fixture name such as
+# "buffer_overflow_can_fd" would tell the reviewer what to find.
+GOLDEN_PROPOSAL = "Review the code in the CODE CONTEXT."
+# 0.05 keeps the suite a repeatable reviewer unit test; a debate's round 1
+# samples at 0.7 (the user's choice, 2026-10-23).
+GOLDEN_TEMPERATURE = TEMPERATURE_RETRY
 
 
 def score_fixture(out: dict, expected_to_block: bool) -> dict:
@@ -73,6 +85,9 @@ def run_hedge_unit_tests() -> List[dict]:
 
 
 def run_golden_tests() -> dict:
+    """Run the hedge units and the live-model fixtures, write the summary
+    to gold_tests/run_<utc>.json and return it. A fixture's snippet is its
+    CODE CONTEXT, so the reviewer may quote it under any file name."""
     TEST_CASES = [
         {
             "name": "buffer_overflow_can_fd",
@@ -110,30 +125,42 @@ def run_golden_tests() -> dict:
 
     results = run_hedge_unit_tests()
     for tc in TEST_CASES:
-        prompt = (REVIEWER_HEADER_PROMPT if tc.get("header", False)
-                 else REVIEWER_IMPL_PROMPT)
-        out = call_agent(MODELS["code_reviewer"], prompt, tc["snippet"],
-                         TEMPERATURE_RETRY,
-                         validate=lambda raw: normalize_agent_output(raw, "reviewer"))
-        out, _ = demote_hedged_blockers(out, "questions")
+        entry = review_round1(GOLDEN_PROPOSAL, code_context=tc["snippet"],
+                              header_artifact=tc.get("header", False),
+                              temperature=GOLDEN_TEMPERATURE)
+        results.append({
+            "test_name": tc["name"],
+            **score_fixture(entry["reviewer"], tc.get("expected_to_block", False)),
+            "evidence_demoted": entry["evidence_demotions"]["reviewer_demoted"],
+            "hedge_demoted": entry["hedge_demotions"]["reviewer_demoted"],
+            "attempts": len(entry["telemetry"]["reviewer"]),
+        })
 
-        results.append({"test_name": tc["name"],
-                        **score_fixture(out, tc.get("expected_to_block", False))})
-
-    summary = {"total_tests": len(results),
-               "passed": sum(r["test_passed"] for r in results),
-               "failed": len(results) - sum(r["test_passed"] for r in results),
+    passed = sum(r["test_passed"] for r in results)
+    summary = {"metadata": {"prompt_version": PROMPT_VERSION,
+                            "judge_version": JUDGE_VERSION,
+                            "model": MODELS["code_reviewer"],
+                            "temperature": GOLDEN_TEMPERATURE,
+                            "proposal": GOLDEN_PROPOSAL},
+               "total_tests": len(results),
+               "passed": passed,
+               "failed": len(results) - passed,
                "individual_results": results}
 
     test_log = Path("gold_tests") / f"run_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
     test_log.parent.mkdir(exist_ok=True)
     test_log.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    return summary
 
+
+def print_summary(summary: dict) -> None:
+    """The CLI's report of a run_golden_tests() summary."""
     print(f"\n{'='*50}")
     print(f"Golden Tests: {summary['passed']}/{summary['total_tests']} passed")
     print(f"{'='*50}")
-    for r in results:
+    for r in summary["individual_results"]:
         note = (f"  (agent failure: {r['failure_reason']})"
                 if r.get("agent_failure") else "")
+        if r.get("evidence_demoted"):
+            note += f"  ({r['evidence_demoted']} blocker(s) evidence-demoted)"
         print(f"  {'PASS' if r['test_passed'] else 'FAIL'} {r['test_name']}{note}")
-    return summary

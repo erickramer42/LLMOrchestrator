@@ -1,5 +1,5 @@
 {
-  "index_version": "idx_20261022_173538",
+  "index_version": "idx_20261023_160454",
   "source_commit": "e0c4c314a8e86b04c563a12232a345549fe9fb4c",
   "source_dirty": false,
   "llm_summaries": true,
@@ -9,177 +9,212 @@
     {
       "path": ".github/dependabot.yml",
       "purpose": "CI workflow",
-      "layer": "meta"
+      "layer": "meta",
+      "blob": "3e981de2fe3800f6e4d32c65a7c3b567c0930039"
     },
     {
       "path": ".github/workflows/ci.yml",
       "purpose": "CI workflow",
-      "layer": "meta"
+      "layer": "meta",
+      "blob": "aa3544223f0f024bc4681248a6c09be75d7026e0"
     },
     {
       "path": ".github/workflows/scorecard.yml",
       "purpose": "CI workflow",
-      "layer": "meta"
+      "layer": "meta",
+      "blob": "8741f095dd44cde0140899dc5a87d3f0632e8e34"
     },
     {
       "path": "app/CMakeLists.txt",
       "purpose": "Build configuration",
-      "layer": "meta"
+      "layer": "meta",
+      "blob": "b6112b20731d599c4f337c904d2aca2691aa72fd"
     },
     {
       "path": "app/main.cpp",
       "purpose": "The main function serves as the application entry point, initializing the QGuiApplication, configuring the QQmlApplicationEngine to load the 'Main' module, and exposing the QtTuneBridge instance as a",
-      "layer": "bridge"
+      "layer": "bridge",
+      "blob": "b291b7c24481de8898f0e7b6149d8dd1ce52fae4"
     },
     {
       "path": "app/qml/DashboardPage.qml",
       "purpose": "The DashboardPage.qml file defines a UI component that displays a dashboard title, a placeholder for a live gauge view, and a ThemedButton that updates a status label using QtTune.statusString.",
-      "layer": "app"
+      "layer": "app",
+      "blob": "b050c02a71fed700971cf117bd12e0552cc68624"
     },
     {
       "path": "app/qml/HomePage.qml",
       "purpose": "The HomePage.qml file defines the main landing page UI, featuring an animated equalizer logo, branding text, and a status card that displays the connection status and core version using the QtTune\u2026",
-      "layer": "app"
+      "layer": "app",
+      "blob": "3ced8a9bebbb7781a37cc8287188644c7e851228"
     },
     {
       "path": "app/qml/LiveViewPage.qml",
       "purpose": "LiveViewPage.qml defines a UI page that displays a list of live signals from QtTune.signalModel, providing a ListView to show real-time values and a CheckBox to toggle subscription status.",
-      "layer": "app"
+      "layer": "app",
+      "blob": "cf6111a962c131dc6adc05697354ec98f7185957"
     },
     {
       "path": "app/qml/LogPage.qml",
       "purpose": "LogPage.qml defines a UI page that displays a scrollable list of captured frames from QtTune.model and provides a toolbar for clearing logs and toggling the sort order.",
-      "layer": "app"
+      "layer": "app",
+      "blob": "22ebc909ce55120284c81085871594ea7ada8397"
     },
     {
       "path": "app/qml/Main.qml",
       "purpose": "Main.qml defines the primary ApplicationWindow for the QtTune application, establishing the main layout structure including a ToolBar header, a navigation sidebar, and a StackLayout to manage\u2026",
-      "layer": "app"
+      "layer": "app",
+      "blob": "3db888828dcbd48137639f1ee562e0e2006343e9"
     },
     {
       "path": "app/qml/NavButton.qml",
       "purpose": "The NavButton.qml file defines a custom navigation button component inheriting from AbstractButton that renders a label and provides visual feedback for active and hovered states using Theme\u2026",
-      "layer": "app"
+      "layer": "app",
+      "blob": "ed42445d1c7352d1c257f0ed986ba2caf3061069"
     },
     {
       "path": "app/qml/SettingsPage.qml",
       "purpose": "The `SettingsPage.qml` file defines a `Pane` component that serves as the user interface for settings, including transport selection, profiles, and mode toggles.",
-      "layer": "app"
+      "layer": "app",
+      "blob": "a4f0791923cf6599c38e0068799bd9764a4d9892"
     },
     {
       "path": "app/qml/Theme.qml",
       "purpose": "Theme.qml is a singleton that defines a central palette of colors (such as bg, primary, and text) and layout constants (radius, spacing) to provide consistent styling across the application's QML\u2026",
-      "layer": "app"
+      "layer": "app",
+      "blob": "bd80e81206955c685c29d676f992e99732de50a0"
     },
     {
       "path": "app/qml/ThemedButton.qml",
       "purpose": "ThemedButton.qml defines a custom Button component that provides a theme-aware UI element by styling its background and contentItem based on interaction states using colors from a Theme object.",
-      "layer": "app"
+      "layer": "app",
+      "blob": "8d84e22c082bd08489e9f91ec7673ee1269c3eb4"
     },
     {
       "path": "app/qttunebridge.cpp",
       "purpose": "This file implements the `FrameListModel` for managing a collection of CAN frames, the `FrameSortProxy` for sorting those frames by timestamp, and the `SignalListModel` for managing signal data.",
-      "layer": "bridge"
+      "layer": "bridge",
+      "blob": "7d81ffbddc52d3e5fd8f3955658a6330e0725940"
     },
     {
       "path": "app/qttunebridge.h",
       "purpose": "This file defines the `QtTuneBridge` class and associated models (`FrameListModel`, `FrameSortProxy`, `SignalListModel`) to bridge core data with the Qt GUI by providing models for frame and signal\u2026",
-      "layer": "bridge"
+      "layer": "bridge",
+      "blob": "602d573cc22bc0f305c4dd671d72f47424e15a1b"
     },
     {
       "path": "CMakeLists.txt",
       "purpose": "Build configuration",
-      "layer": "meta"
+      "layer": "meta",
+      "blob": "489f332ca49addf6c000d518f99c80fdb6700368"
     },
     {
       "path": "core/CMakeLists.txt",
       "purpose": "Build configuration",
-      "layer": "meta"
+      "layer": "meta",
+      "blob": "9286bd78e122746b7311c74f18f60db62ba88a2c"
     },
     {
       "path": "core/include/qttune/core.h",
       "purpose": "This header file defines the public C ABI for the qttune library, providing external consumers with session lifecycle management, synchronous frame transmission and reception, and asynchronous\u2026",
-      "layer": "core"
+      "layer": "core",
+      "blob": "1d45bda75d6c0c2ac6ae2f356b1c50b172a55ede"
     },
     {
       "path": "core/include/qttune/internal.h",
       "purpose": "This internal header defines functions for dispatching session callbacks and managing mock transport lifecycle, including `qttune_session_dispatch_callbacks`, `qttune_mock_transport_attach`\u2026",
-      "layer": "core"
+      "layer": "core",
+      "blob": "d6caf810288f8f3191696130c4ec62510dad1252"
     },
     {
       "path": "core/include/qttune/signal_sets.h",
       "purpose": "This header file defines constant identifiers for mock signals, such as MOCK_SIG_RPM_ID and MOCK_SIG_COOLANT_ID, to be used by the bridge and UI components.",
-      "layer": "core"
+      "layer": "core",
+      "blob": "a34fdf6317f583b3c290640e6c436f6989cd971c"
     },
     {
       "path": "core/include/qttune/signals.h",
       "purpose": "This header file defines the core signal data structures (`QttuneSignalDef`, `QttuneSignalSet`) and provides functions for decoding raw frame payloads into values and validating signal configurations.",
-      "layer": "core"
+      "layer": "core",
+      "blob": "0bf080ea815df0d471d9cfd4cd36bd422caa795d"
     },
     {
       "path": "core/src/core.cpp",
       "purpose": "This file implements the public C API for the qttune library, providing functions such as qttune_session_create, qttune_session_start, and qttune_session_close to manage the lifecycle of\u2026",
-      "layer": "core"
+      "layer": "core",
+      "blob": "475f6e23f6f78450f16b59bfd16c906b0b2860eb"
     },
     {
       "path": "core/src/mock_transport.cpp",
       "purpose": "This file defines the `qttune_mock_transport` and a background worker thread that simulates vehicle telemetry using a `SimState` model to provide mock data for a `qttune_session_t` for use in\u2026",
-      "layer": "core"
+      "layer": "core",
+      "blob": "c1c205c0f2ffa38319488472cae9598f9aea5de5"
     },
     {
       "path": "core/src/session.h",
       "purpose": "This header defines the `qttune_session` structure, which manages a collection of `qttune_frame_callback_t` callbacks and a `qttune_mock_transport` pointer to facilitate session-based communication.",
-      "layer": "core"
+      "layer": "core",
+      "blob": "995c78b7416ef85b25be9f958968494958ebb98f"
     },
     {
       "path": "core/src/signal_sets.cpp",
       "purpose": "This file defines a mock signal set for testing purposes via `qttune_mock_signal_set` and provides a validation utility `qttune_validate_signal_set` to verify the integrity of `QttuneSignalSet`\u2026",
-      "layer": "core"
+      "layer": "core",
+      "blob": "64c1df902827ffd69bd1e588b835a5b09b2b84a7"
     },
     {
       "path": "core/src/signals.cpp",
       "purpose": "This file provides the core logic for signal processing by defining `qttune_decode_signal` to extract and scale numeric values (UINT, INT, FLOAT32) from raw binary payloads and\u2026",
-      "layer": "core"
+      "layer": "core",
+      "blob": "427c5ad6f4f196a4aa633a1f7a7ee562d0b79f61"
     },
     {
       "path": "DISCLAIMER.md",
       "purpose": "Configuration or docs",
-      "layer": "meta"
+      "layer": "meta",
+      "blob": "081f97925b8511599a6cf3171f539395994bc837"
     },
     {
       "path": "README.md",
       "purpose": "Project documentation",
-      "layer": "meta"
+      "layer": "meta",
+      "blob": "650b5c96a6f774e90ff26481a57b0639a5682470"
     },
     {
       "path": "SECURITY.md",
       "purpose": "Configuration or docs",
-      "layer": "meta"
+      "layer": "meta",
+      "blob": "0ffdde988b6c57de4067cc3f1030015e93122e7e"
     },
     {
       "path": "STATUS.md",
       "purpose": "Configuration or docs",
-      "layer": "meta"
+      "layer": "meta",
+      "blob": "88e38948f398ddedd76b88aaf20d8e99fc1448fb"
     },
     {
       "path": "tests/CMakeLists.txt",
       "purpose": "Test suite",
-      "layer": "meta"
+      "layer": "meta",
+      "blob": "8b88af540fe858d7d3a23cc8f0e12ff986a56a1f"
     },
     {
       "path": "tests/test_bridge.cpp",
       "purpose": "This file contains unit tests for the `QtTuneBridge` class, which are executed by the Google Test framework to verify connection lifecycle, thread-safe frame marshalling from worker threads to the\u2026",
-      "layer": "bridge"
+      "layer": "bridge",
+      "blob": "641762420e5d1b52ff9e4fb3d37544f4d8b81188"
     },
     {
       "path": "tests/test_core.cpp",
       "purpose": "This file defines a suite of GTest unit tests to verify the core lifecycle, session management, and callback registration logic of the `qttune` library, including tests for `qttune_session_create`\u2026",
-      "layer": "unknown"
+      "layer": "unknown",
+      "blob": "1fb93250d87a638d58244532ac776c242f6591f9"
     },
     {
       "path": "tests/test_signals.cpp",
       "purpose": "This file contains unit tests for the `qttune` library, defining test cases to verify that `qttune_decode_signal` correctly extracts values from raw byte frames and `qttune_validate_signal` properly\u2026",
-      "layer": "unknown"
+      "layer": "unknown",
+      "blob": "e16ad8fdc7dfeb5aedf7e415a6a094b2272aa0cf"
     }
   ],
   "types": [
