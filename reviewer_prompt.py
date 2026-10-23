@@ -19,9 +19,18 @@ Any edit here must be reflected by bumping PROMPT_VERSION."""
 # v8 (2026-10-22, ADR-0002 arm G): built on the v6 text. Each reviewer
 # blocker quotes its evidence from the diff; adjudication moves blockers
 # whose quote is not in the named file to questions (judge j3).
-# v9 (2026-10-23, ADR-0002 arm G3): the quote must be code as it reads
+# v9 (2026-10-22, ADR-0002 arm G3): the quote must be code as it reads
 # after the change; removed lines are not evidence (judge j4).
-PROMPT_VERSION = "v9-post-change-quotes"
+# v10 (2026-10-22, ADR-0002 eleventh measurement; backlog #11): the
+# transcript protocol, all in debate.py. The diff and context are fenced
+# as data, truncated context is marked, and the previous round's replies
+# go in a CRITIQUES section instead of the proposal: every channel but nits,
+# the last round only, each point kept only if the code shows it.
+# Measured, never the default.
+# v10.1 (2026-10-22): v10's fence and truncation marker, with v9's
+# feedback. The CRITIQUES section kept the race but dropped the in-flight
+# gate and ran away more often, so it was not shipped.
+PROMPT_VERSION = "v10.1-fenced-input"
 
 AUTO_ENGINEER_PROMPT = """You are a senior automotive engineer advocating for QtTune's v0.2.0 goals:
 shipping velocity, J2534/ECU domain correctness, and safety.

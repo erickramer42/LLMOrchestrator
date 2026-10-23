@@ -37,7 +37,7 @@ import sys
 import textwrap
 import time
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Tuple
 
 from debate import _sha256, run_round1_review
 from repo_context import _IDENT, _code_like, _removed_identifiers
@@ -85,6 +85,19 @@ def attempt_status(record: dict) -> str:
     if not calls:
         return "unknown"
     return "first" if calls[-1]["attempt"] == 0 else "retry"
+
+
+def demoted_tail(entry: dict) -> Tuple[List[str], List[str]]:
+    """(evidence-demoted, hedge-demoted) reviewer blockers of one round
+    entry. Demoted blockers end the reviewer's questions: evidence
+    demotions (judge j3 on), then hedge demotions, each as many as
+    recorded."""
+    n_hedged = (entry.get("hedge_demotions") or {}).get("reviewer_demoted", 0)
+    n_unquoted = (entry.get("evidence_demotions") or {}).get("reviewer_demoted", 0)
+    questions = [str(q) for q in entry["reviewer"].get("questions", []) or []]
+    tail = (questions[len(questions) - n_unquoted - n_hedged:]
+            if n_unquoted + n_hedged else [])
+    return tail[:n_unquoted], tail[n_unquoted:]
 
 
 def m1_hits(blocker: str, symbols: List[str]) -> List[str]:
@@ -142,16 +155,7 @@ def score_records(records: List[tuple], code_diff: str, symbols: List[str],
             continue
         first_round = rec["outputs"]["round_history"][0]
         reviewer = first_round["reviewer"]
-        # Demoted blockers end round 1's questions: evidence demotions
-        # (judge j3), then hedge demotions, each as many as recorded.
-        n_hedged = (first_round.get("hedge_demotions") or {}).get(
-            "reviewer_demoted", 0)
-        n_unquoted = (first_round.get("evidence_demotions") or {}).get(
-            "reviewer_demoted", 0)
-        questions = [str(q) for q in reviewer.get("questions", []) or []]
-        tail = (questions[len(questions) - n_unquoted - n_hedged:]
-                if n_unquoted + n_hedged else [])
-        unquoted, demoted = tail[:n_unquoted], tail[n_unquoted:]
+        unquoted, demoted = demoted_tail(first_round)
 
         def tag(text: str) -> dict:
             return {"text": text, "m1": m1_hits(text, symbols),

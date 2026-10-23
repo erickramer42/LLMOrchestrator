@@ -13,11 +13,12 @@ from diff_reader import DEV_NULL, read_diff
 # zero concerns and questions. j2 (2026-10-22) did not check that reviewer
 # blockers quote their evidence. j3 (ADR-0002 arm G, not shipped) accepted
 # quotes from either side of the diff, matched in interleaved order. j4
-# (2026-10-23) read only lines inside hunks, so a diff without hunk headers
+# (2026-10-22) read only lines inside hunks, so a diff without hunk headers
 # had no evidence and every reviewer blocker on it was demoted; it also
-# missed file headers that end in a tab and a timestamp. j5 reads both
-# with the shared diff_reader and is otherwise j4.
-JUDGE_VERSION = "j5-hunkless-evidence"
+# missed file headers that end in a tab and a timestamp. j5 (2026-10-22)
+# read both with the shared diff_reader, and its hedge check still read a
+# reviewer blocker's quoted code. j6 reads the blocker without its quote.
+JUDGE_VERSION = "j6-hedge-reads-claim"
 
 
 # ============ SCHEMA VALIDATION ============
@@ -50,20 +51,23 @@ def _coerce_item(item) -> str:
 
 
 def _evidence(item) -> Optional[dict]:
-    """The file and quote of an object blocker; None for a plain string,
-    which carries no checkable evidence."""
+    """The file and quote of an object blocker, and its claim: every
+    field but the quote, as text, which is what the hedge check reads.
+    None for a plain string, which carries no checkable evidence."""
     if not isinstance(item, dict):
         return None
     return {"file": str(item.get("file") or ""),
-            "quote": str(item.get("quote") or "")}
+            "quote": str(item.get("quote") or ""),
+            "claim": _coerce_item({k: v for k, v in item.items() if k != "quote"})}
 
 
 def normalize_agent_output(raw, role: str) -> Tuple[Optional[dict], Optional[str]]:
     """Validate a parsed agent reply against its role schema and coerce
     the arrays into lists of non-empty strings.
 
-    For the reviewer, out["blocker_evidence"] holds each blocker's file
-    and quote, aligned with out["blockers"], for demote_unverified_blockers.
+    For the reviewer, out["blocker_evidence"] holds each blocker's file,
+    quote and claim, aligned with out["blockers"], for
+    demote_unverified_blockers and then demote_hedged_blockers.
 
     Returns (normalized, None) on success, or (None, reason) when the reply
     cannot be judged. Callers must treat a reason as a failure (fail closed).
@@ -142,6 +146,9 @@ def demote_hedged_blockers(agent_out: dict,
                            concern_key: str = "questions") -> Tuple[dict, int]:
     """Guardrail: speculative/hedged text in blockers becomes a question.
     Enforces the taxonomy rule: a blocker must be a DEMONSTRABLE violation.
+    A reviewer blocker is read without its quote (judge j6): hedge words
+    in quoted code are the code's, not the reviewer's. Consumes
+    blocker_evidence, the last guardrail to read it.
     Returns (output, number of blockers demoted). Demoted blockers are
     appended to the end of concern_key, in their original order."""
     if (not isinstance(agent_out, dict) or not agent_out
@@ -149,10 +156,12 @@ def demote_hedged_blockers(agent_out: dict,
         return agent_out, 0
 
     out = dict(agent_out)
+    evidence = out.pop("blocker_evidence", None) or []
     kept, demoted = [], []
 
-    for b in (out.get("blockers", []) or []):
-        if HEDGE_PATTERNS.search(str(b)):
+    for i, b in enumerate(out.get("blockers", []) or []):
+        ev = evidence[i] if i < len(evidence) else None
+        if HEDGE_PATTERNS.search(ev["claim"] if ev else str(b)):
             demoted.append(b)
         else:
             kept.append(b)
@@ -274,21 +283,27 @@ def demote_unverified_blockers(agent_out: dict, sources: Dict[str, List[str]],
     code as it reads after the change. A blocker whose quote is not found
     in the post-change lines of the file it names (or in the supplied
     context) moves to the end of concern_key, as hedge demotion does.
-    Consumes blocker_evidence from normalize_agent_output.
+    Reads blocker_evidence from normalize_agent_output and keeps it
+    aligned with the kept blockers, for demote_hedged_blockers.
     Returns (output, number of blockers demoted)."""
     if (not isinstance(agent_out, dict) or not agent_out
             or agent_out.get("verdict") == "PARSE_FAILURE"):
         return agent_out, 0
 
     out = dict(agent_out)
-    evidence = out.pop("blocker_evidence", None) or []
-    kept, demoted = [], []
+    evidence = out.get("blocker_evidence") or []
+    kept, kept_evidence, demoted = [], [], []
     for i, b in enumerate(out.get("blockers", []) or []):
         ev = evidence[i] if i < len(evidence) else None
-        (kept if _quote_verified(ev, sources) else demoted).append(b)
+        if _quote_verified(ev, sources):
+            kept.append(b)
+            kept_evidence.append(ev)
+        else:
+            demoted.append(b)
 
     if demoted:
         out["blockers"] = kept
+        out["blocker_evidence"] = kept_evidence
         out[concern_key] = (out.get(concern_key, []) or []) + demoted
 
     return out, len(demoted)

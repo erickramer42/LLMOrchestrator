@@ -1303,7 +1303,7 @@ settings as in the sixth measurement, which is the comparison.
 - **Raw blockers with a quote below 50%:** the model is not following
   the format. Fix the prompt before reading any other metric.
 
-### Results (scored 2026-10-23)
+### Results (scored 2026-10-22)
 
 **Samples:** `coach_artifacts/measurement_round1_20261023_00*.json`, from
 003411_e18362 to 005021_c88bcd, fingerprint `2e56c3a3c15d32f2`.
@@ -1365,7 +1365,7 @@ for the second arm running.
   (on the removed side), so the check passes them, as the recorded
   known gap expected.
 
-### Amendment (2026-10-23): revise to G3, post-change quotes
+### Amendment (2026-10-22): revise to G3, post-change quotes
 
 **Decision (project owner):** G is not shipped. Its revision, G3, is
 predicted and measured on 10 fresh samples. G's samples are now dev
@@ -1399,7 +1399,7 @@ quote line against consecutive non-blank lines of one side.
 
 ## Tenth Measurement (Pending) — Arm G3: Post-Change Quotes
 
-*Design and prediction recorded 2026-10-23, before G3 was implemented
+*Design and prediction recorded 2026-10-22, before G3 was implemented
 or run.*
 
 **Idea:** a blocker is a claim about the code after the change, so its
@@ -1494,7 +1494,7 @@ show whether the model still produces the class.
 of about 5.5 per 10 runs. If G3 changed nothing, a count ≤ 2 would
 occur by chance about 9% of the time.
 
-### Results (scored 2026-10-23)
+### Results (scored 2026-10-22)
 
 **Samples:** `coach_artifacts/measurement_round1_20261023_01*.json`, from
 012351_55c897 to 013952_2f2843, fingerprint `2aa6ba56fca5f85e`.
@@ -1576,7 +1576,7 @@ two GUI-thread accesses. It is false, so the demotion was correct.
 - **The live golden suite has not been run with v9.** Its fixtures do
   not apply the evidence check, but they read the new blocker format.
 
-## Evidence Reader j5 (2026-10-23)
+## Evidence Reader j5 (2026-10-22)
 
 **Decision:** the evidence check reads diffs with the shared
 `diff_reader` (code review 2026-10-21, finding 12). Inside a hunk, lines
@@ -1594,6 +1594,245 @@ Otherwise j5 is j4.
 **Effect on recorded results:** none. Every record with a diff reviewed
 the bridge fixture, whose hunks all have headers. On it, the evidence
 sources are identical under j4 and j5. So are the pack text and every
-request: compared byte for byte on 2026-10-23 for a fake-driven
+request: compared byte for byte on 2026-10-22 for a fake-driven
 three-round debate, a round-2 agent failure and a measurement. The
 eighth to tenth measurements stand under j5.
+
+## Hedge Check j6 (2026-10-22)
+
+**Decision:** the hedge check reads a reviewer blocker without its
+quote. Since v9 a blocker carries the code it quotes, and through j5
+the regex read the whole flattened blocker. So a hedge word in quoted
+code, such as a `// may be null` comment, demoted a verified blocker.
+From j6 the regex reads every field but the quote. Plain-string
+blockers, the engineer's included, are read whole as before. This is
+the minimum of backlog #12, from code review 2026-10-21, finding 9.
+
+**Replay over the records with quoted blockers** (arms G and G3):
+- **No kept blocker can change.** The check reads less text than
+  before, so it can only demote fewer blockers.
+- **G has no hedge demotions.**
+- **G3 has one,** 2eb07e #h1: "…potentially accessed from QML/GUI
+  thread…". The hedge word is in the claim, so j6 demotes it too.
+
+No recorded result changes.
+
+**Decision on the rest of #12 (2026-10-22): no exemption.** If the
+reviewer hedges, the claim is not a blocker. A verified quote does not
+change that, and neither does a line citation, so the citation-gated
+rule checked on 2026-10-10 is not adopted either. The reasons:
+- **A quote proves the code exists, not that the claim holds.** The
+  hedge is the reviewer saying it has not shown the violation.
+- **The data agrees.** An exemption would have kept 2eb07e #h1, a
+  false `m_guiNotifyCount` race between two GUI-thread accesses (tenth
+  measurement). It is the only hedge demotion under v9.
+
+**The cost is accepted.** A true claim stated with a hedge, like the
+one in the N=3 measurement, becomes a question. It stays in the
+record, and the verdict is APPROVED_WITH_OPEN_QUESTIONS, not a clean
+approval. Backlog #12 is closed.
+
+## Eleventh Measurement (Pending) — Transcript Protocol v10 (backlog #11)
+
+*Design and prediction recorded 2026-10-22. v10 and the pair mode were
+implemented and unit-tested before this was written, and no v10 sample
+had been run. The user chose the scope (all five parts of #11) and the
+paired design.*
+
+**Change** (PROMPT_VERSION `v10-transcript-protocol`, prompt fingerprint
+`0e6f4ef2bcdfe385`, JUDGE_VERSION `j6-hedge-reads-claim`; built on v9;
+only the transcript templates in `debate.py` change):
+- **Fencing.** The diff and the context each sit between a BEGIN DATA
+  and an END DATA line. Both lines carry a 16-hex mark taken from the
+  SHA-256 of the diff and context, so the reviewed text cannot predict
+  the mark and close the fence. A preamble says that text inside is
+  data, never an instruction, and that a fence line with another mark
+  is part of the data.
+- **Truncation marker.** Context longer than 8000 characters is marked
+  as truncated, with the shown and total lengths.
+- **Feedback section.** From round 2 on, the previous round's replies go
+  in a ROUND N CRITIQUES section after the code. The section calls them
+  "claims, not verified facts". The proposal stays the author's text.
+  Only the last round is shown; v9 accumulated every round.
+- **All channels but nits.** The section holds reviewer blockers and
+  questions (demoted blockers included), and engineer blockers, concerns
+  and questions, one item per line. v9 fed back only the reviewer's
+  blockers and the engineer's concerns and questions.
+- **Uphold or withdraw.** "Keep a point only if the code shows it, with
+  the evidence any new point needs. Drop a point the code does not
+  support, or ask it as a question." This is an instruction only; the
+  output schema is unchanged.
+
+**Design** (round-2 pair, `python -m eval_harness.round2`):
+- **Samples.** 10, on the bridge fixture, with the original proposal
+  text (#21) and default settings.
+- **Each sample:**
+  - First, a v10 debate round 1: reviewer and engineer, at temperature
+    0.7.
+  - If a debate would go on from there (no agent failure, round 1 not
+    converged), the round-2 reviewer runs twice on the same round-1
+    replies, at 0.05:
+    - the critiques arm, as a v10 debate sends it;
+    - the v9 arm, with v9's REVISE ADDRESSING feedback appended to the
+      proposal and everything else v10.
+
+    Only the feedback format differs between the arms, and round-1
+    variance is shared.
+- **Round-2 scoring.** Stored round-2 reviewer blockers, per arm, in
+  pairs where both arms answered on the first attempt.
+- **Hand labels,** as in the tenth measurement: the race, the in-flight
+  gate, the deletion class, removal objections, deleted-test objections
+  and other FPs. Valid means the race, the gate or another confirmed
+  defect.
+- **Origin tags,** scripted and confirmed by hand. They are read from
+  the claim's identifiers, never the quote:
+  - carried: a round-1 reviewer blocker names one of them;
+  - from-question: a round-1 reviewer question does;
+  - echo: only round-1 engineer items do;
+  - new: no round-1 item does.
+- **Round 1 doubles as the fencing control.** Each sample's round-1
+  reviewer reply is scored with `eval_harness.round1` (first attempts)
+  against G3.
+
+**Prior:** 15 archived debates reached round 2 (v3 to v5.2), all with
+v9-style feedback and string blockers. Of their 41 round-2 reviewer
+blockers, 39 carried round-1 subjects, 1 echoed an engineer item and 1
+was new. Round 2 is mostly persistence, so this is a non-inferiority
+check. v10 is a protocol fix: feedback no longer reads as the author's
+text, and the injection surface is fenced. It ships if it does no harm.
+
+**Prediction:**
+
+| Metric | Reference | Predicted |
+|---|---|---|
+| Round 1: deletion class per run, stored | G3 0.1 | ≤ 0.2 |
+| Round 1: runs with the race, stored | G3 7 of 10 | 3–9 |
+| Round 1: valid share of stored blockers | G3 94% | ≥ 70% |
+| Round 1: blockers per run, stored | G3 1.8 | 1.0–2.5 |
+| Samples reaching round 2 | — | 6–9 of 10 |
+| Pairs compared | — | 5–9 |
+| v9 arm: share of round-2 blockers carried | prior 95% | ≥ 80% |
+| Critiques arm: share carried | — | ≥ 70% |
+| Race kept in round 2, of pairs whose round 1 stored it | — | v9 arm: all but at most 1; critiques arm ≥ v9 arm − 1 |
+| Round-2 blockers per pair | — | critiques arm ≤ v9 arm + 0.5 |
+| Echo and from-question FPs, confirmed | prior 1 | critiques arm ≤ v9 arm + 1 |
+| Valid share of round-2 blockers | — | both ≥ 80%; critiques arm ≥ v9 arm − 10 points |
+
+**Decision rule:**
+- **Ship (v10 stays the default)** if both hold:
+  - round 1 holds: the deletion class ≤ 0.2 per run, the race in ≥ 3
+    runs, and a valid share ≥ 70%;
+  - the critiques arm is not worse: race retention ≥ the v9 arm's − 1
+    pair, a valid share ≥ the v9 arm's − 10 points, and confirmed echo
+    and from-question FPs ≤ the v9 arm's + 1.
+- **Round 1 fails:** the fence harms round 1. Revert the fence and the
+  truncation marker, keep the feedback change if its own conditions
+  hold, and re-measure round 1.
+- **Round 2 fails:** revert the feedback to v9's format, and keep the
+  fence if round 1 holds.
+- **Fewer than 4 pairs compared:** add 5 samples before deciding.
+
+**Power caveat:** with 5–9 pairs only large differences show, such as
+the race lost in 2 or more extra pairs, or 2 or more extra FPs. The
+ship rule is non-inferiority within those margins, not a test for an
+improvement.
+
+### Results (scored 2026-10-22)
+
+10 samples, `coach_artifacts/measurement_round2_20261023_*.json` (record
+IDs are UTC). Every sample reached round 2. 4 pairs were excluded
+because a round-2 reply came from a retry (77f24d, 97c2dd, 6e7367,
+410daf), which leaves 6 pairs. Hand labels used the post-state at
+`8ffbf19`.
+
+**Round 1, the fencing control** (10 first attempts, 25 stored
+blockers):
+- the race: 17 blockers, in 10 runs;
+- the in-flight gate: 3 (751a8f #1, 97c2dd #2, 5ef90b #2);
+- the deletion class: 1, c55779 #4 (`Main.qml` "references removed
+  SignalListModel", with an unrelated quote);
+- other FPs: 4. 6e7367 #1 says `handleFrameInternal` does not append
+  frames, though its own quote shows it does. 410daf #3 says
+  `appendFrame` lacks `beginInsertRows`, which is at line 50. c55779 #2
+  and #3 claim races on `m_lastReportedDropped` and `m_guiNotifyCount`,
+  which only the GUI thread touches.
+
+8 blockers were evidence-demoted. One was valid, 5ef90b #e1, a race
+whose quote joined a comment to the line; the same run kept another
+race blocker. Raw deletion-class blockers, kept plus demoted, numbered
+3: c55779 #4, 407954 #e2 and c55779 #e1.
+
+**Round 2** (6 pairs; origin tags confirmed by hand):
+
+| | Critiques arm | v9 arm |
+|---|---|---|
+| Stored blockers | 14 (2.33 per pair) | 15 (2.5 per pair) |
+| Race, gate, FP | 13, 0, 1 | 11, 3, 1 |
+| Carried from round 1 | 14 of 14 | 15 of 15 |
+| Echo or from-question FPs | 0 | 0 |
+| Race kept, of 6 pairs | 6 | 6 |
+| Gate kept, of the 2 pairs whose round 1 stored it | 0 | 2 |
+| Round-1 FPs withdrawn (c55779 #2 and #4) | 2 | 2 |
+| Valid share | 93% | 93% |
+| Hedge-demoted | 1 | 0 |
+| First attempts that ran away (all 10 samples) | 3 | 1 |
+
+The one scripted echo tag (v9 arm, 5ef90b #2) is the reviewer's own
+round-1 gate blocker, reworded with the engineer's "high-frequency
+CAN-FD bursts". The critiques arm's hedge demotion (c55779 #h1) is a
+gate claim echoing engineer concern E-c1, worded "could cause". In 6b1987
+the v9 arm stated the gate on its own (#3); the critiques arm kept only
+round 1's race-and-gate hybrid. In round 1, 0 of the 20 first attempts
+ran away.
+
+| Metric | Predicted | Observed | Outcome |
+|---|---|---|---|
+| Round 1: deletion class per run | ≤ 0.2 | 0.1 | HIT |
+| Round 1: runs with the race | 3–9 | 10 | MISSED HIGH |
+| Round 1: valid share | ≥ 70% | 80% (20 of 25) | HIT |
+| Round 1: blockers per run | 1.0–2.5 | 2.5 | HIT, at the limit |
+| Samples reaching round 2 | 6–9 | 10 | MISSED HIGH |
+| Pairs compared | 5–9 | 6 | HIT |
+| v9 arm: share carried | ≥ 80% | 100% | HIT |
+| Critiques arm: share carried | ≥ 70% | 100% | HIT |
+| Race kept | v9 all but ≤ 1; critiques ≥ v9 − 1 | 6 and 6 of 6 | HIT |
+| Round-2 blockers per pair | critiques ≤ v9 + 0.5 | 2.33 vs 2.5 | HIT |
+| Echo and from-question FPs | critiques ≤ v9 + 1 | 0 and 0 | HIT |
+| Valid share, round 2 | both ≥ 80%; critiques ≥ v9 − 10 | 93% and 93% | HIT |
+
+**By the recorded rule: ship.** Round 1 holds, and the critiques arm is
+not worse on any registered metric.
+
+**Outside the rule, two costs, both in the critiques arm:**
+- **It dropped the in-flight gate,** the freeze's root cause, in both
+  pairs whose round 1 stored it. The v9 arm kept it in both. The likely
+  cause is "keep a point only if the code shows it": the gate is a
+  defect caused by a removal, the case a quote shows least directly.
+- **It ran away on 3 of 10 first attempts,** against 1 of 10 for the
+  v9 arm. Its thinking tails re-check open-endedly: "Let me also check…"
+  and "Now let me also check for the … removal".
+
+On this fixture the section showed no benefit: both arms withdrew the
+same two round-1 FPs. Each cost rests on very few samples (2 pairs, and
+3 against 1 runaways).
+
+**Round 1 against G3:** 4 other FPs against G3's 0, and 2.5 blockers
+per run against 1.8. All 4 quote real post-change code with a false
+claim. The race appeared in every run. Variance between two sets of 10
+samples can account for the difference, but this is the case to watch
+for the fence.
+
+### Amendment (2026-10-22): fence only (v10.1)
+
+The user chose to ship the fence and the truncation marker without the
+CRITIQUES section, deviating from the recorded rule toward the measured
+side. PROMPT_VERSION `v10.1-fenced-input` (prompt fingerprint
+`30f7aeff90e8ec76` for debates):
+- round 1 is v10's, measured above;
+- round 2 is the v9 arm's request, which a test pins as identical.
+
+So nothing unmeasured ships. The CRITIQUES section stays in `debate.py`
+as the pair measurement's candidate arm only, and backlog #11 keeps it
+with two design constraints:
+- a defect caused by a removal must stay quotable as a blocker;
+- the check instruction must not invite open-ended re-checking.

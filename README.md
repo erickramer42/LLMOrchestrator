@@ -29,7 +29,7 @@ retrieval)*,
 | `config.py` | Models, runtime knobs, prompt composition |
 | `agent_client.py` | Ollama client — the only module that touches the network; retries invalid or schema-violating replies, then fails closed |
 | `adjudication.py` | Pure logic: schema validation, verdict derivation, evidence-quote check, hedge demotion guardrail |
-| `debate.py` | Debate loop, transcript templates, repo-context retrieval, judging, decision-record persistence; round-1 reviewer measurement mode |
+| `debate.py` | Debate loop, transcript templates, repo-context retrieval, judging, decision-record persistence; the round-1 reviewer and round-2 pair measurement modes |
 | `golden_tests.py` | Golden suite: LLM fixtures + deterministic guardrail units |
 | `reviewer_prompt.py` | Agent system prompts (versioned, single source of truth) |
 | `file_metadata.py` | File-path → layer mapping (core / bridge / app) |
@@ -96,7 +96,7 @@ produces structured decision records for downstream consumption.
 Pipeline per round:
 
 ```
-TRANSCRIPT (proposal + diff/context + layer note + prior-round feedback)
+TRANSCRIPT (proposal + fenced diff/context + layer note + prior-round feedback)
     → AGENTS CRITIQUE (same transcript, neither sees the other's reply)
     → SCHEMA VALIDATION (retry, then fail closed as AGENT_FAILURE)
     → EVIDENCE CHECK (blockers not quoting post-change code → questions)
@@ -136,9 +136,13 @@ measured N=3 — see ADR-0002.
    ("may", "might", "could", "needs verification") are deterministically
    demoted to the questions channel (`demote_hedged_blockers()`).
    Regression-tested against real production blocker texts — see
-   `run_hedge_unit_tests()`. Known tradeoff: one hedge word demotes the
-   whole blocker, even a confident one that cites a line — and the
-   context-pack measurement caught it demoting a hedged TRUE claim.
+   `run_hedge_unit_tests()`. A reviewer blocker is read without its
+   quoted code (judge j6), so a "may" in a quoted comment doesn't
+   count. If the reviewer hedges, it is not a blocker: one hedge word
+   demotes the whole claim, even one that cites a line or quotes
+   verified code. That is deliberate. The context-pack measurement
+   caught it demoting a hedged TRUE claim, and the claim stayed visible
+   as an open question, not a blocker.
 
 3. **Layer-aware review context** — File paths are mapped to QtTune's
    layer structure (core / bridge / app) and injected into the transcript
@@ -196,12 +200,22 @@ measured N=3 — see ADR-0002.
     question. `demote_unverified_blockers()` moves any blocker whose
     quote is not in that file's post-change lines to the questions
     channel (judge j4, measured; j5 also reads diffs that have no hunk
-    headers and is otherwise the same). This makes guessing
+    headers, and j6's hedge check skips the quote; neither changes a
+    recorded result). This makes guessing
     expensive mechanically instead of by asking for confidence. Arm H
     found that the reviewer did not hedge more when the hedging ban was
     lifted: its wrong blockers are confident misreadings, and only a
     check against the code catches those. Known limit: a quote proves
     the code exists, not that it supports the claim.
+
+11. **Reviewed code is fenced as data** — The diff and context sit
+    between BEGIN DATA and END DATA lines whose mark is hashed from that
+    input, so a comment in a reviewed diff cannot close the fence and
+    pose as instructions. A truncated context says so. Feedback still
+    goes into the proposal: a separate critiques section was measured
+    against it in paired round-2 runs (ADR-0002, eleventh measurement).
+    It matched on precision but dropped a real removal-caused blocker
+    and ran away more often, so it was not shipped.
 
 ## Measured Production Precision (the honest part)
 
@@ -216,7 +230,7 @@ twice — with predictions recorded before each run:
 | Layer-rule misapplication (core rules on bridge code) | 7 | 0 | 0 | **Fixed** — layer metadata injection |
 | Speculative phrasing filed as blockers | 3 | 0 | 0 | **Fixed** — taxonomy discipline; hedge guardrail in reserve |
 | Confident-but-wrong assertions (missing context) | 0 | 4 | **0 in 3/3 runs** | **Fixed** — context retrieval; residual concern moved to questions |
-| Deletion-hallucination (fabricated surviving remnants) | 0 | 0 | 8 | **Mostly fixed (2026-10-23)** — 0.5/run at v6 → 0.1/run with evidence-quoted blockers (N=10 each) |
+| Deletion-hallucination (fabricated surviving remnants) | 0 | 0 | 8 | **Mostly fixed (2026-10-22)** — 0.5/run at v6 → 0.1/run with evidence-quoted blockers (N=10 each) |
 | True positives | 1 | 1 | 2 | See below |
 
 Round-1 precision: 1/12 (~8%) → 1/6 (~17%) → **2/10 (20%)**, N=3.
@@ -241,7 +255,7 @@ run: extreme variance), one run died of num_ctx exhaustion in round 2,
 and the hedge guardrail demoted a hedged *true* claim. All recorded,
 all queued for per-class remediation.
 
-**Update (2026-10-23, ADR-0002, sixth to tenth measurements; 10
+**Update (2026-10-22, ADR-0002, sixth to tenth measurements; 10
 round-1 samples per arm).**
 - The deletion class persisted at v6 (0.5 per run) even with the
   context pack fixed, so it does not need the pack.
@@ -253,6 +267,10 @@ round-1 samples per arm).**
   FPs at 0.1 per run and 2 valid blockers lost to the check.
 - This is one fixture. The stable corpus (STATUS #7) is the next test
   of whether it holds.
+- **Fencing the input (eleventh measurement) kept round 1's precision**
+  at 80% of stored blockers, with the race found in all 10 runs and 0.1
+  deletion FPs per run. It also showed 4 other FPs, against G3's 0, so
+  it is worth watching.
 
 Evidence: baseline `coach_artifacts/decision_debate_20261007_203917.json`,
 re-measurement `coach_artifacts/decision_debate_20261009_014257.json`,
