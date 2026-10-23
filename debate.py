@@ -9,10 +9,11 @@ import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, NamedTuple, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple
 
 from adjudication import (JUDGE_VERSION, convergence_verdict,
-                          demote_hedged_blockers, derive_verdict,
+                          demote_hedged_blockers, demote_unverified_blockers,
+                          derive_verdict, evidence_sources,
                           normalize_agent_output)
 from agent_client import call_agent, failure_result
 from config import (MAX_DEBATE_ROUNDS, MODELS, NUM_CTX, NUM_PREDICT,
@@ -156,6 +157,7 @@ class _Setup(NamedTuple):
     file_path: str
     layer: Optional[str]
     layer_note: str
+    evidence: Dict[str, List[str]]  # post-change lines reviewer blocker quotes are checked against
 
 
 def _prepare(code_diff: str, code_context: str, header_artifact: bool) -> _Setup:
@@ -177,10 +179,10 @@ def _prepare(code_diff: str, code_context: str, header_artifact: bool) -> _Setup
     pack_report["text"] = pack_text
 
     # Static transcript sections — built once, they never change.
+    shown_context = code_context[:CONTEXT_CHAR_LIMIT]
     static_section = STATIC_TEMPLATE.format(
         diff=code_diff or '(no diff attached)',
-        context=(code_context[:CONTEXT_CHAR_LIMIT] if code_context
-                 else '(none provided)'))
+        context=shown_context or '(none provided)')
 
     file_path = extract_file_path(code_diff, code_context)
     layer = identify_layer(file_path) if file_path else None
@@ -189,8 +191,10 @@ def _prepare(code_diff: str, code_context: str, header_artifact: bool) -> _Setup
         static_section += REPO_CONTEXT_TEMPLATE.format(pack=pack_text)
     if layer_note:
         static_section = f"{static_section}\n{layer_note}\n"
+    # Quotes may come only from code the reviewer was shown.
     return _Setup(reviewer_prompt, static_section, pack_text, pack_report,
-                  file_path, layer, layer_note)
+                  file_path, layer, layer_note,
+                  evidence_sources(code_diff, shown_context))
 
 
 def _render_transcript(proposal: str, static_section: str, round_num: int) -> str:
@@ -293,7 +297,9 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
                                   validate=_validate_engineer,
                                   telemetry=telemetry["auto_engineer"])
 
-        # ============ GUARDRAIL: hedge demotion (before storing) ============
+        # ============ GUARDRAILS: unquoted, then hedged blockers (before storing) ============
+        reviewer, rev_unquoted = demote_unverified_blockers(
+            reviewer, setup.evidence, "questions")
         reviewer, rev_demoted = demote_hedged_blockers(reviewer, "questions")
         engineer, eng_demoted = demote_hedged_blockers(engineer, "concerns")
         hedge_stats = {"reviewer_demoted": rev_demoted,
@@ -303,6 +309,7 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
             "round": round_num,
             "reviewer": reviewer,
             "auto_engineer": engineer,
+            "evidence_demotions": {"reviewer_demoted": rev_unquoted},
             "hedge_demotions": hedge_stats,
             "telemetry": telemetry,
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -381,7 +388,7 @@ def run_round1_review(proposal: str, code_diff: str = "", code_context: str = ""
     reviewer never sees the engineer, so this samples the same output as
     a debate's first call without running the rest of the debate.
 
-    Retries and hedge demotion work as in a debate; nothing is judged. The
+    Retries, evidence and hedge demotion work as in a debate; nothing is judged. The
     record is coach_artifacts/measurement_<id>.json, with mode
     round1_reviewer, verdict MEASUREMENT_VERDICT (AGENT_FAILURE_VERDICT if
     every attempt failed), and no engineer entry in its one round."""
@@ -393,6 +400,8 @@ def run_round1_review(proposal: str, code_diff: str = "", code_context: str = ""
                           _render_transcript(proposal, setup.static_section, 1),
                           TEMPERATURE_EXPLORATION, validate=_validate_reviewer,
                           telemetry=telemetry["reviewer"])
+    reviewer, unquoted = demote_unverified_blockers(reviewer, setup.evidence,
+                                                    "questions")
     reviewer, demoted = demote_hedged_blockers(reviewer, "questions")
     agent_failures = ([f"round 1 reviewer: "
                        f"{reviewer.get('failure_reason', 'unknown')}"]
@@ -401,6 +410,7 @@ def run_round1_review(proposal: str, code_diff: str = "", code_context: str = ""
     round_history = [{
         "round": 1,
         "reviewer": reviewer,
+        "evidence_demotions": {"reviewer_demoted": unquoted},
         "hedge_demotions": {"reviewer_demoted": demoted},
         "telemetry": telemetry,
         "timestamp": datetime.now(timezone.utc).isoformat(),

@@ -13,7 +13,15 @@ Any edit here must be reflected by bumping PROMPT_VERSION."""
 # v6 (2026-10-22): the diff is authoritative over the context pack. The
 # template and pack no longer say "ground truth" or "verified facts"; pack
 # entries the diff removes are omitted and named (pack format f3).
-PROMPT_VERSION = "v6-diff-authoritative"
+# v7 (2026-10-22, ADR-0002 arm H): the reviewer's ban on hedged language
+# in blockers was removed. Not supported (the reviewer did not hedge more),
+# so reverted.
+# v8 (2026-10-22, ADR-0002 arm G): built on the v6 text. Each reviewer
+# blocker quotes its evidence from the diff; adjudication moves blockers
+# whose quote is not in the named file to questions (judge j3).
+# v9 (2026-10-23, ADR-0002 arm G3): the quote must be code as it reads
+# after the change; removed lines are not evidence (judge j4).
+PROMPT_VERSION = "v9-post-change-quotes"
 
 AUTO_ENGINEER_PROMPT = """You are a senior automotive engineer advocating for QtTune's v0.2.0 goals:
 shipping velocity, J2534/ECU domain correctness, and safety.
@@ -63,7 +71,9 @@ IMPORTANT CLARIFICATIONS:
 OUTPUT TAXONOMY (respond ONLY with this JSON):
 {
     "verdict": "approve" | "conditional" | "reject",
-    "blockers": ["asserted violations: cite the specific line and the specific violated rule"],
+    "blockers": [{"claim": "the violated rule and what is wrong",
+                  "file": "a file path from the diff headers",
+                  "quote": "the code that shows it, copied exactly from the CODE DIFF as it reads after the change"}],
     "questions": ["unverifiable-from-context concerns, e.g. lifetime, ownership, concurrency policy"],
     "nits": ["optional improvements"]
 }
@@ -71,6 +81,15 @@ OUTPUT TAXONOMY (respond ONLY with this JSON):
 Rules for using the taxonomy:
 - A "blocker" is a DEMONSTRABLE violation visible in the provided code. If you
   cannot cite the line and rule, it does not belong in blockers.
+- Every blocker quotes the code that shows the violation as it reads AFTER the
+  change: unchanged or added lines, copied exactly, without the leading '+' or
+  space. Removed lines no longer exist and are not evidence; if the problem is
+  caused by a removal, quote the code after the change that the removal leaves
+  broken or unprotected. Blockers are checked mechanically: a blocker whose
+  quote is not found in that file's code after the change is moved to
+  questions.
+- A wrong blocker costs more than an open question, and a question costs
+  nothing. If you cannot quote the evidence, ask a question instead.
 - Hedged language (may/might/could/possibly/suspected/appears/seems/uncertain)
   MUST NOT appear in blockers — such statements belong in "questions".
 - "reject" requires at least one blocker. If you have only questions or nits,

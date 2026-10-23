@@ -5,7 +5,8 @@ context window raised to 24576 and output capped at 12288 from live
 telemetry; v6 diff-authoritative retrieval with the index rebuilt from
 the fixture's base; backlog #18–#21 filed; convergence rule j2, backlog
 #2's minimal option; CI on Python 3.11 and 3.13; round-1 measurement
-mode and scorer; v6 baseline measured)
+mode and scorer; v6 baseline measured; arms H, G and G3, with
+evidence-quoted blockers shipped as v9 / j4 on 2026-10-23)
 
 Purpose of this file: anyone picking up this repo can orient in five
 minutes, run the existing validation, and continue the queued work
@@ -27,7 +28,7 @@ without reverse-engineering the ADRs.
 - Hedge-language demotion guardrail (deterministic, regression-tested)
 - Golden suite: 3 model fixtures + 7 deterministic guardrail units = 10/10
   (re-run live 2026-10-10 after the fixes below)
-- Deterministic regression suite: 100 stdlib unittest cases in `tests/`,
+- Deterministic regression suite: 114 stdlib unittest cases in `tests/`,
   with Ollama faked at the HTTP layer. No model needed; CI-ready.
 - FP-rate probe (5-run aggregates), model bake-off
 - Repo indexer (`--index`): typedefs, constants, layer map, LLM purpose
@@ -156,6 +157,32 @@ without reverse-engineering the ADRs.
     hand-scored M1 per run exactly (2, 1, 1, 0, 0, 0) and excludes
     3026b2 as a retry. The 10 M2 candidates include all 3 confirmed M2
     blockers; the other 7 object to removals.
+- **Evidence-quoted blockers (2026-10-23, PROMPT_VERSION
+  v9-post-change-quotes, JUDGE_VERSION j4-post-change-quotes; ADR-0002,
+  eighth to tenth measurements).**
+  - Each reviewer blocker is `{claim, file, quote}`. The quote must be
+    code as it reads after the change: context or added lines, never
+    removed ones. The prompt says a wrong blocker costs more than a
+    question.
+  - `adjudication.demote_unverified_blockers` runs before hedge
+    demotion. It moves a blocker to questions when its quote is not in
+    the post-change lines of the file it names. Matching is line by line
+    within one hunk; a trailing comment may be omitted.
+  - Rounds record `evidence_demotions`. The scorer lists those items as
+    `#e`.
+  - **Measured on 10 samples:**
+    - deletion-class FPs 0.1 per run, against 0.5 at v6;
+    - stored blockers 94% valid, against 42%;
+    - the race found in 7 of 10 runs;
+    - 2 valid blockers demoted.
+  - **How it got there:**
+    - Arm H, removing the hedging ban, was not supported: the reviewer
+      did not hedge more.
+    - Arm G accepted quotes from either side. The deletion class moved
+      to quoting removed lines, and a matcher error demoted valid
+      blockers.
+  - The engineer, the golden suite, the probe and the bake-off are
+    unchanged and do not check quotes.
 
 **Known limitations (by design or pending):**
 - **Deletion hallucination: the reviewer fabricates surviving
@@ -169,8 +196,17 @@ without reverse-engineering the ADRs.
   at the same rate,** 5 in 10 runs (0.5 per run). Four of the five claim
   that `Main.qml` still references `signalModel`. No pack contains that
   name, and `Main.qml` never did: it was used only in the deleted
-  `LiveViewPage.qml`. So the class does not need the pack, and #15 (a
-  pre-judge check) proceeds (ADR-0002, sixth measurement).
+  `LiveViewPage.qml`. So the class does not need the pack (ADR-0002,
+  sixth measurement).
+  **Since v9 / j4 the judge removes most of it** (0.1 per run stored).
+  The model still produces 3–4 per 10 runs, which are demoted because
+  their quotes exist only on the removed side.
+- **A quote proves the code exists, not that it supports the claim.**
+  The one deletion-class blocker G3 kept quoted unrelated post-change
+  code (ADR-0002, tenth measurement).
+- **A deleted test cannot be a blocker under j4.** Its lines exist only
+  on the removed side, so "this diff deletes the regression test"
+  becomes a question.
 - **The bridge fixture's proposal contradicts its diff.** Every run
   since 2026-10-07 used *"Review: coalesced signal updates with
   LiveView Page v0.3.0 phase 2"*, the subject of `e0c4c31`, which adds
@@ -232,10 +268,10 @@ without reverse-engineering the ADRs.
 | `orchestrator.py` | Thin CLI entrypoint: argument parsing and dispatch only. Modes `--golden`, `--proposal` and `--index` are mutually exclusive; inputs read as UTF-8. Re-exports key symbols as a transition shim. |
 | `config.py` | Central configuration: MODELS dict, num_ctx, timeouts, temperatures, and prompt composition. Single place to swap models. |
 | `agent_client.py` | Ollama client. Single agent turn, JSON-mode enforcement, retries with corrective messages, optional per-attempt telemetry (token counts, thinking/reply sizes, done_reason, wall time; tails of failed replies). The ONLY module that touches the network. |
-| `adjudication.py` | Pure adjudication logic, no I/O: `normalize_agent_output()`, `derive_verdict()`, `convergence_verdict()`, `demote_hedged_blockers()` (returns the output and the demoted count), `JUDGE_VERSION`. CI-importable. |
+| `adjudication.py` | Pure adjudication logic, no I/O: `normalize_agent_output()` (keeps reviewer blockers' file and quote as `blocker_evidence`), `derive_verdict()`, `convergence_verdict()`, `evidence_sources()` and `demote_unverified_blockers()` (judge j4: quotes must be post-change code), `demote_hedged_blockers()` (both demotions return the output and the demoted count), `JUDGE_VERSION`. CI-importable. |
 | `debate.py` | The debate loop. Transcript templates incl. `REPO_CONTEXT_TEMPLATE`; loads `repo_context.json`, calls `build_context_pack` (never fatal: errors degrade to no retrieval), injects retrieval into the transcript, records `repo_context_pack` (report, pack text, hash, index version) and per-round telemetry in decision records. Ends with AGENT_FAILURE on exhausted agent calls. `run_round1_review` is the measurement mode: the debate's first reviewer call alone, saved as a measurement record. |
 | `golden_tests.py` | Golden suite: 3 LLM-backed model fixtures + `run_hedge_unit_tests()` (7 deterministic guardrail cases, production-derived texts). |
-| `reviewer_prompt.py` | Single source of truth for agent system prompts. PROMPT_VERSION (currently v6-diff-authoritative). Also holds FAILURE_SENTINEL. |
+| `reviewer_prompt.py` | Single source of truth for agent system prompts. PROMPT_VERSION (currently v9-post-change-quotes: reviewer blockers are `{claim, file, quote}`). Also holds FAILURE_SENTINEL. |
 | `file_metadata.py` | File-path → layer mapping and layer constraint notes. |
 | `repo_context.py` | Offline indexer (`orchestrator.py --index ../qttune [--no-llm]`) AND debate-time retrieval (`harvest_callsites`, `build_context_pack`): modified-file purposes, referenced types/constants, queued-connection call sites with paren-depth statement scanning, budget-enforced truncation. Since v6, entries the diff removes are omitted and named, and the index records its source commit. Consumed by debate.py since v5-context-pack. |
 | `repo_context.json` | Committed context pack for QtTune, built from the bridge fixture's base (`source_commit` `e0c4c31`, 2026-10-22: 35 files, 24 LLM purposes, 1 queued-connection call site). Reviewing a different diff needs an index of that diff's base. repo_root field removed 2026-10-13 (local-path leak). Read by debate.py at runtime from next to repo_context.py, regardless of CWD. |
@@ -250,7 +286,7 @@ without reverse-engineering the ADRs.
 | `docs/portability_guide.md` | Running on other machines / codebases. Predates the module split. |
 | `docs/fixtures/qttune_bridge_refactor.diff` | Input diff for all bridge-refactor debates. Provenance (established 2026-10-13): reverse patch of QtTune `e0c4c31`; post-state identical to committed `8ffbf19` (blob `1c195f8`). |
 | `coach_artifacts/decision_debate_*.json` | Decision records. Nine archived: header review (194320), baseline (203917), v1 re-measurement (014257), feedback smoke (153541, see erratum caveat), live-loop control (170208), context-pack pilot (201540, unscored), and three scored context-pack runs (203802, 204845, 210548). Plus seven unscored v5.2 telemetry runs on the bridge fixture, from 20261022: two at num_ctx 16384 (134539_3026b2, 140943_bbe168), three at 24576 (143424_1b11cc, 145342_743bc4, 153943_7a4809), and two at 24576 with num_predict 12288 (160429_15cc3f, 161800_5b3f1d). Records from 2026-10-10 on carry `prompt_fingerprint`, sampling settings, input hashes, layer, `agent_failures`; v5 records carry `repo_context_pack`; v5.2 records add the pack text and per-attempt `telemetry`. |
-| `coach_artifacts/measurement_round1_*.json` | Round-1 measurement records (`metadata.mode` `round1_reviewer`): one reviewer round, no engineer, no merge decision. Same provenance fields as decision records. Ten from the v6 baseline (2026-10-22, 205145_5d2fc3 to 210647_dc4008), input fixture `docs/fixtures/qttune_bridge_refactor.diff`. |
+| `coach_artifacts/measurement_round1_*.json` | Round-1 measurement records (`metadata.mode` `round1_reviewer`): one reviewer round, no engineer, no merge decision. Same provenance fields as decision records. Forty, all on input fixture `docs/fixtures/qttune_bridge_refactor.diff`. The v6 baseline: 2026-10-22, 205145_5d2fc3 to 210647_dc4008. Arm H (v7): `20261022_22*`. Arm G (v8 / j3): `20261023_00*`. Arm G3 (v9 / j4): `20261023_01*`. |
 | `probe_logs/fp_*.json` | 5-run probe aggregates backing the FP-rate claims. |
 | `requirements.txt` | Runtime deps (requests). |
 | `.github/workflows/` | CI: compile checks + regression suite, no Ollama. |
@@ -276,7 +312,7 @@ top of everything.
    PROMPT_VERSION. Transcript templates and the pack format are prompts
    too: a change to `build_context_pack`'s output also bumps
    `PACK_FORMAT_VERSION`, which feeds the fingerprint. Currently
-   v6-diff-authoritative.
+   v9-post-change-quotes.
 5. **Evidence pairs.** Every committed decision record needs its input
    fixture committed alongside (docs/fixtures/).
 6. **Predict before measuring.** Expected outcome written to the ADR
@@ -292,11 +328,11 @@ top of everything.
 
 ## Backlog (ideas, loosely ordered)
 
-Suggested order as of 2026-10-22 (v6 baseline done; ADR-0002, sixth
-measurement): #15 deletion-consistency check, since the class persists
-→ #21 fixture proposal → #16 runaway output →
-#12 hedge gate → #18 early reject → #11 transcript protocol → #17
-re-triage → the rest.
+Suggested order as of 2026-10-23 (j4 shipped; ADR-0002, tenth
+measurement): run the live golden suite with v9 → #7 stable corpus, so
+j4's precision is tested beyond one fixture → #21 fixture proposal →
+#16 runaway output → #12 hedge gate → #18 early reject → #11
+transcript protocol → #17 re-triage → the rest.
 
 1. **Repo context pack — DONE (2026-10-13).** Indexer, callsite
    harvester, debate-time retrieval and the third measurement are all
@@ -314,8 +350,6 @@ re-triage → the rest.
    prompt_eval_count near NUM_CTX means the prompt is crowding the
    window. A large eval_count with done_reason=length means the output
    ran out. Probe and bake-off do not record it (#9).
-5. **Cloud model support.** OpenAI-compatible endpoint in
-   agent_client.py; golden suite first; segregated results.
 6. **Chained/escalated debates.** On MAX_ROUNDS_EXCEEDED, re-submit
    unresolved questions as a fresh debate. Depends on #2.
 7. **Stable real-diff corpus.** 3–5 triaged real diffs with known
@@ -339,7 +373,10 @@ re-triage → the rest.
 14. **Client hardening.** Pass the JSON schema as Ollama's `format`
     (structured outputs); route golden fixtures through the transcript
     builder.
-15. **Deletion-hallucination remediation.** Ground
+15. **Deletion-hallucination remediation — DONE another way
+    (2026-10-23, j4).** Evidence-quoted blockers replaced the check
+    planned below, which stays parked as a fallback (ADR-0002, seventh
+    to tenth measurements). Original plan: ground
     "removed symbols" from the diff's minus side: a blocker claiming a
     surviving reference to symbol X must verify X is not in the removed
     set. Deterministic pre-judge check in adjudication.py, or retrieval
@@ -357,6 +394,11 @@ re-triage → the rest.
       file that never contained the name.
     - `eval_harness.round1`'s candidate logic is a prototype for the
       identifier half.
+
+    A design and prediction were drafted 2026-10-22 (ADR-0002, seventh
+    measurement): on the dev set the frozen rule demoted 7 of 8 M2 and
+    0 of 37 others. It was parked before any held-out scoring, in
+    favour of arms H, G and G3.
 16. **Context budget and runaway output — IN PROGRESS (2026-10-22).**
     - **Prompt side, settled:** the prompt is a stable ~9.4K–10.2K
       tokens. The diff is ~83% of it, the pack ~820 tokens, feedback

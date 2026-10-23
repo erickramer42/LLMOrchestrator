@@ -888,3 +888,690 @@ These blockers are removal objections, not M2.
     claimed survivor sits in a file the diff touches but that never
     contained the name.
 - **Scorer check:** all 5 confirmed M2 were among the 16 candidates.
+
+## Seventh Measurement (Parked) — Survival-Claim Check (backlog #15)
+
+*Design and prediction recorded 2026-10-22, before the rule ran on
+any held-out blocker. Draft for review: nothing is implemented yet.*
+
+*Amendment (2026-10-22): parked before any held-out scoring.*
+- **Why:** this regex checks a blocker's wording after the fact, as
+  hedge demotion does. The v6 deletion FPs look like misreadings that a
+  check on the evidence would catch however confident they sound.
+- **Chosen instead, one variable at a time:**
+  - the eighth measurement, H, drops the prompt's hedging ban;
+  - the ninth, G, makes each blocker quote verifiable evidence.
+- **Kept as a fallback if G fails.** The held-out sets A and B are
+  still unread, so this design can be scored later as written.
+
+**Problem:** the sixth measurement found deletion-consistency FPs at
+0.5 per run without the pack asserting the symbols. A blocker of this
+class claims that something only the diff's removed lines contain still
+exists ("Main.qml still references `QtTune.signalModel`"). The diff is
+enough to show the claim is unsupported.
+
+**Rule (frozen; becomes judge `j3-survival-claims` if shipped):**
+
+- **Removed-only identifiers:** the code-like identifiers
+  (`_code_like`) in `_removed_identifiers(diff)`. These appear on the
+  diff's removed lines and on no added, context or hunk-header line.
+  Debate computes the set once and passes it in, so adjudication.py
+  stays pure.
+- **Sentences:** each blocker is split into sentences after `.`, `;`,
+  `!`, `?` and at ` - `.
+- **Fires when one sentence has either of these:**
+  - **STILL:** a match of
+    `\bstill\s+(?:\w+\s+){0,2}?(?:referenc|us|call|declar|expos|bind|bound|import|includ|exist|contain|depend)\w*`
+    (case-insensitive), with a removed-only identifier among the next
+    6 words.
+  - **ORPHAN:** a match of
+    `\b(?:dangling|unresolved|broken\s+(?:\w+\s+)?(?:binding|reference)s?)\b`,
+    with a removed-only identifier anywhere in the same sentence.
+- **Action:** like hedge demotion. The blocker moves, verbatim, to the
+  end of the reviewer's `questions` or the engineer's `concerns`, after
+  any hedge demotions. Each round records the count as
+  `survival_demotions`. Demoted items can be recovered from the counts,
+  so records stay replayable.
+- **Scope:** the rule never fires without a diff, since the removed set
+  is then empty.
+
+**Development set** (tuned on, so optimistic): the 45 round-1 blockers
+of fifth-measurement arm 1 and the sixth measurement, with the labels
+recorded above.
+
+- **Recall:** it demotes 7 of the 8 M2.
+- **False demotions:** 0 of the 37 others (11 race, 4 in-flight gate,
+  19 removal objections, 3 other).
+- **The miss:** the borderline bbe168 #1 ("removed from header but
+  referenced in QML").
+- **The near miss:** 8e3c25 #2, a negative, contains "still
+  references", but no removed-only identifier follows. The comment it
+  cites is real.
+
+**Known gaps** (deliberately not covered, since there is no dev
+evidence for them):
+- "but referenced in", "remains", "continues to use".
+- Survivors named in prose ("the signal model") rather than by
+  identifier.
+- Claims whose identifier sits in another sentence than the marker.
+
+**Held-out sets:**
+
+- **A, v5 scored runs** (276bd0, e4d1b3, 6ce6c0; 10 blockers).
+  - The labels come from the fourth measurement's table: M2 2, 6 and 0;
+    TP 1, 0 and 1. That is 8 M2 and 2 TP.
+  - Run 1's TP (the 10,000-frame freeze) is identified by content at
+    scoring time.
+  - The labels stand as recorded. A label that looks wrong under the
+    sixth measurement's definition is reported, not changed.
+- **B, no-pack runs** (014257 and 170208). These are 3 round-1
+  thread-safety blockers with 0 M2, per the fourth and fifth
+  measurements.
+- **C, 10 new v6 samples** from the round-1 measurement mode.
+  - Each blocker is labelled by hand with the sixth measurement's
+    classes, against `8ffbf19`.
+  - The labels are recorded here before the rule runs on them.
+  - The labeller knows the rule. M2 labels rest on `git grep` facts,
+    which limits that bias.
+
+**Prediction:**
+
+| Metric | Predicted |
+|---|---|
+| Valid blockers demoted (race, gate, TPs, other valid), A + B + C | **0** |
+| B demotions | 0 of 3 |
+| A recall | ≥ 4 of 8 M2 |
+| C recall | ≥ 50% of its M2 |
+| A + C recall | ≥ 50% |
+| C removal objections demoted | ≤ 1 |
+| C M2 per run (replication, no decision attached) | 0.2–0.9 (sixth: 0.5) |
+
+**Basis:**
+- The dev set gives 7 of 8 with no false demotions, so the prediction
+  allows for shrinkage on unseen phrasing.
+- The fourth measurement described v5's class as "signalModel() still
+  declared", which STILL covers.
+- Both markers need a removed-only identifier. The race and gate
+  blockers either name surviving identifiers or make no survival claim.
+
+**Decision rule:**
+
+- **Ship:** zero valid blockers demoted in A–C, and A + C recall
+  ≥ 50%. The rule goes into debates and measurements, and
+  `JUDGE_VERSION` becomes `j3-survival-claims`.
+- **Any valid blocker demoted:** do not ship. The case becomes a
+  negative-control unit, and the held-out sets become dev. Revise the
+  rule and predict again on fresh samples.
+- **No false demotions, but recall < 50%:** the rule is too narrow. The
+  missed cases move to dev; widen the rule, then predict again on fresh
+  samples.
+- **Removal objections demoted:** reported. They are blocking only
+  above 2, since they react to the proposal mismatch (#21) and are not
+  valid defect claims.
+
+**Effect on later measurements:** if j3 ships, stored blockers no
+longer hold the demoted M2. To stay comparable, the scored unit becomes
+round-1 blockers after hedge demotion and *before* survival demotion.
+The scorer rebuilds that from `survival_demotions`.
+
+**Plan after review** (offline; no model runs except collecting C):
+
+1. Add `demote_unverified_survival(agent_out, removed, concern_key)` to
+   adjudication.py, as a pure function returning `(output, count)`.
+   - Unit cases are taken verbatim from records, with the record id as
+     provenance, as for the hedge units.
+   - Positives: the 7 dev M2 it catches.
+   - Negative controls: 8e3c25 #2, a gate blocker and a race blocker.
+2. Have the scorer apply it to stored round-1 blockers and report what
+   it would demote, per class. This is the replay.
+3. Collect and label C, record the labels here, then replay over A, B
+   and C and score against this table.
+4. Only if it ships: wire the rule into `run_debate` and
+   `run_round1_review`, and bump `JUDGE_VERSION`.
+
+## Eighth Measurement (Pending) — Arm H: No Hedging Ban
+
+*Prediction recorded 2026-10-22, before any H sample was run.*
+
+**Hypothesis** (the project owner's): the reviewer prompt's ban on
+hedged language in blockers pushes the model into confident wrong
+guesses.
+- **The mechanism:** the rule checks wording. A model can comply by
+  dropping the hedge word while keeping the claim, and nothing says a
+  wrong blocker costs more than a question.
+- **The history fits but proves nothing.** The ban arrived in
+  `5a0ec9b`, between the baseline and the v1 re-run. In that re-run,
+  hedged blockers fell from 3 to 0 with zero demotions, and
+  confident-but-wrong blockers rose from 0 to 4. But that was one run
+  against one, layer metadata changed at the same time, and those 4 are
+  now flagged as probably real races.
+
+**Change** (PROMPT_VERSION `v7-no-hedge-ban`, prompt fingerprint
+`89af2eec5b06a619`):
+- **Deleted, and nothing else changed:** the two prompt lines "Hedged
+  language (may/might/could/possibly/suspected/appears/seems/uncertain)
+  MUST NOT appear in blockers — such statements belong in 'questions'".
+- **Kept:** the demotion guardrail, which becomes the cheap "I don't
+  know" path because a hedged blocker turns into a question.
+- **Also kept:** "A blocker is a DEMONSTRABLE violation … If you cannot
+  cite the line and rule, it does not belong in blockers."
+- **Side effect:** the probe and bake-off share `REVIEWER_SYSTEM`, so
+  they change too. This measurement does not run them.
+
+**Design:**
+- **Samples:** 10 round-1 samples. Fixture, proposal text, models,
+  settings and judge are as in the sixth measurement.
+- **Comparison:** the sixth measurement (v6, 10 samples): 26 blockers,
+  M2 5 in 3 runs, the race in 5 runs, the gate in 3, 1 hedge demotion
+  (0.1 per run), 28 questions.
+- **Unit:** the same as before: round-1 blockers from first attempts,
+  as stored after hedge demotion.
+- **Hedge-demoted items are labelled too.** They are recovered from
+  the tail of `questions` using the `hedge_demotions` count. A demoted
+  M2 is a direct sign the hypothesis holds; a demoted valid blocker
+  (race, gate) is a cost (#12).
+
+**Prediction** (my own expectation, not the hypothesis): the M2 look
+like misreadings, so I expect hedging to rise without M2 falling much.
+
+| Metric | Sixth (v6) | Predicted H |
+|---|---|---|
+| Hedge demotions per run | 0.1 | 0.3–1.5 |
+| M2 per run, stored blockers | 0.5 | 0.2–0.7 |
+| M2 among the hedge-demoted | — | 0–2 |
+| Valid blockers hedge-demoted (race, gate) | 0 | 0–2 |
+| Runs with the race, stored blockers | 5 of 10 | 3–7 |
+| Blockers per run, stored | 2.6 | 1.8–3.2 |
+
+**Decision rule** (on stored M2 per scored run):
+
+- **≤ 0.2, with hedge demotions ≥ 0.3 per run: supported.** H's prompt
+  stays, and G builds on it.
+- **≥ 0.4: not supported.** The class is not forced confidence. Revert
+  to the v6 prompt, and G builds on v6.
+- **Between:** add 5 samples and apply the same thresholds. If the
+  result is still between, treat it as not supported and record it as
+  unresolved.
+- **Override:** if more than 2 valid blockers are hedge-demoted, H is
+  not adopted whatever the M2 result. That is recorded as a data point
+  for #12, the hedge gate.
+
+**Power caveat:** as in the sixth measurement, 10 samples against 10
+detect only a large change. 5 M2 against ≤ 2 is a difference that
+arises by chance about 1 time in 8.
+
+### Results (scored 2026-10-22)
+
+**Samples:** `coach_artifacts/measurement_round1_20261022_22*.json`, from
+221300_927761 to 223504_eadc06, fingerprint `89af2eec5b06a619`.
+- **9 of 10 scored.** a7e4eb is excluded: its first attempt ran away to
+  the 12,288-token cap, and its 7 blockers came from the retry.
+- **Time:** 24.5 minutes in all.
+
+| Metric | Sixth (v6) | Predicted H | Observed H | Outcome |
+|---|---|---|---|---|
+| Hedge demotions per run | 0.1 | 0.3–1.5 | **0.11** (1 in 9) | **MISSED LOW** |
+| M2 per run, stored | 0.5 | 0.2–0.7 | 0.33 (3 in 2 runs); 0.44 with the borderline case | HIT |
+| M2 among the hedge-demoted | — | 0–2 | 0 | HIT |
+| Valid blockers hedge-demoted | 0 | 0–2 | 0 | HIT |
+| Runs with the race | 5 of 10 | 3–7 | 6 of 9 | HIT |
+| Blockers per run, stored | 2.6 | 1.8–3.2 | 2.89 (26) | HIT |
+
+**Decision rule:** the hypothesis is not supported.
+- **The mechanism did not appear.** Without the ban the reviewer still
+  did not hedge its blockers, so no extra claims reached the "I don't
+  know" path. "Supported" also needs hedge demotions ≥ 0.3 per run.
+- **M2 lands between the thresholds.** At 0.33 per run (0.44 with the
+  borderline case), the rule calls for 5 more samples.
+- **Those samples cannot reach "supported".** M2 ≤ 0.2 over 14 runs
+  would need at most 2 M2, and 3 are already counted. They can only
+  decide between "not supported" and "unresolved", and both mean
+  reverting to v6. Whether to run them anyway is recorded below as the
+  owner's decision.
+
+**Composition** (26 stored blockers):
+
+| Run | Blockers | M2 | Composition |
+|---|---|---|---|
+| 927761 | 3 | 0 | the race; 2 × in-flight gate |
+| ec3bc7 | 2 | 0 | 2 × in-flight gate |
+| 9d7d20 | 1 | 0 | the race |
+| 19c2e0 | 4 | 0 | the race; 2 × in-flight gate; deleted regression test |
+| 766a37 | 3 | 0 | the race; in-flight gate; deleted regression test |
+| b0756d | 3 | 0 | the race; in-flight gate; **the 10,000-frame freeze** |
+| c83c91 | 3 | 1 | 1 deletion-consistency; 2 ABI objections to removed code |
+| 051380 | 2 | 0 | the race; false `appendFrame` claim |
+| eadc06 | 5 | 2 | 2 deletion-consistency; 8-byte decode shown as current (borderline M2); feature removal; speculative null dereference |
+
+By class: the race 6 (6 runs), in-flight gate 8 (5 runs), freeze 1, M2
+3, removal objections 3 (2 of them about the deleted regression test),
+other 5. One item was hedge-demoted (c83c91): a speculative `uri8`
+lifetime claim. It is false, since the named local outlives the
+synchronous call, so the demotion was correct.
+
+**The M2 blockers, checked against `8ffbf19`:**
+
+- **eadc06 #3:** "Main.qml: UI references QtTune.signalModel … dangling
+  QML binding". This is the sixth measurement's pattern again.
+- **eadc06 #2:** "SignalListModel … removed from header but references
+  still exist in comments and code". `SignalListModel` has no hits.
+- **c83c91 #2:** "the comment 'Backpressure: bound the QUEUED backlog'
+  references code that was removed". That comment exists only in the
+  pre-state. It also makes the valid gate point, as bbe168 #5 did in
+  arm 1.
+- **Borderline, eadc06 #1:** it presents the removed
+  `qttune_decode_signal(&def, frame->data, 8, &val)` call as current
+  code at "Line 148-151". There is no decode call anywhere in the
+  post-state `app/`. The earlier 8-byte blockers said the code was
+  removed, so they were "other".
+
+**Other false positives:**
+- **051380 #2:** claims `appendFrame` lacks a
+  `beginInsertRows`/`endInsertRows` pair. The post-state has the pair,
+  then evicts with `beginRemoveRows`/`endRemoveRows`.
+- **c83c91 #1 and #3:** C-ABI objections to C++ signatures in the
+  removed `SignalListModel`.
+- **eadc06 #5:** a conditional "potential null pointer dereference".
+  "potential" is not in `HEDGE_PATTERNS`.
+
+**Unpredicted shift, worth a replication before anything relies on
+it:**
+- **More valid blockers.** Race, gate and freeze blockers were 15 of 26
+  (58%), against 11 of 26 (42%) at v6. The gate rose from 4 blockers
+  in 3 of 10 runs to 8 in 5 of 9.
+- **The freeze appeared.** The 10,000-frame freeze (b0756d #3) is the
+  fourth measurement's run-1 TP, its first appearance since v5.
+- **The deleted test returned.** Two blockers flag the removed
+  `StreamingContinuesPastTenThousandFrames` test.
+- **Feature-removal objections almost vanished:** 9 at v6, 1 here.
+- **But other false positives rose,** from 1 to 5.
+- **No prediction covered this,** N is 9 against 10, and a one-line
+  deletion has no obvious route to these effects. So sampling variance
+  is the first explanation.
+
+### Amendment (2026-10-22): the extra samples are skipped; H is reverted
+
+**Decision (project owner):** H is recorded as not supported, without
+the 5 extra samples, since they cannot change the action. The reviewer
+prompt goes back to the v6 text, ban included. The ninth measurement, G,
+builds on v6, so it compares directly with the sixth. The unpredicted
+composition shift stays an observation; nothing relies on it.
+
+## Ninth Measurement (Pending) — Arm G: Evidence-Quoted Blockers
+
+*Design and prediction recorded 2026-10-22, before G was implemented
+or run.*
+
+**Idea:** make a guess expensive by checking it mechanically, not by
+asking for confidence. The arm H result points the same way: the
+reviewer does not hedge when it may, so its wrong blockers are not
+self-flagged guesses. They are confident misreadings, and only a check
+against the code catches those.
+
+**Change** (PROMPT_VERSION `v8-evidence-quotes`, prompt fingerprint
+`2e56c3a3c15d32f2`, JUDGE_VERSION `j3-evidence-quotes`; built on the v6
+text, so the hedging ban stays):
+
+- **Prompt:** each reviewer blocker becomes an object
+  `{"claim", "file", "quote"}`. The rules say:
+  - the quote must be copied exactly from that file's lines in the CODE
+    DIFF, without the leading `+`, `-` or space;
+  - blockers are checked mechanically, and one whose quote is not found
+    is moved to questions;
+  - a wrong blocker costs more than an open question, and a question
+    costs nothing, so a blocker whose evidence cannot be quoted should
+    be a question.
+- **Judge** (adjudication.py, pure), run after normalization and
+  before hedge demotion. A blocker stays a blocker only if all of
+  these hold:
+  - it names a file the diff touches. The `file` value is read up to
+    its first space, `a/` and `b/` prefixes and a trailing `:line` are
+    ignored, and a unique path suffix is accepted. A deleted file's
+    `--- a/` path counts.
+  - its quote is found in that file's diff lines, with both sides
+    allowed and whitespace collapsed on both sides. Lines are read by
+    hunk length, so a removed line that starts with `--` is not taken
+    for a file header.
+  - the quote has at least 8 non-space characters.
+
+  A quote may skip text with `...` or `…`. Each fragment must then be
+  found, and the longest must have at least 8 non-space characters. A
+  leading diff marker and surrounding backticks or quotes are stripped.
+  When a code context was supplied, a quote found in it also passes. A
+  string blocker, with no quote, is demoted.
+
+  *(Refined before implementation and before any G sample: the
+  ellipsis and `file`-token details.)*
+
+  Demoted blockers move verbatim, as their flattened text, to the end of
+  `questions`, ahead of any hedge demotions. Each round records the
+  count as `evidence_demotions`.
+- **Unchanged:** the engineer prompt and output, the golden suite, the
+  probe and the bake-off. None of them verify quotes.
+
+**Known gap:** the check proves only that the quote exists in that file,
+not that it supports the claim. A "Main.qml still references
+signalModel" blocker that quotes the removed `LiveViewPage.qml` line
+under the file `LiveViewPage.qml` passes. The check catches the class
+only when the model's misattribution also reaches the `file` field.
+
+**Design:** 10 round-1 samples; fixture, proposal text, models and
+settings as in the sixth measurement, which is the comparison.
+
+- **Unit:** stored round-1 blockers from first attempts, after both
+  demotions.
+- **Evidence-demoted items are labelled too:**
+  - a demoted M2 is the mechanism working;
+  - a demoted valid blocker (race, gate, freeze) is the cost.
+- **M1 is not comparable:** quoted code puts identifiers into blocker
+  text. It is reported without a prediction.
+
+**Prediction:**
+
+| Metric | Sixth (v6) | Predicted G |
+|---|---|---|
+| M2 per run, stored | 0.5 | ≤ 0.2 (0–2 in total) |
+| M2 among the evidence-demoted | — | ≥ 2 |
+| Valid blockers evidence-demoted | — | 0–3 |
+| Runs with the race, stored | 5 of 10 | 3–7 |
+| Blockers per run, stored | 2.6 | 1.5–3.0 |
+| Evidence demotions per run | — | 0.3–1.5 |
+| Raw blockers that carry a file and a quote | — | ≥ 80% |
+| Samples excluded | 0 | 0–3 |
+
+**Basis:**
+- **M2 should fall.** In four of the five sixth-measurement M2, the
+  claim names `Main.qml` and the evidence is the `LiveViewPage.qml`
+  removal. A model that names the file it means fails the check.
+- **Valid blockers already quote real lines,** for example
+  `if (self->m_currentFrameCount >= FrameListModel::MaxFrames)`.
+- **The cost will come from paraphrased quotes** and from code outside
+  the hunks.
+
+**Decision rule:**
+
+- **Ship (keep v8 and j3):** stored M2 ≤ 0.2 per run, at most 2 valid
+  blockers evidence-demoted, and the race in at least 3 runs.
+- **M2 ≥ 0.4:** G does not fix the class. Revert, and choose between
+  the parked #15 check and other options.
+- **M2 ≤ 0.2 but more than 2 valid blockers demoted:** the recall cost
+  is too high. Do not ship as is. Find out why the quotes failed, then
+  revise and predict again.
+- **M2 between 0.2 and 0.4:** add 5 samples and apply the same
+  thresholds. If the result is still between, G is not shipped and is
+  recorded as unresolved.
+- **Raw blockers with a quote below 50%:** the model is not following
+  the format. Fix the prompt before reading any other metric.
+
+### Results (scored 2026-10-23)
+
+**Samples:** `coach_artifacts/measurement_round1_20261023_00*.json`, from
+003411_e18362 to 005021_c88bcd, fingerprint `2e56c3a3c15d32f2`.
+- All 10 replies came on the first attempt, so all 10 are scored. No
+  reply ran away; collecting them took 17 minutes.
+- All 27 raw blockers came as `{claim, file, quote}`. 20 were kept and
+  7 were evidence-demoted; nothing was hedge-demoted.
+
+| Metric | Predicted G | Observed | Outcome |
+|---|---|---|---|
+| M2 per run, stored | ≤ 0.2 | 0.1 strict (1); 0.6 counting removed code described as current (6) | HIT strict, see below |
+| M2 among the evidence-demoted | ≥ 2 | 0 | **MISSED** |
+| Valid blockers evidence-demoted | 0–3 | **4** (3 gate, 1 race), plus 1 valid deleted-test objection | **MISSED HIGH** |
+| Runs with the race, stored | 3–7 | 5 of 10 (10 blockers) | HIT |
+| Blockers per run, stored | 1.5–3.0 | 2.0 | HIT |
+| Evidence demotions per run | 0.3–1.5 | 0.7 | HIT |
+| Raw blockers with a file and a quote | ≥ 80% | 27 of 27 | HIT |
+| Samples excluded | 0–3 | 0 | HIT |
+
+**Decision rule:** on the strict M2 count (0.1 ≤ 0.2) with 4 valid
+blockers demoted (more than 2), the branch is "do not ship as is; find
+out why the quotes failed; revise and predict again". G is not shipped.
+
+**Composition:**
+
+| Run | Kept | Evidence-demoted |
+|---|---|---|
+| e18362 | 2 × the freeze | deleted-test objection (quote `}`) |
+| ec62e7 | — | in-flight gate |
+| b7a5a1 | 2 × the race | — |
+| 66371a | the race | the race |
+| 3bee25 | 2 × the race | in-flight gate |
+| eb1077 | 4 × removed code described as current | — |
+| 074dfc | 2 × the race | — |
+| 5cc2ba | removed code described as current; M2 | false "dangling pointer" (fabricated quote) |
+| fe9ad9 | 3 × the race | — |
+| c88bcd | 2 false claims with quotes that mix the diff's sides | in-flight gate; false "null check removed" |
+
+Of the 20 kept blockers, 12 are valid (10 race, 2 freeze), against 11
+of 26 at v6. The freeze, the fourth measurement's run-1 TP, appeared
+for the second arm running.
+
+**The deletion class changed form, not rate.**
+- The explicit misattribution ("Main.qml still references
+  `signalModel`") did not appear at all, so the check had no M2 to
+  catch.
+- Instead, 6 kept blockers in 2 runs describe the deleted signal path
+  as current code, quoting only removed lines:
+  - "`m_stagingBuffer` is accessed from both threads", in eb1077 and
+    5cc2ba;
+  - the hardcoded 8-byte `qttune_decode_signal` call;
+  - the missing decode-error handling;
+  - a C-ABI objection to the removed `setSignalSet`.
+- One of them, 5cc2ba #2, says outright that "code still references"
+  the removed `m_stagingBuffer`, so it is strict M2. The other five
+  assert survival only implicitly, as H's eadc06 #1 did. They are
+  counted as borderline.
+- In all, 6 deletion-class blockers against v6's 5. The quotes exist
+  (on the removed side), so the check passes them, as the recorded
+  known gap expected.
+
+### Amendment (2026-10-23): revise to G3, post-change quotes
+
+**Decision (project owner):** G is not shipped. Its revision, G3, is
+predicted and measured on 10 fresh samples. G's samples are now dev
+data, and the replay above is not evidence for G3.
+
+**Why the valid blockers failed:**
+1. **Implementation error: the check matched against the diff in its
+   interleaved order.**
+   - A multi-line quote from one side is broken by the other side's
+     lines in between. The removed `fetch_sub` line sits inside the
+     post-state `invokeMethod(...)` lambda, so ec62e7 failed; c88bcd's
+     quote of the removed gate block failed the same way.
+   - The same flaw passed two false blockers whose quotes mixed both
+     sides, c88bcd #1 and #2. The design said "either side", meaning
+     one side at a time; the code did not do that.
+2. **Shortened quotes.** 3bee25 dropped a line's trailing comment, and
+   66371a skipped three lines without marking them.
+3. **No evidence.** e18362's deleted-test objection quoted `}`. This
+   fails as designed.
+
+**Dev replay, not a measurement (biased: designed on these samples).**
+A corrected matcher reads the two sides separately and matches each
+quote line against consecutive non-blank lines of one side.
+- **As-run check:** demotes 4 valid blockers and 2 FPs.
+- **Corrected matcher:** demotes 1 valid blocker (66371a) and 4 FPs. The
+  `}` objection is demoted either way.
+- **Where the kept quotes sit:** all 6 deletion-class blockers quote
+  only the removed side. Of the valid blockers, only c88bcd's gate
+  quote does. Every other valid blocker quotes the post-change side
+  (context or added lines).
+
+## Tenth Measurement (Pending) — Arm G3: Post-Change Quotes
+
+*Design and prediction recorded 2026-10-23, before G3 was implemented
+or run.*
+
+**Idea:** a blocker is a claim about the code after the change, so its
+evidence must be code that exists after the change. Removed lines are
+evidence only of a removal. A blocker about removed code described as
+current, the form the deletion class took in G, can no longer quote
+anything.
+
+**Change** (PROMPT_VERSION `v9-post-change-quotes`, prompt fingerprint
+`2aa6ba56fca5f85e`, JUDGE_VERSION `j4-post-change-quotes`; built on
+v8):
+
+- **Prompt:**
+  - The quote is "the code that shows it, copied exactly from the CODE
+    DIFF as it reads after the change". It comes from unchanged or added
+    lines, without the leading `+` or space.
+  - Removed lines no longer exist and are not evidence. If the problem
+    is caused by a removal, quote the code after the change that the
+    removal leaves broken or unprotected.
+  - Unchanged from v8: blockers are checked mechanically, a wrong
+    blocker costs more than a question, and the hedging ban stays.
+- **Judge:** the post-change text of each file is its context plus
+  added lines, in order; removed lines are excluded.
+  - The quote is split at ellipses into fragments, and each fragment
+    into lines.
+  - Each fragment's non-blank lines must match consecutive non-blank
+    post-change lines of the file the blocker names. A quote line
+    matches when it is a substring of its source line, after the diff
+    marker is stripped and whitespace collapsed.
+  - The longest quote line needs at least 8 non-space characters.
+  - File matching is unchanged from G.
+  - A supplied code context counts as post-change text for any file.
+  - Demotion and the `evidence_demotions` count are unchanged.
+  - This replaces G's matcher. It fixes G's interleaving error, accepts
+    a line whose trailing comment the quote omits, and rejects quotes
+    that mix the two sides.
+  - *Refined before implementation and before any G3 sample:* a
+    fragment also matches when its lines, joined, are a substring of
+    the file's joined post-change lines. This covers a quote reflowed
+    onto fewer lines. Hunks are kept apart in both forms, so a quote
+    cannot join lines from two hunks.
+
+**Unit and classes:** the unit is unchanged. The decision metric is the
+whole deletion class:
+- strict M2;
+- blockers that describe code the diff removes as current, without
+  acknowledging the removal, as in G's eb1077 and 5cc2ba.
+
+G showed the class moving between these forms, so they are counted
+together. Raw blockers, kept plus demoted, are reported as well, to
+show whether the model still produces the class.
+
+**Prediction:**
+
+| Metric | Sixth (v6) | G | Predicted G3 |
+|---|---|---|---|
+| Deletion class per run, stored | 0.5 | 0.6 | ≤ 0.2 (0–2 in total) |
+| Valid blockers evidence-demoted (race, gate, freeze) | — | 4 | 0–2 |
+| Runs with the race, stored | 5 of 10 | 5 of 10 | 3–7 |
+| Valid share of stored blockers | 42% | 60% | ≥ 70% |
+| Other FPs, stored | 1 | 2 | 0–3 |
+| Blockers per run, stored | 2.6 | 2.0 | 1.0–2.5 |
+| Evidence demotions per run | — | 0.7 | 0.3–1.5 |
+| Raw blockers with a file and a quote | — | 100% | ≥ 80% |
+| Samples excluded | 0 | 0 | 0–3 |
+
+**Basis:**
+- In G, all 6 deletion-class blockers quoted removed lines only.
+- 14 of the 15 valid blockers the corrected matcher keeps quoted
+  post-change lines.
+- The prompt now steers removal-caused problems toward post-change
+  quotes, as G's ec62e7 and 3bee25 gate blockers already did.
+- **Risk:** the model might keep the claim and swap in an unrelated
+  post-change quote.
+
+**Decision rule:**
+
+- **Ship (v9 and j4 become the default):** the deletion class ≤ 0.2 per
+  run, at most 2 valid blockers evidence-demoted, and the race in at
+  least 3 runs.
+- **Deletion class ≥ 0.4 per run:** quoting does not hold the class.
+  Revert to v6 and j2, and take stock before any further variant.
+- **Class ≤ 0.2 but more than 2 valid blockers demoted:** not shipped.
+  This is the last revision in this line; the next step is a broader
+  review, not G4.
+- **Between 0.2 and 0.4:** add 5 samples and apply the same thresholds.
+  If the result is still between, G3 is not shipped and is recorded as
+  unresolved.
+- **Raw blockers with a quote below 50%:** fix the prompt first.
+
+**Power caveat:** v6 and G had 5 and 6 deletion-class blockers, a mean
+of about 5.5 per 10 runs. If G3 changed nothing, a count ≤ 2 would
+occur by chance about 9% of the time.
+
+### Results (scored 2026-10-23)
+
+**Samples:** `coach_artifacts/measurement_round1_20261023_01*.json`, from
+012351_55c897 to 013952_2f2843, fingerprint `2aa6ba56fca5f85e`.
+- All 10 replies came on the first attempt, so all 10 are scored. No
+  reply ran away; collecting them took 18 minutes.
+- All 27 raw blockers came as `{claim, file, quote}`. 18 were kept, 8
+  evidence-demoted and 1 hedge-demoted.
+
+| Metric | Sixth (v6) | G | Predicted G3 | Observed G3 | Outcome |
+|---|---|---|---|---|---|
+| Deletion class per run, stored | 0.5 | 0.6 | ≤ 0.2 | **0.1** (1) | HIT |
+| Valid blockers evidence-demoted | — | 4 | 0–2 | **2** (1 gate, 1 race) | HIT, at the limit |
+| Runs with the race, stored | 5 of 10 | 5 of 10 | 3–7 | 7 of 10 (14 blockers) | HIT |
+| Valid share of stored blockers | 42% | 60% | ≥ 70% | **94%** (17 of 18) | HIT |
+| Other FPs, stored | 1 | 2 | 0–3 | 0 | HIT |
+| Blockers per run, stored | 2.6 | 2.0 | 1.0–2.5 | 1.8 | HIT |
+| Evidence demotions per run | — | 0.7 | 0.3–1.5 | 0.8 | HIT |
+| Raw blockers with a file and a quote | — | 100% | ≥ 80% | 100% | HIT |
+| Samples excluded | 0 | 0 | 0–3 | 0 | HIT |
+
+**Decision rule: ship.** All three conditions hold: the deletion class
+is 0.1 ≤ 0.2 per run, 2 ≤ 2 valid blockers were demoted, and the race
+appeared in 7 ≥ 3 runs. v9 and j4 become the default.
+
+**Kept blockers (18):**
+- **The race,** 14 in 7 runs.
+- **The in-flight gate,** 3: 80f1be #2 and #4, and 6b4d1a #2. 80f1be #2
+  states the freeze's root cause: the gate checks "processed frames
+  instead of in-flight/queued frames; should bound queue backlog, not
+  lifetime count".
+- **One deletion-class blocker, 55c897 #1.** It makes the valid gate
+  point but adds "the comment about MaxInFlightFrames is now
+  meaningless". No such comment exists at `8ffbf19`. Its quote is
+  unrelated post-change code, the `appendFrame` eviction loop. This is
+  the risk the prediction recorded: a real quote that does not support
+  the claim.
+
+**Evidence-demoted (8):**
+- **Deletion class, the mechanism working:**
+  - 819df9 #e1 and #e3, which present the removed 8-byte
+    `qttune_decode_signal` call as current;
+  - 698a1c #e1, the same call in the past tense (borderline).
+- **False positive:** 819df9 #e2, an `m_connected` "race" whose quoted
+  code does not exist anywhere.
+- **Feature-removal objection:** 55c897 #e3, the signal batching.
+- **Valid, the cost:**
+  - 55c897 #e1, a gate claim quoting removed header lines;
+  - 2f2843 #e1, a race claim whose quote skipped three lines. The same
+    run kept another race blocker.
+- **Valid deleted-test objection:** 55c897 #e2 (the removed
+  `forceFrameCountForTesting` hook and the regression test). It is
+  reported apart from the race, gate and freeze count, as in G.
+
+**Hedge-demoted (1):** 2eb07e #h1, an `m_guiNotifyCount` "race" between
+two GUI-thread accesses. It is false, so the demotion was correct.
+
+**What this shows:**
+- **The model still produces the deletion class; the judge now
+  removes it.** Raw blockers held 3 or 4 deletion-class claims, kept
+  plus demoted. Only one survived, and it carried a quote that does not
+  support it.
+- **Stored blockers are the most precise of any arm,** 94% valid,
+  against v6's 42% and G's 60%. A count of ≤ 1 deletion-class blocker
+  when about 5.5 were expected occurs by chance about 3% of the time.
+- **Valid demotions have two causes:** a removal-caused claim that
+  quoted removed lines despite the prompt, and a quote that skipped
+  lines.
+
+**Costs and limits:**
+- **A deleted test can no longer be a blocker.** Its lines exist only
+  on the removed side. "This diff deletes the regression test" becomes
+  a question.
+- **The freeze was not named** as a consequence (H 1, G 2, G3 0),
+  though 80f1be #2 gives its root cause.
+- **Blockers concentrate on the race.** Recall beyond the race and the
+  gate is untested on this fixture.
+- **This is one fixture,** with 10 samples per arm. The stable corpus
+  (#7) is needed before the precision claim generalizes.
+- **The live golden suite has not been run with v9.** Its fixtures do
+  not apply the evidence check, but they read the new blocker format.

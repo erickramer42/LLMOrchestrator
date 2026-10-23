@@ -28,7 +28,7 @@ retrieval)*,
 | `orchestrator.py` | CLI entrypoint (argument parsing and dispatch only) |
 | `config.py` | Models, runtime knobs, prompt composition |
 | `agent_client.py` | Ollama client — the only module that touches the network; retries invalid or schema-violating replies, then fails closed |
-| `adjudication.py` | Pure logic: schema validation, verdict derivation, hedge demotion guardrail |
+| `adjudication.py` | Pure logic: schema validation, verdict derivation, evidence-quote check, hedge demotion guardrail |
 | `debate.py` | Debate loop, transcript templates, repo-context retrieval, judging, decision-record persistence; round-1 reviewer measurement mode |
 | `golden_tests.py` | Golden suite: LLM fixtures + deterministic guardrail units |
 | `reviewer_prompt.py` | Agent system prompts (versioned, single source of truth) |
@@ -97,6 +97,7 @@ Pipeline per round:
 TRANSCRIPT (proposal + diff/context + layer note + prior-round feedback)
     → AGENTS CRITIQUE (same transcript, neither sees the other's reply)
     → SCHEMA VALIDATION (retry, then fail closed as AGENT_FAILURE)
+    → EVIDENCE CHECK (blockers not quoting post-change code → questions)
     → HEDGE DEMOTION (speculative blockers → questions)
     → RULE-BASED JUDGE (derived verdicts, fail-closed)
     → CONVERGED, or feedback fed back for another round
@@ -187,6 +188,18 @@ measured N=3 — see ADR-0002.
    no output filter can fix a model confidently asserting facts it
    cannot see — only showing it the facts can.
 
+10. **Blockers must quote their evidence** — Each reviewer blocker is
+    `{claim, file, quote}`. The quote must be code as it reads after
+    the change, and the prompt says a wrong blocker costs more than a
+    question. `demote_unverified_blockers()` moves any blocker whose
+    quote is not in that file's post-change lines to the questions
+    channel (judge `j4-post-change-quotes`). This makes guessing
+    expensive mechanically instead of by asking for confidence. Arm H
+    found that the reviewer did not hedge more when the hedging ban was
+    lifted: its wrong blockers are confident misreadings, and only a
+    check against the code catches those. Known limit: a quote proves
+    the code exists, not that it supports the claim.
+
 ## Measured Production Precision (the honest part)
 
 On synthetic fixtures, the reviewer scored 100% (3/3 golden, 0/5
@@ -200,7 +213,7 @@ twice — with predictions recorded before each run:
 | Layer-rule misapplication (core rules on bridge code) | 7 | 0 | 0 | **Fixed** — layer metadata injection |
 | Speculative phrasing filed as blockers | 3 | 0 | 0 | **Fixed** — taxonomy discipline; hedge guardrail in reserve |
 | Confident-but-wrong assertions (missing context) | 0 | 4 | **0 in 3/3 runs** | **Fixed** — context retrieval; residual concern moved to questions |
-| Deletion-hallucination (fabricated surviving remnants) | 0 | 0 | 8 | **Open** — new dominant class |
+| Deletion-hallucination (fabricated surviving remnants) | 0 | 0 | 8 | **Mostly fixed (2026-10-23)** — 0.5/run at v6 → 0.1/run with evidence-quoted blockers (N=10 each) |
 | True positives | 1 | 1 | 2 | See below |
 
 Round-1 precision: 1/12 (~8%) → 1/6 (~17%) → **2/10 (20%)**, N=3.
@@ -224,6 +237,19 @@ surviving references to code the diff removes together (6/0/1 by
 run: extreme variance), one run died of num_ctx exhaustion in round 2,
 and the hedge guardrail demoted a hedged *true* claim. All recorded,
 all queued for per-class remediation.
+
+**Update (2026-10-23, ADR-0002, sixth to tenth measurements; 10
+round-1 samples per arm).**
+- The deletion class persisted at v6 (0.5 per run) even with the
+  context pack fixed, so it does not need the pack.
+- Lifting the hedging ban did not make the reviewer hedge more.
+- Requiring a quote from either side of the diff only moved the class
+  onto removed lines.
+- **Requiring post-change quotes worked.** Stored round-1 blockers
+  became 94% valid (17 of 18, against 11 of 26 at v6), with deletion
+  FPs at 0.1 per run and 2 valid blockers lost to the check.
+- This is one fixture. The stable corpus (STATUS #7) is the next test
+  of whether it holds.
 
 Evidence: baseline `coach_artifacts/decision_debate_20261007_203917.json`,
 re-measurement `coach_artifacts/decision_debate_20261009_014257.json`,

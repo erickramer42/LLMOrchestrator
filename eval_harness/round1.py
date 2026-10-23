@@ -21,6 +21,10 @@ measurement):
   --rev) lacks. M2 itself is adjudicated: a blocker that objects to a
   removal, without claiming the removed code survives, is not a
   deletion-consistency FP. Confirm each candidate by hand.
+
+Demoted blockers are listed separately and are not counted as blockers.
+They are recovered from the tail of round 1's questions using the
+evidence_demotions (judge j3) and hedge_demotions counts, in that order.
 """
 
 import argparse
@@ -136,22 +140,37 @@ def score_records(records: List[tuple], code_diff: str, symbols: List[str],
             excluded.append((record_id, "reviewer failed" if status == "failed"
                              else "round-1 reviewer reply came from a retry"))
             continue
-        reviewer = rec["outputs"]["round_history"][0]["reviewer"]
-        blockers = [{"text": str(b), "m1": m1_hits(str(b), symbols),
-                     "m2": m2_candidates(str(b), removed, lacks) if lacks else []}
-                    for b in reviewer.get("blockers", []) or []]
+        first_round = rec["outputs"]["round_history"][0]
+        reviewer = first_round["reviewer"]
+        # Demoted blockers end round 1's questions: evidence demotions
+        # (judge j3), then hedge demotions, each as many as recorded.
+        n_hedged = (first_round.get("hedge_demotions") or {}).get(
+            "reviewer_demoted", 0)
+        n_unquoted = (first_round.get("evidence_demotions") or {}).get(
+            "reviewer_demoted", 0)
+        questions = [str(q) for q in reviewer.get("questions", []) or []]
+        tail = (questions[len(questions) - n_unquoted - n_hedged:]
+                if n_unquoted + n_hedged else [])
+        unquoted, demoted = tail[:n_unquoted], tail[n_unquoted:]
+
+        def tag(text: str) -> dict:
+            return {"text": text, "m1": m1_hits(text, symbols),
+                    "m2": m2_candidates(text, removed, lacks) if lacks else []}
         rows.append({"id": record_id, "path": str(path), "status": status,
                      "prompt_version": meta.get("prompt_version"),
                      "fingerprint": meta.get("prompt_fingerprint"),
-                     "blockers": blockers})
+                     "blockers": [tag(str(b)) for b in
+                                  reviewer.get("blockers", []) or []],
+                     "unquoted": [tag(q) for q in unquoted],
+                     "demoted": [tag(q) for q in demoted]})
     return {"rows": rows, "excluded": excluded}
 
 
 def print_report(scores: dict, symbols: List[str], m2_on: bool) -> None:
     rows = scores["rows"]
     print(f"{'record':<31} {'prompt':<22} {'attempt':<8} "
-          f"{'blockers':>8} {'M1':>4} {'M2?':>4}")
-    totals = {"blockers": 0, "m1": 0, "m2": 0}
+          f"{'blockers':>8} {'M1':>4} {'M2?':>4} {'unquoted':>8} {'hedged':>6}")
+    totals = {"blockers": 0, "m1": 0, "m2": 0, "unquoted": 0, "demoted": 0}
     for r in rows:
         b = r["blockers"]
         m1 = sum(1 for x in b if x["m1"])
@@ -159,13 +178,18 @@ def print_report(scores: dict, symbols: List[str], m2_on: bool) -> None:
         totals["blockers"] += len(b)
         totals["m1"] += m1
         totals["m2"] += m2
+        totals["unquoted"] += len(r["unquoted"])
+        totals["demoted"] += len(r["demoted"])
         print(f"{r['id']:<31} {str(r['prompt_version']):<22} {r['status']:<8} "
-              f"{len(b):>8} {m1 if symbols else '-':>4} {m2 if m2_on else '-':>4}")
+              f"{len(b):>8} {m1 if symbols else '-':>4} {m2 if m2_on else '-':>4} "
+              f"{len(r['unquoted']):>8} {len(r['demoted']):>6}")
 
     n = len(rows)
     print(f"\nscored {n} record(s): {totals['blockers']} blockers"
           + (f", M1 {totals['m1']}" if symbols else "")
-          + (f", M2 candidates {totals['m2']}" if m2_on else ""))
+          + (f", M2 candidates {totals['m2']}" if m2_on else "")
+          + f", evidence-demoted {totals['unquoted']}"
+          + f", hedge-demoted {totals['demoted']}")
     if n:
         print(f"per run: blockers {totals['blockers'] / n:.2f}"
               + (f", M1 {totals['m1'] / n:.2f}" if symbols else "")
@@ -183,12 +207,16 @@ def print_report(scores: dict, symbols: List[str], m2_on: bool) -> None:
         print(f"excluded {record_id}: {reason}")
 
     print("\nRound-1 blockers (M2 candidates need confirming: an objection to "
-          "a removal is not M2)")
+          "a removal is not M2). Demoted blockers follow each record's "
+          "blockers: evidence-demoted as #e1, #e2, ..., hedge-demoted as #h1, ...")
     for r in rows:
-        for i, b in enumerate(r["blockers"], 1):
+        items = ([(f"#{i}", b) for i, b in enumerate(r["blockers"], 1)]
+                 + [(f"#e{i}", b) for i, b in enumerate(r["unquoted"], 1)]
+                 + [(f"#h{i}", b) for i, b in enumerate(r["demoted"], 1)])
+        for label, b in items:
             tags = [f"M1 {', '.join(b['m1'])}"] if b["m1"] else []
             tags += [f"M2? {', '.join(b['m2'])}"] if b["m2"] else []
-            print(f"\n{r['id']} #{i}" + (f"  [{'; '.join(tags)}]" if tags else ""))
+            print(f"\n{r['id']} {label}" + (f"  [{'; '.join(tags)}]" if tags else ""))
             print(textwrap.fill(b["text"], width=96, initial_indent="    ",
                                 subsequent_indent="    "))
 

@@ -26,6 +26,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+import adjudication  # noqa: E402
 import agent_client  # noqa: E402
 import debate  # noqa: E402
 import repo_context  # noqa: E402
@@ -42,6 +43,15 @@ from reviewer_prompt import FAILURE_SENTINEL  # noqa: E402
 
 REVIEWER_CLEAN = {"verdict": "approve", "blockers": [], "questions": [], "nits": []}
 ENGINEER_CLEAN = {"verdict": "approve", "blockers": [], "concerns": [], "questions": []}
+
+# A diff with one added line that reviewer blockers can quote (judge j3).
+QUOTE = "memcpy(buf, msg->data, msg->len);"
+QUOTED_DIFF = f"+++ b/core/src/x.cpp\n@@ -0,0 +1 @@\n+{QUOTE}\n"
+
+
+def quoted(claim, quote=QUOTE, file="core/src/x.cpp"):
+    """A v8 reviewer blocker that quotes its evidence."""
+    return {"claim": claim, "file": file, "quote": quote}
 
 
 class FakeResp:
@@ -179,6 +189,119 @@ class ConvergenceTests(unittest.TestCase):
 
 
 # ============ layer detection ============
+
+EVIDENCE_DIFF = """diff --git a/app/qml/LiveViewPage.qml b/app/qml/LiveViewPage.qml
+--- a/app/qml/LiveViewPage.qml
++++ /dev/null
+@@ -1,3 +0,0 @@
+-ListView {
+-    model: QtTune.signalModel
+--- a removed line that looks like a header
+diff --git a/app/qml/Main.qml b/app/qml/Main.qml
+--- a/app/qml/Main.qml
++++ b/app/qml/Main.qml
+@@ -1,3 +1,3 @@
+ ApplicationWindow {   // root
+-    LiveViewPage {}
++    FrameView {}
+ }
+@@ -20,1 +20,1 @@
+-    width: 640
++    width: 800
+"""
+
+
+class EvidenceTests(unittest.TestCase):
+    """Judge j4 (ADR-0002 arm G3): reviewer blockers must quote the code
+    as it reads after the change."""
+
+    def setUp(self):
+        self.sources = adjudication.evidence_sources(EVIDENCE_DIFF)
+
+    def demote(self, *blockers, sources=None):
+        out, _ = normalize_agent_output({**REVIEWER_CLEAN, "blockers": list(blockers)},
+                                        "reviewer")
+        return adjudication.demote_unverified_blockers(
+            out, self.sources if sources is None else sources)
+
+    def test_sources_hold_post_change_lines_only(self):
+        lines = {p: [s for s in v if s != adjudication._HUNK_BREAK]
+                 for p, v in self.sources.items()}
+        self.assertEqual(lines, {
+            "app/qml/LiveViewPage.qml": [],  # deleted
+            "app/qml/Main.qml": ["ApplicationWindow { // root", "FrameView {}", "}",
+                                 "width: 800"]})
+
+    def test_removed_lines_are_not_evidence(self):
+        # G's deletion class quoted removed lines only (ADR-0002, ninth measurement).
+        out, n = self.demote(
+            quoted("LiveViewPage used signalModel", "model: QtTune.signalModel",
+                   "app/qml/LiveViewPage.qml"),
+            quoted("Main.qml still embeds it", "LiveViewPage {}", "app/qml/Main.qml"),
+            quoted("old width", "width: 640", "app/qml/Main.qml"),
+            quoted("mixes both sides", "ApplicationWindow {\n-    LiveViewPage {}",
+                   "app/qml/Main.qml"))
+        self.assertEqual((n, out["blockers"]), (4, []))
+
+    def test_quote_must_be_in_the_file_it_names(self):
+        # The sixth measurement's M2: Main.qml never contained signalModel.
+        wrong = quoted("Main.qml still binds signalModel", "QtTune.signalModel",
+                       "app/qml/Main.qml")
+        right = quoted("FrameView replaces it", "FrameView {}", "app/qml/Main.qml")
+        out, n = self.demote(wrong, right)
+        self.assertEqual(n, 1)
+        self.assertEqual([b.split(";")[0] for b in out["blockers"]],
+                         ["claim: FrameView replaces it"])
+        self.assertIn("Main.qml still binds", out["questions"][0])
+        self.assertNotIn("blocker_evidence", out)
+
+    def test_removed_lines_between_quoted_lines_do_not_break_the_quote(self):
+        # G's matcher read the diff interleaved and lost these (ec62e7). The
+        # quote also omits the first line's trailing comment.
+        _, n = self.demote(quoted("x", "ApplicationWindow {\n    FrameView {}\n}",
+                                  "app/qml/Main.qml"))
+        self.assertEqual(n, 0)
+
+    def test_a_quote_cannot_join_two_hunks(self):
+        _, n = self.demote(quoted("x", "}\n    width: 800", "app/qml/Main.qml"))
+        self.assertEqual(n, 1)
+
+    def test_unquoted_short_and_unknown_file_blockers_are_demoted(self):
+        _, n = self.demote("a plain string blocker",
+                           quoted("short", "FrameView", "app/qml/Main.qml"),
+                           quoted("short", "View {}", "app/qml/Main.qml"),
+                           quoted("unknown file", "FrameView {}", "app/qml/Other.qml"))
+        self.assertEqual(n, 3)  # "FrameView" has 9 characters and passes
+
+    def test_quote_formats_the_model_actually_writes(self):
+        out, n = self.demote(
+            quoted("marker", "+    FrameView {}", "Main.qml"),
+            quoted("ellipsis", "ApplicationWindow { ... FrameView", "b/app/qml/Main.qml:2"),
+            quoted("backticks", "`ApplicationWindow {`", "app/qml/Main.qml (line 1)"),
+            quoted("reflowed", "ApplicationWindow { // root FrameView {}", "app/qml/Main.qml"))
+        self.assertEqual((n, len(out["blockers"])), (0, 4))
+
+    def test_ellipsis_fragments_must_all_be_found(self):
+        _, n = self.demote(quoted("x", "ApplicationWindow { ... NotThere", "app/qml/Main.qml"))
+        self.assertEqual(n, 1)
+
+    def test_a_supplied_context_accepts_its_own_quotes(self):
+        sources = adjudication.evidence_sources("", "struct qttune_frame { uint8_t data[8]; };")
+        out, n = self.demote(quoted("x", "uint8_t data[8];", "core/x.h"), sources=sources)
+        self.assertEqual(n, 0)
+        _, n = self.demote(quoted("x", "uint8_t data[8];", "core/x.h"), sources={})
+        self.assertEqual(n, 1)  # nothing shown, nothing quotable
+
+    def test_evidence_stays_aligned_when_placeholders_are_dropped(self):
+        out, _ = normalize_agent_output(
+            {**REVIEWER_CLEAN, "blockers": ["None", quoted("kept")]}, "reviewer")
+        self.assertEqual(len(out["blockers"]), 1)
+        self.assertEqual(out["blocker_evidence"], [{"file": "core/src/x.cpp", "quote": QUOTE}])
+
+    def test_failures_pass_through(self):
+        failed = failure_result("x")
+        self.assertEqual(adjudication.demote_unverified_blockers(failed, {}), (failed, 0))
+
 
 class LayerTests(unittest.TestCase):
     def test_identify_layer(self):
@@ -325,10 +448,11 @@ class DebateTests(NoSleep):
 
     def test_object_blockers_and_null_concerns_do_not_crash(self):
         rev = {"verdict": "reject", "questions": [],
-               "blockers": [{"line": 4, "rule": "buffer", "issue": "overflow"}]}
+               "blockers": [{"line": 4, "rule": "buffer", "issue": "overflow",
+                             "file": "core/src/x.cpp", "quote": QUOTE}]}
         eng = {"verdict": "approve", "blockers": [], "concerns": None, "questions": []}
         with fake_ollama(rev, eng, rev, eng, rev, eng):
-            result = debate.run_debate("p", "+++ b/core/src/x.cpp\n", "")
+            result = debate.run_debate("p", QUOTED_DIFF, "")
         self.assertEqual(result["final_verdict"],
                          "MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED")
         rec = self.record(result)
@@ -385,14 +509,37 @@ class DebateTests(NoSleep):
                          "MAX_ROUNDS_EXCEEDED - MANUAL_REVIEW_REQUIRED")
 
     def test_record_counts_hedge_demotions_per_round(self):
-        rev = {**REVIEWER_CLEAN, "blockers": ["x might race", "y could leak"]}
+        rev = {**REVIEWER_CLEAN, "blockers": [quoted("x might race"),
+                                              quoted("y could leak")]}
         with fake_ollama(rev, ENGINEER_CLEAN):
-            result = debate.run_debate("p", "+++ b/core/src/x.cpp\n", "")
+            result = debate.run_debate("p", QUOTED_DIFF, "")
         h = self.record(result)["outputs"]["round_history"][0]
         self.assertEqual(h["hedge_demotions"],
                          {"reviewer_demoted": 2, "engineer_demoted": 0})
-        self.assertEqual(h["reviewer"]["questions"], ["x might race", "y could leak"])
+        self.assertEqual(h["evidence_demotions"], {"reviewer_demoted": 0})
+        self.assertEqual([q.split(";")[0] for q in h["reviewer"]["questions"]],
+                         ["claim: x might race", "claim: y could leak"])
+        self.assertNotIn("blocker_evidence", h["reviewer"])
         self.assertEqual(result["final_verdict"], "APPROVED_WITH_OPEN_QUESTIONS")
+
+    def test_unquoted_blockers_are_demoted_before_hedged_ones(self):
+        # The sixth measurement's M2: a Main.qml claim whose evidence is in
+        # the deleted LiveViewPage.qml (judge j3, ADR-0002 arm G).
+        rev = {**REVIEWER_CLEAN, "blockers": [
+            quoted("buffer overflow"),
+            quoted("Main.qml still binds it", quote="QtTune.signalModel",
+                   file="app/qml/Main.qml"),
+            "plain string blocker",
+            quoted("x might overflow")]}
+        with fake_ollama(*[rev, ENGINEER_CLEAN] * debate.MAX_DEBATE_ROUNDS):
+            result = debate.run_debate("p", QUOTED_DIFF, "")
+        h = self.record(result)["outputs"]["round_history"][0]
+        self.assertEqual(h["evidence_demotions"], {"reviewer_demoted": 2})
+        self.assertEqual(h["hedge_demotions"]["reviewer_demoted"], 1)
+        self.assertEqual(len(h["reviewer"]["blockers"]), 1)
+        self.assertEqual([q.split(";")[0] for q in h["reviewer"]["questions"]],
+                         ["claim: Main.qml still binds it", "plain string blocker",
+                          "claim: x might overflow"])
 
     # ---- retrieval inside the debate (code review 2026-10-21, finding 2) ----
 
@@ -513,10 +660,10 @@ class DebateTests(NoSleep):
         self.assertEqual(a["repo_context_pack"], b["repo_context_pack"])
 
     def test_round1_measurement_makes_one_call_and_no_decision(self):
-        rev = {**REVIEWER_CLEAN, "blockers": ["memcpy overflows buf[8] at line 4",
-                                              "x might race"]}
+        rev = {**REVIEWER_CLEAN, "blockers": [quoted("memcpy overflows buf[8]"),
+                                              quoted("x might race")]}
         with fake_ollama(rev) as post:
-            result = debate.run_round1_review("p", "+++ b/core/src/x.cpp\n", "")
+            result = debate.run_round1_review("p", QUOTED_DIFF, "")
         self.assertEqual(post.call_count, 1)
         self.assertEqual(result["final_verdict"], debate.MEASUREMENT_VERDICT)
         self.assertEqual(result["blockers"], 1)
@@ -528,7 +675,9 @@ class DebateTests(NoSleep):
         (only_round,) = rec["outputs"]["round_history"]
         self.assertNotIn("auto_engineer", only_round)
         self.assertEqual(only_round["hedge_demotions"], {"reviewer_demoted": 1})
-        self.assertEqual(only_round["reviewer"]["questions"], ["x might race"])
+        self.assertEqual(only_round["evidence_demotions"], {"reviewer_demoted": 0})
+        self.assertEqual(len(only_round["reviewer"]["questions"]), 1)
+        self.assertIn("x might race", only_round["reviewer"]["questions"][0])
 
     def test_round1_measurement_fails_closed(self):
         bad = {"verdict": "approve", "summary": "looks fine"}
@@ -579,12 +728,15 @@ ROUND1_DIFF = ("+++ b/app/x.cpp\n"
 
 
 def round1_record(record_id, blockers, diff=ROUND1_DIFF, attempts=(0,),
-                  failed=False):
+                  failed=False, questions=(), hedge_demoted=0, evidence_demoted=0):
     """A minimal decision record: round 1's reviewer, its telemetry and
     the diff hash. attempts=None leaves telemetry out (pre-v5.2)."""
     reviewer = (failure_result("x") if failed
-                else {**REVIEWER_CLEAN, "blockers": list(blockers)})
-    first_round = {"round": 1, "reviewer": reviewer}
+                else {**REVIEWER_CLEAN, "blockers": list(blockers),
+                      "questions": list(questions)})
+    first_round = {"round": 1, "reviewer": reviewer,
+                   "evidence_demotions": {"reviewer_demoted": evidence_demoted},
+                   "hedge_demotions": {"reviewer_demoted": hedge_demoted}}
     if attempts is not None:
         first_round["telemetry"] = {"reviewer": [{"attempt": a} for a in attempts]}
     return {"metadata": {"debate_id": record_id, "prompt_version": "v",
@@ -633,6 +785,24 @@ class Round1ScoringTests(unittest.TestCase):
         self.assertIn("scored 2 record(s): 2 blockers, M1 1, M2 candidates 1",
                       out.getvalue())
         self.assertIn("1 record(s) predate telemetry", out.getvalue())
+
+    def test_hedge_demoted_blockers_come_from_the_tail_of_questions(self):
+        # demote_hedged_blockers appends demoted blockers after the model's
+        # own questions, so the count identifies them.
+        rec = round1_record("r", ["b"], hedge_demoted=1,
+                            questions=["own question", "m_gone might survive"])
+        (row,) = round1.score_records([("p", rec)], ROUND1_DIFF, [],
+                                      lambda n: True)["rows"]
+        self.assertEqual([d["text"] for d in row["demoted"]], ["m_gone might survive"])
+        self.assertEqual(row["demoted"][0]["m2"], ["m_gone"])
+        self.assertEqual(len(row["blockers"]), 1)
+
+    def test_evidence_demoted_blockers_precede_the_hedged_ones(self):
+        rec = round1_record("r", [], evidence_demoted=2, hedge_demoted=1,
+                            questions=["own", "unquoted 1", "unquoted 2", "hedged"])
+        (row,) = round1.score_records([("p", rec)], ROUND1_DIFF, [], None)["rows"]
+        self.assertEqual([d["text"] for d in row["unquoted"]], ["unquoted 1", "unquoted 2"])
+        self.assertEqual([d["text"] for d in row["demoted"]], ["hedged"])
 
     @unittest.skipUnless(shutil.which("git"), "git not installed")
     def test_post_state_check_greps_the_given_commit(self):
