@@ -1,29 +1,18 @@
 #!/usr/bin/env python3
 """bakeoff.py — reviewer slot bake-off. One model at a time, isolated calls."""
 
-import json, time, requests, argparse
-from pathlib import Path
+import time, argparse
 
+from eval_harness.raw_call import review
+from review_fixtures import ABI_TYPE_LEAK, CANFD_BUFFER_OVERFLOW, CLEAN_ABI_HEADER
 from reviewer_prompt import (REVIEWER_SYSTEM, HEADER_SCOPE_CLAUSE,
                              IMPL_SCOPE_CLAUSE, PROMPT_VERSION)
 
-OLLAMA = "http://localhost:11434/api/chat"
-
 CASES = [
     # (name, expect_bug, code, is_header)
-    ("canfd_buffer_overflow", True,
-     '// core/src/frame_decode.cpp\n'
-     'void decode(const PASSTHRU_MSG* msg) {\n'
-     '    uint8_t buf[8];\n'
-     '    memcpy(buf, msg->DataSize);\n'
-     '}', False),
+    ("canfd_buffer_overflow", True, CANFD_BUFFER_OVERFLOW, False),
 
-    ("abi_type_leak", True,
-     '// core/include/qttune/session.h  (public C ABI header)\n'
-     '#include <vector>\n'
-     '#include <string>\n'
-     'extern "C" std::vector<std::string> qttune_get_session_names(qttune_session_t* s);',
-     True),
+    ("abi_type_leak", True, ABI_TYPE_LEAK, True),
 
     ("unchecked_thread_share", True,
      '// core/src/rx_queue.cpp\n'
@@ -45,14 +34,7 @@ CASES = [
      '    return doc.size();\n'
      '}', False),
 
-    ("clean_pattern", False,
-     '// core/include/qttune/init.h\n'
-     '#pragma once\n'
-     '#ifdef __cplusplus\nextern "C" {\n#endif\n'
-     'typedef struct qttune_ctx qttune_ctx;\n'
-     'int qttune_init(qttune_ctx** out);\n'
-     'int qttune_shutdown(qttune_ctx* ctx);\n'
-     '#ifdef __cplusplus\n}\n#endif', True),
+    ("clean_pattern", False, CLEAN_ABI_HEADER, True),
 ]
 
 def call(model: str, code: str, is_header: bool):
@@ -60,23 +42,8 @@ def call(model: str, code: str, is_header: bool):
     'timeout' or 'parse' (no attempt yielded a JSON object)."""
     system = REVIEWER_SYSTEM + (HEADER_SCOPE_CLAUSE if is_header
                                 else IMPL_SCOPE_CLAUSE)
-    for attempt in range(3):
-        payload = {"model": model, "stream": False, "format": "json",
-                   "messages": [{"role": "system", "content": system},
-                                {"role": "user", "content": code}],
-                   "options": {"temperature": 0.2 if attempt == 0 else 0.05,
-                               "num_ctx": 16384}}
-        try:
-            r = requests.post(OLLAMA, json=payload, timeout=600).json()
-            out = json.loads(r["message"]["content"])
-            if isinstance(out, dict):
-                return out, None
-        except requests.exceptions.Timeout:
-            return {}, "timeout"
-        except (requests.exceptions.RequestException, json.JSONDecodeError,
-                KeyError, TypeError):
-            pass
-    return {}, "parse"
+    out, failure, _ = review(model, system, code)
+    return out, failure
 
 
 def tally(outcomes) -> dict:

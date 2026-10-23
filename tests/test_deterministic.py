@@ -32,16 +32,17 @@ import adjudication  # noqa: E402
 import agent_client  # noqa: E402
 import debate  # noqa: E402
 import golden_tests  # noqa: E402
-import repo_context  # noqa: E402
+import indexer  # noqa: E402
+import retrieval  # noqa: E402
 from adjudication import (JUDGE_VERSION, convergence_verdict,  # noqa: E402
                           demote_hedged_blockers, derive_verdict,
                           normalize_agent_output)
 from agent_client import FAILURE_SENTINEL, call_agent, failure_result  # noqa: E402
 from diff_reader import base_blobs, diff_paths, read_diff  # noqa: E402
-from eval_harness import round1, round2  # noqa: E402
+from eval_harness import bakeoff, common, probe, raw_call, round1, round2  # noqa: E402
 from eval_harness.bakeoff import tally  # noqa: E402
 from eval_harness.probe import summarize  # noqa: E402
-from file_metadata import identify_layer  # noqa: E402
+from file_metadata import get_layer_constraints, identify_layer  # noqa: E402
 from golden_tests import run_hedge_unit_tests, score_fixture  # noqa: E402
 
 # The client's retry notes are warnings on its logger; keep them out of
@@ -255,7 +256,7 @@ class DiffReaderTests(unittest.TestCase):
             ("---", "db/x.sql"), ("+++", "db/x.sql"), ("@@", " CREATE TABLE t"),
             ("-", "-- m_old_note"), ("+", "++ b/fake.sql"), (" ", "keep")])
         self.assertEqual(diff_paths(diff), ["db/x.sql"])
-        self.assertIn("m_old_note", repo_context._removed_identifiers(diff))
+        self.assertIn("m_old_note", retrieval.removed_identifiers(diff))
 
     def test_lines_outside_hunks_are_read_by_first_character(self):
         diff = ("diff --git a/x.cpp b/x.cpp\nindex 1..2 100644\n+++ b/x.cpp\n"
@@ -584,6 +585,19 @@ class DebateTests(NoSleep):
     def record(self, result):
         return json.loads(Path(result["decision_record_path"]).read_text(encoding="utf-8"))
 
+    def test_input_without_a_path_gets_the_unknown_layer_note(self):
+        # Code review 2026-10-23, finding 19 (v10.2): it got no layer note.
+        note = get_layer_constraints("unknown")
+        for diff, context in (("@@ -1 +1 @@\n-int a;\n+" + QUOTE + "\n", ""),
+                              ("", "int x = 1;\n")):
+            with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN) as post:
+                result = debate.run_debate("p", diff, context)
+            (sent, _) = transcripts(post)
+            self.assertIn(f"\n{note}\n", sent)
+            rec = self.record(result)
+            self.assertEqual(rec["inputs"]["layer"], "unknown")
+            self.assertIsNone(rec["inputs"]["file_path"])
+
     def test_object_blockers_and_null_concerns_do_not_crash(self):
         rev = {"verdict": "reject", "questions": [],
                "blockers": [{"line": 4, "rule": "buffer", "issue": "overflow",
@@ -750,10 +764,11 @@ class DebateTests(NoSleep):
         self.assertEqual(check["request_chars"], sum(len(m["content"]) for m in sent))
 
     def test_a_measurement_batch_stops_on_refused_input(self):
-        for module in (round1, round2):
+        for module, measure in ((round1, debate.run_round1_review),
+                                (round2, debate.run_round2_pair)):
             with fake_ollama() as post, contextlib.redirect_stdout(io.StringIO()), \
                     self.assertRaises(SystemExit) as stop:
-                module.run("p", "", "", False, 5)
+                common.collect(measure, module._summary, "m", "p", "", "", False, 5)
             self.assertIn("input refused", str(stop.exception))
             self.assertEqual(post.call_count, 0)
         self.assertEqual(len(list(Path("coach_artifacts").glob("*.json"))), 2)
@@ -786,6 +801,12 @@ class DebateTests(NoSleep):
         self.assertEqual(summary["metadata"]["judge_version"], JUDGE_VERSION)
         self.assertEqual(len(list(Path("gold_tests").glob("run_*.json"))), 1)
         self.assertFalse(Path("coach_artifacts").exists())  # no records
+        # The bake-off reviews the same snippets; its abi_type_leak copy
+        # had drifted by a space (code review finding 9).
+        bake = {name: code for name, _, code, _ in bakeoff.CASES}
+        for sent, name in zip(transcripts(post), ("canfd_buffer_overflow",
+                                                  "abi_type_leak", "clean_pattern")):
+            self.assertIn(f"\n{bake[name]}\n", sent)
 
     # ---- retrieval inside the debate (code review 2026-10-21, finding 2) ----
 
@@ -859,9 +880,9 @@ class DebateTests(NoSleep):
         rec, transcript = self.debate_with_purpose("Sentinel purpose for retrieval.")
         pack = rec["metadata"]["repo_context_pack"]
         self.assertIn(pack["text"], transcript)
-        self.assertEqual(pack["sha256"], debate._sha256(pack["text"]))
+        self.assertEqual(pack["sha256"], debate.text_sha256(pack["text"]))
         self.assertEqual(pack["used"], len(pack["text"]))
-        self.assertEqual(pack["format_version"], repo_context.PACK_FORMAT_VERSION)
+        self.assertEqual(pack["format_version"], retrieval.PACK_FORMAT_VERSION)
         self.assertIn("index_version", pack)
 
     def test_fingerprint_depends_on_templates_not_on_the_pack_text(self):
@@ -912,7 +933,7 @@ class DebateTests(NoSleep):
         with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN) as post:
             debate.run_debate("p", diff, "ctx")
         transcript = transcripts(post)[0]
-        mark = debate._sha256(f"{diff}\x00ctx")[:16]
+        mark = debate.text_sha256(f"{diff}\x00ctx")[:16]
         self.assertEqual(transcript.count(f"<<<BEGIN DATA {mark}>>>"), 2)
         self.assertEqual(transcript.count(f"<<<END DATA {mark}>>>"), 2)
         fenced_diff = transcript.split(f"<<<BEGIN DATA {mark}>>>")[1]
@@ -1094,6 +1115,54 @@ class EvalScoringTests(unittest.TestCase):
         self.assertEqual((s["json_fails"], s["timeouts"]), (2, 1))
 
 
+class HttpErrorResp(FakeResp):
+    """An Ollama error reply, e.g. for a model that is not pulled."""
+
+    def __init__(self, error):
+        self._body = {"error": error}
+        self.text = json.dumps(self._body)
+
+    def raise_for_status(self):
+        raise requests.exceptions.HTTPError("404 Client Error", response=self)
+
+
+class RawCallTests(unittest.TestCase):
+    """The probe's and the bake-off's shared call (code review finding 9)."""
+
+    def post(self, *replies):
+        return mock.patch.object(raw_call.requests, "post", side_effect=list(replies))
+
+    def test_settings_stay_as_measured(self):
+        # probe_logs/ and ADR-0001 were measured with these settings.
+        bad = FakeResp("not json")
+        with self.post(bad, bad, FakeResp(REVIEWER_CLEAN)) as post, \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(bakeoff.call("m", "int x;", True), (REVIEWER_CLEAN, None))
+        payloads = [c.kwargs["json"] for c in post.call_args_list]
+        self.assertEqual([p["options"] for p in payloads],
+                         [{"temperature": 0.2, "num_ctx": 16384},
+                          {"temperature": 0.05, "num_ctx": 16384},
+                          {"temperature": 0.05, "num_ctx": 16384}])
+        self.assertTrue(all(len(p["messages"]) == 2 for p in payloads))  # no correction
+        self.assertEqual({c.kwargs["timeout"] for c in post.call_args_list}, {600})
+
+    def test_http_error_keeps_ollamas_message(self):
+        # The probe read a missing model as "malformed Ollama response: KeyError".
+        missing = HttpErrorResp("model 'm' not found")
+        with self.post(missing, missing, missing):
+            out = probe.call("m", "int x;")
+        self.assertEqual(out["verdict"], "PARSE_FAILURE")
+        self.assertIn("HTTPError", out["failure_reason"])
+        self.assertIn("model 'm' not found", out["failure_reason"])
+
+    def test_timeout_is_not_retried(self):
+        timeout = requests.exceptions.Timeout()
+        with self.post(timeout, timeout) as post:
+            self.assertEqual(probe.call("m", "int x;")["verdict"], "TIMEOUT")
+            self.assertEqual(bakeoff.call("m", "int x;", False), ({}, "timeout"))
+        self.assertEqual(post.call_count, 2)  # one request per call
+
+
 ROUND1_DIFF = ("+++ b/app/x.cpp\n"
                "-int m_gone = 0;  // the batch\n"
                "-SignalListModel model;\n"
@@ -1114,31 +1183,31 @@ def round1_record(record_id, blockers, diff=ROUND1_DIFF, attempts=(0,),
         first_round["telemetry"] = {"reviewer": [{"attempt": a} for a in attempts]}
     return {"metadata": {"debate_id": record_id, "prompt_version": "v",
                          "prompt_fingerprint": "f"},
-            "inputs": {"diff_sha256": debate._sha256(diff)},
+            "inputs": {"diff_sha256": debate.text_sha256(diff)},
             "outputs": {"round_history": [first_round]}}
 
 
 class Round1ScoringTests(unittest.TestCase):
-    def test_attempt_status(self):
-        self.assertEqual(round1.attempt_status(round1_record("a", [])), "first")
-        self.assertEqual(round1.attempt_status(round1_record("a", [], attempts=(0, 1))),
-                         "retry")
-        self.assertEqual(round1.attempt_status(round1_record("a", [], failed=True)),
-                         "failed")
-        self.assertEqual(round1.attempt_status(round1_record("a", [], attempts=None)),
-                         "unknown")
+    def test_reviewer_status(self):
+        def status(**kw):
+            record = round1_record("a", [], **kw)
+            return common.reviewer_status(record["outputs"]["round_history"][0])
+        self.assertEqual(status(), "first")
+        self.assertEqual(status(attempts=(0, 1)), "retry")
+        self.assertEqual(status(failed=True), "failed")
+        self.assertEqual(status(attempts=None), "unknown")
 
     def test_m1_is_whole_word_and_case_sensitive(self):
-        hits = [round1.m1_hits(text, ["SignalListModel"])
+        hits = [common.m1_hits(text, ["SignalListModel"])
                 for text in ("SignalListModel.", "SignalListModelX", "signallistmodel")]
         self.assertEqual(hits, [["SignalListModel"], [], []])
 
     def test_m2_candidates_are_removed_code_names_the_post_state_lacks(self):
-        removed = repo_context._removed_identifiers(ROUND1_DIFF)
+        removed = retrieval.removed_identifiers(ROUND1_DIFF)
         blocker = "m_gone is still read next to m_kept; the batch breaks"
-        self.assertEqual(round1.m2_candidates(blocker, removed, lambda n: True),
+        self.assertEqual(common.m2_candidates(blocker, removed, lambda n: True),
                          ["m_gone"])  # 'batch' is removed too, but English
-        self.assertEqual(round1.m2_candidates(blocker, removed, lambda n: False), [])
+        self.assertEqual(common.m2_candidates(blocker, removed, lambda n: False), [])
 
     def test_only_first_attempts_on_this_diff_are_scored(self):
         records = [("p", round1_record("first", ["m_gone survives in SignalListModel"])),
@@ -1192,12 +1261,12 @@ class Round1ScoringTests(unittest.TestCase):
             subprocess.run(git + ["add", "x.cpp"], check=True)
             subprocess.run(git + ["commit", "-q", "-m", "c"], check=True)
             Path(tmp, "x.cpp").write_text("int m_gone = 0;\n", encoding="utf-8")
-            lacks = round1.post_state_lacks(tmp, "HEAD")
+            lacks = common.post_state_lacks(tmp, "HEAD")
             # the commit, not the working tree, decides
             self.assertEqual((lacks("m_kept"), lacks("m_gone"), lacks("m_kep")),
                              (False, True, True))
             with self.assertRaises(SystemExit):
-                round1.post_state_lacks(tmp, "no-such-rev")
+                common.post_state_lacks(tmp, "no-such-rev")
 
 
 def pair_arm(blockers, attempts=(0,), questions=(), evidence_demoted=0):
@@ -1221,7 +1290,7 @@ def pair_record(record_id, arms, diff=ROUND1_DIFF, failures=()):
                                "concerns": ["m_inFlightFrames removal moves backpressure"]},
              "telemetry": {"reviewer": [{"attempt": 0}], "auto_engineer": [{"attempt": 0}]}}
     return {"metadata": {"debate_id": record_id},
-            "inputs": {"diff_sha256": debate._sha256(diff)},
+            "inputs": {"diff_sha256": debate.text_sha256(diff)},
             "outputs": {"round_history": [first], "round2_arms": arms,
                         "agent_failures": list(failures)}}
 
@@ -1276,7 +1345,7 @@ class Round2ScoringTests(unittest.TestCase):
                          ["unquoted"])
 
 
-# ============ repo_context ============
+# ============ indexer ============
 
 QTTUNE_LIKE_HEADER = """
 /* Forward-declared opaque handle types */
@@ -1305,7 +1374,7 @@ typedef enum {
 
 class RepoContextTests(unittest.TestCase):
     def types(self, text):
-        return {t["name"]: t for t in repo_context.harvest_typedefs(text)}
+        return {t["name"]: t for t in indexer.harvest_typedefs(text)}
 
     def test_typedef_kinds_members_and_docs(self):
         t = self.types(QTTUNE_LIKE_HEADER)
@@ -1333,7 +1402,7 @@ class RepoContextTests(unittest.TestCase):
                "static constexpr int MaxFrames = 10000; // cap\n"
                "// constexpr int kDead = 1;\n"
                "void f() {\n    int count = 0;\n}\n")
-        got = {c["name"]: c["value"] for c in repo_context.harvest_constants(src, "f")}
+        got = {c["name"]: c["value"] for c in indexer.harvest_constants(src, "f")}
         self.assertEqual(got, {"MAX_DLC": "64", "kMask": "0x7FF", "MaxFrames": "10000"})
 
     def test_corrupt_summary_cache_warns_and_starts_empty(self):
@@ -1342,21 +1411,21 @@ class RepoContextTests(unittest.TestCase):
                 path = Path(tmp) / "cache.json"
                 path.write_text(bad, encoding="utf-8")
                 stderr = io.StringIO()
-                with mock.patch.object(repo_context, "CACHE_PATH", path), \
+                with mock.patch.object(indexer, "CACHE_PATH", path), \
                         contextlib.redirect_stderr(stderr):
-                    self.assertEqual(repo_context._load_cache(), {}, bad)
+                    self.assertEqual(indexer._load_cache(), {}, bad)
                 self.assertIn("summary cache", stderr.getvalue())
 
     def test_llm_failure_yields_no_purpose(self):
-        with mock.patch.object(repo_context, "call_agent",
+        with mock.patch.object(indexer, "call_agent",
                                return_value=failure_result("timeout")):
-            self.assertIsNone(repo_context.llm_purpose("m", "core/x.h", "int x;"))
+            self.assertIsNone(indexer.llm_purpose("m", "core/x.h", "int x;"))
 
     def test_purpose_validator_reads_the_purpose_key(self):
-        ok, err = repo_context._validate_purpose(
+        ok, err = indexer._validate_purpose(
             {"file": "core/include/qttune/core.h", "purpose": "Defines the public C ABI."})
         self.assertEqual(ok["purpose"], "Defines the public C ABI.")
-        bad, err = repo_context._validate_purpose({"file": "core/include/qttune/core.h"})
+        bad, err = indexer._validate_purpose({"file": "core/include/qttune/core.h"})
         self.assertIsNone(bad)
 
     def test_checkout_under_a_build_directory_still_indexes(self):
@@ -1366,7 +1435,7 @@ class RepoContextTests(unittest.TestCase):
             (repo / "core" / "x.h").write_text("#define LIMIT 8\n", encoding="utf-8")
             (repo / "build").mkdir()
             (repo / "build" / "gen.h").write_text("#define GEN 1\n", encoding="utf-8")
-            idx = repo_context.build_index(str(repo), use_llm=False)
+            idx = indexer.build_index(str(repo), use_llm=False)
         self.assertEqual([f["path"] for f in idx["files"]], ["core/x.h"])
         self.assertIsNone(idx["source_commit"])  # not a git checkout
 
@@ -1383,9 +1452,9 @@ class RepoContextTests(unittest.TestCase):
             committed_blob = subprocess.run(git + ["rev-parse", "HEAD:x.h"],
                                             capture_output=True, text=True,
                                             check=True).stdout.strip()
-            clean = repo_context.build_index(tmp, use_llm=False)
+            clean = indexer.build_index(tmp, use_llm=False)
             Path(tmp, "x.h").write_text("#define LIMIT 9\n", encoding="utf-8")
-            dirty = repo_context.build_index(tmp, use_llm=False)
+            dirty = indexer.build_index(tmp, use_llm=False)
         self.assertEqual((clean["source_commit"], clean["source_dirty"]), (head, False))
         self.assertEqual((dirty["source_commit"], dirty["source_dirty"]), (head, True))
         # blob ids are what a diff from the tree names as its base
@@ -1415,12 +1484,21 @@ class CliTests(unittest.TestCase):
         self.assertEqual(r.returncode, 2)
         self.assertIn("no code to review", r.stderr)
 
-    def test_round1_score_needs_repo_and_rev_together(self):
-        r = subprocess.run([sys.executable, "-m", "eval_harness.round1", "score",
-                            "--diff", "x.diff", "--repo", "../qttune", "r.json"],
+    def test_score_needs_repo_and_rev_together(self):
+        for module in ("eval_harness.round1", "eval_harness.round2"):
+            r = subprocess.run([sys.executable, "-m", module, "score",
+                                "--diff", "x.diff", "--repo", "../qttune", "r.json"],
+                               cwd=REPO_ROOT, capture_output=True, text=True, timeout=60)
+            self.assertEqual(r.returncode, 2, module)
+            self.assertIn("--repo and --rev go together", r.stderr)
+
+    def test_a_debate_does_not_load_the_indexer(self):
+        # Code review finding 9: one module held the indexer and retrieval,
+        # so every debate loaded the indexer and its summary prompt.
+        r = subprocess.run([sys.executable, "-c",
+                            "import sys, debate; print('indexer' in sys.modules)"],
                            cwd=REPO_ROOT, capture_output=True, text=True, timeout=60)
-        self.assertEqual(r.returncode, 2)
-        self.assertIn("--repo and --rev go together", r.stderr)
+        self.assertEqual(r.stdout.strip(), "False", r.stderr)
 
 
 if __name__ == "__main__":

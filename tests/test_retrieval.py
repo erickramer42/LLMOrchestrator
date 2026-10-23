@@ -1,10 +1,11 @@
-"""Deterministic tests for repo_context retrieval (build_context_pack)
-and the queued-connection call-site harvester. No network, no Ollama."""
+"""Deterministic tests for retrieval (build_context_pack) and the
+indexer's queued-connection call-site harvester. No network, no Ollama."""
 
 import unittest
 
 import debate
-import repo_context as rc
+import indexer
+import retrieval as rc
 
 
 class HarvestCallsites(unittest.TestCase):
@@ -16,7 +17,7 @@ void Worker::setup() {
             this, &Worker::onFrameReady, Qt::QueuedConnection);
 }
 """
-        sites = rc.harvest_callsites(src, "app/worker.cpp")
+        sites = indexer.harvest_callsites(src, "app/worker.cpp")
         self.assertEqual(len(sites), 1)
         self.assertEqual(sites[0]["file"], "app/worker.cpp")
         self.assertIn("Qt::QueuedConnection", sites[0]["snippet"])
@@ -25,15 +26,15 @@ void Worker::setup() {
 
     def test_blocking_variant_detected(self):
         src = "invokeMethod(obj, SLOT(run()), Qt::BlockingQueuedConnection);"
-        self.assertEqual(len(rc.harvest_callsites(src, "a.cpp")), 1)
+        self.assertEqual(len(indexer.harvest_callsites(src, "a.cpp")), 1)
 
     def test_direct_connection_ignored(self):
         src = "connect(a, SIGNAL(x()), b, SLOT(y()));"
-        self.assertEqual(len(rc.harvest_callsites(src, "a.cpp")), 0)
+        self.assertEqual(len(indexer.harvest_callsites(src, "a.cpp")), 0)
 
     def test_commented_out_call_ignored(self):
         src = "// connect(this, s1, this, s2, Qt::QueuedConnection);\nint x;"
-        self.assertEqual(len(rc.harvest_callsites(src, "a.cpp")), 0)
+        self.assertEqual(len(indexer.harvest_callsites(src, "a.cpp")), 0)
 
     def test_long_multiline_lambda_connect(self):
         body = "\n".join(f"        auto tmp{i} = compute_something({i});"
@@ -41,7 +42,7 @@ void Worker::setup() {
         src = (f"connect(this, &Worker::frameReady, this,\n"
                f"        [this](const qttune_frame_t& f) {{\n{body}\n"
                f"        }}, Qt::QueuedConnection);\nint x;")
-        sites = rc.harvest_callsites(src, "app/worker.cpp")
+        sites = indexer.harvest_callsites(src, "app/worker.cpp")
         self.assertEqual(len(sites), 1)
         # Check the snippet starts with connect AND contains QueuedConnection
         self.assertIn("connect(this, &Worker::frameReady", sites[0]["snippet"])
@@ -185,7 +186,7 @@ void Bridge::onFrame(const qttune_frame_t* f) {
 """
 
     def test_lambda_is_summarized_from_comment_free_text(self):
-        site = rc.harvest_callsites(self.SRC, "app/b.cpp")[0]
+        site = indexer.harvest_callsites(self.SRC, "app/b.cpp")[0]
         self.assertEqual(
             site["snippet"],
             "QMetaObject::invokeMethod(self, [self, copy]() { calls: "
@@ -198,7 +199,7 @@ void Bridge::onFrame(const qttune_frame_t* f) {
     def test_long_call_keeps_connection_within_limit(self):
         args = ", ".join(f"argument_number_{i}" for i in range(40))
         src = f"connect({args}, Qt::BlockingQueuedConnection);"
-        site = rc.harvest_callsites(src, "a.cpp")[0]
+        site = indexer.harvest_callsites(src, "a.cpp")[0]
         self.assertLessEqual(len(site["snippet"]), rc.SNIPPET_LIMIT)
         self.assertTrue(site["snippet"].endswith("Qt::BlockingQueuedConnection);"))
 
@@ -244,11 +245,11 @@ class TypeAndPurposeRendering(unittest.TestCase):
     def test_purpose_cut_mid_word_is_clipped_at_a_word_boundary(self):
         purpose = ("Implements frame marshalling " * 10)[:200]
         self.assertTrue(purpose.endswith("marshalli"))  # cut mid-word, as stored
-        clipped = rc._clip(purpose, rc.PURPOSE_LIMIT)
+        clipped = rc.clip(purpose, rc.PURPOSE_LIMIT)
         self.assertTrue(clipped.endswith("frame…"), clipped[-20:])
 
     def test_complete_sentence_is_left_alone(self):
-        self.assertEqual(rc._clip("A short purpose.", rc.PURPOSE_LIMIT),
+        self.assertEqual(rc.clip("A short purpose.", rc.PURPOSE_LIMIT),
                          "A short purpose.")
 
     def test_meta_files_collapse_into_one_line(self):
@@ -374,7 +375,7 @@ diff --git a/app/qttunebridge.cpp b/app/qttunebridge.cpp
         return rc.build_context_pack(self.DIFF, self.INDEX)
 
     def test_removed_identifiers_ignore_context_and_hunk_headers(self):
-        removed = rc._removed_identifiers(self.DIFF)
+        removed = rc.removed_identifiers(self.DIFF)
         self.assertTrue({"SignalListModel", "MaxInFlightFrames",
                          "m_inFlightFrames", "MAX_RETRIES"} <= removed)
         # on a context line, an added line or a hunk header: still alive

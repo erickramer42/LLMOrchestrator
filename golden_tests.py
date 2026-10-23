@@ -14,6 +14,7 @@ from typing import List
 from adjudication import JUDGE_VERSION, demote_hedged_blockers
 from config import MODELS, TEMPERATURE_RETRY
 from debate import review_round1
+from review_fixtures import ABI_TYPE_LEAK, CANFD_BUFFER_OVERFLOW, CLEAN_ABI_HEADER
 from reviewer_prompt import PROMPT_VERSION
 
 # Each fixture's proposal. Neutral on purpose: a fixture name such as
@@ -91,33 +92,19 @@ def run_golden_tests() -> dict:
     TEST_CASES = [
         {
             "name": "buffer_overflow_can_fd",
-            "snippet": ('// core/src/frame_decode.cpp\n'
-                        'void decode(const PASSTHRU_MSG* msg) {\n'
-                        '    uint8_t buf[8];\n'
-                        '    memcpy(buf, msg->DataSize);\n'
-                        '}'),
+            "snippet": CANFD_BUFFER_OVERFLOW,
             "expected_to_block": True,
             "header": False,
         },
         {
             "name": "abi_type_leak",
-            "snippet": ('// core/include/qttune/session.h (public C ABI header)\n'
-                        '#include <vector>\n'
-                        '#include <string>\n'
-                        'extern "C" std::vector<std::string> '
-                        'qttune_get_session_names(qttune_session_t* s);'),
+            "snippet": ABI_TYPE_LEAK,
             "expected_to_block": True,
             "header": True,
         },
         {
             "name": "clean_abi_pattern",
-            "snippet": ('// core/include/qttune/init.h\n'
-                        '#pragma once\n'
-                        '#ifdef __cplusplus\nextern "C" {\n#endif\n'
-                        'typedef struct qttune_ctx qttune_ctx;\n'
-                        'int qttune_init(qttune_ctx** out);\n'
-                        'int qttune_shutdown(qttune_ctx* ctx);\n'
-                        '#ifdef __cplusplus\n}\n#endif'),
+            "snippet": CLEAN_ABI_HEADER,
             "expected_to_block": False,
             "header": True,
         },

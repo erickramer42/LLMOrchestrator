@@ -28,7 +28,7 @@ before each run, and published the failures next to the fixes.
   had shipped there and were fixed later: a data race on a frame
   counter, and a frame freeze past 10,000 frames.
 - **Built to be trusted.**
-  - 149 regression tests run with no model, by faking Ollama at the
+  - 154 regression tests run with no model, by faking Ollama at the
     HTTP layer, in CI on Python 3.11 and 3.13.
   - Prompts and judge rules are versioned and stamped into every
     decision record.

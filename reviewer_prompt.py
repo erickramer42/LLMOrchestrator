@@ -30,7 +30,10 @@ Any edit to a prompt here must be reflected by bumping PROMPT_VERSION."""
 # v10.1 (2026-10-22): v10's fence and truncation marker, with v9's
 # feedback. The CRITIQUES section kept the race but dropped the in-flight
 # gate and ran away more often, so it was not shipped.
-PROMPT_VERSION = "v10.1-fenced-input"
+# v10.2 (2026-10-23, code review finding 19): input with no file path
+# gets the unknown-layer note instead of no layer note. Input with a path
+# is sent exactly as under v10.1, so the bridge fixture's runs compare.
+PROMPT_VERSION = "v10.2-unknown-layer-note"
 
 AUTO_ENGINEER_PROMPT = """You are a senior automotive engineer advocating for QtTune's v0.2.0 goals:
 shipping velocity, J2534/ECU domain correctness, and safety.

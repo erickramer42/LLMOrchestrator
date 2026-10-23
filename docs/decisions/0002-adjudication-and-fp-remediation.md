@@ -1924,3 +1924,27 @@ debate would demote.
   the clean header has nothing to block. A failure on a fixture
   expected to block would show the evidence check demoting a real hit
   and would need reading before anything changes.
+- **Fixtures shared with the bake-off (amended 2026-10-23, before the
+  first run).** The suite and the bake-off now read the same snippets
+  from `review_fixtures.py`. The two copies of the ABI fixture differed
+  by one space before "(public C ABI header)"; the bake-off's text was
+  kept, so the bake-off's input is unchanged and the suite's ABI fixture
+  gains a space. The prediction stands.
+
+## Unknown-Layer Note v10.2 (2026-10-23)
+
+**Decision:** input with no file path gets the unknown-layer note, "apply
+all rules conservatively", and records layer `unknown` (code review
+2026-10-23, finding 19). A path comes from the first `+++` header, or
+else from a `//` comment in the first 20 context lines. Without one, a
+review had no layer note at all. Since j7 a diff without file headers
+can be blocked, so it is a real review input. PROMPT_VERSION is
+`v10.2-unknown-layer-note`. The judge is unchanged.
+
+**Effect on recorded results:** none. Every record with a diff hash
+stores layer `bridge`, from the bridge fixture's header. Of the four
+older records, three reviewed that fixture, and header review 194320
+reviewed core.h, which names its path on line 1. Input with a path is
+sent byte for byte as under v10.1, so the bridge fixture's debate
+fingerprint stays `30f7aeff90e8ec76`, and v10.2 runs on it compare with
+v10.1 runs.

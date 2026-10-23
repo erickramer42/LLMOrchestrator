@@ -1,5 +1,5 @@
 """Unified-diff reading, shared by layer identification (debate.py),
-retrieval and its index-base check (repo_context.py) and the evidence
+retrieval and its index-base check (retrieval.py) and the evidence
 check (adjudication.py). Pure: no I/O."""
 
 import re

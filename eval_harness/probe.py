@@ -4,17 +4,16 @@ verdict-aware metrics. Outputs a timestamped JSON record with PROMPT_VERSION.
 example usage:
     python -m eval_harness.probe --model laguna-xs-2.1 --fixture ../<your_project_path>/<filename_to_review>"""
 
-import json, requests, argparse
+import json, argparse
 from datetime import datetime, timezone
 from pathlib import Path
 
+from eval_harness.raw_call import review
 from reviewer_prompt import (REVIEWER_SYSTEM, HEADER_SCOPE_CLAUSE,
                              PROMPT_VERSION)
 
-OLLAMA = "http://localhost:11434/api/chat"
 MODEL_DEFAULT = "laguna-xs-2.1"
 RUNS_DEFAULT = 5
-TIMEOUT_S = 600
 
 
 def _failed(verdict: str, reason: str) -> dict:
@@ -26,34 +25,10 @@ def call(model: str, code: str) -> dict:
     """One probe run. Returns verdict TIMEOUT on a request timeout (not
     retried: the timeout rate is what this measures) and PARSE_FAILURE
     when no attempt yields a JSON object."""
-    system = REVIEWER_SYSTEM + HEADER_SCOPE_CLAUSE
-    r = None
-    reason = "no attempts made"
-    for attempt in range(3):
-        payload = {"model": model, "stream": False, "format": "json",
-                   "messages": [{"role": "system", "content": system},
-                                {"role": "user", "content": code}],
-                   "options": {"temperature": 0.2 if attempt == 0 else 0.05,
-                               "num_ctx": 16384}}
-        try:
-            resp = requests.post(OLLAMA, json=payload, timeout=TIMEOUT_S)
-            r = resp.json()
-            out = json.loads(r["message"]["content"])
-            if isinstance(out, dict):
-                return out
-            reason = f"reply is a JSON {type(out).__name__}, expected an object"
-        except requests.exceptions.Timeout:
-            return _failed("TIMEOUT", f"timeout after {TIMEOUT_S}s")
-        except requests.exceptions.RequestException as e:
-            reason = f"request failed: {type(e).__name__}"
-        except json.JSONDecodeError:
-            raw = r.get("message", {}).get("content", "") if r else ""
-            meta = {k: r.get(k) for k in ("done_reason", "eval_count", "total_duration")} if r else {}
-            reason = "reply was not valid JSON"
-            print(f"    (parse fail attempt {attempt}: content={raw[:60]!r} meta={meta})")
-        except (KeyError, TypeError) as e:
-            reason = f"malformed Ollama response: {type(e).__name__}"
-    return _failed("PARSE_FAILURE", reason)
+    out, failure, reason = review(model, REVIEWER_SYSTEM + HEADER_SCOPE_CLAUSE, code)
+    if failure is None:
+        return out
+    return _failed("TIMEOUT" if failure == "timeout" else "PARSE_FAILURE", reason)
 
 
 def summarize(results: list) -> dict:

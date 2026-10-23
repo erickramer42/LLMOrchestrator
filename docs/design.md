@@ -52,10 +52,12 @@ The two agents have different jobs:
 | `adjudication.py` | Pure logic: schema validation, verdicts, the evidence-quote check, hedge demotion |
 | `debate.py` | Debate loop, input check, transcript templates, retrieval, judging, decision records; the measurement modes |
 | `diff_reader.py` | The one unified-diff reader, shared by the evidence check, retrieval and layer mapping |
-| `repo_context.py` | Offline indexer (typedefs, constants, call sites, file purposes) and diff-keyed retrieval |
+| `retrieval.py` | Diff-keyed retrieval from the repo index, and the check that the index matches the diff's base |
+| `indexer.py` | Offline indexer: typedefs, constants, call sites, file purposes |
 | `reviewer_prompt.py` | Agent system prompts, versioned |
 | `file_metadata.py` | File path → layer (core / bridge / app) |
 | `golden_tests.py` | Golden suite: live-model fixtures and deterministic guardrail units |
+| `review_fixtures.py` | Code snippets the golden suite and the bake-off share |
 | `eval_harness/` | FP-rate probe, model bake-off, and runners and scorers for round-1 and round-2 measurements |
 | `tests/` | Deterministic regression tests, with Ollama faked at the HTTP layer |
 
@@ -64,8 +66,9 @@ The dependency direction is acyclic:
 - config composes the prompts;
 - agent_client and adjudication are independent layers (callers hand
   adjudication's validators to the client as callbacks);
-- repo_context, debate and golden_tests sit on top, and orchestrator is
-  just the handle.
+- retrieval, debate and golden_tests sit on top, and orchestrator is
+  just the handle;
+- the indexer is loaded only to build the index, never by a debate.
 
 `adjudication.py` imports nothing with side effects. `tests/` fakes
 Ollama at the HTTP layer, so the whole regression suite runs in CI

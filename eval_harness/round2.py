@@ -25,45 +25,19 @@ M1 (--symbols) and M2 work as in round1. Score round 1 itself with
 eval_harness.round1, which reads these records too.
 """
 
-import argparse
 import re
-import sys
 import textwrap
-import time
 from typing import Callable, List, Optional
 
-from debate import CRITIQUES_ARM, V9_ARM, _sha256, run_round2_pair
-from eval_harness.round1 import (demoted_tail, load_records, m1_hits,
-                                 m2_candidates, post_state_lacks, read_input)
-from repo_context import _IDENT, _code_like, _removed_identifiers
+from debate import CRITIQUES_ARM, V9_ARM, run_round2_pair, text_sha256
+from eval_harness.common import (demoted_tail, m1_hits, m2_candidates, main,
+                                 reviewer_status)
+from retrieval import IDENT, code_like, removed_identifiers
 
 ARMS = (CRITIQUES_ARM, V9_ARM)
 ORIGINS = ("carried", "from-question", "echo?", "new")
 
 _CLAIM = re.compile(r"claim: (.*?)(?=; file: |; quote: |$)", re.S)
-
-
-# ============ run ============
-
-def run(proposal: str, code_diff: str, code_context: str, header: bool,
-        runs: int) -> None:
-    for i in range(1, runs + 1):
-        started = time.monotonic()
-        res = run_round2_pair(proposal, code_diff, code_context,
-                              header_artifact=header)
-        arms = ", ".join(f"{name} {n}" for name, n in res["round2_blockers"].items())
-        print(f"[{i}/{runs}] {res['record_path']}: round 1 {res['round1_blockers']} "
-              f"blockers; round 2 {arms or 'not reached'}; "
-              f"{res['attempts']} call(s), "
-              f"{(time.monotonic() - started) / 60:.1f} min")
-        failures = res.get("agent_failures", [])
-        for failure in failures:
-            print(f"    {failure}")
-        if "input_refused" in res:
-            raise SystemExit(f"Stopping: input refused: {res['input_refused']}")
-        if any("request failed" in f for f in failures):
-            raise SystemExit("Stopping: the Ollama request failed. Is the "
-                             "server up and both models pulled?")
 
 
 # ============ score ============
@@ -76,7 +50,7 @@ def claim_text(item: str) -> str:
 
 
 def names(item: str) -> set:
-    return {n for n in _IDENT.findall(claim_text(item)) if _code_like(n)}
+    return {n for n in IDENT.findall(claim_text(item)) if code_like(n)}
 
 
 def origin(blocker: str, first: dict) -> str:
@@ -94,21 +68,13 @@ def origin(blocker: str, first: dict) -> str:
     return "new"
 
 
-def reviewer_status(entry: dict) -> str:
-    """'first', 'retry' or 'failed' for an entry's reviewer reply."""
-    if entry["reviewer"].get("verdict") == "PARSE_FAILURE":
-        return "failed"
-    calls = entry["telemetry"]["reviewer"]
-    return "first" if calls and calls[-1]["attempt"] == 0 else "retry"
-
-
 def score_pairs(records: List[tuple], code_diff: str, symbols: List[str],
                 lacks: Optional[Callable[[str], bool]]) -> dict:
     """records: (path, record) pairs. Returns the compared pairs, the
     samples whose round 1 converged, and the excluded records with the
     reason."""
-    diff_hash = _sha256(code_diff)
-    removed = _removed_identifiers(code_diff)
+    diff_hash = text_sha256(code_diff)
+    removed = removed_identifiers(code_diff)
     rows, converged, excluded = [], [], []
     for path, rec in records:
         record_id = rec["metadata"]["debate_id"]
@@ -225,42 +191,14 @@ def print_report(scores: dict, symbols: List[str], m2_on: bool) -> None:
                                     subsequent_indent="      "))
 
 
+def _summary(res: dict) -> str:
+    arms = ", ".join(f"{name} {n}" for name, n in res["round2_blockers"].items())
+    return (f"round 1 {res['round1_blockers']} blockers; round 2 "
+            f"{arms or 'not reached'}; {res['attempts']} call(s)")
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Round-2 pair measurement: collect and score samples")
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    run_p = sub.add_parser("run", help="Collect round-2 pair samples")
-    run_p.add_argument("--proposal", required=True)
-    run_p.add_argument("--diff", help="Path to the code diff")
-    run_p.add_argument("--context", help="Path to surrounding code context")
-    run_p.add_argument("--header", action="store_true",
-                       help="Review target is header-only (C ABI stub)")
-    run_p.add_argument("--runs", type=int, default=1)
-
-    score_p = sub.add_parser("score", help="List round-2 blockers per arm")
-    score_p.add_argument("records", nargs="+", metavar="RECORD",
-                         help="Pair measurement records (globs allowed)")
-    score_p.add_argument("--diff", required=True,
-                         help="The diff the records reviewed; others are excluded")
-    score_p.add_argument("--symbols", default="",
-                         help="Comma-separated symbols for M1")
-    score_p.add_argument("--repo", help="Target repo checkout, for M2")
-    score_p.add_argument("--rev", help="The diff's post-state commit, for M2")
-
-    args = parser.parse_args()
-    if args.command == "run":
-        if args.runs < 1:
-            parser.error("--runs must be at least 1")
-        run(args.proposal, read_input(args.diff) if args.diff else "",
-            read_input(args.context) if args.context else "",
-            args.header, args.runs)
-    else:
-        if bool(args.repo) != bool(args.rev):
-            parser.error("--repo and --rev go together")
-        sys.stdout.reconfigure(encoding="utf-8")
-        symbols = [s.strip() for s in args.symbols.split(",") if s.strip()]
-        lacks = post_state_lacks(args.repo, args.rev) if args.repo else None
-        print_report(score_pairs(load_records(args.records),
-                                 read_input(args.diff), symbols, lacks),
-                     symbols, m2_on=lacks is not None)
+    main("round-2 pair", run_round2_pair, _summary, "both models",
+         score_pairs, print_report,
+         score_help="List round-2 blockers per arm",
+         records_help="Pair measurement records (globs allowed)")

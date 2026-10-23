@@ -32,7 +32,7 @@ The blockers, concerns, questions, and reasoning fields remain unchanged.
 
 ### Step 3: Adapt Eval Harness Fixtures
 
-Copy eval_harness/probe.py and eval_harness/bakeoff.py into your repo, update the test cases:
+The probe and bake-off live in eval_harness/ (probe.py, bakeoff.py and their shared raw_call.py). Replace the bake-off's test cases, and the shared snippets in review_fixtures.py that the golden suite also uses:
 
 CASES = [
     ("your_failure_mode_1", True, "code snippet with bug", False),

@@ -26,7 +26,7 @@ from config import (CHARS_PER_TOKEN_FLOOR, MAX_DEBATE_ROUNDS, MODELS, NUM_CTX,
                     TEMPERATURE_EXPLORATION, TEMPERATURE_RETRY)
 from diff_reader import diff_paths
 from file_metadata import get_layer_constraints, identify_layer
-from repo_context import CONTEXT_PATH, PACK_FORMAT_VERSION, build_context_pack
+from retrieval import CONTEXT_PATH, PACK_FORMAT_VERSION, build_context_pack
 from reviewer_prompt import PROMPT_VERSION, AUTO_ENGINEER_PROMPT
 
 # ============ TRANSCRIPT TEMPLATES ============
@@ -138,7 +138,9 @@ def extract_file_path(code_diff: str = "", code_context: str = "") -> str:
     return ""
 
 
-def _sha256(text: str) -> str:
+def text_sha256(text: str) -> str:
+    """Hex SHA-256 of text as UTF-8: the records' input hashes, which the
+    eval_harness scorers match diffs by."""
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
@@ -147,7 +149,7 @@ def _prompt_fingerprint(*parts: str) -> str:
     drift that PROMPT_VERSION misses (templates outside reviewer_prompt.py,
     layer notes). Templates only, never text derived from the reviewed
     input, so runs of one prompt on different diffs share a fingerprint."""
-    return _sha256("\x1e".join(parts))[:16]
+    return text_sha256("\x1e".join(parts))[:16]
 
 
 def _is_failure(agent_out: dict) -> bool:
@@ -161,7 +163,7 @@ def _new_id(kind: str) -> str:
 
 
 def _load_repo_index(path: Optional[Path] = None) -> dict:
-    """Load the checked-in context pack from next to repo_context.py, so
+    """Load the checked-in context pack from next to retrieval.py, so
     retrieval works from any working directory. Fail visible, not fatal:
     a missing/corrupt index yields {'_load_error': ...}; the debate then
     proceeds WITHOUT retrieval, warns on stderr, and records the reason."""
@@ -187,7 +189,7 @@ def _retrieve_pack(code_diff: str) -> Tuple[str, dict]:
 
 def _base_mismatch(pack_report: dict) -> List[str]:
     """Changed files the index holds in another version than the diff's
-    base (repo_context._base_check); empty when none or not checked."""
+    base (retrieval._base_check); empty when none or not checked."""
     return (pack_report.get("base_check") or {}).get("mismatched") or []
 
 
@@ -200,7 +202,7 @@ class _Setup(NamedTuple):
     pack_text: str
     pack_report: dict
     file_path: str
-    layer: Optional[str]
+    layer: str  # 'unknown' when no path is found
     layer_note: str
     evidence: Dict[str, List[str]]  # post-change lines reviewer blocker quotes are checked against
 
@@ -227,7 +229,7 @@ def _prepare(code_diff: str, code_context: str, header_artifact: bool) -> _Setup
               file=sys.stderr)
     # The record keeps the exact pack the agents saw: repo_context.json is
     # overwritten on every re-index, so this is the only surviving copy.
-    pack_report["sha256"] = _sha256(pack_text) if pack_text else None
+    pack_report["sha256"] = text_sha256(pack_text) if pack_text else None
     pack_report["text"] = pack_text
 
     # Static transcript sections — built once, they never change.
@@ -236,18 +238,19 @@ def _prepare(code_diff: str, code_context: str, header_artifact: bool) -> _Setup
                                          total=len(code_context))
                   if len(code_context) > CONTEXT_CHAR_LIMIT else "")
     static_section = STATIC_TEMPLATE.format(
-        fence=_sha256(f"{code_diff}\x00{code_context}")[:16],
+        fence=text_sha256(f"{code_diff}\x00{code_context}")[:16],
         diff=code_diff or '(no diff attached)',
         context=shown_context or '(none provided)',
         truncation=truncation)
 
+    # Without a path the layer is 'unknown', whose note says to apply every
+    # rule (v10.2; before it, such input got no layer note at all).
     file_path = extract_file_path(code_diff, code_context)
-    layer = identify_layer(file_path) if file_path else None
-    layer_note = get_layer_constraints(layer) if layer else ""
+    layer = identify_layer(file_path)
+    layer_note = get_layer_constraints(layer)
     if pack_text:
         static_section += REPO_CONTEXT_TEMPLATE.format(pack=pack_text)
-    if layer_note:
-        static_section = f"{static_section}\n{layer_note}\n"
+    static_section = f"{static_section}\n{layer_note}\n"
     # Quotes may come only from code the reviewer was shown.
     return _Setup(reviewer_prompt, static_section, pack_text, pack_report,
                   file_path, layer, layer_note,
@@ -312,9 +315,9 @@ def _record_inputs(setup: _Setup, proposal: str, original_proposal: str,
         "header_artifact": header_artifact,
         "file_path": setup.file_path or None,
         "layer": setup.layer,
-        "diff_sha256": _sha256(code_diff) if code_diff else None,
+        "diff_sha256": text_sha256(code_diff) if code_diff else None,
         "diff_chars": len(code_diff),
-        "context_sha256": _sha256(code_context) if code_context else None,
+        "context_sha256": text_sha256(code_context) if code_context else None,
         "context_chars": len(code_context),
         "context_truncated": len(code_context) > CONTEXT_CHAR_LIMIT,
     }

@@ -45,7 +45,7 @@ python orchestrator.py --proposal "Describe the header" --context path/to/header
 and writes a decision record to `coach_artifacts/`. Run ad-hoc reviews
 from a scratch directory if you don't intend to commit the record;
 retrieval still works, since the index is read from next to
-`repo_context.py`.
+`retrieval.py`.
 
 A reviewer call on a local 12 GB GPU takes about 1–4 minutes, so a full
 three-round debate can take 10 minutes or more.
