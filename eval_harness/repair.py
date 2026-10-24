@@ -3,6 +3,7 @@
 
     python -m eval_harness.repair run --set corpus|bridge
     python -m eval_harness.repair score --set corpus|bridge
+    python -m eval_harness.repair ceiling --set corpus|bridge
 
 For each labelled first-attempt record, `run` rebuilds the round-1
 request a debate sends today (debate._prepare and _render_transcript
@@ -21,6 +22,15 @@ review, mean recall per known bug and FPs per clean review; bridge FPs
 per review, race and gate found; and every offered item by its label
 class, the quote group it came from ('before': found only in the code
 before the change; 'nowhere') and its result.
+
+`ceiling` (ADR-0002, eighteenth measurement, Step 0) calls no model: for
+every item `run` offers, it tries each post-change line of the diff as a
+one-line repair through debate.apply_repairs, and reports which items
+some quote would restore (judge-quotable), which a quote naming one of
+the claim's identifiers would (on-point), which the hedge check blocks
+whatever the quote, and the arms with those items restored ('on-point'
+counts claims naming no identifier, which pass linkage anywhere;
+'named' leaves them out).
 """
 
 import argparse
@@ -33,10 +43,11 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import debate
-from adjudication import JUDGE_VERSION
+from adjudication import _HUNK_BREAK, JUDGE_VERSION, claim_identifiers
 from config import MODELS
 from eval_harness import replay
 from eval_harness.common import load_records, read_input, reviewer_status
+from retrieval import IDENT
 
 BRIDGE_DIFF = "docs/fixtures/qttune_bridge_refactor.diff"
 SETS = {
@@ -111,6 +122,18 @@ def _symbols(index_path: Optional[str]) -> frozenset:
 
 # ============ run ============
 
+def _offer(sample: dict):
+    """The review's setup, its j8-judged items, and what a debate offers
+    the repair call: the quote failures with evidence, in order."""
+    code_diff = read_input(sample["diff_path"])
+    setup = debate._prepare(code_diff, "", False, sample["index_path"])
+    rdiff = replay.load_diff(code_diff, _symbols(sample["index_path"]))
+    items = judged_items(sample, rdiff)
+    demoted = [{"blocker": i.text, "evidence": _evidence(i), "reason": "quote", "key": i.key}
+               for i, reason in items if reason == "evidence" and _evidence(i)]
+    return setup, items, demoted, debate.repair_offer(setup, demoted)
+
+
 def run(set_name: str, dry: bool = False) -> None:
     """dry: list each record's offer and request size, call nothing."""
     for sample in samples(set_name):
@@ -118,13 +141,7 @@ def run(set_name: str, dry: bool = False) -> None:
         if out_path.exists():
             print(f"{sample['id']}: done before, skipped")
             continue
-        code_diff = read_input(sample["diff_path"])
-        setup = debate._prepare(code_diff, "", False, sample["index_path"])
-        rdiff = replay.load_diff(code_diff, _symbols(sample["index_path"]))
-        items = judged_items(sample, rdiff)
-        demoted = [{"blocker": i.text, "evidence": _evidence(i), "reason": "quote", "key": i.key}
-                   for i, reason in items if reason == "evidence" and _evidence(i)]
-        offered = debate.repair_offer(setup, demoted)
+        setup, items, demoted, offered = _offer(sample)
         if not offered:
             print(f"{sample['id']}: nothing to offer")
             continue
@@ -171,6 +188,86 @@ def run(set_name: str, dry: bool = False) -> None:
             raise SystemExit("Stopping: the Ollama request failed. Is the server up?")
 
 
+# ============ ceiling ============
+
+def ceiling(set_name: str) -> dict:
+    """Step 0 of the eighteenth measurement: what any repair could
+    restore. Each offered item is tried with every post-change line of
+    every file as a one-line repair, judged by debate.apply_repairs."""
+    corpus_labels = json.loads(replay.CORPUS_LABELS_PATH.read_text(encoding="utf-8"))
+    valid_classes = set(corpus_labels.get("valid", []))
+    arms: Dict[str, Dict[str, list]] = {"A": {}, "judge": {}, "on-point": {}, "named": {}}
+    rows = []
+    for sample in samples(set_name):
+        setup, items, demoted, offered = _offer(sample)
+        candidates = [(path, line) for path, lines in setup.evidence.items()
+                      for line in lines if line != _HUNK_BREAK]
+        label_of = {i.key: i.label for i, _ in items}
+        quotable, on_point, named = set(), set(), set()
+        for o, d in zip(offered, demoted):
+            ids = claim_identifiers(o["evidence"].get("assertion", ""), setup.symbols)
+            results, passing = Counter(), []
+            for path, line in candidates:
+                out = debate.apply_repairs(setup, [o], [{"id": o["id"], "file": path,
+                                                         "quote": line}])[0]
+                results[out["result"]] += 1
+                if out["blocker"]:
+                    passing.append(line)
+            pointed = [ln for ln in passing if ids & set(IDENT.findall(ln))]
+            if passing:
+                quotable.add(d["key"])
+            if pointed or (passing and not ids):
+                on_point.add(d["key"])
+            if pointed:
+                named.add(d["key"])
+            rows.append({"source": sample["id"], "key": d["key"], "why": o["why"],
+                         "class": _item_class(set_name, sample, label_of.get(d["key"]),
+                                              valid_classes),
+                         "label": label_of.get(d["key"]), "ids": sorted(ids),
+                         "hedged": results["hedge"] > 0, "passing": len(passing),
+                         "on_point": len(pointed), "results": dict(results),
+                         "example": (pointed or passing or [None])[0]})
+        kept = [i for i, reason in items if reason is None]
+        group = sample["fixture"]["id"] if sample["fixture"] else "bridge"
+        for arm, keys in (("A", set()), ("judge", quotable), ("on-point", on_point),
+                          ("named", named)):
+            arms[arm].setdefault(group, []).append(
+                kept + [i for i, _ in items if i.key in keys])
+    return {"set": set_name, "items": rows, "arms": _pool_arms(set_name, arms)}
+
+
+def print_ceiling(res: dict) -> None:
+    rows = res["items"]
+    print(f"set: {res['set']}; offered items {len(rows)}")
+    print("\nitems by class and quote group: offered, hedged, judge-quotable, "
+          "on-point, naming no identifier")
+    cells = sorted({(r["class"], r["why"]) for r in rows})
+    for cls, why in cells + [("all", "")]:
+        sel = [r for r in rows if cls == "all" or (r["class"], r["why"]) == (cls, why)]
+        print(f"   {cls:<12} {why:<8} {len(sel):>3} {sum(r['hedged'] for r in sel):>3} "
+              f"{sum(r['passing'] > 0 for r in sel):>3} "
+              f"{sum(r['on_point'] > 0 or (r['passing'] > 0 and not r['ids']) for r in sel):>3} "
+              f"{sum(not r['ids'] for r in sel):>3}")
+    for arm, a in res["arms"].items():
+        print(f"arm {arm}: " + ", ".join(
+            f"{k} {v:.3f}" if isinstance(v, float) else f"{k} {v}" for k, v in a.items()))
+    base = res["arms"]["A"]
+    for arm in ("judge", "on-point", "named"):
+        b = res["arms"][arm]
+        if res["set"] == "corpus":
+            print(f"delta {arm}: recall {b['mean_recall'] - base['mean_recall']:+.3f}, "
+                  f"FPs per review {b['fp_per_review'] - base['fp_per_review']:+.3f}")
+        else:
+            print(f"delta {arm}: FPs per review "
+                  f"{b['fp_per_review'] - base['fp_per_review']:+.3f}, "
+                  f"race {b['race_found'] - base['race_found']:+.3f}")
+    print("\nper item: source key class/group, passing lines, on-point, ids, example")
+    for r in rows:
+        print(f"   {r['source'][-6:]} {r['key']:<4} {r['class']}/{r['why']:<8} "
+              f"{'HEDGED ' if r['hedged'] else ''}{r['passing']:>4} {r['on_point']:>4} "
+              f"{','.join(r['ids']) or '-'}  {(r['example'] or '')[:90]}")
+
+
 # ============ score ============
 
 def _bridge_class(label) -> str:
@@ -205,11 +302,7 @@ def score(set_name: str) -> dict:
                 if out.get("restored_blocker"):
                     restored_keys.add(off["key"])
                 label = label_of.get(off["key"])
-                if set_name == "corpus":
-                    bugs = {b["id"] for b in sample["fixture"]["known_bugs"]}
-                    cls = "valid" if set(label or []) & (bugs | valid_classes) else "fp"
-                else:
-                    cls = _bridge_class(label)
+                cls = _item_class(set_name, sample, label, valid_classes)
                 offered_rows.append({"source": sample["id"], "key": off["key"],
                                      "class": cls, "label": label, "why": off["why"],
                                      "result": out["result"], "blocker": off["blocker"],
@@ -223,9 +316,16 @@ def score(set_name: str) -> dict:
         arms["B"].setdefault(group, []).append(
             kept + [i for i, _ in items if i.key in restored_keys])
 
-    result = {"set": set_name, "calls": dict(calls), "missing": missing,
-              "offered": offered_rows, "arms": {}}
-    manifest_fixtures = {}
+    return {"set": set_name, "calls": dict(calls), "missing": missing,
+            "offered": offered_rows, "arms": _pool_arms(set_name, arms)}
+
+
+def _pool_arms(set_name: str, arms: Dict[str, Dict[str, list]]) -> dict:
+    """Each arm's pooled numbers from its kept items per review, grouped
+    by fixture (corpus) or under 'bridge'."""
+    corpus_labels = json.loads(replay.CORPUS_LABELS_PATH.read_text(encoding="utf-8"))
+    valid_classes = set(corpus_labels.get("valid", []))
+    manifest_fixtures, out = {}, {}
     if set_name == "corpus":
         from eval_harness.corpus import load_manifest
         manifest_fixtures = {f["id"]: f for f in load_manifest()["fixtures"]}
@@ -237,11 +337,17 @@ def score(set_name: str) -> dict:
                 per[fid] = replay.summarize_corpus(
                     [replay.corpus_stats(k, set(bugs), valid_classes) for k in runs], bugs)
             kinds = {fid: manifest_fixtures[fid]["kind"] for fid in per}
-            result["arms"][arm] = replay.pool_corpus(per, kinds)
+            out[arm] = replay.pool_corpus(per, kinds)
         else:
-            result["arms"][arm] = replay.summarize(
-                [replay.review_stats(k) for k in groups["bridge"]])
-    return result
+            out[arm] = replay.summarize([replay.review_stats(k) for k in groups["bridge"]])
+    return out
+
+
+def _item_class(set_name: str, sample: dict, label, valid_classes: set) -> str:
+    if set_name == "corpus":
+        bugs = {b["id"] for b in sample["fixture"]["known_bugs"]}
+        return "valid" if set(label or []) & (bugs | valid_classes) else "fp"
+    return _bridge_class(label)
 
 
 def print_score(res: dict) -> None:
@@ -276,7 +382,7 @@ def print_score(res: dict) -> None:
 def main(argv: Optional[List[str]] = None) -> None:
     parser = argparse.ArgumentParser(description="The repair pass, paired on "
                                                  "archived round-1 replies")
-    parser.add_argument("command", choices=("run", "score"))
+    parser.add_argument("command", choices=("run", "score", "ceiling"))
     parser.add_argument("--set", choices=tuple(SETS), required=True)
     parser.add_argument("--dry", action="store_true",
                         help="With run: list the offers, call nothing")
@@ -284,6 +390,8 @@ def main(argv: Optional[List[str]] = None) -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     if args.command == "run":
         run(args.set, args.dry)
+    elif args.command == "ceiling":
+        print_ceiling(ceiling(args.set))
     else:
         print_score(score(args.set))
 

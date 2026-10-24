@@ -78,6 +78,9 @@ Last updated: 2026-10-22. That day, in order:
   a round-1-only amendment, implemented and measured paired on archived
   replies: it recovered almost nothing because the request conflicted
   with the reviewer's role, so it did not ship.
+- its successor's ceiling (eighteenth, Step 0) checked without a model:
+  reachable by the judge's count, but only with a model that declines
+  the false claims the judge would accept.
 
 Purpose of this file: anyone picking up this repo can orient in five
 minutes, run the existing validation, and continue the queued work
@@ -444,6 +447,16 @@ without reverse-engineering the ADRs.
   `debate.REPAIR_PASS` off and stay v11.1; accepted replies are now
   kept verbatim in telemetry (`reply`). A successor would give the
   repair call its own short prompt and pilot it live first.
+- **Repair successor: ceiling checked, pilot not run (2026-10-24;
+  ADR-0002, eighteenth measurement).** With no model call, every
+  post-change line was tried as a repair of every offered item. The
+  judge would accept a quote for 24 of 31 valid corpus items (6 of the
+  rest hedge), and for all 9 false ones and 10 of 12 false bridge ones.
+  Restoring all of them gives corpus recall +0.137 and FPs per review
+  +0.136, bridge FPs +0.357. The bar is still reachable, but only if
+  the model declines nearly every false claim the judge would accept.
+  With quotes that name the claim's identifiers only, the ceiling is
+  +0.083. The pilot set is fixed and its bar awaits sign-off.
 
 **Known limitations (by design or pending):**
 - **Diffs above about 30K chars are refused** at `NUM_CTX` 24576 and
@@ -566,7 +579,7 @@ without reverse-engineering the ADRs.
 | `eval_harness/labels.json` | Hand labels per round-1 reviewer blocker (race, gate, deletion, removal objection, deleted test, other FP) for G3 and the eleventh's and twelfth's round 1, transcribed from ADR-0002; the few not in the ADR are marked `hand`. |
 | `eval_harness/corpus.py` | The real-diff corpus (#7). `list` describes each fixture without a model (size, layer, pack, input and base checks); `run` collects round-1 samples through `debate.run_round1_review` with the fixture's own index; `score` reports per fixture blockers per run, recall per known bug by the symbols a stored blocker's claim names, bugs found only among demoted blockers, and the blockers matching no known bug. |
 | `eval_harness/corpus_labels.json` | Hand labels per round-1 item on the corpus baseline (known-bug ids, `unlisted`, and false-positive classes), each judged against its fixture's `post_rev`; read by `eval_harness.corpus score` (ADR-0002, fourteenth measurement). |
-| `eval_harness/repair.py` | The repair pass measured paired on archived round-1 replies (seventeenth measurement): `run` rebuilds each labelled record's round-1 request and j8 split, offers its quote failures as a debate would and makes the repair call; `score` compares the j8 split with the split after repair, per label class and quote group. `--dry` lists offers without calling. |
+| `eval_harness/repair.py` | The repair pass measured paired on archived round-1 replies (seventeenth measurement): `run` rebuilds each labelled record's round-1 request and j8 split, offers its quote failures as a debate would and makes the repair call; `score` compares the j8 split with the split after repair, per label class and quote group. `--dry` lists offers without calling. `ceiling` (eighteenth, Step 0, no model) tries every post-change line as a repair of every offered item and reports what any repair could restore. |
 | `docs/fixtures/corpus.json` | The corpus manifest: per fixture its commit, direction, base and post-state revisions, diff and index paths, proposal, known bugs with symbols, and what the removed lines leak. |
 | `docs/fixtures/corpus/<id>/` | One fixture: `change.diff` (tests, docs and `*.md` excluded) and `repo_context.json`, the `--no-llm` index of its base. |
 | `eval_harness/round2.py` | The round-2 pair measurement. `run` collects samples through `debate.run_round2_pair`: a debate's round 1, then the round-2 reviewer twice on the same round-1 replies, once with the CRITIQUES section a debate's round 2 sends (v11.1) and once with the feedback format debates sent before it. `score` compares the arms on first-attempt pairs, counts each arm's first attempts that ran away, and tags each round-2 blocker carried, from-question, echo? or new, from its claim's identifiers. |

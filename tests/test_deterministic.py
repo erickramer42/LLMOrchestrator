@@ -39,7 +39,8 @@ from adjudication import (JUDGE_VERSION, convergence_verdict,  # noqa: E402
                           normalize_agent_output)
 from agent_client import FAILURE_SENTINEL, call_agent, failure_result  # noqa: E402
 from diff_reader import base_blobs, diff_paths, read_diff  # noqa: E402
-from eval_harness import bakeoff, common, corpus, probe, raw_call, replay, round1, round2  # noqa: E402
+from eval_harness import (bakeoff, common, corpus, probe, raw_call, replay, repair,  # noqa: E402
+                          round1, round2)
 from eval_harness.bakeoff import tally  # noqa: E402
 from eval_harness.probe import summarize  # noqa: E402
 from file_metadata import get_layer_constraints, identify_layer  # noqa: E402
@@ -1657,6 +1658,26 @@ class RepairSwitchTests(unittest.TestCase):
             setup = debate._prepare(diff, "", False)
         self.assertEqual(debate._run_settings(setup, "debate", 3, {})["prompt_fingerprint"],
                          "8e76794ac4946aab")
+
+    def test_the_ceiling_check_on_the_archived_offers(self):
+        # ADR-0002, eighteenth measurement, Step 0: what any one-line repair
+        # could restore of the seventeenth's offers, judged as a debate would.
+        if not list(Path(REPO_ROOT, "coach_artifacts").glob(
+                "measurement_round1_20261024_0*.json")):
+            self.skipTest("corpus records not present")
+        cwd = os.getcwd()
+        os.chdir(REPO_ROOT)
+        self.addCleanup(os.chdir, cwd)
+        with contextlib.redirect_stderr(io.StringIO()):
+            res = repair.ceiling("corpus")
+        rows = res["items"]
+        self.assertEqual(len(rows), 40)
+        self.assertEqual(sum(r["hedged"] for r in rows), 6)
+        self.assertEqual(sum(r["passing"] > 0 for r in rows), 33)
+        # a hedged claim stays demoted whatever its quote
+        self.assertFalse(any(r["hedged"] and r["passing"] for r in rows))
+        self.assertAlmostEqual(res["arms"]["judge"]["mean_recall"]
+                               - res["arms"]["A"]["mean_recall"], 0.137, places=3)
 
 
 class RepairPassTests(NoSleep):

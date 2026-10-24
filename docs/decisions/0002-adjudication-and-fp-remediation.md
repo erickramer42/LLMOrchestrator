@@ -3436,3 +3436,172 @@ short system prompt (the quoting rules, not the review task) and only
 the code part of the transcript, and would pilot a handful of live calls
 before the full paired batch. That is a new prompt and a new
 registration; the paired archive and the runner are ready for it.
+
+## Eighteenth Measurement (Draft) — Repair Successor: Ceiling Check and Pilot
+
+**Status (2026-10-24): the pilot set and the ceiling check are registered
+before the check runs and before any successor prompt is written.**
+
+The seventeenth left the registered question unanswered: its calls
+mostly did not attempt the task. A successor would give the repair call
+its own short system prompt (the quoting rules and its own output keys),
+send the diff and layer note without the repo context pack, and carry
+its own version name. Before writing that prompt, two steps that cost
+no model call or few:
+
+1. **Step 0, the ceiling check (no model).** Whether quotable
+   post-change evidence exists for the offered claims at all. If the
+   judge would accept no new quote for a claim, no prompt recovers it.
+2. **A pilot of 5 live calls** on a fixed set of archived records, with
+   a go/no-go bar derived from the ship rule, written here before the
+   calls. Drafted after Step 0, since the bar is stated per quotable
+   item.
+
+### The pilot set (fixed now, before Step 0; not changed by its result)
+
+| record | fixture | offered items (class/quote group) |
+|---|---|---|
+| `020932_b90266` | connect_start | #e1 valid/before, #e2 valid/nowhere |
+| `035440_2e95fa` | connect_start | #e1, #e2 false/nowhere; #e3, #e4 valid/nowhere |
+| `015846_a0d8f9` | trusted_count | #e1 valid/before, #e2 valid/nowhere |
+| `035703_61d927` | decode_length | #e1, #e2 false/before; #e3 valid/before |
+| `012856_819df9` | bridge | #e1 false/before, #e2 false/nowhere, #e3 false/before |
+
+14 items: 7 valid (3 before, 4 nowhere) and 7 false (4 before, 3
+nowhere). Chosen for coverage of the class × quote-group cells, from the
+seventeenth's offers only: b90266 is the earliest connect_start record
+with valid items in both groups; 2e95fa the only one with false and
+valid items found nowhere; a0d8f9 the earliest trusted_count record with
+valid items in both groups; 61d927 the only decode_length record with a
+valid item; 819df9 the only bridge record with false items in both
+groups. Known bias: v12 restored both of b90266's items, so they are
+known to be quotable. These 5 records are excluded from the successor's
+scored batch.
+
+### Step 0, the ceiling check
+
+`python -m eval_harness.repair ceiling --set corpus|bridge`, over every
+item the seventeenth offered (40 corpus, 19 bridge), using the judge's
+own functions (`adjudication.evidence_sources`, `hunk_identifiers`,
+`judge_repaired`), as replay does:
+- **Candidates:** every post-change line of every file in the diff
+  (context and added lines, as the evidence check reads them), each as a
+  single-line quote naming its file. Multi-line quotes are not tried;
+  single lines are a lower bound on the judge's ceiling, close to exact
+  since linkage reads whole hunks.
+- **Judge-quotable:** some candidate passes `judge_repaired` with the
+  item's original claim: the evidence check, linkage on the claim
+  (`assertion`), and the hedge check on the claim. Linkage reads the
+  quote's hunk, not its line, so any line of a hunk that names one of
+  the claim's identifiers passes; this is the judge's ceiling, the one
+  the ship rule counts.
+- **On-point:** a passing candidate line itself contains one of the
+  claim's identifiers (`claim_identifiers` with the index's symbols).
+  Claims that name no identifier pass linkage anywhere and are counted
+  separately.
+- **Hedged:** claims the hedge check demotes whatever their quote;
+  never quotable.
+- **Ceiling arms:** the corpus recall and FPs per review, and bridge FPs
+  per review, if every judge-quotable item is restored, and if only the
+  on-point ones are. Against the seventeenth's arm A (j8): corpus recall
+  0.413, FPs per review 0.409; bridge 0.179.
+
+**Predictions** (2026-10-24, before the check runs):
+
+| quantity | predicted |
+|---|---|
+| hedged claims among the offered, corpus / bridge | 2–6 of 40 / 1–4 of 19 |
+| judge-quotable, corpus valid / false | 26–31 of 31 / 6–9 of 9 |
+| on-point, corpus valid / false | 18–27 of 31 / 4–8 of 9 |
+| judge-quotable, bridge valid / false | 3–4 of 4 / 8–12 of 12 |
+| judge ceiling, corpus recall / FPs per review | +0.12 to +0.16 / +0.08 to +0.14 |
+| on-point ceiling, corpus recall | +0.08 to +0.14 |
+
+**What the result decides:**
+- If the judge ceiling's corpus recall gain is below +0.10, no repair
+  prompt can pass the seventeenth's ship rule, and the successor is not
+  registered.
+- If it is +0.10 or more, the pilot is drafted with its restoration
+  numbers stated per quotable item ("restored of quotable"), not per
+  offered item.
+- If the judge ceiling passes but the on-point ceiling does not, a
+  passing successor would rest on quotes that do not name what the
+  claim names. That is a weakness of hunk-level linkage, and it is
+  reported before any pilot.
+- The judge ceiling's FP gain against the +0.05 limit says how
+  selective the model has to be.
+
+### Step 0 results (2026-10-24)
+
+`python -m eval_harness.repair ceiling --set corpus|bridge`; no model
+call, about a second. Pinned by a test (it fails with the hedge check
+switched off). The arm labelled "named" in the output is the registered
+on-point arm: a passing line names one of the claim's identifiers.
+"On-point" in the output also counts claims that name no identifier.
+
+| set | class | group | offered | hedged | judge-quotable | named | names no identifier |
+|---|---|---|---|---|---|---|---|
+| corpus | valid | before | 18 | 3 | 14 | 5 | 5 |
+| corpus | valid | nowhere | 13 | 3 | 10 | 4 | 5 |
+| corpus | false | before | 6 | 0 | 6 | 2 | 0 |
+| corpus | false | nowhere | 3 | 0 | 3 | 3 | 0 |
+| bridge | valid | nowhere | 4 | 0 | 4 | 3 | 0 |
+| bridge | false | before | 8 | 1 | 7 | 3 | 3 |
+| bridge | false | nowhere | 4 | 1 | 3 | 3 | 0 |
+| bridge | deleted test | both | 3 | 0 | 3 | 0 | 1 |
+
+| arm (every such item restored) | corpus recall | corpus FPs per review | bridge FPs per review |
+|---|---|---|---|
+| A (j8, as archived) | 0.413 | 0.409 | 0.179 |
+| judge-quotable | 0.551 (+0.137) | 0.545 (+0.136) | 0.536 (+0.357) |
+| named, plus claims naming no identifier | 0.523 (+0.110) | 0.485 (+0.076) | 0.500 (+0.321) |
+| named | 0.496 (+0.083) | 0.485 (+0.076) | 0.393 (+0.214) |
+
+| prediction | predicted | observed | |
+|---|---|---|---|
+| hedged, corpus / bridge | 2–6 / 1–4 | 6 / 2 | HIT / HIT |
+| judge-quotable, corpus valid / false | 26–31 / 6–9 | 24 / 9 | MISSED LOW / HIT |
+| on-point (named), corpus valid / false | 18–27 / 4–8 | 9 / 5 | MISSED LOW / HIT |
+| judge-quotable, bridge valid / false | 3–4 / 8–12 | 4 / 10 | HIT / HIT |
+| judge ceiling, corpus recall / FPs | +0.12–0.16 / +0.08–0.14 | +0.137 / +0.136 | HIT / HIT |
+| on-point (named) ceiling, corpus recall | +0.08–0.14 | +0.083 | HIT |
+
+**What it shows:**
+- **The recall is there, by the judge's count.** The judge ceiling
+  clears +0.10, so by the registered rule the successor is not ruled
+  out and the pilot is drafted.
+- **Of the 7 valid corpus items no quote restores, 6 are hedged.** The
+  claim itself hedges, so the judge keeps it a question whatever the
+  quote. The seventh (68d66c #e3) names identifiers that no hunk holds.
+- **The judge gives no protection against false items here.** All 9
+  false corpus items and 10 of 12 false bridge items are
+  judge-quotable. Linkage reads the quote's hunk, so any line of a
+  linked hunk passes, and a claim naming no identifier passes with any
+  line of 8 characters or more. On the false items that stay out, the
+  guard is the model's choice alone.
+- **Passing would rest partly on loose quotes.** With named quotes only,
+  the ceiling is +0.083, below the bar. A successor that passes needs
+  some restorations that come from claims naming no identifier (10 of
+  the 31 valid corpus items, none of the 9 false) or from lines that
+  name nothing the claim names. Hunk-level linkage allows both.
+- **The selectivity the ship rule demands:**
+  - On the corpus, +0.10 is 73% of the judge ceiling's recall gain.
+  - The FP limit of +0.05 allows at most 3 of the 9 quotable false
+    items there.
+  - On the bridge, it allows at most 1 of the 10 quotable false items
+    (1 of 28 reviews is +0.036; 2 is +0.071).
+  - The model would have to restore most of its valid claims and
+    decline nearly every false one that the judge would accept. Those
+    are the claims it made in the first place; the faults are
+    correlated.
+- **The pilot set:** 6 of its 7 valid items are judge-quotable (a0d8f9
+  #e1 is hedged), and all 7 false items are.
+
+**Proposed pilot bar (awaiting sign-off), first attempts only:**
+- at least 4 of 5 in the repair schema;
+- at most 1 runaway;
+- at least 5 of the 6 quotable valid items restored;
+- at most 1 of the 4 false corpus items restored;
+- none of the 3 false bridge items restored.
+
+Replies that come from retries are counted and reported apart.
