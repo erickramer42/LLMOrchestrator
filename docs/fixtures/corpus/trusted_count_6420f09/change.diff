@@ -1,0 +1,76 @@
+diff --git a/core/include/qttune/j2534_ptypes.h b/core/include/qttune/j2534_ptypes.h
+index 9c2d3de..4f347b3 100644
+--- a/core/include/qttune/j2534_ptypes.h
++++ b/core/include/qttune/j2534_ptypes.h
+@@ -26,38 +26,6 @@
+ #define QTTUNE_PT_STATUS_TIMEOUT    0x09L
+ #define QTTUNE_PT_STATUS_BUFFER_EMPTY 0x10L
+ 
+-/* Finding 1 (code review 2026-10-20): trust rule for vendor-reported
+- * message counts.
+- *
+- * Some vendors leave pNumMsgs (and the caller's message buffer)
+- * untouched when returning an error, so a nonzero count under a hard
+- * error is not evidence any message was written. Observed live on the
+- * OBDX Pro VX quiet bus: "OP_WRITE: status 7, written 1"
+- * (bench-sessions/2026-10-20.md). Only these statuses carry a count
+- * the caller may trust:
+- *
+- *   STATUS_NOERROR       - all requested messages read
+- *   ERR_TIMEOUT          - partial batch already copied (J2534-1)
+- *   ERR_BUFFER_OVERFLOW  - pNumMsgs = messages actually copied
+- *
+- * Every other status (ERR_FAILED, ERR_BUFFER_EMPTY, device errors,
+- * ...) means "assume nothing was written". Applies to ReadMsgs; the
+- * write-side count is only ever logged, never consumed, and the raw
+- * pair is deliberately preserved in logs (it is diagnostic evidence
+- * of exactly this vendor behavior).
+- */
+-static inline unsigned long qttune_trusted_count(unsigned long status,
+-                                                 unsigned long reported)
+-{
+-    switch (status) {
+-    case QTTUNE_PT_STATUS_NOERROR:
+-    case QTTUNE_PT_STATUS_TIMEOUT:
+-        return reported;
+-    default:
+-        return 0;
+-    }
+-}
+-
+ /* ---- ProtocolIDs (J2534-1 v04.04, VERIFIED) ----
+  * 0x05 is raw CAN; ISO 15765 (ISO-TP) is 0x06. Connecting with 0x05
+  * opens an unfiltered raw-CAN channel instead. */
+diff --git a/core/src/j2534_loader.cpp b/core/src/j2534_loader.cpp
+index 2b36165..b3819fe 100644
+--- a/core/src/j2534_loader.cpp
++++ b/core/src/j2534_loader.cpp
+@@ -536,9 +536,6 @@ qttune_status_t qttune_j2534_read_frame(qttune_j2534_handle_t* handle,
+     PASSTHRU_MSG msg = {};
+     unsigned long num = 1;
+     long rc = handle->read_msgs(channel, &msg, &num, timeout_ms);
+-    num = qttune_trusted_count(rc, num);   /* finding 1: dirty count
+-                                               under a hard error is
+-                                               not a delivered frame */
+ 
+     if (num == 0) {
+         *got_frame = false;
+diff --git a/surrogate/surrogate_main.cpp b/surrogate/surrogate_main.cpp
+index 27ba51f..6c673f1 100644
+--- a/surrogate/surrogate_main.cpp
++++ b/surrogate/surrogate_main.cpp
+@@ -134,14 +134,6 @@ static int handle_op_read(unsigned long channel, uint32_t timeout_ms,
+     unsigned long num = QTTUNE_SUR_MAX_FRAMES_PER_READ;
+     const long rc = g_read_msgs(g_channel, s_read_batch, &num, timeout_ms);
+ 
+-    /* Finding 1: trust the count only under the status allowlist. A
+-       vendor may leave pNumMsgs untouched on error (VX observed:
+-       "status 7, written 1", bench 2026-10-20). A dirty count is
+-       doubly dangerous here: s_read_batch is static and never
+-       cleared, so it would replay the PREVIOUS read's frames as
+-       phantoms. */
+-    num = qttune_trusted_count(rc, num);
+-
+     /* Frames are collected whatever the status: per J2534-1 a read that
+      * asks for N messages with a nonzero timeout returns ERR_TIMEOUT
+      * together with however many arrived, so on a conforming vendor the

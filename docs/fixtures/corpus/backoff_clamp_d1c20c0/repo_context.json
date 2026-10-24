@@ -1,0 +1,1785 @@
+{
+  "index_version": "idx_20261024_014113",
+  "source_commit": "d1c20c0e58c25c0cd83582b5b2fe01d69310d155",
+  "source_dirty": false,
+  "llm_summaries": false,
+  "summary_model": null,
+  "summary_prompt_version": null,
+  "files": [
+    {
+      "path": ".github/dependabot.yml",
+      "purpose": "CI workflow",
+      "layer": "meta",
+      "blob": "3e981de2fe3800f6e4d32c65a7c3b567c0930039"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "purpose": "CI workflow",
+      "layer": "meta",
+      "blob": "17bb1aab8fa7d15cf1f71d864f3d2555486186ce"
+    },
+    {
+      "path": ".github/workflows/scorecard.yml",
+      "purpose": "CI workflow",
+      "layer": "meta",
+      "blob": "36894eeaf34a0c0b6cc6923cd1824323a3a7f179"
+    },
+    {
+      "path": "app/CMakeLists.txt",
+      "purpose": "Build configuration",
+      "layer": "meta",
+      "blob": "0bed0dcc50ce7d8981db41260b3ce134dedf800f"
+    },
+    {
+      "path": "app/main.cpp",
+      "purpose": "",
+      "layer": "bridge",
+      "blob": "b291b7c24481de8898f0e7b6149d8dd1ce52fae4"
+    },
+    {
+      "path": "app/qml/AnalogGauge.qml",
+      "purpose": "File/layer: app/qml/AnalogGauge.qml | Qt6 Quick + Shapes, UI layer",
+      "layer": "app",
+      "blob": "6d78fe1921defa7c05cc1dbe3265d0dffa097c42"
+    },
+    {
+      "path": "app/qml/BarGauge.qml",
+      "purpose": "File/layer: app/qml/BarGauge.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "d5e2c7b674c0c183a06935a485868a62fa7400b2"
+    },
+    {
+      "path": "app/qml/DashboardPage.qml",
+      "purpose": "File/layer: app/qml/DashboardPage.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "218d3633e13b18fdfbed4b72506696bea3cf8f4e"
+    },
+    {
+      "path": "app/qml/DigitalGauge.qml",
+      "purpose": "File/layer: app/qml/DigitalGauge.qml | Qt6 Quick + Shapes, UI layer",
+      "layer": "app",
+      "blob": "b623966e46aa68ba1db6485d394ddac562a3052b"
+    },
+    {
+      "path": "app/qml/GaugeArc.qml",
+      "purpose": "File/layer: app/qml/GaugeArc.qml | Qt6 Quick Shapes, UI layer",
+      "layer": "app",
+      "blob": "c5d6c70d105e9384020d978626c31c9623b63980"
+    },
+    {
+      "path": "app/qml/GaugeBase.qml",
+      "purpose": "File/layer: app/qml/GaugeBase.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "adb9a334b839ba5f1bcf49b45f7cae684c6248db"
+    },
+    {
+      "path": "app/qml/GaugeCard.qml",
+      "purpose": "File/layer: app/qml/GaugeCard.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "9b9bfadaaac9b4248844c5ec2b5b50a3416a09da"
+    },
+    {
+      "path": "app/qml/HomePage.qml",
+      "purpose": "File/layer: app/qml/HomePage.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "b852f83bb4886e30d40125144e5101382145a66c"
+    },
+    {
+      "path": "app/qml/LiveViewPage.qml",
+      "purpose": "File/layer: app/qml/LiveViewPage.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "7f8904b0369c7851b8eac8272940dba480e06bd6"
+    },
+    {
+      "path": "app/qml/LogPage.qml",
+      "purpose": "File/layer: app/qml/LogPage.qml | Qt Quick, UI layer",
+      "layer": "app",
+      "blob": "cad8d40f402a68bfebacb314a317c6242a620e96"
+    },
+    {
+      "path": "app/qml/Main.qml",
+      "purpose": "File/layer: app/qml/Main.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "8f43849c6c5f1d4687a34a4a60097da497c8974b"
+    },
+    {
+      "path": "app/qml/NavButton.qml",
+      "purpose": "",
+      "layer": "app",
+      "blob": "57dcd3683ff0e25856fe999b9433fb706a9d477d"
+    },
+    {
+      "path": "app/qml/RingGauge.qml",
+      "purpose": "File/layer: app/qml/RingGauge.qml | Qt6 Quick + Shapes, UI layer",
+      "layer": "app",
+      "blob": "e39d55939b795a6b4f59ca6dc5d8bf7343e7bda4"
+    },
+    {
+      "path": "app/qml/SettingsPage.qml",
+      "purpose": "File/layer: app/qml/SettingsPage.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "98671a6de9120da29c251806f14ca35617fd078e"
+    },
+    {
+      "path": "app/qml/ShiftLightBar.qml",
+      "purpose": "File/layer: app/qml/ShiftLightBar.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "261c0317d87049da3804b4d1117b82ea2c05425d"
+    },
+    {
+      "path": "app/qml/SignalHub.qml",
+      "purpose": "File/layer: app/qml/SignalHub.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "367a4d69c630af0f3fb4f3033b82d8b3068cc730"
+    },
+    {
+      "path": "app/qml/Theme.qml",
+      "purpose": "File/layer: app/qml/Theme.qml | Qt6 Quick singleton, UI layer",
+      "layer": "app",
+      "blob": "63b24664e44769debb363d583b70e0ed8d4881ef"
+    },
+    {
+      "path": "app/qml/ThemedButton.qml",
+      "purpose": "Expose so callers can tweak if needed",
+      "layer": "app",
+      "blob": "8d84e22c082bd08489e9f91ec7673ee1269c3eb4"
+    },
+    {
+      "path": "app/qttunebridge.cpp",
+      "purpose": "File/layer: app/qttunebridge.cpp | Qt6 Core, app layer, C++17",
+      "layer": "bridge",
+      "blob": "72a1b32c431de47b56cac4e49e0c10419c96cc3f"
+    },
+    {
+      "path": "app/qttunebridge.h",
+      "purpose": "File/layer: app/qttunebridge.h | Qt6 Core, app layer, C++17",
+      "layer": "bridge",
+      "blob": "7f011667a0d1803c0da9fd46b578f561dd918499"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "purpose": "Build configuration",
+      "layer": "meta",
+      "blob": "8dcf48e605ffe028415d7c906aaf485351a036dc"
+    },
+    {
+      "path": "core/CMakeLists.txt",
+      "purpose": "Build configuration",
+      "layer": "meta",
+      "blob": "7fc57510730710c073f90287105f2c7e7c04600d"
+    },
+    {
+      "path": "core/include/qttune/core.h",
+      "purpose": "File/layer: core/include/qttune/core.h | C ABI, public interface",
+      "layer": "core",
+      "blob": "3c643f6feddc9da94a5cfbce2adbddd2b6b9ef6c"
+    },
+    {
+      "path": "core/include/qttune/internal.h",
+      "purpose": "",
+      "layer": "core",
+      "blob": "2fcdb83cc4dab797b6a78c50da86a759c4f27f32"
+    },
+    {
+      "path": "core/include/qttune/j2534.h",
+      "purpose": "File/layer: core/include/qttune/j2534.h | C ABI, internal/public discovery API",
+      "layer": "core",
+      "blob": "a19ebb355cc3a3965803d181040dc19ac3a3ea55"
+    },
+    {
+      "path": "core/include/qttune/j2534_ptypes.h",
+      "purpose": "File/layer: core/include/qttune/j2534_ptypes.h | INTERNAL shared types",
+      "layer": "core",
+      "blob": "be10893da84dd7ae66d2d526944e64339031300b"
+    },
+    {
+      "path": "core/include/qttune/j2534_surrogate.h",
+      "purpose": "File/layer: core/include/qttune/j2534_surrogate.h | C ABI, x86-surrogate client",
+      "layer": "core",
+      "blob": "9a8dcfe030b5cf655974000d9d16fd510f6a4f42"
+    },
+    {
+      "path": "core/include/qttune/profile.h",
+      "purpose": "File/layer: core/include/qttune/profile.h | C ABI, public",
+      "layer": "core",
+      "blob": "c89b96471641d8910cff8872e7bde6c2f65b0231"
+    },
+    {
+      "path": "core/include/qttune/signal_sets.h",
+      "purpose": "",
+      "layer": "core",
+      "blob": "330fc3f279125e2e063714a06afaa2f442c47c94"
+    },
+    {
+      "path": "core/include/qttune/signals.h",
+      "purpose": "File/layer: core/include/qttune/signals.h | C ABI, public",
+      "layer": "core",
+      "blob": "1c9a2fa3bfc5e3e2cb8e35062d461778cb42975f"
+    },
+    {
+      "path": "core/include/qttune/surrogate_protocol.h",
+      "purpose": "File/layer: core/include/qttune/surrogate_protocol.h | shared app<->surrogate contract",
+      "layer": "core",
+      "blob": "9d55507e650e6928e579fe6f6988f270dc5e72bb"
+    },
+    {
+      "path": "core/src/core.cpp",
+      "purpose": "File/layer: core/src/core.cpp | C++17, Qt-free, CI-validated headless build",
+      "layer": "core",
+      "blob": "fdf890ad7a23c9089b6e5e510ec9216fc94b9ea5"
+    },
+    {
+      "path": "core/src/j2534_backoff.h",
+      "purpose": "File/layer: core/src/j2534_backoff.h | internal, not ABI-exported;",
+      "layer": "core",
+      "blob": "35e2a58740dc62e5416f094d54960b6e5528ec61"
+    },
+    {
+      "path": "core/src/j2534_loader.cpp",
+      "purpose": "File/layer: core/src/j2534_loader.cpp | C++17, Qt-free, CI-validated headless",
+      "layer": "core",
+      "blob": "8ffc3e2fd713370da788a895aecea3206f710cd4"
+    },
+    {
+      "path": "core/src/j2534_surrogate_client.cpp",
+      "purpose": "File/layer: core/src/j2534_surrogate_client.cpp | C++17, Qt-free, Win32-guarded",
+      "layer": "core",
+      "blob": "44c7f72c92d01f80e865e5589e0636062ed88c58"
+    },
+    {
+      "path": "core/src/j2534_transport.cpp",
+      "purpose": "File/layer: core/src/j2534_transport.cpp | C++17, Qt-free, Win32-guarded",
+      "layer": "core",
+      "blob": "00f7a980ff3419eca1b30bf719adc294d2cf2581"
+    },
+    {
+      "path": "core/src/mock_drive_cycle.h",
+      "purpose": "File/layer: core/src/mock_drive_cycle.h | internal, not ABI-exported;",
+      "layer": "core",
+      "blob": "6c0c7739dbc93c5f113543eebe06e8710984ecc5"
+    },
+    {
+      "path": "core/src/mock_transport.cpp",
+      "purpose": "File/layer: core/src/mock_transport.cpp | C++17, Qt-free, CI-validated headless build",
+      "layer": "core",
+      "blob": "997118be6ef81c228014ab88b55309ab09fd5f0d"
+    },
+    {
+      "path": "core/src/obd2_signal_sets.cpp",
+      "purpose": "File/layer: core/src/obd2_signal_sets.cpp | C++17, Qt-free, ALL platforms",
+      "layer": "core",
+      "blob": "23f130b09be48f22c21bc08c888bfef8e41b6a13"
+    },
+    {
+      "path": "core/src/pid_scheduler.h",
+      "purpose": "File/layer: core/src/pid_scheduler.h | internal, not ABI-exported;",
+      "layer": "core",
+      "blob": "5fbee9ae5fb4346fdab99bd11ce7b3e2ccd5328e"
+    },
+    {
+      "path": "core/src/profile_registry.cpp",
+      "purpose": "File/layer: core/src/profile_registry.cpp | C++17, Qt-free",
+      "layer": "core",
+      "blob": "4c958223df9d13b5d57c91f8d2841a5773cf180d"
+    },
+    {
+      "path": "core/src/session.h",
+      "purpose": "",
+      "layer": "core",
+      "blob": "f1d8ae40bd653348a7a1c534e4d5ffd7dfcc83db"
+    },
+    {
+      "path": "core/src/signal_sets.cpp",
+      "purpose": "",
+      "layer": "core",
+      "blob": "3e47599bd5515b7d53293f04227e12113ef1909a"
+    },
+    {
+      "path": "core/src/signals.cpp",
+      "purpose": "File/layer: core/src/signals.cpp | C++17, Qt-free",
+      "layer": "core",
+      "blob": "297e29889e26bb6455c9195c16c1f83b5ab0b974"
+    },
+    {
+      "path": "DISCLAIMER.md",
+      "purpose": "Configuration or docs",
+      "layer": "meta",
+      "blob": "d2c2491800ef7e4cede9667ae3a19a3c3a30d0c0"
+    },
+    {
+      "path": "docs/adr/0001-qt-free-core-c-abi.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "0a184dc953685c4eb58f4af733fe09e7afe9d09d"
+    },
+    {
+      "path": "docs/adr/0002-callback-pair-identity-snapshot-dispatch.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "708b173fbf550bd5be8573b1e4b3d18a5950e026"
+    },
+    {
+      "path": "docs/adr/0003-backpressure-bounds-in-flight-frames.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "d992f46f0374138e3be3e5a13d95e07a940cc688"
+    },
+    {
+      "path": "docs/adr/0004-signal-decoding-model.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "7c11541815f4e1cee227c360204e6461d206b2bf"
+    },
+    {
+      "path": "docs/adr/0005-coalesced-signal-updates.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "139e7aaddc8ebba4872ac57d548a381e41c3b5df"
+    },
+    {
+      "path": "docs/adr/0006-frame-abi-v0.3.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "f5717a045cde0403e08e2ed387773bcbc1261962"
+    },
+    {
+      "path": "docs/adr/0007-uri-selected-transports.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "f448244064b34dc69521bc2688a8af416b222e3b"
+    },
+    {
+      "path": "docs/adr/0008-x86-surrogate-host.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "e4c4dbcb0c904b18fa6e2ff421dd0ebf7aafdca2"
+    },
+    {
+      "path": "docs/adr/0009-pe-architecture-routing.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "726d6344aa1015559574a090d71b6ab5799c4e32"
+    },
+    {
+      "path": "docs/adr/0010-j2534-v0404-shared-types.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "2ae7d65e59786cf76b1c23227f7e9b380d00670c"
+    },
+    {
+      "path": "docs/adr/0011-vendor-call-relay-wire-forms.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "daa859ec0a66c965c2325c4828e6e40778bb900d"
+    },
+    {
+      "path": "docs/adr/0012-j2534-transport-adoption.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "a16a51edb59008a9b7a7c63789783fd0c7ed499f"
+    },
+    {
+      "path": "docs/adr/0013-protocol-profiles.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "d0fb487eb640208d0077a5a1a7af89e30665dd8c"
+    },
+    {
+      "path": "docs/adr/0014-single-threaded-surrogate.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "141b1ab0d473204a550d982851d5f146f062b6cb"
+    },
+    {
+      "path": "docs/adr/README.md",
+      "purpose": "Project documentation",
+      "layer": "meta",
+      "blob": "7d74b1ad1f5dd4ea742112011747226f96b39db9"
+    },
+    {
+      "path": "docs/architecture.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "6d7addac56fa60c64be59bd0e50f86713437cab7"
+    },
+    {
+      "path": "docs/bench-sessions/2026-10-16.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "bc5e885e4db6ce01cbbaea6fdc28fc76789ce747"
+    },
+    {
+      "path": "docs/bench-sessions/2026-10-20.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "58ca57609ce9d145a4db3bfe7418246c7d940aeb"
+    },
+    {
+      "path": "docs/bench-sessions/bench-runsheet.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "ddb8f230cb05a10c7dea79bfc6abfb33bb82152b"
+    },
+    {
+      "path": "docs/bench-sessions/vehicle-runsheet.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "153344e238e15af2de442d88121e8c1b1044b6ff"
+    },
+    {
+      "path": "docs/development.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "15a8dd6faea400166f0659a7b6092a047e78ee60"
+    },
+    {
+      "path": "docs/engineering-log.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "ac99a766fab5800d21d0c1b53d530311de0c38c3"
+    },
+    {
+      "path": "docs/j2534.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "fd844b83224a4057ec17d9f04e9139100b19d6ea"
+    },
+    {
+      "path": "docs/testing.md",
+      "purpose": "Test suite",
+      "layer": "meta",
+      "blob": "ed29c0678992d9de4c3daaeac5ea6df91d53eb6e"
+    },
+    {
+      "path": "README.md",
+      "purpose": "Project documentation",
+      "layer": "meta",
+      "blob": "ecbfe28c7c0b6bd89a813963ee0feb2f02c51ab3"
+    },
+    {
+      "path": "SECURITY.md",
+      "purpose": "Configuration or docs",
+      "layer": "meta",
+      "blob": "0ffdde988b6c57de4067cc3f1030015e93122e7e"
+    },
+    {
+      "path": "STATUS.md",
+      "purpose": "Configuration or docs",
+      "layer": "meta",
+      "blob": "9ffa741ae5153e114d6bc979ee1528524778111a"
+    },
+    {
+      "path": "surrogate/CMakeLists.txt",
+      "purpose": "Build configuration",
+      "layer": "meta",
+      "blob": "d554c088506c29c6004b7d252e357389714f83ab"
+    },
+    {
+      "path": "surrogate/surrogate_main.cpp",
+      "purpose": "File/layer: surrogate/surrogate_main.cpp | Win32, x86, Qt-free; rebuild build-win32",
+      "layer": "unknown",
+      "blob": "f6b53aec5c468bbcbefabfc7f2bde598fe7300f0"
+    },
+    {
+      "path": "tests/CMakeLists.txt",
+      "purpose": "Test suite",
+      "layer": "meta",
+      "blob": "158da6e7374c2ab908f0c41ab702a348976d6d43"
+    },
+    {
+      "path": "tests/fake_j2534.cpp",
+      "purpose": "File/layer: tests/fake_j2534.cpp | Fake J2534 vendor DLL, HARNESS tier;",
+      "layer": "unknown",
+      "blob": "b1f380b54c231abc00603fee562428b47a3a3402"
+    },
+    {
+      "path": "tests/test_bridge.cpp",
+      "purpose": "Double connect = idempotent success, no new session",
+      "layer": "bridge",
+      "blob": "31d24912c81cacb90fb57e6aa1ddcbfe0019890e"
+    },
+    {
+      "path": "tests/test_c_abi.c",
+      "purpose": "",
+      "layer": "unknown",
+      "blob": "673789b49cf93a45532606e2f27deb3f1305a3b3"
+    },
+    {
+      "path": "tests/test_core.cpp",
+      "purpose": "File/layer: tests/test_core.cpp | GTest, UNIT tier, headless CI job",
+      "layer": "unknown",
+      "blob": "076ae4ba5ce5bccf1566adfe89aa640a8eba7dc6"
+    },
+    {
+      "path": "tests/test_j2534_discovery.cpp",
+      "purpose": "File/layer: tests/test_j2534_discovery.cpp | GTest, HARNESS tier (registry injection)",
+      "layer": "unknown",
+      "blob": "5ec5e24d6d3b2c02d614dc7e18b5191b62e994e2"
+    },
+    {
+      "path": "tests/test_j2534_load.cpp",
+      "purpose": "File/layer: tests/test_j2534_load.cpp | GTest, HARNESS tier",
+      "layer": "unknown",
+      "blob": "d6d75a9701f8d2405239ae04523de989fdbe5628"
+    },
+    {
+      "path": "tests/test_j2534_routing.cpp",
+      "purpose": "File/layer: tests/test_j2534_routing.cpp | GTest, HARNESS tier",
+      "layer": "unknown",
+      "blob": "687446ad4732573df45adfda6deb3c236a1e6982"
+    },
+    {
+      "path": "tests/test_j2534_stream.cpp",
+      "purpose": "File/layer: tests/test_j2534_stream.cpp | GTest, HARNESS tier",
+      "layer": "unknown",
+      "blob": "1ca5bda390ddf6ef10ab29915978623ec432a008"
+    },
+    {
+      "path": "tests/test_j2534_surrogate.cpp",
+      "purpose": "File/layer: tests/test_j2534_surrogate.cpp | GTest, HARNESS tier",
+      "layer": "unknown",
+      "blob": "6f2fe525333f2b53a08eaf4f75196f1b1205a3c5"
+    },
+    {
+      "path": "tests/test_obd2.cpp",
+      "purpose": "File/layer: tests/test_obd2.cpp | GTest, UNIT tier, headless, all",
+      "layer": "unknown",
+      "blob": "f096dce044fcb39c28a34e56a1c52ac6b3ba197f"
+    },
+    {
+      "path": "tests/test_signals.cpp",
+      "purpose": "",
+      "layer": "unknown",
+      "blob": "0e0d6003aea424eb75ab8a91cf6bd6109d6883a8"
+    }
+  ],
+  "types": [
+    {
+      "name": "qttune_session_t",
+      "kind": "opaque",
+      "members": [],
+      "decl": "typedef struct qttune_session qttune_session_t;",
+      "doc": "Forward-declared opaque handle types",
+      "def_file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "qttune_frame_t",
+      "kind": "struct",
+      "members": [
+        "timestamp_us",
+        "arbitration_id",
+        "channel_id",
+        "data_length",
+        "data",
+        "flags",
+        "reserved"
+      ],
+      "decl": "typedef struct qttune_frame {\n    uint64_t timestamp_us;    /* Microseconds since session start (producer's\n                                 steady clock, monotonic per channel). The\n                                 J2534 transport passes the vendor's 32-bit\n                                 timestamp through instead (Known Issue #12) */\n    uint32_t arbitration_id;  /* CAN identifier: <= 0x7FF standard, up to\n                                 0x1FFFFFFF when FLAG_EXTENDED set */\n    uint16_t channel_id;      /* Bus/channel index only \u2014 never multiplexes\n                                 an arbitration ID */\n    uint16_t data_length;     /* Bytes used in data[]: 0..64 */\n    uint8_t  data[64];        /* Classic CAN (8) .. CAN-FD (64) payload */\n    uint32_t flags;           /* QTTUNE_FRAME_FLAG_* bitmask */\n    uint32_t reserved;        /* Producers MUST leave zero; ABI growth space */\n} qttune_frame_t;",
+      "doc": "Frame structure \u2014 POD only, no pointers. Layout is pinned by the assertions below: 88 bytes, no hidden padding on any supported platform (ADR-0006).",
+      "def_file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "qttune_frame_callback_t",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*qttune_frame_callback_t)(\n    const qttune_frame_t* frame,\n    void* user_data\n);",
+      "doc": "Callback function signature - called from transport thread",
+      "def_file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "qttune_status_t",
+      "kind": "enum",
+      "members": [
+        "QT_OK",
+        "QT_ERR_NULL_ARGUMENT",
+        "QT_ERR_NOT_IMPLEMENTED",
+        "QT_ERR_NO_TRANSPORT",
+        "QT_ERR_OUT_OF_MEMORY",
+        "QT_ERR_SESSION_CLOSED",
+        "QT_ERR_ALREADY_REGISTERED",
+        "QT_ERR_LOAD_FAILED",
+        "QT_ERR_VEHICLE_TIMEOUT",
+        "QT_ERR_TRANSPORT_HARD_FAILURE",
+        "QT_ERR_REQUEST_FAILED"
+      ],
+      "values": {
+        "QT_OK": "0",
+        "QT_ERR_NULL_ARGUMENT": "1",
+        "QT_ERR_NOT_IMPLEMENTED": "2",
+        "QT_ERR_NO_TRANSPORT": "3",
+        "QT_ERR_OUT_OF_MEMORY": "4",
+        "QT_ERR_SESSION_CLOSED": "5",
+        "QT_ERR_ALREADY_REGISTERED": "6",
+        "QT_ERR_LOAD_FAILED": "7",
+        "QT_ERR_VEHICLE_TIMEOUT": "8",
+        "QT_ERR_TRANSPORT_HARD_FAILURE": "9",
+        "QT_ERR_REQUEST_FAILED": "10"
+      },
+      "decl": "typedef enum {\n    QT_OK = 0,\n    QT_ERR_NULL_ARGUMENT = 1,\n    QT_ERR_NOT_IMPLEMENTED = 2,\n    QT_ERR_NO_TRANSPORT = 3,\n    QT_ERR_OUT_OF_MEMORY = 4,\n    QT_ERR_SESSION_CLOSED = 5,\n    QT_ERR_ALREADY_REGISTERED = 6,  /* Not returned: a duplicate callback\n                                       registration succeeds (pair identity,\n                                       ADR-0002). Reserved, since codes are\n                                       append-only */\n    QT_ERR_LOAD_FAILED = 7,\n    /* Link-health codes: published by the J2534 worker through\n     * qttune_session_get_error_state while the session keeps running. */\n    QT_ERR_VEHICLE_TIMEOUT = 8,         /* reads answer, but nothing arrives */\n    QT_ERR_TRANSPORT_HARD_FAILURE = 9,  /* reads fail: the adapter isn't\n                                           answering */\n    QT_ERR_REQUEST_FAILED = 10,  /* writes fail while reads stay clean: no\n                                    node ACKs the requests (ignition off,\n                                    ECU asleep, no vehicle). The adapter is\n                                    fine, so this isn't a hard failure */\n\n    /* Append-only rule: new codes go HERE, never renumber */\n} qttune_status_t;",
+      "doc": "Status codes - append-only evolution for ABI stability",
+      "def_file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "qttune_transport_ops_t",
+      "kind": "struct",
+      "members": [
+        "start",
+        "detach"
+      ],
+      "decl": "typedef struct qttune_transport_ops {\n    qttune_status_t (*start)(qttune_session_t* session, void* impl);\n    void (*detach)(qttune_session_t* session, void* impl);\n} qttune_transport_ops_t;",
+      "doc": "Transport abstraction (internal): sessions own a transport instance polymorphically. ops is a pointer to static, immutable vtable storage owned by the transport implementation TU; impl is the implementation's private state. Both start() and detach() are invoked by the session, never by transports themselves \u2014 no re-entry into session lifecycle. Contract: - start(): called from qttune_session_start. Must be idempotent (second call on a running transport returns QT_OK). - detach(): called exactly once from qttune_session_close, AFTER the closed flag is set. Must stop any worker threads and free impl + the qttune_transport wrapper itself. May not touch session afterwards.",
+      "def_file": "core/include/qttune/internal.h"
+    },
+    {
+      "name": "qttune_transport_t",
+      "kind": "struct",
+      "members": [
+        "ops",
+        "impl"
+      ],
+      "decl": "typedef struct qttune_transport {\n    const qttune_transport_ops_t* ops;\n    void* impl;\n} qttune_transport_t;",
+      "doc": null,
+      "def_file": "core/include/qttune/internal.h"
+    },
+    {
+      "name": "qttune_j2534_device_t",
+      "kind": "struct",
+      "members": [
+        "vendor_id",
+        "vendor_name",
+        "dll_path",
+        "supported_protocols",
+        "reserved"
+      ],
+      "decl": "typedef struct qttune_j2534_device {\n    uint32_t vendor_id;           /* Index in discovery order (0-based) */\n    char vendor_name[QTTUNE_J2534_VENDOR_NAME_LEN];\n    char dll_path[QTTUNE_J2534_DLL_PATH_LEN];\n    uint32_t supported_protocols; /* 0 \u2014 reserved for PROTOCOLS bitmask parse */\n    uint32_t reserved[8];         /* ABI-stable expansion room\n                                   * [0]: architecture (1=x86, 2=x64, 0=unknown) */\n} qttune_j2534_device_t;",
+      "doc": null,
+      "def_file": "core/include/qttune/j2534.h"
+    },
+    {
+      "name": "qttune_j2534_handle_t",
+      "kind": "opaque",
+      "members": [],
+      "decl": "typedef struct qttune_j2534_handle qttune_j2534_handle_t;",
+      "doc": "Opaque handle to an opened vendor function-library connection",
+      "def_file": "core/include/qttune/j2534.h"
+    },
+    {
+      "name": "SCONFIG",
+      "kind": "struct",
+      "members": [
+        "Parameter",
+        "Value"
+      ],
+      "decl": "typedef struct qttune_pt_sconfig {\n    unsigned long Parameter;   /* config parameter name (e.g. DATA_RATE) */\n    unsigned long Value;      /* parameter value */\n} SCONFIG;",
+      "doc": null,
+      "def_file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "SCONFIG_LIST",
+      "kind": "struct",
+      "members": [
+        "NumOfParams",
+        "ConfigPtr"
+      ],
+      "decl": "typedef struct qttune_pt_sconfig_list {\n    unsigned long NumOfParams;\n    SCONFIG* ConfigPtr;\n} SCONFIG_LIST;",
+      "doc": null,
+      "def_file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "PASSTHRU_MSG",
+      "kind": "struct",
+      "members": [
+        "ProtocolID",
+        "RxStatus",
+        "TxFlags",
+        "Timestamp",
+        "DataSize",
+        "ExtraDataIndex",
+        "Data"
+      ],
+      "decl": "typedef struct qttune_pt_passthru_msg {\n    unsigned long ProtocolID;\n    unsigned long RxStatus;\n    unsigned long TxFlags;\n    unsigned long Timestamp;       /* microseconds (spec v4.04; vendor\n                                    * conformance is a BENCH check) */\n    unsigned long DataSize;        /* payload bytes in Data[] */\n    unsigned long ExtraDataIndex;  /* start of extra data (CRC, etc.);\n                                    * == DataSize when none */\n    unsigned char  Data[QTTUNE_PT_MSG_DATA_SIZE];\n} PASSTHRU_MSG;",
+      "doc": "---- The message struct (J2534-1 v04.04, VERIFIED) ---- Field order is the spec's (DataSize before ExtraDataIndex). The loader, surrogate and fake all compile from this header, so the tests cannot catch a divergence from the spec: verify any change against public references.",
+      "def_file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "qttune_j2534_sur_handle_t",
+      "kind": "opaque",
+      "members": [],
+      "decl": "typedef struct qttune_j2534_sur_handle qttune_j2534_sur_handle_t;",
+      "doc": null,
+      "def_file": "core/include/qttune/j2534_surrogate.h"
+    },
+    {
+      "name": "QttuneSignalType",
+      "kind": "enum",
+      "members": [
+        "QTTUNE_SIGNAL_TYPE_UINT8",
+        "QTTUNE_SIGNAL_TYPE_UINT16",
+        "QTTUNE_SIGNAL_TYPE_UINT32",
+        "QTTUNE_SIGNAL_TYPE_INT8",
+        "QTTUNE_SIGNAL_TYPE_INT16",
+        "QTTUNE_SIGNAL_TYPE_INT32",
+        "QTTUNE_SIGNAL_TYPE_FLOAT32",
+        "QTTUNE_SIGNAL_TYPE_STRING",
+        "QTTUNE_SIGNAL_TYPE_MANUF_START"
+      ],
+      "values": {
+        "QTTUNE_SIGNAL_TYPE_UINT8": "0",
+        "QTTUNE_SIGNAL_TYPE_UINT16": "1",
+        "QTTUNE_SIGNAL_TYPE_UINT32": "2",
+        "QTTUNE_SIGNAL_TYPE_INT8": "3",
+        "QTTUNE_SIGNAL_TYPE_INT16": "4",
+        "QTTUNE_SIGNAL_TYPE_INT32": "5",
+        "QTTUNE_SIGNAL_TYPE_FLOAT32": "6",
+        "QTTUNE_SIGNAL_TYPE_STRING": "7",
+        "QTTUNE_SIGNAL_TYPE_MANUF_START": "256"
+      },
+      "decl": "typedef enum {\n    QTTUNE_SIGNAL_TYPE_UINT8   = 0,\n    QTTUNE_SIGNAL_TYPE_UINT16  = 1,\n    QTTUNE_SIGNAL_TYPE_UINT32  = 2,\n    QTTUNE_SIGNAL_TYPE_INT8    = 3,\n    QTTUNE_SIGNAL_TYPE_INT16   = 4,\n    QTTUNE_SIGNAL_TYPE_INT32   = 5,\n    QTTUNE_SIGNAL_TYPE_FLOAT32 = 6,\n    QTTUNE_SIGNAL_TYPE_STRING  = 7,  /* Reserved */\n    QTTUNE_SIGNAL_TYPE_MANUF_START = 256\n} QttuneSignalType;",
+      "doc": null,
+      "def_file": "core/include/qttune/signals.h"
+    },
+    {
+      "name": "QttuneSignalDef",
+      "kind": "struct",
+      "members": [
+        "id",
+        "name",
+        "type",
+        "start_byte",
+        "num_bytes",
+        "bit_offset",
+        "bit_length",
+        "scale",
+        "offset",
+        "unit",
+        "decimal_places",
+        "flags",
+        "message_id",
+        "mux_offset",
+        "mux_length",
+        "mux_reserved",
+        "mux_key"
+      ],
+      "decl": "typedef struct QttuneSignalDef {\n    uint16_t id;\n    char name[32];\n    QttuneSignalType type;\n    uint8_t start_byte;\n    uint8_t num_bytes;\n    uint8_t bit_offset;\n    uint8_t bit_length;\n    float scale;\n    float offset;\n    char unit[16];\n    uint8_t decimal_places;\n    uint32_t flags;\n    \n    /* CAN arbitration ID this signal rides on. Consumers gate decode\n     * on frame->arbitration_id == message_id BEFORE extraction;\n     * qttune_decode_signal itself remains payload-only. */\n    uint32_t message_id;\n    \n    /* MUX descriptor: packed [offset:8][length:8][reserved:16]\n     * - offset: byte offset in payload where mux key sits (0..payload_len-1)\n     * - length: 0 = mux disabled; 1 or 2 = key size in bytes\n     * - reserved: must be zero\n     * When mux is enabled (length > 0), decode proceeds ONLY if\n     * the payload's key bytes match mux_key exactly. This enables\n     * OBD-II response discrimination (e.g., 0x41 <PID> echo). */\n    uint8_t mux_offset;\n    uint8_t mux_length;\n    uint8_t mux_reserved[2];\n    uint32_t mux_key;  /* The byte pattern to match at mux_offset */\n} QttuneSignalDef;",
+      "doc": null,
+      "def_file": "core/include/qttune/signals.h"
+    },
+    {
+      "name": "QttuneChannelDecl",
+      "kind": "struct",
+      "members": [
+        "rx_id",
+        "tx_id"
+      ],
+      "decl": "typedef struct QttuneChannelDecl {\n    uint32_t rx_id;   /* flow-control filter target */\n    uint32_t tx_id;   /* request destination */\n} QttuneChannelDecl;",
+      "doc": null,
+      "def_file": "core/include/qttune/signals.h"
+    },
+    {
+      "name": "QttuneSignalSet",
+      "kind": "struct",
+      "members": [
+        "version",
+        "count",
+        "defs",
+        "channel_count",
+        "channels"
+      ],
+      "decl": "typedef struct QttuneSignalSet {\n    uint32_t version;\n    uint32_t count;\n    const QttuneSignalDef* defs;\n    /* Bounded channel list. 0/null = none declared. Aggregate\n     * initializers with three members still compile (remaining\n     * members value-initialize), but update them explicitly when\n     * touched \u2014 see test_obd2.cpp. */\n    uint32_t channel_count;\n    const QttuneChannelDecl* channels;\n} QttuneSignalSet;",
+      "doc": null,
+      "def_file": "core/include/qttune/signals.h"
+    },
+    {
+      "name": "qttune_sur_request_t",
+      "kind": "struct",
+      "members": [
+        "request_id",
+        "opcode",
+        "u"
+      ],
+      "decl": "typedef struct qttune_sur_request {\n    uint32_t request_id;   /* client-assigned, increasing; echoed back */\n    uint32_t opcode;       /* QTTUNE_SUR_OP_* */\n    union {\n        struct { uint32_t protocol_id; uint32_t flags; uint32_t baud; } connect;\n        struct { uint32_t channel_id; } disconnect;\n        /* input: flattened SCONFIG pairs (u32 Parameter, u32 Value, LE)\n         * for GET/SET_CONFIG; input_len 0 for NULL-input ioctls. */\n        struct { uint32_t channel_id; uint32_t ioctl_id;\n                 uint8_t input[QTTUNE_SUR_IOCTL_DATA_MAX];\n                 uint32_t input_len; } ioctl;\n        struct { uint32_t channel_id;\n                 uint8_t data[QTTUNE_SUR_MSG_MAX];\n                 uint32_t data_len; uint32_t tx_flags;\n                 uint32_t timeout_ms; } write;\n        /* The vendor's ReadMsgs timeout. The client waits that plus\n         * 500 ms for the reply before it calls the child hung. */\n        struct { uint32_t timeout_ms; } read;\n        struct { uint8_t data[QTTUNE_SUR_MSG_MAX]; uint32_t len;\n                 uint32_t timestamp; uint32_t rx_flags; } inject;\n        struct { uint32_t channel_id; uint32_t filter_type; uint32_t tx_flags;\n                 uint8_t mask[QTTUNE_SUR_FILTER_PATTERN_MAX];\n                 uint8_t pattern[QTTUNE_SUR_FILTER_PATTERN_MAX];\n                 uint8_t flow_control[QTTUNE_SUR_FILTER_PATTERN_MAX];\n                 uint32_t mask_len; uint32_t pattern_len; uint32_t fc_len;\n                 } start_filter;\n        struct { uint32_t channel_id; uint32_t filter_id; } stop_filter;\n    } u;\n} qttune_sur_request_t;",
+      "doc": null,
+      "def_file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "qttune_sur_frame_t",
+      "kind": "struct",
+      "members": [
+        "arbitration_id",
+        "timestamp",
+        "rx_flags",
+        "data",
+        "data_len"
+      ],
+      "decl": "typedef struct qttune_sur_frame {\n    uint32_t arbitration_id;  /* always 0: the CAN ID is data[0..3], which\n                                 the transport strips (ADR-0012) */\n    uint32_t timestamp;       /* the vendor's Timestamp, untranslated (#12) */\n    uint32_t rx_flags;        /* the vendor's RxStatus */\n    uint8_t  data[QTTUNE_SUR_MSG_MAX];\n    uint8_t  data_len;        /* the child clamps to QTTUNE_SUR_MSG_MAX */\n} qttune_sur_frame_t;",
+      "doc": "Single frame for batch read responses.",
+      "def_file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "qttune_sur_response_t",
+      "kind": "struct",
+      "members": [
+        "request_id",
+        "status",
+        "handle_or_channel",
+        "aux",
+        "data",
+        "data_len",
+        "num_frames",
+        "frames"
+      ],
+      "decl": "typedef struct qttune_sur_response {\n    uint32_t request_id;         /* the request's, for pairing */\n    int32_t  status;             /* vendor J2534 status, or STATUS_FAILED */\n    uint32_t handle_or_channel;  /* CONNECT: channel ID; START_FILTER: filter ID */\n    uint32_t aux;                /* WRITE: messages written */\n    uint8_t  data[QTTUNE_SUR_IOCTL_DATA_MAX];  /* IOCTL reply payload */\n    uint32_t data_len;           /* IOCTL; the client rejects > the limit */\n    uint32_t num_frames;         /* READ; the client rejects > the limit */\n    qttune_sur_frame_t frames[QTTUNE_SUR_MAX_FRAMES_PER_READ];\n} qttune_sur_response_t;",
+      "doc": "Response with embedded frame array. Fields an opcode doesn't use are zero.",
+      "def_file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "fn_inject",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_inject)(const unsigned char*, unsigned long,\n                              unsigned long, unsigned long, unsigned long);",
+      "doc": null,
+      "def_file": "core/src/j2534_loader.cpp"
+    },
+    {
+      "name": "qttune_pid_scheduler",
+      "kind": "struct",
+      "members": [
+        "pids",
+        "count",
+        "cursor"
+      ],
+      "decl": "typedef struct qttune_pid_scheduler {\n    uint8_t pids[QTTUNE_SCHED_MAX_PIDS];\n    uint32_t count;\n    uint32_t cursor;\n} qttune_pid_scheduler;",
+      "doc": "Round-robin PID scheduler (ADR-0013). Fixed capacity, no allocation, owned exclusively by the transport worker thread \u2014 single-threaded by construction, so no synchronization inside. PID derivation rule: a def drives scheduling iff it has a 2-byte mux key at payload offset 0 \u2014 the [41][PID] echo that opens a Mode-01 response once the transport strips the address header. The PID to request is the key's low byte. Sets without such defs (raw, mock) enroll nothing, and the worker falls back to ?poll= or passive receive. Nothing validates this shape at registration, so from_set() checks it itself.",
+      "def_file": "core/src/pid_scheduler.h"
+    },
+    {
+      "name": "abi_frame_size_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_frame_size_check[(sizeof(qttune_frame_t) == 88) ? 1 : -1];",
+      "doc": "Negative-array-size idiom \u2014 valid in ALL C standards including pedantic C89, complementing the header's _Static_assert (C11+).",
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_data_offset_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_data_offset_check[(offsetof(qttune_frame_t, data) == 16) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_flags_offset_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_flags_offset_check[(offsetof(qttune_frame_t, flags) == 80) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "fn_get_current_handle",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef int (*fn_get_current_handle)(void);",
+      "doc": "Test's own module reference: bump the refcount so the DLL stays mapped after core closes it, letting us assert on post-close state (GetCurrentHandle == 0) via the hook. Dropped at teardown.",
+      "def_file": "tests/test_j2534_load.cpp"
+    },
+    {
+      "name": "fn_inject_frame",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_inject_frame)(const unsigned char*, unsigned long,\n                                unsigned long, unsigned long, unsigned long);",
+      "doc": null,
+      "def_file": "tests/test_j2534_load.cpp"
+    },
+    {
+      "name": "fn_get_connect_params",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_get_connect_params)(unsigned long*, unsigned long*,\n                                      unsigned long*);",
+      "doc": null,
+      "def_file": "tests/test_j2534_stream.cpp"
+    },
+    {
+      "name": "fn_set_filter_gating",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_set_filter_gating)(int);",
+      "doc": null,
+      "def_file": "tests/test_j2534_stream.cpp"
+    },
+    {
+      "name": "fn_get_write_count",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_get_write_count)(unsigned long*);",
+      "doc": null,
+      "def_file": "tests/test_j2534_stream.cpp"
+    },
+    {
+      "name": "fn_get_recorded_write",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_get_recorded_write)(unsigned long, unsigned char*,\n                                      unsigned long*, unsigned long*);",
+      "doc": null,
+      "def_file": "tests/test_j2534_stream.cpp"
+    },
+    {
+      "name": "fn_get_last_filter_start",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_get_last_filter_start)(unsigned long*, unsigned long*,\n                                         unsigned char*, unsigned char*,\n                                         unsigned long*);",
+      "doc": null,
+      "def_file": "tests/test_j2534_stream.cpp"
+    },
+    {
+      "name": "fn_get_last_filter_stop",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_get_last_filter_stop)(unsigned long*);",
+      "doc": null,
+      "def_file": "tests/test_j2534_stream.cpp"
+    }
+  ],
+  "constants": [
+    {
+      "name": "MaxFrames",
+      "value": "10000",
+      "kind": "const",
+      "file": "app/qttunebridge.h"
+    },
+    {
+      "name": "HistoryCapacity",
+      "value": "120",
+      "kind": "const",
+      "file": "app/qttunebridge.h"
+    },
+    {
+      "name": "MaxInFlightFrames",
+      "value": "1000",
+      "kind": "const",
+      "file": "app/qttunebridge.h"
+    },
+    {
+      "name": "QTTUNE_FRAME_FLAG_EXTENDED",
+      "value": "0x00000001u",
+      "kind": "define",
+      "file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "QTTUNE_FRAME_FLAG_REMOTE",
+      "value": "0x00000002u",
+      "kind": "define",
+      "file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "QTTUNE_FRAME_FLAG_FD",
+      "value": "0x00000004u",
+      "kind": "define",
+      "file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "QTTUNE_FRAME_FLAG_BITRATE_SWITCH",
+      "value": "0x00000008u",
+      "kind": "define",
+      "file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "QTTUNE_FRAME_FLAG_ERROR",
+      "value": "0x00000010u",
+      "kind": "define",
+      "file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "QTTUNE_FRAME_FLAG_TX_ECHO",
+      "value": "0x00000020u",
+      "kind": "define",
+      "file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "QTTUNE_J2534_MAX_VENDORS",
+      "value": "16",
+      "kind": "define",
+      "file": "core/include/qttune/j2534.h"
+    },
+    {
+      "name": "QTTUNE_J2534_VENDOR_NAME_LEN",
+      "value": "64",
+      "kind": "define",
+      "file": "core/include/qttune/j2534.h"
+    },
+    {
+      "name": "QTTUNE_J2534_DLL_PATH_LEN",
+      "value": "256",
+      "kind": "define",
+      "file": "core/include/qttune/j2534.h"
+    },
+    {
+      "name": "QTTUNE_PT_MSG_DATA_SIZE",
+      "value": "4128",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_STATUS_NOERROR",
+      "value": "0L",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_STATUS_FAILED",
+      "value": "0x07L",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_STATUS_TIMEOUT",
+      "value": "0x09L",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_STATUS_BUFFER_EMPTY",
+      "value": "0x10L",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_PROTOCOL_CAN",
+      "value": "0x05UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_PROTOCOL_ISO15765",
+      "value": "0x06UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_BAUD_ISO15765_500K",
+      "value": "500000UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_TX_MSG_TYPE",
+      "value": "0x0001UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_START_OF_MESSAGE",
+      "value": "0x0002UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_RX_BREAK",
+      "value": "0x0004UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_TX_INDICATION",
+      "value": "0x0008UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_ISO15765_PADDING_ERR",
+      "value": "0x0010UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_ISO15765_ADDR_TYPE",
+      "value": "0x0080UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_CAN_29BIT_ID",
+      "value": "0x0100UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_TX_ISO15765_FRAME_PAD",
+      "value": "0x0040UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_TX_NORMAL_TRANSMIT",
+      "value": "0x0000UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_PASS_FILTER",
+      "value": "0x00000001UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_BLOCK_FILTER",
+      "value": "0x00000002UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_FLOW_CONTROL_FILTER",
+      "value": "0x00000003UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_FILTER_PATTERN_MAX",
+      "value": "12",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_IOCTL_GET_CONFIG",
+      "value": "0x01UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_IOCTL_SET_CONFIG",
+      "value": "0x02UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_IOCTL_READ_VBATT",
+      "value": "0x03UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_IOCTL_CLEAR_TX_BUFFER",
+      "value": "0x07UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_IOCTL_CLEAR_RX_BUFFER",
+      "value": "0x08UL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_IOCTL_CLEAR_MSG_FILTERS",
+      "value": "0x0AUL",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "QTTUNE_PT_SCONFIG_MAX_PARAMS",
+      "value": "8",
+      "kind": "define",
+      "file": "core/include/qttune/j2534_ptypes.h"
+    },
+    {
+      "name": "MOCK_SIG_RPM_ID",
+      "value": "1001",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "MOCK_SIG_COOLANT_ID",
+      "value": "2001",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "MOCK_SIG_SPEED_ID",
+      "value": "3001",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "MOCK_SIG_THROTTLE_ID",
+      "value": "4001",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "MOCK_SIG_IAT_ID",
+      "value": "5001",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "MOCK_SIG_LOAD_ID",
+      "value": "6001",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "MOCK_SIG_MAF_ID",
+      "value": "8001",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "MOCK_SIG_OIL_ID",
+      "value": "9001",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "MOCK_TELEMETRY_ARB_ID",
+      "value": "0x0C0u",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "MOCK_TELEMETRY_PAYLOAD_LEN",
+      "value": "12u",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "OBD2_SIG_ENGINE_LOAD_ID",
+      "value": "7001",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "OBD2_SIG_COOLANT_TEMP_ID",
+      "value": "7002",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "OBD2_SIG_RPM_ID",
+      "value": "7003",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "OBD2_SIG_SPEED_ID",
+      "value": "7004",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "OBD2_SIG_IAT_ID",
+      "value": "7005",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "OBD2_SIG_THROTTLE_ID",
+      "value": "7006",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "OBD2_SIG_FUEL_LEVEL_ID",
+      "value": "7007",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "OBD2_SIG_BATTERY_V_ID",
+      "value": "7008",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "OBD2_SIG_MAF_ID",
+      "value": "7009",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "OBD2_SIG_OIL_TEMP_ID",
+      "value": "7010",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "OBD2_ECU_ARB_ID",
+      "value": "0x7E8u",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "OBD2_TESTER_ARB_ID",
+      "value": "0x7E0u",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "QTTUNE_MAX_CHANNELS",
+      "value": "4",
+      "kind": "define",
+      "file": "core/include/qttune/signals.h"
+    },
+    {
+      "name": "QTTUNE_SUR_MSG_MAX",
+      "value": "64",
+      "kind": "define",
+      "file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "QTTUNE_SUR_IOCTL_DATA_MAX",
+      "value": "64",
+      "kind": "define",
+      "file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "QTTUNE_SUR_FILTER_PATTERN_MAX",
+      "value": "12",
+      "kind": "define",
+      "file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "QTTUNE_SUR_MAX_FRAMES_PER_READ",
+      "value": "16",
+      "kind": "define",
+      "file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "QTTUNE_SUR_OP_OPEN",
+      "value": "1",
+      "kind": "define",
+      "file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "QTTUNE_SUR_OP_CONNECT",
+      "value": "2",
+      "kind": "define",
+      "file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "QTTUNE_SUR_OP_IOCTL",
+      "value": "3",
+      "kind": "define",
+      "file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "QTTUNE_SUR_OP_WRITE",
+      "value": "4",
+      "kind": "define",
+      "file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "QTTUNE_SUR_OP_READ",
+      "value": "5",
+      "kind": "define",
+      "file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "QTTUNE_SUR_OP_SHUTDOWN",
+      "value": "6",
+      "kind": "define",
+      "file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "QTTUNE_SUR_OP_DISCONNECT",
+      "value": "7",
+      "kind": "define",
+      "file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "QTTUNE_SUR_OP_INJECT",
+      "value": "8",
+      "kind": "define",
+      "file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "QTTUNE_SUR_OP_START_FILTER",
+      "value": "9",
+      "kind": "define",
+      "file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "QTTUNE_SUR_OP_STOP_FILTER",
+      "value": "10",
+      "kind": "define",
+      "file": "core/include/qttune/surrogate_protocol.h"
+    },
+    {
+      "name": "J2534_BACKOFF_BASE_MS",
+      "value": "100",
+      "kind": "const",
+      "file": "core/src/j2534_backoff.h"
+    },
+    {
+      "name": "J2534_BACKOFF_CAP_MS",
+      "value": "5000",
+      "kind": "const",
+      "file": "core/src/j2534_backoff.h"
+    },
+    {
+      "name": "kTransactTimeoutMs",
+      "value": "3000",
+      "kind": "const",
+      "file": "core/src/j2534_surrogate_client.cpp"
+    },
+    {
+      "name": "kHandshakeTimeoutMs_default",
+      "value": "8000",
+      "kind": "const",
+      "file": "core/src/j2534_surrogate_client.cpp"
+    },
+    {
+      "name": "J2534_POLL_INTERVAL_MS",
+      "value": "20",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "J2534_READ_TIMEOUT_MS",
+      "value": "100",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "J2534_REQUEST_CYCLE_MS",
+      "value": "100",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "J2534_DRAIN_BUDGET",
+      "value": "10",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "J2534_DRAIN_READ_TIMEOUT_MS",
+      "value": "20",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "J2534_ADDR_LEN",
+      "value": "4",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "J2534_FILTER_MSG_LEN",
+      "value": "4",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "J2534_CAN_ID_MAX",
+      "value": "0x1FFFFFFFu",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "J2534_PID_MAX",
+      "value": "0xFFu",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "J2534_HEALTH_QUIET_CYCLES",
+      "value": "10",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "kTickS",
+      "value": "0.05f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kPi",
+      "value": "3.14159265f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kMassKg",
+      "value": "1500.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kTyreRadiusM",
+      "value": "0.33f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kFinalDrive",
+      "value": "3.73f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kDrivelineEff",
+      "value": "0.88f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kTractionLimitN",
+      "value": "9500.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kAeroCoeff",
+      "value": "0.42f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kRollingN",
+      "value": "177.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kEngineBrakeNm",
+      "value": "40.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kTopGear",
+      "value": "4",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kIdleRpm",
+      "value": "750.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kRevLimitRpm",
+      "value": "7000.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kShiftRpm",
+      "value": "6800.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kLaunchRpm",
+      "value": "4000.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kClutchInRpm",
+      "value": "1100.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kPeakTorqueNm",
+      "value": "400.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kPeakPower",
+      "value": "2.32e6f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kAmbientC",
+      "value": "24.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kThermostatC",
+      "value": "82.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kFanOnC",
+      "value": "100.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kQuarterMileM",
+      "value": "402.336f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "DEFAULT_FRAME_INTERVAL_MS",
+      "value": "50",
+      "kind": "const",
+      "file": "core/src/mock_transport.cpp"
+    },
+    {
+      "name": "MOCK_DIAG_ID",
+      "value": "0x18FF0C00u",
+      "kind": "const",
+      "file": "core/src/mock_transport.cpp"
+    },
+    {
+      "name": "QTTUNE_SCHED_MAX_PIDS",
+      "value": "16u",
+      "kind": "define",
+      "file": "core/src/pid_scheduler.h"
+    },
+    {
+      "name": "FAKE_QUEUE_DEPTH",
+      "value": "16",
+      "kind": "define",
+      "file": "tests/fake_j2534.cpp"
+    },
+    {
+      "name": "FAKE_WRITE_DEPTH",
+      "value": "16",
+      "kind": "define",
+      "file": "tests/fake_j2534.cpp"
+    },
+    {
+      "name": "FAKE_FILTER_DEPTH",
+      "value": "8",
+      "kind": "define",
+      "file": "tests/fake_j2534.cpp"
+    },
+    {
+      "name": "FAKE_CONFIG_DEPTH",
+      "value": "16",
+      "kind": "define",
+      "file": "tests/fake_j2534.cpp"
+    },
+    {
+      "name": "kMockRpmMin",
+      "value": "600.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockRpmMax",
+      "value": "7100.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockCoolantMin",
+      "value": "15.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockCoolantMax",
+      "value": "110.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockSpeedMax",
+      "value": "200.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockIatMin",
+      "value": "15.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockIatMax",
+      "value": "80.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockMafMax",
+      "value": "300.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockOilMin",
+      "value": "15.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockOilMax",
+      "value": "140.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMaxFrames",
+      "value": "20",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMaxDefs",
+      "value": "16",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kParam",
+      "value": "0x11",
+      "kind": "const",
+      "file": "tests/test_j2534_routing.cpp"
+    },
+    {
+      "name": "kValue",
+      "value": "0xCAFE",
+      "kind": "const",
+      "file": "tests/test_j2534_routing.cpp"
+    },
+    {
+      "name": "kParam",
+      "value": "0x10",
+      "kind": "const",
+      "file": "tests/test_j2534_surrogate.cpp"
+    },
+    {
+      "name": "kValue",
+      "value": "0xBEEF",
+      "kind": "const",
+      "file": "tests/test_j2534_surrogate.cpp"
+    }
+  ],
+  "callsites": [
+    {
+      "file": "app/qttunebridge.cpp",
+      "line": 471,
+      "snippet": "QMetaObject::invokeMethod(this, [this, uri, err, session]() { calls: m_connectThread.joinable, m_connectThread.join, connectingChanged, err.isEmpty, applyConnectedState, logMessage }, Qt::QueuedConnection);",
+      "connection": "Qt::QueuedConnection",
+      "doc": null
+    },
+    {
+      "file": "app/qttunebridge.cpp",
+      "line": 536,
+      "snippet": "QMetaObject::invokeMethod(self, [self]() { calls: m_dropNotifyPending.store, notifyDropped }, Qt::QueuedConnection);",
+      "connection": "Qt::QueuedConnection",
+      "doc": null
+    },
+    {
+      "file": "app/qttunebridge.cpp",
+      "line": 556,
+      "snippet": "QMetaObject::invokeMethod(self, [self, copy]() { calls: m_inFlightFrames.fetch_sub, handleFrameInternal }, Qt::QueuedConnection);",
+      "connection": "Qt::QueuedConnection",
+      "doc": "Lifetime contract: invoking with `self` as context object means the queued lambda is dropped if the bridge is destroyed before it runs. DO NOT change to a context-free postEvent pattern without revisiting destruction ordering."
+    }
+  ]
+}

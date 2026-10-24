@@ -615,10 +615,13 @@ def _save_cache(cache: dict) -> None:
     _cache_path().write_text(json.dumps(cache, indent=2), encoding="utf-8")
 
 
-def save_index(index: dict) -> Path:
-    """Stamp index_version with the UTC time and write the index to
-    CONTEXT_PATH, next to this module. Returns the path."""
+def save_index(index: dict, path: Optional[Path] = None) -> Path:
+    """Stamp index_version with the UTC time and write the index to path,
+    by default CONTEXT_PATH next to this module, which debates read
+    unless given an index file (corpus fixtures keep their own). Returns
+    the path written."""
     index["index_version"] = (
         f"idx_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}")
-    CONTEXT_PATH.write_text(json.dumps(index, indent=2), encoding="utf-8")
-    return CONTEXT_PATH
+    out = Path(path) if path else CONTEXT_PATH
+    out.write_text(json.dumps(index, indent=2), encoding="utf-8")
+    return out

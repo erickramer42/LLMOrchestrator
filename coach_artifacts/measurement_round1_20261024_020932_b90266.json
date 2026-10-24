@@ -1,0 +1,124 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261024_020932_b90266",
+    "created_utc": "2026-10-24T02:12:07.410232+00:00",
+    "prompt_version": "v11.1-critiques-feedback",
+    "judge_version": "j7-input-checks",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 14083,
+      "estimated_tokens": 4695,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 1942,
+      "sections": {
+        "modified_files": 2,
+        "types": 3,
+        "constants": 1,
+        "call_sites": 2,
+        "related_call_sites": 0,
+        "omitted": 1
+      },
+      "entries": 8,
+      "index_version": "idx_20261024_014114",
+      "index_commit": "4a86231a682f4017acd0b8303150dbb8341c42f9",
+      "format_version": "f3-diff-authoritative",
+      "error": null,
+      "base_check": {
+        "checked": 2,
+        "mismatched": []
+      },
+      "shown": {
+        "modified_files": 2,
+        "types": 3,
+        "constants": 1,
+        "call_sites": 2,
+        "related_call_sites": 0,
+        "omitted": 1
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\connect_start_4a86231\\repo_context.json",
+      "sha256": "0e901ed7293cc31ff508f7340a499475a999a68b0edf64685291a259b1679e58",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qttunebridge.cpp] (bridge): File/layer: app/qttunebridge.cpp | Qt6 Core, app layer, C++17\n[app/qttunebridge.h] (bridge): File/layer: app/qttunebridge.h | Qt6 Core, app layer, C++17\n\n--- KNOWN TYPES ---\nqttune_session_t (opaque): typedef struct qttune_session qttune_session_t;  // Forward-declared opaque handle types\nqttune_frame_t (struct): typedef struct qttune_frame { uint64_t timestamp_us; uint32_t arbitration_id; uint16_t channel_id; uint16_t data_length; uint8_t data[64]; uint32_t flags; uint32_t reserved; } qttune_frame_t;  // Frame structure \u2014 POD only, no pointers. Layout is pinned by the assertions below: 88 bytes, no hidden padding on any supported platform (ADR-0006).\nqttune_status_t (enum): typedef enum { QT_OK = 0, QT_ERR_NULL_ARGUMENT = 1, QT_ERR_NOT_IMPLEMENTED = 2, QT_ERR_NO_TRANSPORT = 3, QT_ERR_OUT_OF_MEMORY = 4, QT_ERR_SESSION_CLOSED = 5, QT_ERR_ALREADY_REGISTERED = 6, QT_ERR_LOAD_FAILED = 7, QT_ERR_VEHICLE_TIMEOUT = 8, QT_ERR_TRANSPORT_HARD_FAILURE = 9, QT_ERR_REQUEST_FAILED = 10, } qttune_status_t;  // Status codes - append-only evolution for ABI stability\n\n--- CONSTANTS ---\nMaxInFlightFrames = 1000 (const)\n\n--- QUEUED CONNECTION CALL SITES (indexed line numbers) ---\n[app/qttunebridge.cpp:563] QMetaObject::invokeMethod(self, [self]() { calls: m_dropNotifyPending.store, notifyDropped }, Qt::QueuedConnection);\n[app/qttunebridge.cpp:583] QMetaObject::invokeMethod(self, [self, copy]() { calls: m_inFlightFrames.fetch_sub, handleFrameInternal }, Qt::QueuedConnection);  // Lifetime contract: invoking with `self` as context object means the queued lambda is dropped if the bridge is destroyed before it runs. DO NOT change to a\u2026\n\n--- OMITTED (indexed entries this diff removes or rewrites) ---\nqueued call site in app/qttunebridge.cpp using core_err, m_pendingSession, startSession"
+    },
+    "prompt_fingerprint": "8e76794ac4946aab"
+  },
+  "inputs": {
+    "proposal": "Bridge connect: connectCoreOnly creates, registers and starts the session on the connect thread and hands it to the queued GUI completion through the lambda capture; drop the pending-session member and startSession. The signal model updates only subscribed rows, so the Live checkbox gates both the plot and the value.",
+    "original_proposal": "Bridge connect: connectCoreOnly creates, registers and starts the session on the connect thread and hands it to the queued GUI completion through the lambda capture; drop the pending-session member and startSession. The signal model updates only subscribed rows, so the Live checkbox gates both the plot and the value.",
+    "header_artifact": false,
+    "file_path": "app/qttunebridge.cpp",
+    "layer": "bridge",
+    "diff_sha256": "f942c8200795e7c911cd7d5349c92d5f6979cce3a0b3e8b13c0dfc7b40cadd69",
+    "diff_chars": 7852,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [],
+          "questions": [
+            "Does applyConnectedState take ownership of the session? If so, is it guaranteed to be called even when the lambda is dropped?",
+            "What is the expected lifetime contract for sessions passed across the worker/GUI thread boundary?",
+            "Should the destructor re-arm cleanup for sessions captured by dropped lambdas?",
+            "claim: Memory leak: session created by connectCoreOnly is leaked when bridge is destroyed before queued lambda executes; file: app/qttunebridge.cpp; quote: if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\n        qttune_session_destroy(pending);\n    }",
+            "claim: Memory leak: destructor no longer cleans up session captured by dropped lambda in async connect path; file: app/qttunebridge.cpp; quote: QMetaObject::invokeMethod(this, [this, uri, err, session]() {\n    // JOIN FIRST, then clear the flag, then emit: assigning to a\n    // joinable std::thread terminates the process, and a QML\n    // handler can run SYNCHRONOUSLY inside connectingChanged \u2014\n    // so join first, then mutate state, to avoid races.\n    if (m_connectThread.joinable()) {\n        m_connectThread.join();\n    }\n    m_connecting = false;\n    emit connectingChanged();\n\n    if (!err.isEmpty()) {\n        emit logMessage(QStringLiteral(\"Connect failed: %1 (%2)\").arg(uri, err));\n        return;\n    }\n\n    applyConnectedState(session, uri);\n});"
+          ],
+          "nits": [
+            "The comment in the destructor still references the removed m_pendingSession logic",
+            "Consider using a QPointer or similar to detect bridge destruction in the lambda",
+            "The removed comment about 'It was never started' is now inaccurate for the new design"
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 2
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 14083,
+              "prompt_eval_count": 3926,
+              "eval_count": 8368,
+              "thinking_chars": 32962,
+              "content_chars": 1907,
+              "done_reason": "stop",
+              "wall_s": 154.65,
+              "outcome": "ok"
+            }
+          ]
+        },
+        "timestamp": "2026-10-24T02:12:07.410182+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

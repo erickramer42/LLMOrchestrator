@@ -109,8 +109,10 @@ Every command, including the eval harness: [usage](docs/usage.md).
 
 ## Limitations
 
-- **One real fixture so far.** A corpus of triaged real diffs is the
-  next test of whether the precision holds.
+- **Precision drops off the first fixture.** On a corpus of seven real
+  diffs, 57% of blockers were valid, against 80–94% on the fixture the
+  guardrails were tuned on, and the quote rule cost recall on bugs that
+  remove a safety check.
 - **Small local models are slow.** A reviewer call takes 1–4 minutes.
   At the current context window, diffs above about 30K characters are
   refused, not truncated.

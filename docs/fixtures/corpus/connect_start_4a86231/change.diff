@@ -1,0 +1,166 @@
+diff --git a/app/qttunebridge.cpp b/app/qttunebridge.cpp
+index a585a8c..72a1b32 100644
+--- a/app/qttunebridge.cpp
++++ b/app/qttunebridge.cpp
+@@ -212,7 +212,7 @@ void SignalListModel::updateValues(const std::vector<std::pair<uint16_t, float>>
+     for (const auto& pair : values) {
+         for (size_t i = 0; i < m_entries.size(); ++i) {
+             Entry& e = m_entries[i];
+-            if (e.id == pair.first) {   // subscribed or not: see Entry::subscribed
++            if (e.id == pair.first && e.subscribed) {
+                 e.value = pair.second;
+ 
+                 // Evict-oldest ring push — bounded memory, stream never
+@@ -323,12 +323,6 @@ QtTuneBridge::~QtTuneBridge()
+     if (m_connectThread.joinable()) {
+         m_connectThread.join();
+     }
+-    // A connect whose queued completion never ran (it was dropped with
+-    // `this`) left its session pending. It was never started, so no
+-    // worker is calling onFrame; destroy it like any other.
+-    if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {
+-        qttune_session_destroy(pending);
+-    }
+     if (m_session != nullptr) {
+         destroySessionLocked();
+     }
+@@ -389,13 +383,11 @@ QVariantList QtTuneBridge::discoverJ2534Devices() const
+     return out;
+ }
+ 
+-// Pure-core half: safe on ANY thread. Creates and registers, the slow
+-// part (DLL load, PassThruOpen), but doesn't start: until the GUI thread
+-// has taken the session, no worker may call onFrame with `this`. On
+-// failure, cleans up fully (core API, mutex-safe off-thread) and returns
+-// the error string. On success the caller owns *out_session and must
+-// startSession() and applyConnectedState() on the GUI thread. Touches no
+-// Qt models, timers, or properties.
++// Pure-core half: safe on ANY thread. Creates, registers, starts. On
++// failure, cleans up fully (the unregister/destroy calls are core API,
++// mutex-safe off-thread) and returns the error string. On success the
++// caller owns *out_session and must applyConnectedState() on the GUI
++// thread. Touches no Qt models, timers, or properties.
+ QString QtTuneBridge::connectCoreOnly(const QString& uri,
+                                        qttune_session_t** out_session)
+ {
+@@ -412,21 +404,14 @@ QString QtTuneBridge::connectCoreOnly(const QString& uri,
+         return QString::fromUtf8(qttune_status_string(rc));
+     }
+ 
+-    *out_session = session;
+-    return {};
+-}
+-
+-// GUI thread: start the worker of a session connectCoreOnly produced.
+-// Frames that arrive before applyConnectedState are dropped by onFrame's
+-// connected check. On failure the session is destroyed.
+-QString QtTuneBridge::startSession(qttune_session_t* session)
+-{
+-    const qttune_status_t rc = qttune_session_start(session);
++    rc = qttune_session_start(session);
+     if (rc != QT_OK) {
+         qttune_unregister_frame_callback(session, &QtTuneBridge::onFrame, this);
+         qttune_session_destroy(session);
+         return QString::fromUtf8(qttune_status_string(rc));
+     }
++
++    *out_session = session;
+     return {};
+ }
+ 
+@@ -460,10 +445,7 @@ QString QtTuneBridge::connectSession(const QString& uri)
+     }
+ 
+     qttune_session_t* session = nullptr;
+-    QString err = connectCoreOnly(uri, &session);
+-    if (err.isEmpty()) {
+-        err = startSession(session);
+-    }
++    const QString err = connectCoreOnly(uri, &session);
+     if (!err.isEmpty()) {
+         emit logMessage(QStringLiteral("Connect failed: %1 (%2)").arg(uri, err));
+         return err;
+@@ -484,13 +466,9 @@ void QtTuneBridge::connectSessionAsync(const QString& uri)
+ 
+     m_connectThread = std::thread([this, uri]() {
+         qttune_session_t* session = nullptr;
+-        const QString core_err = connectCoreOnly(uri, &session);
+-        // Handed over through the member, not the lambda: a completion
+-        // dropped with `this` would leak a lambda capture, while the
+-        // destructor can always find the member.
+-        m_pendingSession.store(session);
++        const QString err = connectCoreOnly(uri, &session);
+ 
+-        QMetaObject::invokeMethod(this, [this, uri, core_err]() {
++        QMetaObject::invokeMethod(this, [this, uri, err, session]() {
+             // JOIN FIRST, then clear the flag, then emit: assigning to a
+             // joinable std::thread terminates the process, and a QML
+             // handler can run SYNCHRONOUSLY inside connectingChanged —
+@@ -498,11 +476,6 @@ void QtTuneBridge::connectSessionAsync(const QString& uri)
+             if (m_connectThread.joinable()) {
+                 m_connectThread.join();
+             }
+-            qttune_session_t* session = m_pendingSession.exchange(nullptr);
+-            QString err = core_err;
+-            if (err.isEmpty()) {
+-                err = startSession(session);
+-            }
+             m_connecting = false;
+             emit connectingChanged();
+ 
+diff --git a/app/qttunebridge.h b/app/qttunebridge.h
+index 5f30b09..7f01166 100644
+--- a/app/qttunebridge.h
++++ b/app/qttunebridge.h
+@@ -149,9 +149,6 @@ private:
+         char name[32];
+         char unit[16];
+         float value = 0.0f;
+-        // Whether the strip chart plots this signal. Values and history
+-        // update regardless: the Dashboard reads every row, and a signal
+-        // plotted again shows the history it kept meanwhile.
+         bool subscribed = true;
+         // GUI-thread-only rolling ring (written exclusively by updateValues).
+         // Fixed capacity, evict-oldest — mirrors the FrameListModel ring
+@@ -201,7 +198,6 @@ public:
+     bool connecting() const { return m_connecting; }
+     void dispatchFrameForTesting(const qttune_frame_t& frame);
+     static constexpr int maxInFlightForTesting() { return MaxInFlightFrames; }
+-    qttune_session_t* pendingSessionForTesting() const { return m_pendingSession.load(); }
+     QString linkState() const;
+     static QString linkStateForError(int32_t errorCode);  /* code → state string; static so tests need no session */
+ 
+@@ -224,11 +220,11 @@ public slots:
+     Q_INVOKABLE QString connectSession(const QString& uri);
+     Q_INVOKABLE void disconnectSession();
+     Q_INVOKABLE void clearFrames();
+-    // Async connect: the slow core work (create and register, the DLL
+-    // load and PassThruOpen included) runs on a worker thread; starting
+-    // the session, GUI state application and the result signal follow
+-    // queued on the GUI thread. Never blocks the UI — a J2534 handshake
+-    // can legally take seconds (the surrogate allows 8 s per stage).
++    // Async connect: pure-core work (create + register + start, the
++    // DLL load and PassThruOpen included) runs on a worker thread; GUI
++    // state application and the result signal arrive queued on the
++    // GUI thread. Never blocks the UI — a J2534 handshake can legally
++    // take seconds (the surrogate allows 8 s per stage).
+     Q_INVOKABLE void connectSessionAsync(const QString& uri);
+ 
+ signals:
+@@ -279,16 +275,9 @@ private:
+     // thread (in the async entry and the queued completion), so a plain
+     // bool suffices despite the worker's existence.
+     QString connectCoreOnly(const QString& uri, qttune_session_t** out_session);
+-    QString startSession(qttune_session_t* session);
+     void applyConnectedState(qttune_session_t* session, const QString& uri);
+     std::thread m_connectThread;
+     bool m_connecting = false;
+-    // The created, registered, NOT started session the connect thread
+-    // hands back. The queued completion takes it; if the bridge dies
+-    // first, the completion is dropped and the destructor destroys it.
+-    // Atomic only for the test seam: both owners read it after joining
+-    // the connect thread.
+-    std::atomic<qttune_session_t*> m_pendingSession{nullptr};
+     void pollLinkHealth();
+     int m_linkErrorCode = QT_OK;
+     uint32_t m_errorEpisodes = 0;

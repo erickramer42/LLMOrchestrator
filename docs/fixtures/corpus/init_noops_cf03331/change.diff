@@ -1,0 +1,231 @@
+diff --git a/app/qml/HomePage.qml b/app/qml/HomePage.qml
+index 6f9f0b0..32b38d8 100644
+--- a/app/qml/HomePage.qml
++++ b/app/qml/HomePage.qml
+@@ -117,7 +117,7 @@ Rectangle {
+                 : Bridge.disconnecting ? qsTr("Disconnecting…")
+                 : qsTr("Connect…")
+             highlighted: !Bridge.connected
+-            enabled: Bridge.coreInitialized && !Bridge.connecting && !Bridge.disconnecting
++            enabled: !Bridge.connecting && !Bridge.disconnecting
+             Layout.alignment: Qt.AlignHCenter
+             Layout.topMargin: 8
+             onClicked: Bridge.connected ? Bridge.disconnectSession()
+diff --git a/app/qml/LiveViewPage.qml b/app/qml/LiveViewPage.qml
+index a70f2d1..30df558 100644
+--- a/app/qml/LiveViewPage.qml
++++ b/app/qml/LiveViewPage.qml
+@@ -112,7 +112,6 @@ Page {
+             }
+             ThemedButton {
+                 visible: !Bridge.connected && !Bridge.connecting && !Bridge.disconnecting
+-                enabled: Bridge.coreInitialized
+                 highlighted: true
+                 text: qsTr("Connect…")
+                 onClicked: root.connectRequested()
+diff --git a/app/qml/Main.qml b/app/qml/Main.qml
+index 2901530..3083fec 100644
+--- a/app/qml/Main.qml
++++ b/app/qml/Main.qml
+@@ -127,8 +127,8 @@ ApplicationWindow {
+                     Rectangle {
+                         id: pill
+                         objectName: "linkPill"
+-                        readonly property color tone: !Bridge.coreInitialized ? Theme.danger
+-                                                    : (Bridge.connecting || Bridge.disconnecting) ? Theme.textDim
++                        readonly property color tone: (Bridge.connecting || Bridge.disconnecting)
++                                                    ? Theme.textDim
+                                                     : Theme.linkColor(Bridge.linkState)
+                         Layout.fillWidth: true
+                         Layout.preferredWidth: pillRow.implicitWidth + 24
+@@ -156,8 +156,7 @@ ApplicationWindow {
+                                 elide: Text.ElideRight
+                                 font.pixelSize: 13
+                                 color: pill.tone
+-                                text: !Bridge.coreInitialized ? qsTr("Core init failed")
+-                                    : Bridge.connecting ? qsTr("Connecting…")
++                                text: Bridge.connecting ? qsTr("Connecting…")
+                                     : Bridge.disconnecting ? qsTr("Disconnecting…")
+                                     : Bridge.connected
+                                       ? qsTr("%1 · %2").arg(Theme.linkLabel(Bridge.linkState))
+@@ -176,7 +175,7 @@ ApplicationWindow {
+                         visible: Bridge.connected || root.currentPage !== root.settingsPage
+                         // A teardown can take seconds with a wedged adapter; no
+                         // connect starts until it ends
+-                        enabled: Bridge.coreInitialized && !Bridge.connecting && !Bridge.disconnecting
++                        enabled: !Bridge.connecting && !Bridge.disconnecting
+                         text: Bridge.connected ? qsTr("Disconnect")
+                             : Bridge.disconnecting ? qsTr("Disconnecting…")
+                             : qsTr("Connect…")
+diff --git a/app/qml/SettingsPage.qml b/app/qml/SettingsPage.qml
+index 3a3c822..3eee437 100644
+--- a/app/qml/SettingsPage.qml
++++ b/app/qml/SettingsPage.qml
+@@ -144,7 +144,6 @@ Pane {
+                     // alone works and still decodes.
+                     placeholderText: qsTr("URI — e.g. mock://demo or j2534://Vendor?profile=raw&filter=0x7E8&poll=0x0C")
+                     enabled: !Bridge.connected && !Bridge.connecting && !Bridge.disconnecting
+-                             && Bridge.coreInitialized
+                     color: Theme.text
+                     onAccepted: page.requestConnect(text)
+                 }
+@@ -162,7 +161,6 @@ Pane {
+                              ? true
+                              : (!Bridge.connecting
+                                 && !Bridge.disconnecting
+-                                && Bridge.coreInitialized
+                                 && uriField.text !== "")
+                     onClicked: {
+                         if (Bridge.connected) {
+diff --git a/app/qttunebridge.cpp b/app/qttunebridge.cpp
+index 1b7fccc..30c5687 100644
+--- a/app/qttunebridge.cpp
++++ b/app/qttunebridge.cpp
+@@ -322,7 +322,7 @@ QtTuneBridge::QtTuneBridge(QObject* parent)
+     , m_coalesceTimer(new QTimer(this))
+     , m_signalModel(new SignalListModel(this))
+ {
+-    m_initialized = (ecuio_init() == ECUIO_OK);
++    (void)ecuio_init();   // optional and always ECUIO_OK (core.h), paired below
+     m_sortProxy->setSourceModel(m_sourceModel);
+ 
+     connect(m_coalesceTimer, &QTimer::timeout, this, [this]() {
+@@ -389,9 +389,7 @@ QtTuneBridge::~QtTuneBridge()
+     if (m_recorder.active()) {
+         m_recorder.stop(recordingSummary(QStringLiteral("the app closed")));
+     }
+-    if (m_initialized) {
+-        ecuio_shutdown();
+-    }
++    ecuio_shutdown();
+ }
+ 
+ void QtTuneBridge::destroySessionLocked()
+@@ -408,11 +406,6 @@ QString QtTuneBridge::coreVersion() const
+     return QString::fromUtf8(ecuio_version_string());
+ }
+ 
+-bool QtTuneBridge::coreInitialized() const
+-{
+-    return m_initialized;
+-}
+-
+ QString QtTuneBridge::statusString(int statusCode) const
+ {
+     return QString::fromUtf8(ecuio_status_string(static_cast<ecuio_status_t>(statusCode)));
+diff --git a/app/qttunebridge.h b/app/qttunebridge.h
+index 7eec918..b1d4d0e 100644
+--- a/app/qttunebridge.h
++++ b/app/qttunebridge.h
+@@ -179,7 +179,6 @@ class QtTuneBridge : public QObject
+ {
+     Q_OBJECT
+     Q_PROPERTY(QString coreVersion READ coreVersion CONSTANT)
+-    Q_PROPERTY(bool coreInitialized READ coreInitialized NOTIFY coreInitializedChanged)
+     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)
+     Q_PROPERTY(bool connecting READ connecting NOTIFY connectingChanged)
+     Q_PROPERTY(bool disconnecting READ disconnecting NOTIFY disconnectingChanged)
+@@ -212,7 +211,6 @@ public:
+     ~QtTuneBridge() override;
+ 
+     QString coreVersion() const;
+-    bool coreInitialized() const;
+     bool connected() const { return m_connected.load(std::memory_order_acquire); }
+     int frameCount() const { return m_currentFrameCount; }
+     int droppedFrames() const { return m_droppedFrames.load(std::memory_order_relaxed); }
+@@ -272,7 +270,6 @@ public slots:
+     Q_INVOKABLE void connectSessionAsync(const QString& uri);
+ 
+ signals:
+-    void coreInitializedChanged();
+     void connectedChanged(bool);
+     void frameCountChanged();
+     void framesReset();
+@@ -299,7 +296,6 @@ private:
+     void notifyDropped();   // GUI thread: emit droppedFramesChanged if the count moved
+     void destroySessionLocked();  // the destructor's teardown; disconnectSession tears down on its own thread
+ 
+-    bool m_initialized = false;
+     ecuio_session_t* m_session = nullptr;
+     QString m_currentUri;
+ 
+diff --git a/core/include/ecuio/core.h b/core/include/ecuio/core.h
+index 718f20f..febcea7 100644
+--- a/core/include/ecuio/core.h
++++ b/core/include/ecuio/core.h
+@@ -116,7 +116,11 @@ typedef enum {
+     /* Append-only rule: new codes go HERE, never renumber */
+ } ecuio_status_t;
+ 
+-/* Lifecycle */
++/* Lifecycle. Core needs no global setup: sessions, the profile registry
++ * (profile.h) and discovery (j2534.h) work without ecuio_init. Both
++ * calls are optional and do nothing; init always returns ECUIO_OK. A
++ * caller may pair them, call either any number of times, or never call
++ * them, and shutdown leaves open sessions working. */
+ ecuio_status_t ecuio_init(void);
+ void ecuio_shutdown(void);
+ const char* ecuio_version_string(void);
+diff --git a/core/include/ecuio/profile.h b/core/include/ecuio/profile.h
+index f9d220e..80dd6a4 100644
+--- a/core/include/ecuio/profile.h
++++ b/core/include/ecuio/profile.h
+@@ -22,9 +22,8 @@ extern "C" {
+  * Names are the registry key; the set pointer is data, NOT evidence of
+  * registration. Use ecuio_profile_lookup's status, never a NULL check.
+  *
+- * Built-ins are always present (initialized on first registry access,
+- * independent of ecuio_init so sessions created without init behave
+- * as they always have) and can't be replaced or removed.
++ * Built-ins are always present (initialized on first registry access;
++ * core needs no ecuio_init, core.h) and can't be replaced or removed.
+  *
+  * Lifetime: the registry keeps the pointer, not a copy, and each
+  * session keeps the set it was created with. The set, its defs and
+diff --git a/core/src/core.cpp b/core/src/core.cpp
+index d442ac3..858154d 100644
+--- a/core/src/core.cpp
++++ b/core/src/core.cpp
+@@ -19,8 +19,6 @@
+ #include <utility>
+ 
+ namespace {
+-    std::atomic<bool> g_initialized{false};
+-
+     /* ecuio_last_error_detail's text (error_detail.h), per thread. */
+     thread_local char t_detail[512] = "";
+ 
+@@ -147,16 +145,15 @@ ecuio_status_t ecuio_session_get_info(
+     return ECUIO_OK;
+ }
+ 
++/* Optional no-ops (core.h): core holds no global state that needs
++ * them. */
+ ecuio_status_t ecuio_init(void)
+ {
+-    bool expected = false;
+-    g_initialized.compare_exchange_strong(expected, true);
+     return ECUIO_OK;
+ }
+ 
+ void ecuio_shutdown(void)
+ {
+-    g_initialized.store(false);
+ }
+ 
+ const char* ecuio_version_string(void)
+diff --git a/core/src/profile_registry.cpp b/core/src/profile_registry.cpp
+index c976fa7..0cbc0ca 100644
+--- a/core/src/profile_registry.cpp
++++ b/core/src/profile_registry.cpp
+@@ -22,8 +22,8 @@ const char* const kBuiltIns[] = {"mock", "raw", "obd2"};
+ 
+ /* Function-local static: initialized on FIRST ACCESS, thread-safe
+  * (C++11 magic statics), immune to translation-unit init-order
+- * problems, and available whether or not ecuio_init ever ran —
+- * session_create must keep working without init, as it always has. */
++ * problems, and available with no ecuio_init, which core doesn't
++ * need (core.h). */
+ Registry& registry()
+ {
+     static Registry r = {

@@ -102,8 +102,15 @@ Early Runs", has every blocker's old and new label.
 - **The hedge guardrail demoted a hedged true claim.** This is by
   design: a hedged claim is a question, and it stays visible in the
   verdict.
-- **This is one fixture.** A corpus of triaged real diffs is the next
-  test of whether the precision holds (STATUS backlog #7).
+- **The precision did not travel whole to other diffs.** On a corpus of
+  seven real QtTune diffs (five reverse a bug fix, two are clean), 24 of
+  42 stored blockers were valid (57%), and mean recall per known bug was
+  0.46. Half the false positives were one new class in one diff: a
+  removed check whose invariant another function enforces. The quote
+  rule, the bridge fixture's main false-positive fix, cost recall here:
+  14 of the 17 blockers it demoted were valid, because these bugs are
+  removed safety checks and the reviewer quoted the removed lines
+  (ADR-0002, fourteenth measurement).
 
 ## Evidence
 

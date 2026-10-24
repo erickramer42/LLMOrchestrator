@@ -357,6 +357,37 @@ without reverse-engineering the ADRs.
     vote.
 
   These are candidates for the corpus (#7); nothing changed in debates.
+- **The corpus, built (2026-10-23; backlog #7; ADR-0002, fourteenth
+  measurement, pending).** Seven real QtTune diffs in
+  `docs/fixtures/corpus/`, described by `docs/fixtures/corpus.json`:
+  five reverse a fix commit, so each introduces the bugs that commit
+  fixed (eleven known bugs in all, with the symbols a blocker about each
+  names), and two are forward diffs of commits nothing later fixed, for
+  a false-positive rate. Each excludes tests and docs, carries a
+  proposal written in its real direction (#21) and the `--no-llm` index
+  of its own base, built from a throwaway clone. All seven pass the
+  input check (2.9K–5.6K estimated tokens) and the base check.
+  `python -m eval_harness.corpus list|run|score` lists them, collects
+  round-1 samples through `debate.run_round1_review` with each
+  fixture's index, and scores records per known bug. Reviews and both
+  measurement runners take `--index-file`; `--index` takes
+  `--index-out`; records name the index under
+  `metadata.repo_context_pack.index_file`. Known cost: the removed
+  lines of a reverse diff carry the fix's own comments, which name the
+  bug (the manifest's `leak` field per fixture). The set was approved
+  as built on 2026-10-23.
+- **Corpus baseline (2026-10-23; ADR-0002, fourteenth measurement).**
+  35 samples, 33 scored first attempts, hand labels in
+  `eval_harness/corpus_labels.json`. 24 of 42 stored blockers valid
+  (57%, against 80–94% on the bridge fixture); 8 of the 18 false
+  positives are one new class in one fixture, a removed check whose
+  invariant another function enforces. Mean recall per known bug 0.46
+  among stored blockers, 0.65 before the guardrails. The evidence check
+  demoted 17 items, 14 of them valid: here the bugs are removed safety
+  checks, and the reviewer quotes the removed lines. Clean fixtures:
+  0.44 blockers per run, all false. False positives recur across runs
+  more than on the bridge fixture, so voting is not expected to
+  transfer as replayed.
 
 **Known limitations (by design or pending):**
 - **Diffs above about 30K chars are refused** at `NUM_CTX` 24576 and
@@ -477,6 +508,10 @@ without reverse-engineering the ADRs.
 | `eval_harness/round1.py` | Round-1 measurements. `run` collects samples through `debate.run_round1_review`, so unlike the probe and bake-off it uses agent_client and config. `score` counts M1 and lists M2 candidates over measurement or debate records, first attempts on one diff only, and lists evidence-demoted (`#e`) and hedge-demoted (`#h`) items separately. |
 | `eval_harness/replay.py` | Offline replay, no model: rebuilds each round-1 reply's raw blockers (stored plus demoted) from archived records and re-judges them under deterministic variants: gapped quotes, claim–quote linkage, k-of-n voting. Scores them with the hand labels; checks that the current judge reproduces every stored split (ADR-0002, thirteenth measurement). |
 | `eval_harness/labels.json` | Hand labels per round-1 reviewer blocker (race, gate, deletion, removal objection, deleted test, other FP) for G3 and the eleventh's and twelfth's round 1, transcribed from ADR-0002; the few not in the ADR are marked `hand`. |
+| `eval_harness/corpus.py` | The real-diff corpus (#7). `list` describes each fixture without a model (size, layer, pack, input and base checks); `run` collects round-1 samples through `debate.run_round1_review` with the fixture's own index; `score` reports per fixture blockers per run, recall per known bug by the symbols a stored blocker's claim names, bugs found only among demoted blockers, and the blockers matching no known bug. |
+| `eval_harness/corpus_labels.json` | Hand labels per round-1 item on the corpus baseline (known-bug ids, `unlisted`, and false-positive classes), each judged against its fixture's `post_rev`; read by `eval_harness.corpus score` (ADR-0002, fourteenth measurement). |
+| `docs/fixtures/corpus.json` | The corpus manifest: per fixture its commit, direction, base and post-state revisions, diff and index paths, proposal, known bugs with symbols, and what the removed lines leak. |
+| `docs/fixtures/corpus/<id>/` | One fixture: `change.diff` (tests, docs and `*.md` excluded) and `repo_context.json`, the `--no-llm` index of its base. |
 | `eval_harness/round2.py` | The round-2 pair measurement. `run` collects samples through `debate.run_round2_pair`: a debate's round 1, then the round-2 reviewer twice on the same round-1 replies, once with the CRITIQUES section a debate's round 2 sends (v11.1) and once with the feedback format debates sent before it. `score` compares the arms on first-attempt pairs, counts each arm's first attempts that ran away, and tags each round-2 blocker carried, from-question, echo? or new, from its claim's identifiers. |
 | `eval_harness/__init__.py` | Package marker. |
 | `tests/test_deterministic.py` | Stdlib unittest regression suite: adjudication, agent client (incl. telemetry and log records), diff reading (incl. base blobs), the evidence check and hedge check, debate (incl. the input checks, the layer note, retrieval in the transcript, the index-base warning, record provenance, malformed-index degradation, round-1 measurement mode, demotion order, the fence, the round-2 pair mode, the golden suite's path and its fixtures), eval scoring (incl. the round-1 and round-2 scorers, and the probe's and bake-off's raw call), indexer harvesting, CLI and module boundaries. Fake Ollama HTTP layer. CI-ready. |
@@ -490,7 +525,7 @@ without reverse-engineering the ADRs.
 | `docs/fixtures/qttune_bridge_refactor.diff` | Input diff for all bridge-refactor debates. Provenance (established 2026-10-13): reverse patch of QtTune `e0c4c31`; post-state identical to committed `8ffbf19` (blob `1c195f8`). Known bugs in the post-state: the `m_currentFrameCount` race and the gate-and-freeze (ADR-0002, "Re-Triage of the Early Runs"). |
 | `docs/fixtures/qttune_core_e08b455.h` | QtTune's `core/include/qttune/core.h` at `e08b455` (blob `1d45bda`), the clean header behind header review 194320 and both probe logs (2026-10-07). Identified by date and content; committed 2026-10-23 (backlog #13). |
 | `coach_artifacts/decision_debate_*.json` | Decision records. Nine archived: header review (194320), baseline (203917), v1 re-measurement (014257), feedback smoke (153541, see erratum caveat), live-loop control (170208), context-pack pilot (201540, unscored), and three scored context-pack runs (203802, 204845, 210548). Plus seven v5.2 telemetry runs on the bridge fixture, from 20261022, whose six scorable round 1s are the fifth measurement's arm 1: two at num_ctx 16384 (134539_3026b2, 140943_bbe168), three at 24576 (143424_1b11cc, 145342_743bc4, 153943_7a4809), and two at 24576 with num_predict 12288 (160429_15cc3f, 161800_5b3f1d). Records from 2026-10-10 on carry `prompt_fingerprint`, sampling settings, input hashes, layer, `agent_failures`; v5 records carry `repo_context_pack`; v5.2 records add the pack text and per-attempt `telemetry`. |
-| `coach_artifacts/measurement_round1_*.json` | Round-1 measurement records (`metadata.mode` `round1_reviewer`): one reviewer round, no engineer, no merge decision. Same provenance fields as decision records. Forty, all on input fixture `docs/fixtures/qttune_bridge_refactor.diff`. The v6 baseline: 2026-10-22, 205145_5d2fc3 to 210647_dc4008. Arm H (v7): `20261022_22*`. Arm G (v8 / j3): `20261023_00*`. Arm G3 (v9 / j4): `20261023_01*`. |
+| `coach_artifacts/measurement_round1_*.json` | Round-1 measurement records (`metadata.mode` `round1_reviewer`): one reviewer round, no engineer, no merge decision. Same provenance fields as decision records. Forty on input fixture `docs/fixtures/qttune_bridge_refactor.diff`, and the corpus baseline's 35 (`20261024_01*`, `20261024_02*`), whose inputs are `docs/fixtures/corpus/`. The v6 baseline: 2026-10-22, 205145_5d2fc3 to 210647_dc4008. Arm H (v7): `20261022_22*`. Arm G (v8 / j3): `20261023_00*`. Arm G3 (v9 / j4): `20261023_01*`. |
 | `coach_artifacts/measurement_round2_*.json` | Round-2 pair records (`metadata.mode` `round2_pair`): round 1 as `round_history`, the two round-2 reviewer replies under `outputs.round2_arms`. Ten, from the eleventh measurement (v10), `20261023_03*` and `20261023_04*` (UTC), on the bridge fixture. Their round 1 also scores as round-1 samples. |
 | `probe_logs/fp_*.json` | 5-run probe aggregates backing the FP-rate claims. |
 | `requirements.txt` | Runtime deps (requests). |
@@ -544,9 +579,8 @@ eval_harness.raw_call and (the bake-off) review_fixtures.
 ## Backlog (ideas, loosely ordered)
 
 Suggested order as of 2026-10-23 (the live golden suite passed; #9,
-#11 and #17 done, #13 all but the probe rerun; the replay scored):
-#7 stable corpus, with known bugs per diff so recall is measured too,
-and proposals in each diff's real direction (#21). On it, measure the
+#11 and #17 done, #13 all but the probe rerun; the replay scored; the
+corpus built and its baseline scored): on the corpus, measure the
 replay's candidates (gapped quotes with claim–quote linkage, then 2-of-3
 voting) → recall levers, one measurement each: the call-site caveat
 (code review finding 9), #8 per-file layer notes, #14 structured
@@ -562,9 +596,11 @@ references elsewhere stay valid.
    converges as APPROVED_WITH_OPEN_QUESTIONS.
 - **#6 Chained/escalated debates.** On MAX_ROUNDS_EXCEEDED, re-submit
    unresolved questions as a fresh debate. Depends on #2.
-- **#7 Stable real-diff corpus.** 3–5 triaged real diffs with known
-   expected outcomes. The reverse-of-merged-commit technique that
-   produced the current fixture is a repeatable way to build this.
+- **#7 Stable real-diff corpus — BASELINE DONE (2026-10-23).** Seven
+   fixtures in `docs/fixtures/corpus/`, 33 labelled runs (Current State;
+   ADR-0002, fourteenth measurement). Next on it: replay the judge
+   candidates offline against `corpus_labels.json`, then the
+   removal-caused recall loss.
 - **#8 Multi-file diff layer handling.** Inject a layer map keyed by
    file; `diff_reader.diff_paths` already lists every changed path.
 - **#10 Codebase abstraction.** Move QtTune-specific bits behind config.
@@ -573,22 +609,22 @@ references elsewhere stay valid.
     and ADR-0001's timeout row is explained (the old probe could not
     count a timeout, but one would have ended the run). Still open:
     rerun the probe on that fixture with the fixed scoring. It would
-    measure today's reviewer prompt, not v2.
+    measure today's reviewer prompt, not v2, so it is folded into the
+    corpus bake-off (suggested order) rather than run on its own.
 - **#14 Client hardening.** Pass the JSON schema as Ollama's `format`
     (structured outputs). That changes how replies are sampled, so
     predict and measure it. The other half, routing the golden fixtures
     through the transcript builder, was done on 2026-10-23.
-- **#16 Context budget and runaway output — IN PROGRESS (2026-10-22).**
+- **#16 Context budget and runaway output — settled (2026-10-22; its
+    open thread moved to #19 on 2026-10-23).**
     Settled (Current State; ADR-0002, third follow-up and
     verification): the prompt is ~9.4K–10.2K tokens, ~83% of it the
     diff, so dropping the ~820-token pack is not worth it. `NUM_CTX`
     stays 24576, and `NUM_PREDICT` 12288 caps every attempt.
-    - **Still open: the reviewer's runaways.** The one with a tail
-      (15cc3f) read as an open-ended search for more issues, not a
-      visible loop; a cycle longer than the 400-char tail cannot be ruled
-      out. A repetition measure over the whole thinking, or a longer
-      tail, would settle it. Stopping loops early is #19; the engineer
-      prompt conflict is #20.
+    - **The reviewer's runaways are #19's question now.** The one with
+      a tail (15cc3f) read as an open-ended search for more issues, not
+      a visible loop; a cycle longer than the 400-char tail cannot be
+      ruled out. The engineer prompt conflict is #20.
     - **New data (eleventh measurement):** the round-2 reviewer ran away
       on 4 of 20 first attempts, and round 1 on 0 of 20. The tails were
       open-ended re-checking ("Let me also check…"), not repetition.
@@ -640,7 +676,11 @@ references elsewhere stay valid.
     on legitimately repetitive reasoning; the telemetry tails give test
     material. This catches the engineer's loops. It may miss the
     reviewer's runaway, which looked like an open-ended search rather
-    than repetition (#16).
+    than repetition. First question, moved here from #16 on 2026-10-23:
+    do the reviewer's runaways repeat at all? A repetition measure over
+    the whole thinking, or a tail longer than 400 chars, on the twelfth
+    measurement's runaway attempts would settle it before any abort
+    rule is built.
 - **#20 Engineer prompt conflict (filed 2026-10-22; deferred).** Both engineer runaways on record (7a4809, 15cc3f) alternated
     between "argue for shipping velocity; correctness is the reviewer's
     job" and "a demonstrable violation is a blocker". Say what the

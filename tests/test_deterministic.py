@@ -39,7 +39,7 @@ from adjudication import (JUDGE_VERSION, convergence_verdict,  # noqa: E402
                           normalize_agent_output)
 from agent_client import FAILURE_SENTINEL, call_agent, failure_result  # noqa: E402
 from diff_reader import base_blobs, diff_paths, read_diff  # noqa: E402
-from eval_harness import bakeoff, common, probe, raw_call, replay, round1, round2  # noqa: E402
+from eval_harness import bakeoff, common, corpus, probe, raw_call, replay, round1, round2  # noqa: E402
 from eval_harness.bakeoff import tally  # noqa: E402
 from eval_harness.probe import summarize  # noqa: E402
 from file_metadata import get_layer_constraints, identify_layer  # noqa: E402
@@ -822,6 +822,64 @@ class DebateTests(NoSleep):
         index = debate._load_repo_index()
         self.assertNotIn("_load_error", index)
         self.assertTrue(index["files"])
+
+    # ---- a fixture's own index (corpus #7) ----
+
+    def test_index_path_selects_the_index_and_is_recorded(self):
+        # A corpus fixture retrieves from the index of its own base, not
+        # the checked-in one, and the record names the file it used.
+        path = self.write_index([{"path": "app/x.cpp", "layer": "bridge",
+                                  "purpose": "Purpose from the fixture's index."}])
+        diff = "+++ b/app/x.cpp\n+int y;\n"
+        with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN) as post:
+            result = debate.run_debate("p", diff, "", index_path=str(path))
+        transcript = post.call_args_list[0].kwargs["json"]["messages"][1]["content"]
+        self.assertIn("Purpose from the fixture's index.", transcript)
+        pack = self.record(result)["metadata"]["repo_context_pack"]
+        self.assertEqual(pack["index_file"], str(path))
+        for measure in (debate.run_round1_review, debate.run_round2_pair):
+            with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN, REVIEWER_CLEAN,
+                             REVIEWER_CLEAN) as post:
+                result = measure("p", diff, "", index_path=str(path))
+            self.assertIn("Purpose from the fixture's index.",
+                          post.call_args_list[0].kwargs["json"]["messages"][1]["content"])
+            rec = json.loads(Path(result["record_path"]).read_text(encoding="utf-8"))
+            self.assertEqual(rec["metadata"]["repo_context_pack"]["index_file"], str(path))
+
+    def test_default_index_is_the_checked_in_one_and_is_recorded(self):
+        with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN):
+            result = debate.run_debate("p", "+++ b/app/x.cpp\n+int y;\n", "")
+        pack = self.record(result)["metadata"]["repo_context_pack"]
+        self.assertEqual(pack["index_file"], str(debate.CONTEXT_PATH))
+
+    def test_missing_index_path_degrades_to_no_retrieval_and_names_the_file(self):
+        missing = str(Path(self._tmp.name) / "absent.json")
+        with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN) as post, \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            result = debate.run_debate("p", "+++ b/app/x.cpp\n+int y;\n", "",
+                                       index_path=missing)
+        self.assertNotIn("REPO CONTEXT",
+                         post.call_args_list[0].kwargs["json"]["messages"][1]["content"])
+        self.assertIn("retrieval unavailable", err.getvalue())
+        pack = self.record(result)["metadata"]["repo_context_pack"]
+        self.assertIn("error", pack)
+        self.assertEqual(pack["index_file"], missing)
+        self.assertEqual(result["retrieval_error"], pack["error"])
+
+    def test_a_measurement_batch_passes_the_index_file_through(self):
+        path = self.write_index([{"path": "app/x.cpp", "layer": "bridge",
+                                  "purpose": "Purpose from the fixture's index."}])
+        seen = []
+
+        def measure(proposal, code_diff, code_context, header_artifact, **kw):
+            seen.append(kw)
+            return {"record_path": "r.json", "blockers": 0, "attempts": 1}
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            common.collect(measure, lambda r: "", "m", "p", "d", "", False, 1,
+                           index_path=str(path))
+            common.collect(measure, lambda r: "", "m", "p", "d", "", False, 1)
+        self.assertEqual(seen, [{"index_path": str(path)}, {}])
 
     def test_pack_reaches_the_transcript_and_the_record(self):
         path = self.write_index([{"path": "app/x.cpp", "layer": "bridge",
@@ -1620,6 +1678,184 @@ class RepoContextTests(unittest.TestCase):
         self.assertNotEqual(dirty["files"][0]["blob"], committed_blob)
 
 
+class CorpusTests(NoSleep):
+    """The real-diff corpus (backlog #7): its manifest, its fixtures and
+    the scorer that reads records against the known bugs."""
+
+    def setUp(self):
+        super().setUp()
+        self._cwd = os.getcwd()
+        self._tmp = tempfile.TemporaryDirectory()
+        os.chdir(self._tmp.name)  # measurement records land here
+        self.manifest = corpus.load_manifest()
+
+    def tearDown(self):
+        os.chdir(self._cwd)
+        self._tmp.cleanup()
+
+    def test_manifest_names_existing_fixtures_with_unique_ids(self):
+        fixtures = self.manifest["fixtures"]
+        self.assertGreaterEqual(len(fixtures), 5)
+        self.assertEqual(len({f["id"] for f in fixtures}), len(fixtures))
+        for f in fixtures:
+            self.assertTrue(f["diff_path"].is_file(), f["id"])
+            self.assertTrue(f["index_path"].is_file(), f["id"])
+            self.assertIn(f["kind"], ("bug", "clean"))
+            self.assertIn(f["direction"], ("reverse", "forward"))
+            self.assertTrue(f["proposal"].strip())
+            if f["kind"] == "clean":
+                self.assertEqual(f["known_bugs"], [])
+            else:
+                self.assertTrue(f["known_bugs"])
+            for bug in f["known_bugs"]:
+                self.assertTrue(bug["symbols"], bug["id"])
+
+    def test_every_fixture_is_reviewable_from_its_own_index(self):
+        # No model: the input check and the base check run in _prepare.
+        for f in self.manifest["fixtures"]:
+            row = corpus.describe(f)
+            self.assertIsNone(row["refused"], f["id"])
+            self.assertIsNone(row["pack_error"], f["id"])
+            self.assertEqual(row["base_mismatched"], [], f["id"])
+            self.assertGreater(row["pack_chars"], 0, f["id"])
+            index = json.loads(f["index_path"].read_text(encoding="utf-8"))
+            self.assertTrue(index["source_commit"].startswith(f["base_rev"]), f["id"])
+            self.assertFalse(index["source_dirty"], f["id"])
+
+    def test_known_bug_symbols_are_in_the_post_change_lines(self):
+        # Recall is measurable only if a blocker about the bug can quote
+        # post-change code; every bug has a symbol the reviewer can see.
+        for f in self.manifest["fixtures"]:
+            diff = f["diff_path"].read_text(encoding="utf-8")
+            post = " ".join(line[1:] for line in diff.splitlines()
+                            if line[:1] in (" ", "+") and not line.startswith("+++"))
+            for bug in f["known_bugs"]:
+                self.assertTrue(any(s in post for s in bug["symbols"]),
+                                f"{f['id']} {bug['id']}: no symbol in post-change lines")
+
+    def test_select_names_fixtures_or_all(self):
+        fixtures = self.manifest["fixtures"]
+        self.assertEqual(corpus.select(self.manifest, ["all"]), fixtures)
+        self.assertEqual(corpus.select(self.manifest, [fixtures[1]["id"]]), [fixtures[1]])
+        with self.assertRaises(SystemExit) as stop:
+            corpus.select(self.manifest, ["nope"])
+        self.assertIn("nope", str(stop.exception))
+
+    def test_scorer_credits_known_bugs_by_claim_and_lists_the_rest(self):
+        fixture = corpus.select(self.manifest, ["backoff_clamp_d1c20c0"])[0]
+        diff = fixture["diff_path"].read_text(encoding="utf-8")
+        line = "backoff_ms = (backoff_ms < J2534_BACKOFF_CAP_MS)"
+        reply = {**REVIEWER_CLEAN, "blockers": [
+            quoted("backoff_ms doubles to 6400 past the cap", line,
+                   "core/src/j2534_transport.cpp"),
+            quoted("Deleting the header breaks consumers", line,
+                   "core/src/j2534_transport.cpp"),
+            # unverified quote: evidence-demoted, named by the scorer as #e1
+            quoted("J2534_BACKOFF_CAP_MS is never applied", "not in the diff at all",
+                   "core/src/j2534_transport.cpp")]}
+        with fake_ollama(reply):
+            res = debate.run_round1_review(fixture["proposal"], diff, "",
+                                           index_path=str(fixture["index_path"]))
+        with fake_ollama(REVIEWER_CLEAN):
+            other = debate.run_round1_review("p", "+++ b/app/x.cpp\n+int y;\n", "")
+        records = common.load_records([res["record_path"], other["record_path"]])
+        scores = corpus.score_records(records, self.manifest)
+        rows = scores["fixtures"]["backoff_clamp_d1c20c0"]["rows"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual([b["bugs"] for b in rows[0]["blockers"]],
+                         [["backoff_overshoot"], []])
+        self.assertEqual([b["bugs"] for b in rows[0]["unquoted"]], [["backoff_overshoot"]])
+        self.assertEqual(scores["excluded"], [(other["measurement_id"], "not a corpus diff")])
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            corpus.print_report(scores)
+        self.assertRegex(out.getvalue(), r"backoff_overshoot\s+found in 1/1 run\(s\)")
+        self.assertIn("1 matching no known bug", out.getvalue())
+
+    def test_labelled_summary_counts_valid_fps_recall_and_unlabelled(self):
+        fixture = corpus.select(self.manifest, ["backoff_clamp_d1c20c0"])[0]
+        row = {"id": "r1", "fingerprint": "f",
+               "blockers": [{"text": "a", "bugs": []}, {"text": "b", "bugs": []}],
+               "unquoted": [{"text": "c", "bugs": []}],
+               "hedged": [{"text": "d", "bugs": []}]}
+        unlabelled_row = {**row, "id": "r2"}
+        scores = {"fixtures": {fixture["id"]: {"fixture": fixture,
+                                               "rows": [row, unlabelled_row]}}}
+        labels = {"valid": ["unlisted"], "records": {"r1": {"labels": {
+            "#1": ["other-fp"], "#2": ["unlisted"], "#e1": ["backoff_overshoot"],
+            "#h1": ["thread-confusion"], "#h9": ["other-fp"]}}}}
+        s = corpus.labelled_summary(scores, labels)
+        f = s["fixtures"][fixture["id"]]
+        self.assertEqual((f["stored"], f["valid"], f["fp"]), (2, 1, {"other-fp": 1}))
+        self.assertEqual((f["evidence"], f["hedge"], f["valid_demoted"]), (1, 1, 1))
+        # found only among demoted items: no stored recall, one 'any'
+        self.assertEqual(f["recall"]["backoff_overshoot"], {"stored": 0, "any": 1})
+        self.assertIn(("r2", "record"), s["unlabelled"])
+        self.assertIn(("r1", "#h9 (labelled, no such item)"), s["unlabelled"])
+
+    def test_committed_labels_cover_the_committed_baseline_records(self):
+        # The fourteenth measurement's labels must match its records item
+        # for item, so a relabel or a lost record shows up here.
+        records = sorted(Path(REPO_ROOT, "coach_artifacts").glob(
+            "measurement_round1_20261024_0[12]*.json"))
+        if not records:
+            self.skipTest("baseline records not present")
+        scores = corpus.score_records(common.load_records([str(p) for p in records]),
+                                      self.manifest)
+        labels = json.loads(corpus.LABELS_PATH.read_text(encoding="utf-8"))
+        s = corpus.labelled_summary(scores, labels)
+        self.assertEqual(s["unlabelled"], [])
+        self.assertEqual(s["pooled"]["runs"], 33)
+        self.assertEqual((s["pooled"]["stored"], s["pooled"]["valid"]), (42, 24))
+
+    def test_fingerprint_warning_is_per_fixture(self):
+        fixtures = corpus.select(self.manifest, ["all"])[:2]
+        row = lambda i, fp: {"id": i, "fingerprint": fp, "blockers": [],
+                             "unquoted": [], "hedged": []}
+        scores = {"excluded": [], "fixtures": {
+            fixtures[0]["id"]: {"fixture": fixtures[0], "rows": [row("a", "x")]},
+            fixtures[1]["id"]: {"fixture": fixtures[1], "rows": [row("b", "y")]}}}
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            corpus.print_report(scores)
+        self.assertNotIn("WARNING", out.getvalue())
+        scores["fixtures"][fixtures[1]["id"]]["rows"].append(row("c", "z"))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            corpus.print_report(scores)
+        self.assertIn(f"WARNING: {fixtures[1]['id']}'s records span 2", out.getvalue())
+
+    def test_run_passes_each_fixture_to_the_measurement_with_its_index(self):
+        calls = []
+
+        def measure(proposal, code_diff, code_context, header_artifact, **kw):
+            calls.append((proposal, len(code_diff), kw))
+            return {"record_path": "r.json", "blockers": 0, "attempts": 1}
+
+        fixtures = corpus.select(self.manifest, ["all"])[:2]
+        with mock.patch.object(corpus, "run_round1_review", measure), \
+                contextlib.redirect_stdout(io.StringIO()):
+            corpus.main(["run", "--fixture", fixtures[0]["id"],
+                         "--fixture", fixtures[1]["id"], "--runs", "1"])
+        self.assertEqual(calls, [
+            (f["proposal"], len(f["diff_path"].read_text(encoding="utf-8")),
+             {"index_path": str(f["index_path"])}) for f in fixtures])
+
+
+class SaveIndexTests(unittest.TestCase):
+    def test_save_index_writes_the_given_path_and_leaves_the_default_alone(self):
+        before = retrieval.CONTEXT_PATH.read_bytes()
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "fixture" / "repo_context.json"
+            out.parent.mkdir()
+            index = {"files": [], "types": [], "constants": [], "callsites": []}
+            written = indexer.save_index(index, out)
+            self.assertEqual(written, out)
+            saved = json.loads(out.read_text(encoding="utf-8"))
+        self.assertTrue(saved["index_version"].startswith("idx_"))
+        self.assertEqual(retrieval.CONTEXT_PATH.read_bytes(), before)
+
+
 # ============ CLI ============
 
 class CliTests(unittest.TestCase):
@@ -1641,6 +1877,28 @@ class CliTests(unittest.TestCase):
         r = self.run_cli("--proposal", "x")
         self.assertEqual(r.returncode, 2)
         self.assertIn("no code to review", r.stderr)
+
+    def test_index_options_need_their_mode(self):
+        r = self.run_cli("--golden", "--index-out", "x.json")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("--index-out applies only to --index", r.stderr)
+        r = self.run_cli("--golden", "--index-file", "x.json")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("--index-file applies only to --proposal", r.stderr)
+
+    def test_index_out_writes_there_not_to_the_default(self):
+        before = retrieval.CONTEXT_PATH.read_bytes()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "repo"
+            src.mkdir()
+            (src / "a.h").write_text("// File/layer: a.h | core\n#define A 1\n",
+                                     encoding="utf-8")
+            out = Path(tmp) / "idx.json"
+            r = self.run_cli("--index", str(src), "--no-llm", "--index-out", str(out))
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn(str(out), r.stdout)
+            self.assertIn("files", json.loads(out.read_text(encoding="utf-8")))
+        self.assertEqual(retrieval.CONTEXT_PATH.read_bytes(), before)
 
     def test_score_needs_repo_and_rev_together(self):
         for module in ("eval_harness.round1", "eval_harness.round2"):

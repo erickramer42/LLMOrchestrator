@@ -141,6 +141,33 @@ python -m eval_harness.replay --diff docs/fixtures/qttune_bridge_refactor.diff -
 It first checks that the current judge reproduces every record's stored
 split. Records without labels are listed and left out.
 
+**The corpus** (backlog #7): seven real QtTune diffs in
+`docs/fixtures/corpus/`, described by `docs/fixtures/corpus.json`. Five
+are the reverse of a fix commit, so each introduces the bugs the commit
+fixed, listed as its known bugs; two are forward diffs of commits no
+later commit fixed. Each has the index of its own base, which `run`
+passes as `--index-file`; its proposal is written in the diff's real
+direction.
+
+```sh
+python -m eval_harness.corpus list                              # sizes, layers, input and base checks; no model
+python -m eval_harness.corpus run --fixture all --runs 5        # round-1 samples, every fixture
+python -m eval_harness.corpus run --fixture backoff_clamp_d1c20c0 --runs 5
+python -m eval_harness.corpus score "coach_artifacts/measurement_round1_*.json"
+```
+
+`score` reports, per fixture, blockers per run, each known bug's recall
+(runs with a stored blocker whose claim names one of its symbols), bugs
+found only among demoted blockers, and the blockers matching no known
+bug, which are false-positive candidates to triage by hand. A symbol
+match is a pointer, not a verdict: read the claim.
+
+Any review can use another index: `python orchestrator.py --index REPO
+--no-llm --index-out PATH` writes one without touching
+`repo_context.json`, and `--index-file PATH` on a review, or on
+`round1 run` and `round2 run`, retrieves from it. The record names the
+file under `metadata.repo_context_pack.index_file`.
+
 ## Reading a decision record
 
 ```sh

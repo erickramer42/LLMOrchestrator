@@ -1,0 +1,2779 @@
+{
+  "index_version": "idx_20261024_014116",
+  "source_commit": "fdb12e1aaf7b006a5a9b9f1bb8ee64786bd58bab",
+  "source_dirty": false,
+  "llm_summaries": false,
+  "summary_model": null,
+  "summary_prompt_version": null,
+  "files": [
+    {
+      "path": ".github/dependabot.yml",
+      "purpose": "CI workflow",
+      "layer": "meta",
+      "blob": "3e981de2fe3800f6e4d32c65a7c3b567c0930039"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "purpose": "CI workflow",
+      "layer": "meta",
+      "blob": "e4ddefb451629ffba6f735781474d9b9ed24b740"
+    },
+    {
+      "path": ".github/workflows/scorecard.yml",
+      "purpose": "CI workflow",
+      "layer": "meta",
+      "blob": "36894eeaf34a0c0b6cc6923cd1824323a3a7f179"
+    },
+    {
+      "path": "app/bridgesingleton.h",
+      "purpose": "File/layer: app/bridgesingleton.h | Qt6 Qml, app layer, C++17",
+      "layer": "bridge",
+      "blob": "17b58b50362e10545dfcffb4374e3563dcc45ec0"
+    },
+    {
+      "path": "app/CMakeLists.txt",
+      "purpose": "Build configuration",
+      "layer": "meta",
+      "blob": "b4ff5f9fb4fe615d02742e5f7d7624e258fbb29f"
+    },
+    {
+      "path": "app/main.cpp",
+      "purpose": "The QtTune module is a static library (app/CMakeLists.txt); this pulls",
+      "layer": "bridge",
+      "blob": "869866d09b5a4628d9277fe19dccf7997210721b"
+    },
+    {
+      "path": "app/qml/AnalogGauge.qml",
+      "purpose": "File/layer: app/qml/AnalogGauge.qml | Qt6 Quick + Shapes, UI layer",
+      "layer": "app",
+      "blob": "6d78fe1921defa7c05cc1dbe3265d0dffa097c42"
+    },
+    {
+      "path": "app/qml/BarGauge.qml",
+      "purpose": "File/layer: app/qml/BarGauge.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "c9079e8724f8f396d81b3a8678621bd67008f49a"
+    },
+    {
+      "path": "app/qml/DashboardPage.qml",
+      "purpose": "File/layer: app/qml/DashboardPage.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "cce420b3b9d49a910905268f421392c4c11ea1a0"
+    },
+    {
+      "path": "app/qml/DigitalGauge.qml",
+      "purpose": "File/layer: app/qml/DigitalGauge.qml | Qt6 Quick + Shapes, UI layer",
+      "layer": "app",
+      "blob": "b623966e46aa68ba1db6485d394ddac562a3052b"
+    },
+    {
+      "path": "app/qml/GaugeArc.qml",
+      "purpose": "File/layer: app/qml/GaugeArc.qml | Qt6 Quick Shapes, UI layer",
+      "layer": "app",
+      "blob": "c5d6c70d105e9384020d978626c31c9623b63980"
+    },
+    {
+      "path": "app/qml/GaugeBase.qml",
+      "purpose": "File/layer: app/qml/GaugeBase.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "ecbc6e9cf2b06f770f6d2e5a993d22721ae3a5f2"
+    },
+    {
+      "path": "app/qml/GaugeCard.qml",
+      "purpose": "File/layer: app/qml/GaugeCard.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "9b9bfadaaac9b4248844c5ec2b5b50a3416a09da"
+    },
+    {
+      "path": "app/qml/HomePage.qml",
+      "purpose": "File/layer: app/qml/HomePage.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "32b38d82ed446c44ca028a67a24be01d9340c06c"
+    },
+    {
+      "path": "app/qml/LiveViewPage.qml",
+      "purpose": "File/layer: app/qml/LiveViewPage.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "b9c2f49d4410df2c5a17e7efed27a799a6621052"
+    },
+    {
+      "path": "app/qml/LogPage.qml",
+      "purpose": "File/layer: app/qml/LogPage.qml | Qt Quick, UI layer",
+      "layer": "app",
+      "blob": "212961af3b06ffbb5811cd0ab5d858cfb82fd5fc"
+    },
+    {
+      "path": "app/qml/Main.qml",
+      "purpose": "File/layer: app/qml/Main.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "3083fec9473404dda192cfa8ec66e6b662a439cb"
+    },
+    {
+      "path": "app/qml/NavButton.qml",
+      "purpose": "Sidebar item. Transparent on the sidebar panel: only the active item",
+      "layer": "app",
+      "blob": "6be3e38af824eaa73d0ad58b3c1f1aff34498645"
+    },
+    {
+      "path": "app/qml/PageHeader.qml",
+      "purpose": "File/layer: app/qml/PageHeader.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "d4e1398456418da1705d5030173420a667e2f8cf"
+    },
+    {
+      "path": "app/qml/RingGauge.qml",
+      "purpose": "File/layer: app/qml/RingGauge.qml | Qt6 Quick + Shapes, UI layer",
+      "layer": "app",
+      "blob": "e3a92f44f7b661327781fe49cf3b8a904c85a727"
+    },
+    {
+      "path": "app/qml/SettingsPage.qml",
+      "purpose": "File/layer: app/qml/SettingsPage.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "3eee43794afe7735c7ec34784aeddaf594207d36"
+    },
+    {
+      "path": "app/qml/ShiftLightBar.qml",
+      "purpose": "File/layer: app/qml/ShiftLightBar.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "261c0317d87049da3804b4d1117b82ea2c05425d"
+    },
+    {
+      "path": "app/qml/SignalHub.qml",
+      "purpose": "File/layer: app/qml/SignalHub.qml | Qt6 Quick, UI layer",
+      "layer": "app",
+      "blob": "dda6dd091a30d97ac8681c51ad18932f6fe4355f"
+    },
+    {
+      "path": "app/qml/Theme.qml",
+      "purpose": "File/layer: app/qml/Theme.qml | Qt6 Quick singleton, UI layer",
+      "layer": "app",
+      "blob": "9ec42b1ebe870c84c53f8fe35e735c0d6e72d343"
+    },
+    {
+      "path": "app/qml/ThemedButton.qml",
+      "purpose": "Expose so callers can tweak if needed. `highlighted` marks the",
+      "layer": "app",
+      "blob": "30471a823e1ca8479e6a9c5ff301cf149130c66f"
+    },
+    {
+      "path": "app/qttunebridge.cpp",
+      "purpose": "File/layer: app/qttunebridge.cpp | Qt6 Core, app layer, C++17",
+      "layer": "bridge",
+      "blob": "30c5687c02aed3ae0b7139887e02e4b110d810ea"
+    },
+    {
+      "path": "app/qttunebridge.h",
+      "purpose": "File/layer: app/qttunebridge.h | Qt6 Core, app layer, C++17",
+      "layer": "bridge",
+      "blob": "b1d4d0e0471523f0d67576eb196342efc895289b"
+    },
+    {
+      "path": "app/sessionrecorder.cpp",
+      "purpose": "File/layer: app/sessionrecorder.cpp | Qt6 Core, app layer, C++17",
+      "layer": "bridge",
+      "blob": "27adea0bcfe88bc5cb773ecd2b248ac5e0e62e4a"
+    },
+    {
+      "path": "app/sessionrecorder.h",
+      "purpose": "File/layer: app/sessionrecorder.h | Qt6 Core, app layer, C++17",
+      "layer": "bridge",
+      "blob": "2d2a4f51deeb10f784726d5a0e331db0fb8c6fc6"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "purpose": "Build configuration",
+      "layer": "meta",
+      "blob": "b0722720a2aaa553c780cbe7f7d2c9f83d0b2356"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "purpose": "Configuration or docs",
+      "layer": "meta",
+      "blob": "b71e3ac1203b6db27b5d484d9c6641795d3161b6"
+    },
+    {
+      "path": "core/CMakeLists.txt",
+      "purpose": "Build configuration",
+      "layer": "meta",
+      "blob": "c8f382c3d2b9312012e75d2789187cf1ab11930b"
+    },
+    {
+      "path": "core/include/ecuio/core.h",
+      "purpose": "File/layer: core/include/ecuio/core.h | C ABI, public interface",
+      "layer": "core",
+      "blob": "c96b3b428265cb5999de6cbaa36d90954f60a3d4"
+    },
+    {
+      "path": "core/include/ecuio/internal.h",
+      "purpose": "",
+      "layer": "core",
+      "blob": "c5ec1a0c1cb5f40cfd5a9a14fd579b15ec497e4c"
+    },
+    {
+      "path": "core/include/ecuio/j2534.h",
+      "purpose": "File/layer: core/include/ecuio/j2534.h | C ABI, internal/public discovery API",
+      "layer": "core",
+      "blob": "aba608ce7862c896c77b31fca5937e904537f616"
+    },
+    {
+      "path": "core/include/ecuio/j2534_ptypes.h",
+      "purpose": "File/layer: core/include/ecuio/j2534_ptypes.h | INTERNAL shared types",
+      "layer": "core",
+      "blob": "bc68b75f8dcfec76e1b6432e39b8b6b3d84aa12c"
+    },
+    {
+      "path": "core/include/ecuio/j2534_surrogate.h",
+      "purpose": "File/layer: core/include/ecuio/j2534_surrogate.h | C ABI, x86-surrogate client",
+      "layer": "core",
+      "blob": "5e25a5536c93c41d04eb2917ef7b700078a87168"
+    },
+    {
+      "path": "core/include/ecuio/profile.h",
+      "purpose": "File/layer: core/include/ecuio/profile.h | C ABI, public",
+      "layer": "core",
+      "blob": "c54f34b391e7f8e4da86245f947fe78ea12ba72b"
+    },
+    {
+      "path": "core/include/ecuio/signal_sets.h",
+      "purpose": "",
+      "layer": "core",
+      "blob": "de64beaa6ecad874fda04191ddab86b87eb731bb"
+    },
+    {
+      "path": "core/include/ecuio/signals.h",
+      "purpose": "File/layer: core/include/ecuio/signals.h | C ABI, public",
+      "layer": "core",
+      "blob": "574a144c9e90e428820829fb4fec4c267abeaccc"
+    },
+    {
+      "path": "core/include/ecuio/surrogate_protocol.h",
+      "purpose": "File/layer: core/include/ecuio/surrogate_protocol.h | shared app<->surrogate contract",
+      "layer": "core",
+      "blob": "3ac10edd482216deb8c970994a808f53ff151dee"
+    },
+    {
+      "path": "core/src/core.cpp",
+      "purpose": "File/layer: core/src/core.cpp | C++17, Qt-free, CI-validated headless build",
+      "layer": "core",
+      "blob": "adbb5aaaee89ecafb69220a78203f4856b4bc408"
+    },
+    {
+      "path": "core/src/error_detail.h",
+      "purpose": "File/layer: core/src/error_detail.h | C++17, Qt-free, core-internal",
+      "layer": "core",
+      "blob": "949abf3db4ca0f67aafa8a95785e050ed5901bd1"
+    },
+    {
+      "path": "core/src/j2534_backoff.h",
+      "purpose": "File/layer: core/src/j2534_backoff.h | internal, not ABI-exported;",
+      "layer": "core",
+      "blob": "27f83ede34d3ad8571226c3f887ab596fa127bff"
+    },
+    {
+      "path": "core/src/j2534_clock.h",
+      "purpose": "File/layer: core/src/j2534_clock.h | internal, not ABI-exported;",
+      "layer": "core",
+      "blob": "d4b9e1bd852df2e04122575b8890e1503cd5ca6b"
+    },
+    {
+      "path": "core/src/j2534_loader.cpp",
+      "purpose": "File/layer: core/src/j2534_loader.cpp | C++17, Qt-free, CI-validated headless",
+      "layer": "core",
+      "blob": "e2970eb8f39a5bf68e2a59e45d08ba8de430a6b8"
+    },
+    {
+      "path": "core/src/j2534_surrogate_client.cpp",
+      "purpose": "File/layer: core/src/j2534_surrogate_client.cpp | C++17, Qt-free, Win32-guarded",
+      "layer": "core",
+      "blob": "74073ad8618e0a3247956262e94f62310fbd2751"
+    },
+    {
+      "path": "core/src/j2534_transport.cpp",
+      "purpose": "File/layer: core/src/j2534_transport.cpp | C++17, Qt-free, Win32-guarded",
+      "layer": "core",
+      "blob": "af6423c01e159d11537729aff5632a0ac9a7daeb"
+    },
+    {
+      "path": "core/src/mock_drive_cycle.h",
+      "purpose": "File/layer: core/src/mock_drive_cycle.h | internal, not ABI-exported;",
+      "layer": "core",
+      "blob": "3c19b9906fac824c81db7ef801f8b661401ac0b0"
+    },
+    {
+      "path": "core/src/mock_transport.cpp",
+      "purpose": "File/layer: core/src/mock_transport.cpp | C++17, Qt-free, CI-validated headless build",
+      "layer": "core",
+      "blob": "8e96b230c809d082465964aef53d27f052ec10b4"
+    },
+    {
+      "path": "core/src/obd2_signal_sets.cpp",
+      "purpose": "File/layer: core/src/obd2_signal_sets.cpp | C++17, Qt-free, ALL platforms",
+      "layer": "core",
+      "blob": "42fd00ef8b408a37c7ad87bbc6b1c0f0091f94f8"
+    },
+    {
+      "path": "core/src/profile_registry.cpp",
+      "purpose": "File/layer: core/src/profile_registry.cpp | C++17, Qt-free",
+      "layer": "core",
+      "blob": "4166646eb3fd51e2122a5a5a898649ea1dc5c30c"
+    },
+    {
+      "path": "core/src/request_engine.h",
+      "purpose": "File/layer: core/src/request_engine.h | internal, not ABI-exported;",
+      "layer": "core",
+      "blob": "7978dadfc823e82cc1c208da2f818eff8c6e5f8d"
+    },
+    {
+      "path": "core/src/session.h",
+      "purpose": "",
+      "layer": "core",
+      "blob": "7e941b667572db1a2ba0d8fe6f1a77cfbdd10cf1"
+    },
+    {
+      "path": "core/src/signal_sets.cpp",
+      "purpose": "",
+      "layer": "core",
+      "blob": "656ac8cc50500677ede8cf27c7fdfe5d08af7ee3"
+    },
+    {
+      "path": "core/src/signals.cpp",
+      "purpose": "File/layer: core/src/signals.cpp | C++17, Qt-free",
+      "layer": "core",
+      "blob": "586a22e4dd51568efd72e89243caf4cef1be1ed4"
+    },
+    {
+      "path": "core/src/uri_query.h",
+      "purpose": "File/layer: core/src/uri_query.h | internal, C++17, Qt-free, header-only",
+      "layer": "core",
+      "blob": "a5fa0d1f119509edf73dc65647b5f81cdff313bc"
+    },
+    {
+      "path": "core/src/win_utf8.h",
+      "purpose": "File/layer: core/src/win_utf8.h | internal, Win32-only, C++17, Qt-free",
+      "layer": "core",
+      "blob": "995577ce9159abaecb7b6236bd7f47b661fcc31d"
+    },
+    {
+      "path": "DISCLAIMER.md",
+      "purpose": "Configuration or docs",
+      "layer": "meta",
+      "blob": "1c3f583db68cdc97abf718aaada7aea88f04d803"
+    },
+    {
+      "path": "docs/adr/0001-qt-free-core-c-abi.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "0ec765382941918fa5e7c87beab7136330058737"
+    },
+    {
+      "path": "docs/adr/0002-callback-pair-identity-snapshot-dispatch.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "8cdb4faac9da087b6e152c0d0ca08c43ab0545ea"
+    },
+    {
+      "path": "docs/adr/0003-backpressure-bounds-in-flight-frames.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "d992f46f0374138e3be3e5a13d95e07a940cc688"
+    },
+    {
+      "path": "docs/adr/0004-signal-decoding-model.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "3f1eff8a57bfe80c2c5661f77541f2aeeb4b8ce8"
+    },
+    {
+      "path": "docs/adr/0005-coalesced-signal-updates.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "139e7aaddc8ebba4872ac57d548a381e41c3b5df"
+    },
+    {
+      "path": "docs/adr/0006-frame-abi-v0.3.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "f1cb2a640594815f9ca5a4fe7bb66f62cf8b7f4a"
+    },
+    {
+      "path": "docs/adr/0007-uri-selected-transports.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "c33f7d4d6bbdcb9f9814bf8a5d08f88886287286"
+    },
+    {
+      "path": "docs/adr/0008-x86-surrogate-host.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "8c28a7ba70ed8d4083708bb72c3773518d9651c9"
+    },
+    {
+      "path": "docs/adr/0009-pe-architecture-routing.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "425e5f0703fbe1925e5b598905ede094269860f3"
+    },
+    {
+      "path": "docs/adr/0010-j2534-v0404-shared-types.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "96604d89850d61a630d643d8ae5eff996c1364e1"
+    },
+    {
+      "path": "docs/adr/0011-vendor-call-relay-wire-forms.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "f76fc680076cd3cce2ffde4547112c7bc3e3602c"
+    },
+    {
+      "path": "docs/adr/0012-j2534-transport-adoption.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "a16a51edb59008a9b7a7c63789783fd0c7ed499f"
+    },
+    {
+      "path": "docs/adr/0013-protocol-profiles.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "4137fa16374e7e92ee786f66a1d95af500531445"
+    },
+    {
+      "path": "docs/adr/0014-single-threaded-surrogate.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "95eec17c1a58dcaa8824aa0cbe8a43731ecf27e4"
+    },
+    {
+      "path": "docs/adr/0015-request-engine.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "4cc2c9fdc86ea736a34c70f7addfd5bdce4200b9"
+    },
+    {
+      "path": "docs/adr/0016-signal-definition-layout.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "7c2b340b97fe130586ede42c985c0c9dac0b872e"
+    },
+    {
+      "path": "docs/adr/0017-session-recording.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "456396712839b00844338c9c8a8e709362dc16a0"
+    },
+    {
+      "path": "docs/adr/0018-connect-failure-reporting.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "05fdd74eee9f3e03244e47ed141a2206060b10a6"
+    },
+    {
+      "path": "docs/adr/0019-session-info.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "74f0ecb5648d35471b8f04507f6894a191b45517"
+    },
+    {
+      "path": "docs/adr/README.md",
+      "purpose": "Project documentation",
+      "layer": "meta",
+      "blob": "d76684338927e489a8dea27be546ad06cc437cfc"
+    },
+    {
+      "path": "docs/architecture.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "1a38eee67b464ccaeffa8fbb5b1dfd2bb893e90f"
+    },
+    {
+      "path": "docs/bench-sessions/2026-10-16.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "e74a3edb5d02a1fe4abaece5fa535ac6b9a7fb63"
+    },
+    {
+      "path": "docs/bench-sessions/2026-10-20.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "564537b56579ef31f6f049acaa00db2013041f26"
+    },
+    {
+      "path": "docs/bench-sessions/2026-10-22-vehicle.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "7600b3018dc04347ced1b2e1de221f1a8c5d0e66"
+    },
+    {
+      "path": "docs/bench-sessions/2026-10-22.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "4d6631d4724c8609ba9dbccf876756716d69f0b6"
+    },
+    {
+      "path": "docs/bench-sessions/bench-runsheet.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "61b25a99629aeb25c566b8b2d206e7e3c150c4c4"
+    },
+    {
+      "path": "docs/bench-sessions/vehicle-runsheet.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "19ff12b8267b4e9dea3ffc25111d6a84341dba1b"
+    },
+    {
+      "path": "docs/development.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "256cbb373478b59d0d9f84345aba337e1b0521d2"
+    },
+    {
+      "path": "docs/engineering-log.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "5ca164b6d774af680601f7473ac77fdd13fad7ca"
+    },
+    {
+      "path": "docs/j2534.md",
+      "purpose": "Documentation",
+      "layer": "meta",
+      "blob": "201c830bdf855278166441c7c143958e5347bffc"
+    },
+    {
+      "path": "docs/testing.md",
+      "purpose": "Test suite",
+      "layer": "meta",
+      "blob": "2c9c45a8f687baabab25d5bf37ed20b350e5a87b"
+    },
+    {
+      "path": "fuzz/CMakeLists.txt",
+      "purpose": "Build configuration",
+      "layer": "meta",
+      "blob": "a5a4ee08f615cf7a42c25de207608796417654d1"
+    },
+    {
+      "path": "fuzz/fuzz_decode_signal.cpp",
+      "purpose": "File/layer: fuzz/fuzz_decode_signal.cpp | C++17, Qt-free, libFuzzer",
+      "layer": "unknown",
+      "blob": "0c0c2643609fbd5a63eaf1bfa4e01e5fcd31c743"
+    },
+    {
+      "path": "fuzz/fuzz_validate_set.cpp",
+      "purpose": "File/layer: fuzz/fuzz_validate_set.cpp | C++17, Qt-free, libFuzzer",
+      "layer": "unknown",
+      "blob": "1463d9ad8d3dbba77989e34d496b710ee290ae26"
+    },
+    {
+      "path": "fuzz/README.md",
+      "purpose": "Project documentation",
+      "layer": "meta",
+      "blob": "b621513270dba8a90343f3064bfaca27930cb592"
+    },
+    {
+      "path": "README.md",
+      "purpose": "Project documentation",
+      "layer": "meta",
+      "blob": "45dc14313dca0d4d259c29b867dbd0f5d4d8dcb0"
+    },
+    {
+      "path": "SECURITY.md",
+      "purpose": "Configuration or docs",
+      "layer": "meta",
+      "blob": "506befad0c99a2af7b660a3f82cbd7c9ab4991b5"
+    },
+    {
+      "path": "STATUS.md",
+      "purpose": "Configuration or docs",
+      "layer": "meta",
+      "blob": "9f618b99eb534649a451fe5bee2558e8646f26c6"
+    },
+    {
+      "path": "surrogate/CMakeLists.txt",
+      "purpose": "Build configuration",
+      "layer": "meta",
+      "blob": "81d8fa1418ae20aa273ec54d9f35e09f6c0c24e1"
+    },
+    {
+      "path": "surrogate/surrogate_main.cpp",
+      "purpose": "File/layer: surrogate/surrogate_main.cpp | Win32, x86, Qt-free; rebuild build-win32",
+      "layer": "unknown",
+      "blob": "09a49308dfcf54f77a3fa22b312d74f05b4abf30"
+    },
+    {
+      "path": "tests/CMakeLists.txt",
+      "purpose": "Test suite",
+      "layer": "meta",
+      "blob": "e95d7df0afa7145897fc13aa2478a1f1eaf5cf6f"
+    },
+    {
+      "path": "tests/fake_control.h",
+      "purpose": "File/layer: tests/fake_control.h | HARNESS: the fake DLL's control page",
+      "layer": "unknown",
+      "blob": "5763f7c159610049e09672a70d96c76791be35ff"
+    },
+    {
+      "path": "tests/fake_j2534.cpp",
+      "purpose": "File/layer: tests/fake_j2534.cpp | Fake J2534 vendor DLL, HARNESS tier;",
+      "layer": "unknown",
+      "blob": "f43449fdbb73448022a569dd66eea7bc17ba0749"
+    },
+    {
+      "path": "tests/j2534_backend_fixture.h",
+      "purpose": "File/layer: tests/j2534_backend_fixture.h | GTest, HARNESS tier",
+      "layer": "unknown",
+      "blob": "958acac6ee8796c5bcbacc5c51bab0d509d5618c"
+    },
+    {
+      "path": "tests/non_ascii_copy.h",
+      "purpose": "File/layer: tests/non_ascii_copy.h | GTest helper, Win32-only, header-only",
+      "layer": "unknown",
+      "blob": "8ecd3e6f873cb78d8cbef3fe3140aae70aea917e"
+    },
+    {
+      "path": "tests/qml/tst_dashboard.qml",
+      "purpose": "File/layer: tests/qml/tst_dashboard.qml | Qt Quick Test, QML tier",
+      "layer": "app",
+      "blob": "199e5cefe0ef94d92d1a53a12befa5c20119c9d3"
+    },
+    {
+      "path": "tests/qml/tst_linkhealth.qml",
+      "purpose": "File/layer: tests/qml/tst_linkhealth.qml | Qt Quick Test, QML tier",
+      "layer": "app",
+      "blob": "a0c6041c284a0ec3e73054c52906dfdc48a6ad3b"
+    },
+    {
+      "path": "tests/qml/tst_liveview.qml",
+      "purpose": "File/layer: tests/qml/tst_liveview.qml | Qt Quick Test, QML tier",
+      "layer": "app",
+      "blob": "259d2e99a6556892a87adad966020bd003bfbb72"
+    },
+    {
+      "path": "tests/qml/tst_theme.qml",
+      "purpose": "File/layer: tests/qml/tst_theme.qml | Qt Quick Test, QML tier",
+      "layer": "app",
+      "blob": "f6849fbb3dacf5362a3e981546607cefc9265876"
+    },
+    {
+      "path": "tests/test_bridge.cpp",
+      "purpose": "Double connect = idempotent success, no new session",
+      "layer": "bridge",
+      "blob": "2ae04d5707fc2947bb6b91dfba8bed046a36bb48"
+    },
+    {
+      "path": "tests/test_c_abi.c",
+      "purpose": "",
+      "layer": "unknown",
+      "blob": "34f9fdf8ee610b0158ce625780ec0a3d6070dff3"
+    },
+    {
+      "path": "tests/test_core.cpp",
+      "purpose": "File/layer: tests/test_core.cpp | GTest, UNIT tier, headless CI job",
+      "layer": "unknown",
+      "blob": "5e16c8e883d80f519b022c024170c9dbe7c4ca37"
+    },
+    {
+      "path": "tests/test_j2534_connect.cpp",
+      "purpose": "File/layer: tests/test_j2534_connect.cpp | GTest, HARNESS tier",
+      "layer": "unknown",
+      "blob": "6d32781767f27b983c73e3a4ce5151016f99b2f9"
+    },
+    {
+      "path": "tests/test_j2534_discovery.cpp",
+      "purpose": "File/layer: tests/test_j2534_discovery.cpp | GTest, HARNESS tier (registry injection)",
+      "layer": "unknown",
+      "blob": "debf3d445cd74243e2ea3b53bdd170b7e8dbba20"
+    },
+    {
+      "path": "tests/test_j2534_health.cpp",
+      "purpose": "File/layer: tests/test_j2534_health.cpp | GTest, HARNESS tier",
+      "layer": "unknown",
+      "blob": "2eb562d17772d9c3f502a51dae131b347bd8a338"
+    },
+    {
+      "path": "tests/test_j2534_load.cpp",
+      "purpose": "File/layer: tests/test_j2534_load.cpp | GTest, HARNESS tier",
+      "layer": "unknown",
+      "blob": "9f8a4062bfa33cdc81b694b010930867dc296ea0"
+    },
+    {
+      "path": "tests/test_j2534_routing.cpp",
+      "purpose": "File/layer: tests/test_j2534_routing.cpp | GTest, HARNESS tier",
+      "layer": "unknown",
+      "blob": "fb9937653a2b67ce0fac94ed7e8ff355b8791af2"
+    },
+    {
+      "path": "tests/test_j2534_stream.cpp",
+      "purpose": "File/layer: tests/test_j2534_stream.cpp | GTest, HARNESS tier",
+      "layer": "unknown",
+      "blob": "b41b48ca986b2f2cc3c7f486934eb3c8c897344e"
+    },
+    {
+      "path": "tests/test_j2534_surrogate.cpp",
+      "purpose": "File/layer: tests/test_j2534_surrogate.cpp | GTest, HARNESS tier",
+      "layer": "unknown",
+      "blob": "9594128f13d8eef43c900825822bd968c7263476"
+    },
+    {
+      "path": "tests/test_obd2.cpp",
+      "purpose": "File/layer: tests/test_obd2.cpp | GTest, UNIT tier, headless, all",
+      "layer": "unknown",
+      "blob": "3953167c4be3b2dabc97ab2c62d3c7ed90b9e6a7"
+    },
+    {
+      "path": "tests/test_qml.cpp",
+      "purpose": "File/layer: tests/test_qml.cpp | Qt Quick Test, QML tier",
+      "layer": "unknown",
+      "blob": "33bcde3a4638222b705826f609fe9ec4c94f7feb"
+    },
+    {
+      "path": "tests/test_signals.cpp",
+      "purpose": "",
+      "layer": "unknown",
+      "blob": "10541cfbd90d1d60d18743fcf4108d1fa4c36f18"
+    }
+  ],
+  "types": [
+    {
+      "name": "ecuio_session_t",
+      "kind": "opaque",
+      "members": [],
+      "decl": "typedef struct ecuio_session ecuio_session_t;",
+      "doc": "Forward-declared opaque handle types",
+      "def_file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ecuio_frame_t",
+      "kind": "struct",
+      "members": [
+        "timestamp_us",
+        "arbitration_id",
+        "channel_id",
+        "data_length",
+        "data",
+        "flags",
+        "reserved"
+      ],
+      "decl": "typedef struct ecuio_frame {\n    uint64_t timestamp_us;    /* Microseconds since the session's transport\n                                 attached, monotonic per channel. Mock: the\n                                 host's steady clock. J2534: the host's at the\n                                 first frame, then the adapter's own deltas,\n                                 carried across its 32-bit wrap */\n    uint32_t arbitration_id;  /* CAN identifier: <= 0x7FF standard, up to\n                                 0x1FFFFFFF when FLAG_EXTENDED set */\n    uint16_t channel_id;      /* Bus/channel index only \u2014 never multiplexes\n                                 an arbitration ID */\n    uint16_t data_length;     /* Bytes used in data[]: 0..64 */\n    uint8_t  data[64];        /* Classic CAN (8) .. CAN-FD (64) payload */\n    uint32_t flags;           /* ECUIO_FRAME_FLAG_* bitmask */\n    uint32_t reserved;        /* Producers MUST leave zero; ABI growth space */\n} ecuio_frame_t;",
+      "doc": "Frame structure \u2014 POD only, no pointers. Layout is pinned by the assertions below: 88 bytes, no hidden padding on any supported platform (ADR-0006).",
+      "def_file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ecuio_frame_callback_t",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*ecuio_frame_callback_t)(\n    const ecuio_frame_t* frame,\n    void* user_data\n);",
+      "doc": "Callback function signature - called from transport thread",
+      "def_file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ecuio_status_t",
+      "kind": "enum",
+      "members": [
+        "ECUIO_OK",
+        "ECUIO_ERR_NULL_ARGUMENT",
+        "ECUIO_ERR_NOT_IMPLEMENTED",
+        "ECUIO_ERR_NO_TRANSPORT",
+        "ECUIO_ERR_OUT_OF_MEMORY",
+        "ECUIO_ERR_SESSION_CLOSED",
+        "ECUIO_ERR_ALREADY_REGISTERED",
+        "ECUIO_ERR_LOAD_FAILED",
+        "ECUIO_ERR_VEHICLE_TIMEOUT",
+        "ECUIO_ERR_TRANSPORT_HARD_FAILURE",
+        "ECUIO_ERR_REQUEST_FAILED",
+        "ECUIO_ERR_INVALID_ARGUMENT",
+        "ECUIO_ERR_BAD_URI",
+        "ECUIO_ERR_UNKNOWN_PROFILE",
+        "ECUIO_ERR_VENDOR_REFUSED",
+        "ECUIO_ERR_SURROGATE_FAILED"
+      ],
+      "values": {
+        "ECUIO_OK": "0",
+        "ECUIO_ERR_NULL_ARGUMENT": "1",
+        "ECUIO_ERR_NOT_IMPLEMENTED": "2",
+        "ECUIO_ERR_NO_TRANSPORT": "3",
+        "ECUIO_ERR_OUT_OF_MEMORY": "4",
+        "ECUIO_ERR_SESSION_CLOSED": "5",
+        "ECUIO_ERR_ALREADY_REGISTERED": "6",
+        "ECUIO_ERR_LOAD_FAILED": "7",
+        "ECUIO_ERR_VEHICLE_TIMEOUT": "8",
+        "ECUIO_ERR_TRANSPORT_HARD_FAILURE": "9",
+        "ECUIO_ERR_REQUEST_FAILED": "10",
+        "ECUIO_ERR_INVALID_ARGUMENT": "11",
+        "ECUIO_ERR_BAD_URI": "12",
+        "ECUIO_ERR_UNKNOWN_PROFILE": "13",
+        "ECUIO_ERR_VENDOR_REFUSED": "14",
+        "ECUIO_ERR_SURROGATE_FAILED": "15"
+      },
+      "decl": "typedef enum {\n    ECUIO_OK = 0,\n    ECUIO_ERR_NULL_ARGUMENT = 1,\n    ECUIO_ERR_NOT_IMPLEMENTED = 2,\n    ECUIO_ERR_NO_TRANSPORT = 3,   /* nothing handles the URI: an unknown\n                                     scheme, or no installed adapter\n                                     matches its selector */\n    ECUIO_ERR_OUT_OF_MEMORY = 4,\n    ECUIO_ERR_SESSION_CLOSED = 5,\n    ECUIO_ERR_ALREADY_REGISTERED = 6,   /* Not returned: a duplicate callback\n                                           registration succeeds (pair\n                                           identity, ADR-0002). Reserved,\n                                           since codes are append-only */\n    ECUIO_ERR_LOAD_FAILED = 7,    /* the adapter DLL wouldn't load, or\n                                     lacks a mandatory J2534 export */\n    /* Link-health codes: published by the J2534 worker through\n     * ecuio_session_get_error_state while the session keeps running. */\n    ECUIO_ERR_VEHICLE_TIMEOUT = 8,          /* reads answer, but nothing\n                                               arrives: no ECU awake on a\n                                               bus that still ACKs, as a\n                                               vehicle with the ignition\n                                               off can be */\n    ECUIO_ERR_TRANSPORT_HARD_FAILURE = 9,   /* reads fail: the adapter isn't\n                                               answering */\n    ECUIO_ERR_REQUEST_FAILED = 10,   /* writes fail while reads stay clean:\n                                        no node ACKs the requests (no\n                                        vehicle, or a bus fully asleep).\n                                        The adapter is fine, so this isn't\n                                        a hard failure */\n    ECUIO_ERR_INVALID_ARGUMENT = 11,   /* an argument is present but not\n                                          acceptable: a signal set that fails\n                                          validation, a mal",
+      "doc": "Status codes - append-only evolution for ABI stability",
+      "def_file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ecuio_session_info_t",
+      "kind": "struct",
+      "members": [
+        "flags",
+        "backend",
+        "dll_arch",
+        "protocol_id",
+        "baud",
+        "connect_flags",
+        "vbatt_mv",
+        "channel_count",
+        "rx_ids",
+        "tx_ids",
+        "firmware_version",
+        "dll_version",
+        "api_version",
+        "profile",
+        "reserved"
+      ],
+      "decl": "typedef struct ecuio_session_info {\n    uint32_t flags;           /* ECUIO_SESSION_INFO_* */\n    uint32_t backend;         /* ECUIO_BACKEND_* */\n    uint32_t dll_arch;        /* ECUIO_DLL_ARCH_*; UNKNOWN for mock */\n    uint32_t protocol_id;     /* the J2534 ProtocolID the channel connected\n                                 with (6 = ISO 15765); 0 for mock */\n    uint32_t baud;            /* bit/s it connected at; 0 for mock */\n    uint32_t connect_flags;   /* PassThruConnect's Flags: ?flags=, plus\n                                 CAN_29BIT_ID (0x100) for 29-bit channels */\n    uint32_t vbatt_mv;        /* battery voltage at connect, millivolts\n                                 (READ_VBATT); with ECUIO_SESSION_INFO_VBATT */\n    uint32_t channel_count;   /* CAN channels the session filters and\n                                 requests on; 0 for a passive session */\n    uint32_t rx_ids[ECUIO_SESSION_INFO_MAX_CHANNELS];   /* each one's\n                                                           receive ID */\n    uint32_t tx_ids[ECUIO_SESSION_INFO_MAX_CHANNELS];   /* and transmit ID */\n    /* The adapter's firmware, its DLL and the J2534 API version it\n     * implements (PassThruReadVersion), each NUL-terminated on one line;\n     * \"\" without ECUIO_SESSION_INFO_VERSIONS. */\n    char firmware_version[ECUIO_SESSION_INFO_TEXT_LEN];\n    char dll_version[ECUIO_SESSION_INFO_TEXT_LEN];\n    char api_version[ECUIO_SESSION_INFO_TEXT_LEN];\n    /* The profile the session decodes through (ADR-0013): ?profile=, or\n     * the scheme's default. NUL-terminated. */\n    char profile[ECUIO_SESSION_INFO_PROFILE_LEN];\n    uint32_t reserved[16];    /* zero; ABI growth space */\n} ecuio_session_info_t;",
+      "doc": "POD, 432 bytes, no hidden padding on any supported platform; pinned by the assertions below. New fields take the reserved room.",
+      "def_file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ecuio_dropped_request_t",
+      "kind": "struct",
+      "members": [
+        "request",
+        "length",
+        "reason",
+        "nrc",
+        "reserved"
+      ],
+      "decl": "typedef struct ecuio_dropped_request {\n    uint8_t request[3];       /* the service ID, then the key */\n    uint8_t length;           /* 2 or 3 */\n    uint8_t reason;           /* ECUIO_DROP_* */\n    uint8_t nrc;              /* the negative response code; 0 for a bitmap */\n    uint8_t reserved[2];      /* zero */\n} ecuio_dropped_request_t;",
+      "doc": "POD, 8 bytes",
+      "def_file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ecuio_channel_support_t",
+      "kind": "struct",
+      "members": [
+        "flags",
+        "rx_id",
+        "generation",
+        "requests",
+        "dropped",
+        "ranges",
+        "pid_bitmap",
+        "dropped_list",
+        "reserved"
+      ],
+      "decl": "typedef struct ecuio_channel_support {\n    uint32_t flags;           /* ECUIO_SUPPORT_* */\n    uint32_t rx_id;           /* the channel's receive ID: its ECU */\n    uint32_t generation;      /* changes with every update; 0 until the\n                                 channel has learned something */\n    uint32_t requests;        /* the channel's requests, kept or dropped */\n    uint32_t dropped;         /* how many of them were dropped */\n    uint32_t ranges;          /* bit i: the ECU answered the bitmap at PID\n                                 0x20 * i */\n    /* The bitmaps as the replies carry them: PID p is bit\n     * 0x80 >> ((p - 1) % 8) of byte (p - 1) / 8, set when supported. */\n    uint8_t pid_bitmap[32];\n    ecuio_dropped_request_t dropped_list[ECUIO_SUPPORT_MAX_DROPPED];   /* the\n                                 first ones dropped, in set order */\n    uint32_t reserved[8];     /* zero; ABI growth space */\n} ecuio_channel_support_t;",
+      "doc": "POD, 152 bytes, no hidden padding on any supported platform; pinned by the assertions below. New fields take the reserved room.",
+      "def_file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ecuio_transport_ops_t",
+      "kind": "struct",
+      "members": [
+        "start",
+        "detach"
+      ],
+      "decl": "typedef struct ecuio_transport_ops {\n    ecuio_status_t (*start)(ecuio_session_t* session, void* impl);\n    void (*detach)(ecuio_session_t* session, void* impl);\n} ecuio_transport_ops_t;",
+      "doc": "Transport abstraction (internal): sessions own a transport instance polymorphically. ops is a pointer to static, immutable vtable storage owned by the transport implementation TU; impl is the implementation's private state. Both start() and detach() are invoked by the session, never by transports themselves \u2014 no re-entry into session lifecycle. Contract: - start(): called from ecuio_session_start. Must be idempotent (second call on a running transport returns ECUIO_OK). - detach(): called exactly once from ecuio_session_close, AFTER the closed flag is set. Must stop any worker threads and free impl + the ecuio_transport wrapper itself. May not touch session afterwards.",
+      "def_file": "core/include/ecuio/internal.h"
+    },
+    {
+      "name": "ecuio_transport_t",
+      "kind": "struct",
+      "members": [
+        "ops",
+        "impl"
+      ],
+      "decl": "typedef struct ecuio_transport {\n    const ecuio_transport_ops_t* ops;\n    void* impl;\n} ecuio_transport_t;",
+      "doc": null,
+      "def_file": "core/include/ecuio/internal.h"
+    },
+    {
+      "name": "ecuio_j2534_device_t",
+      "kind": "struct",
+      "members": [
+        "vendor_id",
+        "vendor_name",
+        "dll_path",
+        "supported_protocols",
+        "reserved"
+      ],
+      "decl": "typedef struct ecuio_j2534_device {\n    uint32_t vendor_id;           /* Index in discovery order (0-based) */\n    char vendor_name[ECUIO_J2534_VENDOR_NAME_LEN];   /* registry key name */\n    char dll_path[ECUIO_J2534_DLL_PATH_LEN];         /* FUNCTIONLIBRARY,\n                                                        expanded; a path\n                                                        too long for this\n                                                        isn't listed */\n    uint32_t supported_protocols; /* 0 \u2014 reserved for PROTOCOLS bitmask parse */\n    uint32_t reserved[8];         /* ABI-stable expansion room\n                                   * [0]: architecture (1=x86, 2=x64, 0=unknown) */\n} ecuio_j2534_device_t;",
+      "doc": "Text is UTF-8 throughout: vendor_name, dll_path, and the path forms of a j2534:// URI. Core passes paths to Windows as UTF-16.",
+      "def_file": "core/include/ecuio/j2534.h"
+    },
+    {
+      "name": "ecuio_j2534_handle_t",
+      "kind": "opaque",
+      "members": [],
+      "decl": "typedef struct ecuio_j2534_handle ecuio_j2534_handle_t;",
+      "doc": "Opaque handle to an opened vendor function-library connection",
+      "def_file": "core/include/ecuio/j2534.h"
+    },
+    {
+      "name": "SCONFIG",
+      "kind": "struct",
+      "members": [
+        "Parameter",
+        "Value"
+      ],
+      "decl": "typedef struct ecuio_pt_sconfig {\n    unsigned long Parameter;   /* config parameter name (e.g. DATA_RATE) */\n    unsigned long Value;      /* parameter value */\n} SCONFIG;",
+      "doc": null,
+      "def_file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "SCONFIG_LIST",
+      "kind": "struct",
+      "members": [
+        "NumOfParams",
+        "ConfigPtr"
+      ],
+      "decl": "typedef struct ecuio_pt_sconfig_list {\n    unsigned long NumOfParams;\n    SCONFIG* ConfigPtr;\n} SCONFIG_LIST;",
+      "doc": null,
+      "def_file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "PASSTHRU_MSG",
+      "kind": "struct",
+      "members": [
+        "ProtocolID",
+        "RxStatus",
+        "TxFlags",
+        "Timestamp",
+        "DataSize",
+        "ExtraDataIndex",
+        "Data"
+      ],
+      "decl": "typedef struct ecuio_pt_passthru_msg {\n    unsigned long ProtocolID;\n    unsigned long RxStatus;\n    unsigned long TxFlags;\n    unsigned long Timestamp;       /* microseconds (spec v4.04; vendor\n                                    * conformance is a BENCH check) */\n    unsigned long DataSize;        /* payload bytes in Data[] */\n    unsigned long ExtraDataIndex;  /* start of extra data (CRC, etc.);\n                                    * == DataSize when none */\n    unsigned char  Data[ECUIO_PT_MSG_DATA_SIZE];\n} PASSTHRU_MSG;",
+      "doc": "---- The message struct (J2534-1 v04.04, VERIFIED) ---- Field order is the spec's (DataSize before ExtraDataIndex). The loader, surrogate and fake all compile from this header, so the tests cannot catch a divergence from the spec: verify any change against public references.",
+      "def_file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ecuio_j2534_sur_handle_t",
+      "kind": "opaque",
+      "members": [],
+      "decl": "typedef struct ecuio_j2534_sur_handle ecuio_j2534_sur_handle_t;",
+      "doc": null,
+      "def_file": "core/include/ecuio/j2534_surrogate.h"
+    },
+    {
+      "name": "ecuio_value_kind_t",
+      "kind": "enum",
+      "members": [
+        "ECUIO_VALUE_UINT",
+        "ECUIO_VALUE_INT",
+        "ECUIO_VALUE_FLOAT",
+        "ECUIO_VALUE_TEXT"
+      ],
+      "values": {
+        "ECUIO_VALUE_UINT": "0",
+        "ECUIO_VALUE_INT": "1",
+        "ECUIO_VALUE_FLOAT": "2",
+        "ECUIO_VALUE_TEXT": "3"
+      },
+      "decl": "typedef enum {\n    ECUIO_VALUE_UINT  = 0,\n    ECUIO_VALUE_INT   = 1,   /* two's complement, sign-extended from bit_length */\n    ECUIO_VALUE_FLOAT = 2,   /* IEEE-754 binary32 */\n    ECUIO_VALUE_TEXT  = 3    /* reserved: no decoder yet */\n} ecuio_value_kind_t;",
+      "doc": "What a field's bits hold. Values are append-only.",
+      "def_file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ecuio_signal_def_t",
+      "kind": "struct",
+      "members": [
+        "id",
+        "reserved0",
+        "message_id",
+        "mux_offset",
+        "mux_length",
+        "mux_reserved",
+        "mux_key",
+        "kind",
+        "byte_order",
+        "start_byte",
+        "bit_offset",
+        "bit_length",
+        "decode_reserved",
+        "scale",
+        "offset",
+        "name",
+        "unit",
+        "decimal_places",
+        "display_reserved",
+        "flags",
+        "reserved"
+      ],
+      "decl": "typedef struct ecuio_signal_def {\n    uint16_t id;\n    uint16_t reserved0;           /* zero */\n\n    /* Match. ecuio_def_applies_to_frame checks both before decode, and\n     * ecuio_decode_signal checks the key again. */\n    uint32_t message_id;          /* the frame's arbitration_id must equal it */\n    uint8_t  mux_offset;          /* payload byte where the key starts */\n    uint8_t  mux_length;          /* 0 = no mux; 1 to 3 = key bytes */\n    uint8_t  mux_reserved[2];     /* zero */\n    uint32_t mux_key;             /* key bytes, first byte most significant,\n                                     whatever byte_order says */\n\n    /* Decode */\n    uint8_t  kind;                /* ecuio_value_kind_t */\n    uint8_t  byte_order;          /* ECUIO_BYTE_ORDER_* */\n    uint16_t start_byte;\n    uint8_t  bit_offset;          /* 0..7; 0 for BE and FLOAT */\n    uint8_t  bit_length;          /* 1..32; 32 for FLOAT; whole bytes for BE */\n    uint8_t  decode_reserved[2];  /* zero */\n    double   scale;\n    double   offset;              /* value = raw * scale + offset, in double */\n\n    /* Display. UIs show the strings as they are. */\n    char     name[32];            /* UTF-8, terminated inside the buffer */\n    char     unit[16];            /* UTF-8 (a degree sign, \"km/h\"), terminated */\n    uint8_t  decimal_places;      /* 0..3 */\n    uint8_t  display_reserved[3]; /* zero */\n\n    uint32_t flags;               /* none defined; zero */\n    uint32_t reserved[6];         /* zero; ADR-0016 earmarks this room */\n} ecuio_signal_def_t;",
+      "doc": "One signal, in three blocks: which frames carry it, how its bytes become a value, and how the value is shown. Every byte is a named field, so the compiler adds no padding. Reserved bytes and flags must be zero, so a later field can take that room and existing sets still load (ADR-0016). kind and byte_order are fixed-width fields because an enum's size is up to the compiler.",
+      "def_file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ecuio_channel_decl_t",
+      "kind": "struct",
+      "members": [
+        "rx_id",
+        "tx_id"
+      ],
+      "decl": "typedef struct ecuio_channel_decl {\n    uint32_t rx_id;   /* flow-control filter target */\n    uint32_t tx_id;   /* request destination */\n} ecuio_channel_decl_t;",
+      "doc": null,
+      "def_file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ecuio_signal_set_t",
+      "kind": "struct",
+      "members": [
+        "layout_version",
+        "count",
+        "defs",
+        "channel_count",
+        "reserved0",
+        "channels",
+        "reserved"
+      ],
+      "decl": "typedef struct ecuio_signal_set {\n    uint32_t layout_version;      /* ECUIO_SIGNAL_SET_LAYOUT; the first member, always */\n    uint32_t count;\n    const ecuio_signal_def_t* defs;\n    uint32_t channel_count;       /* 0 with NULL channels: none declared */\n    uint32_t reserved0;           /* zero */\n    const ecuio_channel_decl_t* channels;\n    uint32_t reserved[4];         /* zero */\n} ecuio_signal_set_t;",
+      "doc": "Fill a set member by member from a zeroed struct, never positionally: reserved0 sits between channel_count and channels.",
+      "def_file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ecuio_validation_t",
+      "kind": "struct",
+      "members": [
+        "code",
+        "index",
+        "reserved"
+      ],
+      "decl": "typedef struct ecuio_validation {\n    int32_t  code;                /* ECUIO_VALIDATE_*; 0 = OK */\n    uint32_t index;               /* the def or channel, or UINT32_MAX */\n    uint32_t reserved[2];         /* written as zero */\n} ecuio_validation_t;",
+      "doc": "Why a set failed validation, and where. index names the element the code is about: the failing def; for a duplicate id, the second def of the pair; for a bad channel id, the channel; for a duplicate rx, the second channel of the pair; for too many requests, the first def whose request didn't fit. It is UINT32_MAX for ECUIO_VALIDATE_OK and for a code that names no single element: a NULL, the layout version, the set's reserved fields, the channel count.",
+      "def_file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ecuio_sur_request_t",
+      "kind": "struct",
+      "members": [
+        "request_id",
+        "opcode",
+        "u"
+      ],
+      "decl": "typedef struct ecuio_sur_request {\n    uint32_t request_id;   /* client-assigned, increasing; echoed back */\n    uint32_t opcode;       /* ECUIO_SUR_OP_* */\n    union {\n        struct { uint32_t fingerprint; } open;\n        struct { uint32_t protocol_id; uint32_t flags; uint32_t baud; } connect;\n        struct { uint32_t channel_id; } disconnect;\n        /* input: flattened SCONFIG pairs (u32 Parameter, u32 Value, LE)\n         * for GET/SET_CONFIG; input_len 0 for NULL-input ioctls. */\n        struct { uint32_t channel_id; uint32_t ioctl_id;\n                 uint8_t input[ECUIO_SUR_IOCTL_DATA_MAX];\n                 uint32_t input_len; } ioctl;\n        struct { uint32_t channel_id;\n                 uint8_t data[ECUIO_SUR_MSG_MAX];\n                 uint32_t data_len; uint32_t tx_flags;\n                 uint32_t timeout_ms; } write;\n        /* The vendor's ReadMsgs timeout. The client waits that plus\n         * 500 ms for the reply before it calls the child hung. */\n        struct { uint32_t timeout_ms; } read;\n        struct { uint8_t data[ECUIO_SUR_MSG_MAX]; uint32_t len;\n                 uint32_t timestamp; uint32_t rx_flags; } inject;\n        struct { uint32_t channel_id; uint32_t filter_type; uint32_t tx_flags;\n                 uint8_t mask[ECUIO_SUR_FILTER_PATTERN_MAX];\n                 uint8_t pattern[ECUIO_SUR_FILTER_PATTERN_MAX];\n                 uint8_t flow_control[ECUIO_SUR_FILTER_PATTERN_MAX];\n                 uint32_t mask_len; uint32_t pattern_len; uint32_t fc_len;\n                 } start_filter;\n        struct { uint32_t channel_id; uint32_t filter_id; } stop_filter;\n    } u;\n} ecuio_sur_request_t;",
+      "doc": null,
+      "def_file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ecuio_sur_frame_t",
+      "kind": "struct",
+      "members": [
+        "arbitration_id",
+        "timestamp",
+        "rx_flags",
+        "data",
+        "data_len"
+      ],
+      "decl": "typedef struct ecuio_sur_frame {\n    uint32_t arbitration_id;  /* always 0: the CAN ID is data[0..3], which\n                                 the transport strips (ADR-0012) */\n    uint32_t timestamp;       /* the vendor's Timestamp, untranslated: the\n                                 transport makes it session time */\n    uint32_t rx_flags;        /* the vendor's RxStatus */\n    uint8_t  data[ECUIO_SUR_MSG_MAX];\n    uint8_t  data_len;        /* the child clamps to ECUIO_SUR_MSG_MAX */\n} ecuio_sur_frame_t;",
+      "doc": "Single frame for batch read responses.",
+      "def_file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ecuio_sur_response_t",
+      "kind": "struct",
+      "members": [
+        "request_id",
+        "status",
+        "handle_or_channel",
+        "aux",
+        "text",
+        "data",
+        "data_len",
+        "num_frames",
+        "frames"
+      ],
+      "decl": "typedef struct ecuio_sur_response {\n    uint32_t request_id;         /* the request's, for pairing */\n    int32_t  status;             /* vendor J2534 status, or STATUS_FAILED */\n    uint32_t handle_or_channel;  /* CONNECT: channel ID; START_FILTER: filter ID */\n    uint32_t aux;                /* OPEN: the child's fingerprint; WRITE: messages written */\n    /* GET_LAST_ERROR: [0]; READ_VERSION: all three. The client\n     * terminates each. */\n    char     text[ECUIO_SUR_TEXT_FIELDS][ECUIO_SUR_TEXT_MAX];\n    uint8_t  data[ECUIO_SUR_IOCTL_DATA_MAX];   /* IOCTL reply payload */\n    uint32_t data_len;           /* IOCTL; the client rejects > the limit */\n    uint32_t num_frames;         /* READ; the client rejects > the limit */\n    ecuio_sur_frame_t frames[ECUIO_SUR_MAX_FRAMES_PER_READ];\n} ecuio_sur_response_t;",
+      "doc": "Response with embedded frame array. Fields an opcode doesn't use are zero.",
+      "def_file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "fn_inject",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_inject)(const unsigned char*, unsigned long,\n                              unsigned long, unsigned long, unsigned long);",
+      "doc": null,
+      "def_file": "core/src/j2534_loader.cpp"
+    },
+    {
+      "name": "abi_frame_size_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_frame_size_check[(sizeof(ecuio_frame_t) == 88) ? 1 : -1];",
+      "doc": "Negative-array-size idiom \u2014 valid in ALL C standards including pedantic C89, complementing the header's _Static_assert (C11+).",
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_data_offset_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_data_offset_check[(offsetof(ecuio_frame_t, data) == 16) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_flags_offset_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_flags_offset_check[(offsetof(ecuio_frame_t, flags) == 80) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_def_size_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_def_size_check[(sizeof(ecuio_signal_def_t) == 120) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_def_kind_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_def_kind_check[(offsetof(ecuio_signal_def_t, kind) == 16) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_def_start_byte_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_def_start_byte_check[(offsetof(ecuio_signal_def_t, start_byte) == 18) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_def_scale_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_def_scale_check[(offsetof(ecuio_signal_def_t, scale) == 24) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_def_name_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_def_name_check[(offsetof(ecuio_signal_def_t, name) == 40) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_def_flags_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_def_flags_check[(offsetof(ecuio_signal_def_t, flags) == 92) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_def_reserved_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_def_reserved_check[(offsetof(ecuio_signal_def_t, reserved) == 96) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_set_layout_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_set_layout_check[(offsetof(ecuio_signal_set_t, layout_version) == 0) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_validation_size_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_validation_size_check[(sizeof(ecuio_validation_t) == 16) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_validation_index_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_validation_index_check[(offsetof(ecuio_validation_t, index) == 4) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_validation_reserved_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_validation_reserved_check[(offsetof(ecuio_validation_t, reserved) == 8) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_info_size_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_info_size_check[(sizeof(ecuio_session_info_t) == 432) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_info_rx_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_info_rx_check[(offsetof(ecuio_session_info_t, rx_ids) == 32) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_info_text_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_info_text_check[(offsetof(ecuio_session_info_t, firmware_version) == 64) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_info_profile_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_info_profile_check[(offsetof(ecuio_session_info_t, profile) == 304) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_info_reserved_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_info_reserved_check[(offsetof(ecuio_session_info_t, reserved) == 368) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_dropped_size_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_dropped_size_check[(sizeof(ecuio_dropped_request_t) == 8) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_support_size_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_support_size_check[(sizeof(ecuio_channel_support_t) == 152) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_support_bitmap_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_support_bitmap_check[(offsetof(ecuio_channel_support_t, pid_bitmap) == 24) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_support_list_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_support_list_check[(offsetof(ecuio_channel_support_t, dropped_list) == 56) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "abi_support_reserved_check",
+      "kind": "alias",
+      "members": [],
+      "decl": "typedef char abi_support_reserved_check[(offsetof(ecuio_channel_support_t, reserved) == 120) ? 1 : -1];",
+      "doc": null,
+      "def_file": "tests/test_c_abi.c"
+    },
+    {
+      "name": "fn_get_current_handle",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef int (*fn_get_current_handle)(void);",
+      "doc": "Test's own module reference: bump the refcount so the DLL stays mapped after core closes it, letting us assert on post-close state (GetCurrentHandle == 0) via the hook. Dropped at teardown.",
+      "def_file": "tests/test_j2534_load.cpp"
+    },
+    {
+      "name": "fn_inject_frame",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_inject_frame)(const unsigned char*, unsigned long,\n                                unsigned long, unsigned long, unsigned long);",
+      "doc": null,
+      "def_file": "tests/test_j2534_load.cpp"
+    },
+    {
+      "name": "fn_get_connect_params",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_get_connect_params)(unsigned long*, unsigned long*,\n                                      unsigned long*);",
+      "doc": null,
+      "def_file": "tests/test_j2534_stream.cpp"
+    },
+    {
+      "name": "fn_set_filter_gating",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_set_filter_gating)(int);",
+      "doc": null,
+      "def_file": "tests/test_j2534_stream.cpp"
+    },
+    {
+      "name": "fn_get_write_count",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_get_write_count)(unsigned long*);",
+      "doc": null,
+      "def_file": "tests/test_j2534_stream.cpp"
+    },
+    {
+      "name": "fn_get_recorded_write",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_get_recorded_write)(unsigned long, unsigned char*,\n                                      unsigned long*, unsigned long*);",
+      "doc": null,
+      "def_file": "tests/test_j2534_stream.cpp"
+    },
+    {
+      "name": "fn_get_last_filter_start",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_get_last_filter_start)(unsigned long*, unsigned long*,\n                                         unsigned char*, unsigned char*,\n                                         unsigned long*);",
+      "doc": null,
+      "def_file": "tests/test_j2534_stream.cpp"
+    },
+    {
+      "name": "fn_get_last_filter_stop",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*fn_get_last_filter_stop)(unsigned long*);",
+      "doc": null,
+      "def_file": "tests/test_j2534_stream.cpp"
+    }
+  ],
+  "constants": [
+    {
+      "name": "MaxFrames",
+      "value": "10000",
+      "kind": "const",
+      "file": "app/qttunebridge.h"
+    },
+    {
+      "name": "HistoryCapacity",
+      "value": "120",
+      "kind": "const",
+      "file": "app/qttunebridge.h"
+    },
+    {
+      "name": "MaxInFlightFrames",
+      "value": "1000",
+      "kind": "const",
+      "file": "app/qttunebridge.h"
+    },
+    {
+      "name": "ECUIO_FRAME_FLAG_EXTENDED",
+      "value": "0x00000001u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_FRAME_FLAG_REMOTE",
+      "value": "0x00000002u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_FRAME_FLAG_FD",
+      "value": "0x00000004u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_FRAME_FLAG_BITRATE_SWITCH",
+      "value": "0x00000008u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_FRAME_FLAG_ERROR",
+      "value": "0x00000010u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_FRAME_FLAG_TX_ECHO",
+      "value": "0x00000020u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_SESSION_INFO_TEXT_LEN",
+      "value": "80",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_SESSION_INFO_MAX_CHANNELS",
+      "value": "4",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_SESSION_INFO_PROFILE_LEN",
+      "value": "64",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_BACKEND_MOCK",
+      "value": "1u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_BACKEND_J2534_INPROC",
+      "value": "2u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_BACKEND_J2534_SURROGATE",
+      "value": "3u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_DLL_ARCH_UNKNOWN",
+      "value": "0u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_DLL_ARCH_X86",
+      "value": "1u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_DLL_ARCH_X64",
+      "value": "2u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_SESSION_INFO_VBATT",
+      "value": "0x00000001u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_SESSION_INFO_VERSIONS",
+      "value": "0x00000002u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_SUPPORT_MAX_DROPPED",
+      "value": "8",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_SUPPORT_PROBED",
+      "value": "0x00000001u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_SUPPORT_COMPLETE",
+      "value": "0x00000002u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_DROP_BITMAP",
+      "value": "1u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_DROP_NOT_SUPPORTED",
+      "value": "2u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_DROP_SERVICE",
+      "value": "3u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_DROP_ACCESS",
+      "value": "4u",
+      "kind": "define",
+      "file": "core/include/ecuio/core.h"
+    },
+    {
+      "name": "ECUIO_J2534_MAX_VENDORS",
+      "value": "16",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534.h"
+    },
+    {
+      "name": "ECUIO_J2534_VENDOR_NAME_LEN",
+      "value": "64",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534.h"
+    },
+    {
+      "name": "ECUIO_J2534_DLL_PATH_LEN",
+      "value": "256",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534.h"
+    },
+    {
+      "name": "ECUIO_PT_MSG_DATA_SIZE",
+      "value": "4128",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_STATUS_NOERROR",
+      "value": "0L",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_STATUS_NOT_SUPPORTED",
+      "value": "0x01L",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_STATUS_FAILED",
+      "value": "0x07L",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_STATUS_TIMEOUT",
+      "value": "0x09L",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_STATUS_BUFFER_EMPTY",
+      "value": "0x10L",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_TEXT_LEN",
+      "value": "80",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_PROTOCOL_CAN",
+      "value": "0x05UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_PROTOCOL_ISO15765",
+      "value": "0x06UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_BAUD_ISO15765_500K",
+      "value": "500000UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_TX_MSG_TYPE",
+      "value": "0x0001UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_START_OF_MESSAGE",
+      "value": "0x0002UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_RX_BREAK",
+      "value": "0x0004UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_TX_INDICATION",
+      "value": "0x0008UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_ISO15765_PADDING_ERR",
+      "value": "0x0010UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_ISO15765_ADDR_TYPE",
+      "value": "0x0080UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_CAN_29BIT_ID",
+      "value": "0x0100UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_MAX_SKIPPED_PER_READ",
+      "value": "16",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_TX_ISO15765_FRAME_PAD",
+      "value": "0x0040UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_TX_NORMAL_TRANSMIT",
+      "value": "0x0000UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_PASS_FILTER",
+      "value": "0x00000001UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_BLOCK_FILTER",
+      "value": "0x00000002UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_FLOW_CONTROL_FILTER",
+      "value": "0x00000003UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_FILTER_PATTERN_MAX",
+      "value": "12",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_IOCTL_GET_CONFIG",
+      "value": "0x01UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_IOCTL_SET_CONFIG",
+      "value": "0x02UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_IOCTL_READ_VBATT",
+      "value": "0x03UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_IOCTL_CLEAR_TX_BUFFER",
+      "value": "0x07UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_IOCTL_CLEAR_RX_BUFFER",
+      "value": "0x08UL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_IOCTL_CLEAR_MSG_FILTERS",
+      "value": "0x0AUL",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PT_SCONFIG_MAX_PARAMS",
+      "value": "8",
+      "kind": "define",
+      "file": "core/include/ecuio/j2534_ptypes.h"
+    },
+    {
+      "name": "ECUIO_PROFILE_NAME_MAX",
+      "value": "63",
+      "kind": "define",
+      "file": "core/include/ecuio/profile.h"
+    },
+    {
+      "name": "ECUIO_PROFILE_MAX_REQUESTS",
+      "value": "128",
+      "kind": "define",
+      "file": "core/include/ecuio/profile.h"
+    },
+    {
+      "name": "ECUIO_MOCK_SIG_RPM_ID",
+      "value": "1001",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_MOCK_SIG_COOLANT_ID",
+      "value": "2001",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_MOCK_SIG_SPEED_ID",
+      "value": "3001",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_MOCK_SIG_THROTTLE_ID",
+      "value": "4001",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_MOCK_SIG_IAT_ID",
+      "value": "5001",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_MOCK_SIG_LOAD_ID",
+      "value": "6001",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_MOCK_SIG_MAF_ID",
+      "value": "8001",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_MOCK_SIG_OIL_ID",
+      "value": "9001",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_MOCK_TELEMETRY_ARB_ID",
+      "value": "0x0C0u",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_MOCK_TELEMETRY_PAYLOAD_LEN",
+      "value": "12u",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_OBD2_SIG_ENGINE_LOAD_ID",
+      "value": "7001",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_OBD2_SIG_COOLANT_TEMP_ID",
+      "value": "7002",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_OBD2_SIG_RPM_ID",
+      "value": "7003",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_OBD2_SIG_SPEED_ID",
+      "value": "7004",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_OBD2_SIG_IAT_ID",
+      "value": "7005",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_OBD2_SIG_THROTTLE_ID",
+      "value": "7006",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_OBD2_SIG_FUEL_LEVEL_ID",
+      "value": "7007",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_OBD2_SIG_BATTERY_V_ID",
+      "value": "7008",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_OBD2_SIG_MAF_ID",
+      "value": "7009",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_OBD2_SIG_OIL_TEMP_ID",
+      "value": "7010",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_OBD2_ECU_ARB_ID",
+      "value": "0x7E8u",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_OBD2_TESTER_ARB_ID",
+      "value": "0x7E0u",
+      "kind": "define",
+      "file": "core/include/ecuio/signal_sets.h"
+    },
+    {
+      "name": "ECUIO_BYTE_ORDER_LE",
+      "value": "0u",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_BYTE_ORDER_BE",
+      "value": "1u",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_MAX_CHANNELS",
+      "value": "4",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_SIGNAL_SET_LAYOUT",
+      "value": "3u",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_DECODE_OK",
+      "value": "0",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_DECODE_ERR_NULL",
+      "value": "1",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_DECODE_ERR_PAST_PAYLOAD",
+      "value": "2",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_DECODE_ERR_BAD_PARAMS",
+      "value": "3",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_DECODE_ERR_UNSUPPORTED",
+      "value": "4",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_DECODE_ERR_MUX_MISMATCH",
+      "value": "5",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_OK",
+      "value": "0",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_NULL",
+      "value": "1",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_BIT_LENGTH",
+      "value": "3",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_BIT_OFFSET",
+      "value": "4",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_NAME",
+      "value": "6",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_UNIT",
+      "value": "7",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_DECIMALS",
+      "value": "8",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_MUX_LENGTH",
+      "value": "9",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_MUX_RANGE",
+      "value": "10",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_MUX_KEY",
+      "value": "11",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_BIG_ENDIAN",
+      "value": "12",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_KIND",
+      "value": "13",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_FLOAT32",
+      "value": "14",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_RESERVED",
+      "value": "15",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_BYTE_ORDER",
+      "value": "16",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_CHANNELS_NULL",
+      "value": "-10",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_CHANNEL_COUNT",
+      "value": "-11",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_CHANNEL_ID",
+      "value": "-12",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_DUPLICATE_RX",
+      "value": "-13",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_DUPLICATE_ID",
+      "value": "-14",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_LAYOUT",
+      "value": "-15",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_SET_RESERVED",
+      "value": "-16",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_VALIDATE_ERR_REQUEST_COUNT",
+      "value": "-17",
+      "kind": "define",
+      "file": "core/include/ecuio/signals.h"
+    },
+    {
+      "name": "ECUIO_SUR_MSG_MAX",
+      "value": "64",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_IOCTL_DATA_MAX",
+      "value": "64",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_FILTER_PATTERN_MAX",
+      "value": "12",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_MAX_FRAMES_PER_READ",
+      "value": "16",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_TEXT_MAX",
+      "value": "80",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_TEXT_FIELDS",
+      "value": "3",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_OP_OPEN",
+      "value": "1",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_OP_CONNECT",
+      "value": "2",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_OP_IOCTL",
+      "value": "3",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_OP_WRITE",
+      "value": "4",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_OP_READ",
+      "value": "5",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_OP_SHUTDOWN",
+      "value": "6",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_OP_DISCONNECT",
+      "value": "7",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_OP_INJECT",
+      "value": "8",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_OP_START_FILTER",
+      "value": "9",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_OP_STOP_FILTER",
+      "value": "10",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_OP_GET_LAST_ERROR",
+      "value": "11",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "ECUIO_SUR_OP_READ_VERSION",
+      "value": "12",
+      "kind": "define",
+      "file": "core/include/ecuio/surrogate_protocol.h"
+    },
+    {
+      "name": "J2534_BACKOFF_BASE_MS",
+      "value": "100",
+      "kind": "const",
+      "file": "core/src/j2534_backoff.h"
+    },
+    {
+      "name": "J2534_BACKOFF_CAP_MS",
+      "value": "5000",
+      "kind": "const",
+      "file": "core/src/j2534_backoff.h"
+    },
+    {
+      "name": "kTransactTimeoutMs",
+      "value": "3000",
+      "kind": "const",
+      "file": "core/src/j2534_surrogate_client.cpp"
+    },
+    {
+      "name": "kHandshakeTimeoutMs_default",
+      "value": "8000",
+      "kind": "const",
+      "file": "core/src/j2534_surrogate_client.cpp"
+    },
+    {
+      "name": "kKeptSessionLogs",
+      "value": "50",
+      "kind": "const",
+      "file": "core/src/j2534_surrogate_client.cpp"
+    },
+    {
+      "name": "J2534_IDLE_READ_TIMEOUT_MS",
+      "value": "100",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "J2534_READ_SLICE_MS",
+      "value": "10",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "J2534_ADDR_LEN",
+      "value": "4",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "J2534_FILTER_MSG_LEN",
+      "value": "4",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "J2534_CAN_ID_MAX",
+      "value": "0x1FFFFFFFu",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "J2534_PID_MAX",
+      "value": "0xFFu",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "J2534_HEALTH_QUIET_RUN",
+      "value": "10",
+      "kind": "const",
+      "file": "core/src/j2534_transport.cpp"
+    },
+    {
+      "name": "kTickS",
+      "value": "0.05f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kPi",
+      "value": "3.14159265f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kMassKg",
+      "value": "1500.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kTyreRadiusM",
+      "value": "0.33f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kFinalDrive",
+      "value": "3.73f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kDrivelineEff",
+      "value": "0.88f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kTractionLimitN",
+      "value": "9500.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kAeroCoeff",
+      "value": "0.42f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kRollingN",
+      "value": "177.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kEngineBrakeNm",
+      "value": "40.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kTopGear",
+      "value": "4",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kIdleRpm",
+      "value": "750.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kRevLimitRpm",
+      "value": "7000.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kShiftRpm",
+      "value": "6800.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kLaunchRpm",
+      "value": "4000.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kClutchInRpm",
+      "value": "1100.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kPeakTorqueNm",
+      "value": "400.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kPeakPower",
+      "value": "2.32e6f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kAmbientC",
+      "value": "24.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kThermostatC",
+      "value": "82.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kFanOnC",
+      "value": "100.0f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "kQuarterMileM",
+      "value": "402.336f",
+      "kind": "const",
+      "file": "core/src/mock_drive_cycle.h"
+    },
+    {
+      "name": "DEFAULT_FRAME_INTERVAL_MS",
+      "value": "50",
+      "kind": "const",
+      "file": "core/src/mock_transport.cpp"
+    },
+    {
+      "name": "MOCK_DIAG_ID",
+      "value": "0x18FF0C00u",
+      "kind": "const",
+      "file": "core/src/mock_transport.cpp"
+    },
+    {
+      "name": "ECUIO_ENGINE_WAIT_US",
+      "value": "100000",
+      "kind": "const",
+      "file": "core/src/request_engine.h"
+    },
+    {
+      "name": "ECUIO_ENGINE_PENDING_WAIT_US",
+      "value": "5050000",
+      "kind": "const",
+      "file": "core/src/request_engine.h"
+    },
+    {
+      "name": "ECUIO_ENGINE_GAP_US",
+      "value": "20000",
+      "kind": "const",
+      "file": "core/src/request_engine.h"
+    },
+    {
+      "name": "ECUIO_ENGINE_PROBE_BUDGET_US",
+      "value": "1000000",
+      "kind": "const",
+      "file": "core/src/request_engine.h"
+    },
+    {
+      "name": "ECUIO_NEGATIVE_RESPONSE",
+      "value": "0x7F",
+      "kind": "const",
+      "file": "core/src/request_engine.h"
+    },
+    {
+      "name": "ECUIO_NRC_SERVICE_NOT_SUPPORTED",
+      "value": "0x11",
+      "kind": "const",
+      "file": "core/src/request_engine.h"
+    },
+    {
+      "name": "ECUIO_NRC_SUBFUNCTION_NOT_SUPPORTED",
+      "value": "0x12",
+      "kind": "const",
+      "file": "core/src/request_engine.h"
+    },
+    {
+      "name": "ECUIO_NRC_REQUEST_OUT_OF_RANGE",
+      "value": "0x31",
+      "kind": "const",
+      "file": "core/src/request_engine.h"
+    },
+    {
+      "name": "ECUIO_NRC_SECURITY_ACCESS_DENIED",
+      "value": "0x33",
+      "kind": "const",
+      "file": "core/src/request_engine.h"
+    },
+    {
+      "name": "ECUIO_NRC_RESPONSE_PENDING",
+      "value": "0x78",
+      "kind": "const",
+      "file": "core/src/request_engine.h"
+    },
+    {
+      "name": "ECUIO_NRC_NOT_IN_ACTIVE_SESSION",
+      "value": "0x7F",
+      "kind": "const",
+      "file": "core/src/request_engine.h"
+    },
+    {
+      "name": "ECUIO_ENGINE_NONE",
+      "value": "-1",
+      "kind": "const",
+      "file": "core/src/request_engine.h"
+    },
+    {
+      "name": "ECUIO_ENGINE_ONCE",
+      "value": "-2",
+      "kind": "const",
+      "file": "core/src/request_engine.h"
+    },
+    {
+      "name": "ECUIO_BITMAP_REPLY_LEN",
+      "value": "6",
+      "kind": "const",
+      "file": "core/src/request_engine.h"
+    },
+    {
+      "name": "kMuxMaxBytes",
+      "value": "3",
+      "kind": "const",
+      "file": "core/src/signals.cpp"
+    },
+    {
+      "name": "ECUIO_URI_MAX_PARAMS",
+      "value": "16",
+      "kind": "const",
+      "file": "core/src/uri_query.h"
+    },
+    {
+      "name": "kConfigBytes",
+      "value": "14",
+      "kind": "const",
+      "file": "fuzz/fuzz_decode_signal.cpp"
+    },
+    {
+      "name": "kMaxPayload",
+      "value": "65535",
+      "kind": "const",
+      "file": "fuzz/fuzz_decode_signal.cpp"
+    },
+    {
+      "name": "sentinel",
+      "value": "-12345.5e30",
+      "kind": "const",
+      "file": "fuzz/fuzz_decode_signal.cpp"
+    },
+    {
+      "name": "kMaxDefs",
+      "value": "8",
+      "kind": "const",
+      "file": "fuzz/fuzz_validate_set.cpp"
+    },
+    {
+      "name": "kMaxChannels",
+      "value": "8",
+      "kind": "const",
+      "file": "fuzz/fuzz_validate_set.cpp"
+    },
+    {
+      "name": "kDefBytes",
+      "value": "6",
+      "kind": "const",
+      "file": "fuzz/fuzz_validate_set.cpp"
+    },
+    {
+      "name": "kChannelBytes",
+      "value": "4",
+      "kind": "const",
+      "file": "fuzz/fuzz_validate_set.cpp"
+    },
+    {
+      "name": "kMagic",
+      "value": "0x43464345u",
+      "kind": "const",
+      "file": "tests/fake_control.h"
+    },
+    {
+      "name": "kMaxKnobs",
+      "value": "16",
+      "kind": "const",
+      "file": "tests/fake_control.h"
+    },
+    {
+      "name": "kNameLen",
+      "value": "48",
+      "kind": "const",
+      "file": "tests/fake_control.h"
+    },
+    {
+      "name": "kValueLen",
+      "value": "32",
+      "kind": "const",
+      "file": "tests/fake_control.h"
+    },
+    {
+      "name": "kInboxDepth",
+      "value": "16",
+      "kind": "const",
+      "file": "tests/fake_control.h"
+    },
+    {
+      "name": "kMsgMax",
+      "value": "64",
+      "kind": "const",
+      "file": "tests/fake_control.h"
+    },
+    {
+      "name": "FAKE_QUEUE_DEPTH",
+      "value": "16",
+      "kind": "define",
+      "file": "tests/fake_j2534.cpp"
+    },
+    {
+      "name": "FAKE_WRITE_DEPTH",
+      "value": "16",
+      "kind": "define",
+      "file": "tests/fake_j2534.cpp"
+    },
+    {
+      "name": "FAKE_FILTER_DEPTH",
+      "value": "8",
+      "kind": "define",
+      "file": "tests/fake_j2534.cpp"
+    },
+    {
+      "name": "FAKE_CONFIG_DEPTH",
+      "value": "16",
+      "kind": "define",
+      "file": "tests/fake_j2534.cpp"
+    },
+    {
+      "name": "kVxReplyDelayMs",
+      "value": "4",
+      "kind": "const",
+      "file": "tests/fake_j2534.cpp"
+    },
+    {
+      "name": "kVxUnackedDepth",
+      "value": "3",
+      "kind": "const",
+      "file": "tests/fake_j2534.cpp"
+    },
+    {
+      "name": "kVxRefusedWriteMs",
+      "value": "500",
+      "kind": "const",
+      "file": "tests/fake_j2534.cpp"
+    },
+    {
+      "name": "kVxRefusedEcho",
+      "value": "0x201",
+      "kind": "const",
+      "file": "tests/fake_j2534.cpp"
+    },
+    {
+      "name": "kDeviceId",
+      "value": "1",
+      "kind": "const",
+      "file": "tests/fake_j2534.cpp"
+    },
+    {
+      "name": "kChannelId",
+      "value": "0x55",
+      "kind": "const",
+      "file": "tests/fake_j2534.cpp"
+    },
+    {
+      "name": "kFakeDid",
+      "value": "0x1E1C",
+      "kind": "const",
+      "file": "tests/fake_j2534.cpp"
+    },
+    {
+      "name": "kMockRpmMin",
+      "value": "600.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockRpmMax",
+      "value": "7100.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockCoolantMin",
+      "value": "15.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockCoolantMax",
+      "value": "110.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockSpeedMax",
+      "value": "200.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockIatMin",
+      "value": "15.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockIatMax",
+      "value": "80.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockMafMax",
+      "value": "300.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockOilMin",
+      "value": "15.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMockOilMax",
+      "value": "140.0f",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMaxFrames",
+      "value": "20",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "kMaxDefs",
+      "value": "16",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    },
+    {
+      "name": "mv",
+      "value": "13800",
+      "kind": "const",
+      "file": "tests/test_j2534_load.cpp"
+    },
+    {
+      "name": "kParam",
+      "value": "0x11",
+      "kind": "const",
+      "file": "tests/test_j2534_routing.cpp"
+    },
+    {
+      "name": "kValue",
+      "value": "0xCAFE",
+      "kind": "const",
+      "file": "tests/test_j2534_routing.cpp"
+    },
+    {
+      "name": "kParam",
+      "value": "0x10",
+      "kind": "const",
+      "file": "tests/test_j2534_surrogate.cpp"
+    },
+    {
+      "name": "kValue",
+      "value": "0xBEEF",
+      "kind": "const",
+      "file": "tests/test_j2534_surrogate.cpp"
+    },
+    {
+      "name": "mv",
+      "value": "13800",
+      "kind": "const",
+      "file": "tests/test_j2534_surrogate.cpp"
+    },
+    {
+      "name": "kMs",
+      "value": "1000",
+      "kind": "const",
+      "file": "tests/test_obd2.cpp"
+    },
+    {
+      "name": "bits",
+      "value": "0x40490FDBu",
+      "kind": "const",
+      "file": "tests/test_signals.cpp"
+    }
+  ],
+  "callsites": [
+    {
+      "file": "app/qttunebridge.cpp",
+      "line": 563,
+      "snippet": "QMetaObject::invokeMethod(this, [this, uri, core_err]() { calls: m_connectThread.joinable, m_connectThread.join, m_pendingSession.exchange, err.isEmpty, startSession, connectingChanged }, Qt::QueuedConnection);",
+      "connection": "Qt::QueuedConnection",
+      "doc": null
+    },
+    {
+      "file": "app/qttunebridge.cpp",
+      "line": 625,
+      "snippet": "QMetaObject::invokeMethod(this, [this, uri]() { calls: m_disconnectThread.joinable, m_disconnectThread.join, disconnectingChanged, logMessage, QStringLiteral, arg }, Qt::QueuedConnection);",
+      "connection": "Qt::QueuedConnection",
+      "doc": null
+    },
+    {
+      "file": "app/qttunebridge.cpp",
+      "line": 783,
+      "snippet": "QMetaObject::invokeMethod(self, [self]() { calls: m_dropNotifyPending.store, notifyDropped }, Qt::QueuedConnection);",
+      "connection": "Qt::QueuedConnection",
+      "doc": null
+    },
+    {
+      "file": "app/qttunebridge.cpp",
+      "line": 806,
+      "snippet": "QMetaObject::invokeMethod(self, [self, copy, arrived]() { calls: m_inFlightFrames.fetch_sub, handleFrameInternal }, Qt::QueuedConnection);",
+      "connection": "Qt::QueuedConnection",
+      "doc": "Lifetime contract: invoking with `self` as context object means the queued lambda is dropped if the bridge is destroyed before it runs. DO NOT change to a context-free postEvent pattern without revisiting destruction ordering."
+    }
+  ]
+}

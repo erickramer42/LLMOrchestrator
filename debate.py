@@ -181,17 +181,24 @@ def _load_repo_index(path: Optional[Path] = None) -> dict:
         return {"_load_error": f"{type(exc).__name__}: {exc}"}
 
 
-def _retrieve_pack(code_diff: str) -> Tuple[str, dict]:
-    """(pack_text, pack_report) for the diff. Never raises: retrieval is
-    an aid, so a missing, corrupt or malformed index degrades the debate
-    to no retrieval, with the reason in report['error']."""
-    repo_index = _load_repo_index()
+def _retrieve_pack(code_diff: str,
+                   index_path: Optional[str] = None) -> Tuple[str, dict]:
+    """(pack_text, pack_report) for the diff, from the index at index_path
+    (default: the checked-in one next to retrieval.py). The report names
+    the file read as index_file. Never raises: retrieval is an aid, so a
+    missing, corrupt or malformed index degrades the debate to no
+    retrieval, with the reason in report['error']."""
+    path = Path(index_path) if index_path else CONTEXT_PATH
+    repo_index = _load_repo_index(path)
     if "_load_error" in repo_index:
-        return "", {"error": repo_index["_load_error"]}
+        return "", {"error": repo_index["_load_error"], "index_file": str(path)}
     try:
-        return build_context_pack(code_diff, repo_index)
+        pack_text, report = build_context_pack(code_diff, repo_index)
     except Exception as exc:  # malformed index content, e.g. an entry without "name"
-        return "", {"error": f"malformed index: {type(exc).__name__}: {exc}"}
+        return "", {"error": f"malformed index: {type(exc).__name__}: {exc}",
+                    "index_file": str(path)}
+    report["index_file"] = str(path)
+    return pack_text, report
 
 
 def _base_mismatch(pack_report: dict) -> List[str]:
@@ -214,15 +221,19 @@ class _Setup(NamedTuple):
     evidence: Dict[str, List[str]]  # post-change lines reviewer blocker quotes are checked against
 
 
-def _prepare(code_diff: str, code_context: str, header_artifact: bool) -> _Setup:
+def _prepare(code_diff: str, code_context: str, header_artifact: bool,
+             index_path: Optional[str] = None) -> _Setup:
     """Retrieve the context pack and build the static transcript sections.
     header_artifact selects the header-scoped reviewer prompt (interface
-    definitions) instead of implementation standards."""
+    definitions) instead of implementation standards. index_path names
+    the repo context index to retrieve from; by default the checked-in
+    one, built from the bridge fixture's base. A corpus fixture passes
+    the index of its own base."""
     reviewer_prompt = (REVIEWER_HEADER_PROMPT if header_artifact
                        else REVIEWER_IMPL_PROMPT)
 
     # ============ CONTEXT PACK RETRIEVAL ============
-    pack_text, pack_report = _retrieve_pack(code_diff)
+    pack_text, pack_report = _retrieve_pack(code_diff, index_path)
     if pack_report.get("error"):
         print(f"WARNING: repo context retrieval unavailable "
               f"({pack_report['error']}); continuing without it.",
@@ -362,7 +373,8 @@ def _run_settings(setup: _Setup, mode: str, max_rounds: int,
 
 
 def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
-               header_artifact: bool = False) -> dict:
+               header_artifact: bool = False,
+               index_path: Optional[str] = None) -> dict:
     """Orchestrates the full debate loop. Returns structured decision
     with audit trail. header_artifact selects the header-scoped reviewer
     prompt (interface definitions) instead of implementation standards.
@@ -377,7 +389,7 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
     Input that _input_check refuses gets its verdict without any round.
     """
     debate_id = _new_id("debate")
-    setup = _prepare(code_diff, code_context, header_artifact)
+    setup = _prepare(code_diff, code_context, header_artifact, index_path)
     check = _input_check(setup, proposal, code_diff, code_context)
 
     round_history: List[dict] = []
@@ -556,7 +568,8 @@ def _with_diagnostics(result: dict, agent_failures: List[str],
 
 
 def run_round1_review(proposal: str, code_diff: str = "", code_context: str = "",
-                      header_artifact: bool = False) -> dict:
+                      header_artifact: bool = False,
+                      index_path: Optional[str] = None) -> dict:
     """One reviewer call on the transcript a debate's first round sends,
     for measurements, which score round-1 reviewer blockers. The round-1
     reviewer never sees the engineer, so this samples the same output as
@@ -569,7 +582,7 @@ def run_round1_review(proposal: str, code_diff: str = "", code_context: str = ""
     failed), and no engineer entry in its one round. Refused input, as in
     a debate, gets its verdict and no round."""
     measurement_id = _new_id("round1")
-    setup = _prepare(code_diff, code_context, header_artifact)
+    setup = _prepare(code_diff, code_context, header_artifact, index_path)
     check = _input_check(setup, proposal, code_diff, code_context)
 
     rounds: List[dict] = []
@@ -609,7 +622,8 @@ def review_round1(proposal: str, code_diff: str = "", code_context: str = "",
 
 
 def run_round2_pair(proposal: str, code_diff: str = "", code_context: str = "",
-                    header_artifact: bool = False) -> dict:
+                    header_artifact: bool = False,
+                    index_path: Optional[str] = None) -> dict:
     """The feedback-format measurement (ADR-0002, eleventh and twelfth
     measurements): a debate's round 1, both agents, then the round-2
     reviewer twice on the same round-1 replies. The CRITIQUES_ARM gets
@@ -624,7 +638,7 @@ def run_round2_pair(proposal: str, code_diff: str = "", code_context: str = "",
     round 1 as round_history and the arms under outputs.round2_arms.
     Refused input, as in a debate, gets its verdict and no round."""
     pair_id = _new_id("round2")
-    setup = _prepare(code_diff, code_context, header_artifact)
+    setup = _prepare(code_diff, code_context, header_artifact, index_path)
     check = _input_check(setup, proposal, code_diff, code_context)
 
     rounds: List[dict] = []

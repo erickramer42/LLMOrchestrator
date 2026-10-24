@@ -8,7 +8,8 @@ in golden_tests.py. This file only parses arguments and dispatches.
 Usage:
     python orchestrator.py --golden
     python orchestrator.py --proposal "..." [--diff file] [--context file] [--header]
-    python orchestrator.py --index <repo-path> [--no-llm]
+                           [--index-file path]
+    python orchestrator.py --index <repo-path> [--no-llm] [--index-out path]
 
 """
 
@@ -19,13 +20,14 @@ from pathlib import Path
 from debate import run_debate
 from golden_tests import print_summary, run_golden_tests
 
-def run_index(target: str, use_llm: bool) -> None:
-    """Build and save the repo context pack. Imported here, so a debate
-    never loads the indexer or its summary prompt."""
+def run_index(target: str, use_llm: bool, out_path: str = None) -> None:
+    """Build and save the repo context pack, to out_path or the default
+    repo_context.json. Imported here, so a debate never loads the indexer
+    or its summary prompt."""
     from indexer import build_index, save_index
 
     index = build_index(target, use_llm=use_llm)
-    out_path = save_index(index)
+    out_path = save_index(index, out_path)
     print(f"Wrote {out_path}: {len(index['files'])} files, "
           f"{len(index['types'])} types, "
           f"{len(index['constants'])} constants")
@@ -52,6 +54,12 @@ if __name__ == "__main__":
     parser.add_argument("--no-llm", action="store_true",
                         help="Index deterministically, skipping LLM purpose "
                              "summaries (applies to --index)")
+    parser.add_argument("--index-out", type=str, required=False, metavar="PATH",
+                        help="Write the index to PATH instead of "
+                             "repo_context.json (with --index)")
+    parser.add_argument("--index-file", type=str, required=False, metavar="PATH",
+                        help="Retrieve from the index at PATH instead of "
+                             "repo_context.json (with --proposal)")
 
     args = parser.parse_args()
 
@@ -62,6 +70,10 @@ if __name__ == "__main__":
                      "to review")
     if args.no_llm and not args.index:
         parser.error("--no-llm applies only to --index")
+    if args.index_out and not args.index:
+        parser.error("--index-out applies only to --index")
+    if args.index_file and not args.proposal:
+        parser.error("--index-file applies only to --proposal")
 
     def read_input(path: str) -> str:
         # Explicit UTF-8: the Windows default (cp1252) silently garbles
@@ -69,7 +81,7 @@ if __name__ == "__main__":
         return Path(path).read_text(encoding="utf-8", errors="replace")
 
     if args.index:
-        run_index(args.index, use_llm=not args.no_llm)
+        run_index(args.index, use_llm=not args.no_llm, out_path=args.index_out)
     elif args.golden:
         print_summary(run_golden_tests())
     elif args.proposal:
@@ -82,7 +94,8 @@ if __name__ == "__main__":
         code_diff = read_input(args.diff) if args.diff else ""
         code_context = read_input(args.context) if args.context else ""
         result = run_debate(args.proposal, code_diff, code_context,
-                            header_artifact=args.header)
+                            header_artifact=args.header,
+                            index_path=args.index_file)
         print(json.dumps(result, indent=2))
     else:
         print(__doc__)

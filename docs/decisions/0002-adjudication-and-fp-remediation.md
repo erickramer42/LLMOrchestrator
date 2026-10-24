@@ -2499,3 +2499,239 @@ set):
   for the corpus.
 - **None of this ships from the replay.** The corpus measurement decides
   (ADR-0002's next measurement; backlog #7).
+
+## Fourteenth Measurement (Pending) — Corpus Baseline (backlog #7)
+
+**Status (2026-10-23): the set was approved as listed, with the
+`--no-llm` indexes and the fixtures' file sets unchanged, sampled the
+same evening and scored (Results, below).** Everything so far was measured
+on one fixture, the bridge refactor, which has two known bugs. The
+corpus is the first test of whether its numbers travel.
+
+### Fixtures
+
+`docs/fixtures/corpus.json` describes seven real QtTune diffs, in
+`docs/fixtures/corpus/<id>/change.diff`, each with the index of its own
+base (`repo_context.json` beside it, built with `--no-llm` from a
+throwaway clone, so the pack's purposes come from each file's first
+prose comment rather than a model). Tests, docs and `*.md` are excluded
+from every diff. Proposals are written in the diff's real direction
+(backlog #21), as an author would describe the change, without naming
+the bug.
+
+Five **bug fixtures** are the reverse of a fix commit (`git diff <fix>
+<fix>^`), so the diff introduces the bugs the commit fixed. Their known
+bugs come from the commit's message and diff:
+
+| fixture | fix commit | layer | chars | known bugs |
+|---|---|---|---|---|
+| `backoff_clamp_d1c20c0` | d1c20c0, clamp backoff step to the 5 s cap | core | 4.0K | the doubled wait overshoots the cap (3200 → 6400 ms) |
+| `trusted_count_6420f09` | 6420f09, ignore vendor counts under hard-error statuses | core | 3.4K | count trusted under an error status; the surrogate's static batch replays stale frames |
+| `poll_override_90020bd` | 90020bd, `?poll=` overrides the rotation | app (QML first; the code is core) | 6.7K | `?poll=` ignored under a mux profile; `?poll=` without `?filter=` rejected at parse |
+| `connect_start_4a86231` | 4a86231, start sessions on the GUI thread | bridge | 7.9K | session started off-thread before the GUI owns it (freed `this` under a running worker); unsubscribed rows stop updating |
+| `decode_length_b47687c` | b47687c, honor payload length in decode | bridge | 11.2K | decode length hardcoded to 8; staging buffer cleared per frame; drops unreported while saturated; payload length unclamped |
+
+Two **clean fixtures** are forward diffs of commits that nothing later
+fixed at the time of writing, for a false-positive rate:
+`init_noops_cf03331` (refactor: `ecuio_init` and `ecuio_shutdown`
+become optional no-ops; ten files across app, QML and core, 10.1K) and
+`ecu_support_7d297b4` (feature: log what each ECU supports; bridge,
+7.6K). "Clean" is a presumption: a found bug would be a finding, not a
+false positive, and would move the fixture to the bug set.
+
+Rejected candidates: `105e2cb` (68K, over the input limit even without
+tests), `5924214` (its added comments name the bug as a known issue),
+`046b320` (a header whose removed lines state the correct constants).
+
+**Known costs, recorded before sampling:**
+- **Leak.** The removed lines of a reverse diff carry the fix's own
+  comments, which name the bug. The reviewer reads them. A quote must
+  come from post-change lines, so a blocker quoting a removed comment is
+  demoted, but its claim may be informed by it. The manifest's `leak`
+  field says what each fixture reveals. Recall on these fixtures is
+  therefore an upper bound; a forward fixture from the bug-introducing
+  commit would be the honest form, and is the next build if the leak
+  shows in the claims.
+- **`decode_length_b47687c` reviews the bridge fixture's file,** three
+  commits after its base, so it is not independent of the one fixture
+  measured so far.
+- **Layer notes follow the first file** (#8): `poll_override_90020bd`
+  gets the app note although its bugs are in core.
+- **Symbol-matched recall is a pointer.** The scorer credits a bug when
+  a stored blocker's claim names one of its symbols; the claim must be
+  read before the bug counts as found.
+
+### Design
+
+- 5 round-1 reviewer samples per fixture, 35 calls, through
+  `python -m eval_harness.corpus run --fixture all --runs 5` (about 2–3
+  h of GPU). Round 1 only, as in every measurement since the fifth.
+- Prompt v11.1, judge j7, the debate fingerprint. First attempts only;
+  retries are excluded as before.
+- Scored by `eval_harness.corpus score`, then read by hand: each stored
+  blocker labelled valid (a known bug, or a real finding) or a false
+  positive, with the class.
+
+### Predictions (recorded 2026-10-23, before any sample)
+
+The bridge fixture gave 80–94% valid stored blockers and found the race
+in 10 of 10 runs, the gate in 2–4 of 10. The corpus is unfamiliar code
+in smaller diffs, with the leak working in recall's favour.
+
+| metric | prediction |
+|---|---|
+| stored blockers per run, bug fixtures | 1.5–3.0 |
+| stored blockers per run, clean fixtures | 0.5–1.5 |
+| valid share of stored blockers, pooled | 60–80% |
+| `backoff_overshoot` found | 3–5 of 5 (arithmetic, visible, leaked) |
+| `count_under_error` found | 1–3 of 5; `static_batch_replay` 0–2 |
+| `poll_ignored` found | 2–4 of 5; `poll_needs_filter_at_parse` 0–2 |
+| `start_before_gui_owns` found | 3–5 of 5 (thread safety, the reviewer's strongest class) |
+| `unsubscribed_rows_freeze` found | 1–3 of 5 |
+| `decode_length_8` found | 3–5 of 5; `staging_clear_per_frame` 2–4; `drops_unreported_when_saturated` 1–3; `payload_length_unclamped` 1–3 |
+| evidence demotions per run | 0.2–0.6, higher than the bridge's: smaller diffs leave fewer quotable lines |
+| first attempts that run away | 1–4 of 35 |
+
+**What the baseline decides:** nothing ships from it. It fixes the
+corpus numbers the replay's candidates (gapped quotes with claim–quote
+linkage; 2-of-3 voting, with the first-line-only link pre-registered
+here as its variant) are measured against next, with the thirteenth
+measurement's rule: FPs fall, and no known bug's recall drops by more
+than 0.1 pooled over the bug fixtures. If the leak shows in the claims
+(blockers that restate a removed comment), the next build replaces the
+affected fixture with a forward diff from the bug-introducing commit.
+
+### Results (scored 2026-10-23)
+
+35 samples in 55 minutes, records
+`coach_artifacts/measurement_round1_20261024_015410_fa2343.json` to
+`..._024702_0019d0.json` (record IDs are UTC). Two first attempts ran
+away and were retried, one on `decode_length_b47687c` and one on
+`init_noops_cf03331`; both are excluded, as retries always are, which
+leaves 33 scored runs. Every scored run is a first attempt.
+
+The records carry three prompt fingerprints, one per layer note: app
+`45cc2b200fa76e7a`, bridge `8e76794ac4946aab` (the bridge fixture's own)
+and core `b7a37ffc88eed510`. The layer note is a template the
+fingerprint hashes, so this is the design, not mixed arms; the scorer
+now warns only when one fixture's records differ.
+
+**Labels.** Every item, stored or demoted, was read against its
+fixture's `post_rev` and labelled in `eval_harness/corpus_labels.json`
+(`python -m eval_harness.corpus score` prints them). Two notes decide
+most of the false positives:
+- In `poll_override_90020bd`'s post-state, `parse_query` rejects
+  `?poll=` without `?filter=`, and `resolve_channels` then builds
+  exactly one channel from the filter. Every claim of a missing channel
+  check for poll mode is false: another function enforces the
+  invariant.
+- In `ecu_support_7d297b4`, `ecuio_dropped_request_t.request` is
+  `uint8_t[3]` and the struct is value-initialized, so `request[0]` is in
+  bounds; both functions said to race run on the GUI thread.
+
+The symbol match of the scorer was a poor proxy: it credited
+`poll_ignored` in 5 of 5 runs, the labels in 1 of 5, because the
+invariant-elsewhere claims name `poll_pid`. The labels supersede it.
+
+| fixture | runs | stored | valid | FP | evidence-demoted (valid) | hedge-demoted (valid) |
+|---|---|---|---|---|---|---|
+| backoff_clamp_d1c20c0 | 5 | 4 | 4 | 0 | 0 | 0 |
+| trusted_count_6420f09 | 5 | 3 | 3 | 0 | 8 (7) | 1 (1) |
+| poll_override_90020bd | 5 | 11 | 2 | 9 | 0 | 2 (1) |
+| connect_start_4a86231 | 5 | 5 | 3 | 2 | 8 (7) | 1 (1) |
+| decode_length_b47687c | 4 | 15 | 12 | 3 | 0 | 0 |
+| init_noops_cf03331 (clean) | 4 | 0 | 0 | 0 | 0 | 0 |
+| ecu_support_7d297b4 (clean) | 5 | 4 | 0 | 4 | 1 (0) | 4 (0) |
+| **pooled** | 33 | 42 | 24 | 18 | 17 (14) | 8 (3) |
+
+Valid includes 2 `unlisted` items in `decode_length_b47687c`: the typed
+`setSignalSet` parameter, which the fix commit reverted as a FIX but
+which is not a functional bug. Without them, 22 of 42 are valid.
+
+False positives by class: invariant-elsewhere 8 (all in
+`poll_override_90020bd`), thread-confusion 3, bounds-fixed-array 3 (all
+in `ecu_support_7d297b4`), other 3, deletion 1.
+
+Recall per known bug, as runs with a stored blocker, and as runs with
+any item about it, stored or demoted (what the reviewer said before the
+guardrails):
+
+| known bug | predicted | stored | any item | |
+|---|---|---|---|---|
+| backoff_overshoot | 3–5 of 5 | 4/5 | 4/5 | HIT |
+| count_under_error | 1–3 of 5 | 2/5 | 5/5 | HIT |
+| static_batch_replay | 0–2 of 5 | 2/5 | 5/5 | HIT |
+| poll_ignored | 2–4 of 5 | 1/5 | 1/5 | MISSED LOW |
+| poll_needs_filter_at_parse | 0–2 of 5 | 1/5 | 2/5 | HIT |
+| start_before_gui_owns | 3–5 of 5 | 2/5 | 5/5 | MISSED LOW |
+| unsubscribed_rows_freeze | 1–3 of 5 | 1/5 | 1/5 | HIT |
+| decode_length_8 | 0.6–1.0 per run | 4/4 | 4/4 | HIT |
+| staging_clear_per_frame | 0.4–0.8 | 3/4 | 3/4 | HIT |
+| drops_unreported_when_saturated | 0.2–0.6 | 3/4 | 3/4 | MISSED HIGH |
+| payload_length_unclamped | 0.2–0.6 | 0/4 | 0/4 | MISSED LOW |
+
+Mean recall per bug: 0.46 stored, 0.65 for any item.
+
+| metric | predicted | observed | |
+|---|---|---|---|
+| stored blockers per run, bug fixtures | 1.5–3.0 | 1.58 (38 in 24 runs) | HIT |
+| stored blockers per run, clean fixtures | 0.5–1.5 | 0.44 (4 in 9 runs) | MISSED LOW |
+| valid share of stored blockers, pooled | 60–80% | 57% (24 of 42) | MISSED LOW |
+| evidence demotions per run | 0.2–0.6 | 0.52 | HIT |
+| first attempts that run away | 1–4 of 35 | 2 | HIT |
+
+**Reading:**
+- **The bridge fixture's precision did not travel whole.** 57% valid
+  against 80–94% there. One fixture carries half the false positives:
+  `poll_override_90020bd`'s 8 invariant-elsewhere blockers, a class the
+  bridge fixture never showed. The reviewer reads a removed backstop in
+  one function and does not see that another function, in the same
+  file, enforces the invariant. Without that fixture, 22 of 31 stored
+  blockers are valid (71%).
+- **On these diffs the evidence check costs more than it saves.** It
+  demoted 17 items: 14 valid, 3 false. On the bridge fixture it was the
+  main false-positive fix, because there the false class was claims
+  about removed code. Here the bugs are removals: the change deletes a
+  safety check, and the reviewer quotes the deleted check. That moved
+  `count_under_error`, `static_batch_replay` and `start_before_gui_owns`
+  from 5 of 5 runs to 2 of 5. This is the cost j4 recorded when it
+  shipped ("removal-caused defects must stay quotable"), now measured.
+  It is quotable: 6792a6 #1 and cab81e #1 quote the post-change line
+  that now misbehaves, and are stored.
+- **The leak is real but narrow.** In `trusted_count_6420f09`, four
+  claims cite the removed comments outright ("the surrogate comment
+  explicitly warns…"), and those claims are among the demoted ones. The
+  other bug fixtures' valid claims do not lean on removed comments;
+  `backoff_clamp`'s compare the inlined code with the removed function,
+  which is ordinary diff reading.
+- **Clean diffs are cheap where the code is straightforward.**
+  `init_noops_cf03331` drew no blocker in four runs, ten files and all.
+  `ecu_support_7d297b4` drew one per run, all false.
+- **Recurring false positives undercut voting.** bounds-fixed-array
+  recurs in 3 of 5 `ecu_support` runs, and invariant-elsewhere in 5 of
+  5 `poll_override` runs, so 2-of-3 voting would keep both. On the
+  bridge fixture most false positives appeared once. The replay's
+  voting result is therefore not expected to transfer as measured; this
+  is a prediction to record before the corpus replay, not a result.
+- **The symbol scorer is a triage aid only.** It over-credited one bug
+  five-fold and missed paraphrased claims ("the cap condition is
+  wrong"). Corpus numbers come from the labels.
+
+**What this decides:** nothing ships from a baseline. It sets the
+numbers the next measurements are compared with, on this corpus, with
+these labels:
+1. **The replay's candidates, offline:** gapped quotes with claim–quote
+   linkage, and 2-of-3 voting (with the first-line-only link
+   pre-registered in the thirteenth measurement), replayed over these
+   33 runs and scored with `corpus_labels.json`. No GPU. The rule stays:
+   false positives fall, and no known bug's recall drops by more than 0.1
+   pooled.
+2. **Removal-caused defects:** the largest recall loss is the evidence
+   check's. Options to weigh, each predicted before measuring: a prompt
+   change telling the reviewer to quote the post-change line a removal
+   breaks, which keeps j4 as it is; or a judge change that accepts a
+   removed-line quote for a claim that the removal itself is the defect,
+   which risks readmitting the bridge fixture's deletion class.
+3. **Invariant-elsewhere:** a recall-side lever (more of the same file in
+   the pack, or the function that enforces the invariant) is a pack
+   change with its own PACK_FORMAT_VERSION.

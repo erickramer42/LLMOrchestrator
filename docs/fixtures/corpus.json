@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "built": "2026-10-23",
+  "source_repo": "https://github.com/erickramer42/qttune",
+  "notes": [
+    "Bug fixtures are the reverse of a QtTune fix commit (git diff <fix> <fix>^), so the diff introduces the bugs the commit fixed; the known bugs come from the commit's message and diff. Clean fixtures are forward diffs of commits no later commit fixed at the time of writing.",
+    "Each diff excludes tests/, docs/ and *.md, so the reviewer sees only the code the change touches and the diff stays under the input limit.",
+    "base_rev is the tree the diff applies to, and the fixture's repo_context.json is an index of it, built with --no-llm (purposes come from each file's first prose comment). post_rev is the tree the diff produces; score claims about surviving code against it, never against current QtTune.",
+    "Leak: the removed lines of a reverse diff carry the fix's own comments, which name the bug. A reviewer can read them. Quotes must come from post-change lines, so a blocker quoting them is demoted, but its claim may still be informed by them. Each bug fixture's leak field says what the removed lines reveal.",
+    "A known bug's symbols are what a blocker's claim about it names; the scorer credits a bug when a stored blocker's claim contains one of them. Read the claim before counting the bug found."
+  ],
+  "fixtures": [
+    {
+      "id": "backoff_clamp_d1c20c0",
+      "kind": "bug",
+      "direction": "reverse",
+      "commit": "d1c20c0",
+      "subject": "fix(j2534): clamp backoff step to the 5 s cap (#35)",
+      "base_rev": "d1c20c0",
+      "post_rev": "105d3cd",
+      "diff": "docs/fixtures/corpus/backoff_clamp_d1c20c0/change.diff",
+      "index": "docs/fixtures/corpus/backoff_clamp_d1c20c0/repo_context.json",
+      "proposal": "Inline the failure backoff step in the J2534 worker: drop j2534_backoff.h and double backoff_ms in place in all three worker modes, capped at J2534_BACKOFF_CAP_MS.",
+      "known_bugs": [
+        {
+          "id": "backoff_overshoot",
+          "summary": "The cap is checked before the doubling, so 3200 ms doubles to 6400 ms, above the 5 s cap; the next wait is clamped only after one overshoot.",
+          "file": "core/src/j2534_transport.cpp",
+          "symbols": ["backoff_ms", "J2534_BACKOFF_CAP_MS", "6400", "overshoot"]
+        }
+      ],
+      "leak": "The removed header's comment says the doubled value is what gets clamped so no wait exceeds the cap even though the cap is not a power of two times the base."
+    },
+    {
+      "id": "trusted_count_6420f09",
+      "kind": "bug",
+      "direction": "reverse",
+      "commit": "6420f09",
+      "subject": "fix(j2534): ignore vendor message counts under hard-error statuses (#1)",
+      "base_rev": "6420f09",
+      "post_rev": "c0b102d",
+      "diff": "docs/fixtures/corpus/trusted_count_6420f09/change.diff",
+      "index": "docs/fixtures/corpus/trusted_count_6420f09/repo_context.json",
+      "proposal": "Simplify the J2534 read paths: take the vendor's reported message count as the number of frames delivered in both the in-process loader and the surrogate, and drop the qttune_trusted_count helper from j2534_ptypes.h.",
+      "known_bugs": [
+        {
+          "id": "count_under_error",
+          "summary": "The loader trusts pNumMsgs whatever ReadMsgs returned; a vendor that leaves the count untouched on a hard error makes a zero-filled message read as a delivered frame and a healthy link.",
+          "file": "core/src/j2534_loader.cpp",
+          "symbols": ["num", "rc", "read_msgs", "pNumMsgs", "status"]
+        },
+        {
+          "id": "static_batch_replay",
+          "summary": "The surrogate's read batch is static and never cleared, so a dirty count under an error status replays the previous read's frames as phantoms.",
+          "file": "surrogate/surrogate_main.cpp",
+          "symbols": ["s_read_batch", "g_read_msgs", "phantom", "stale", "previous"]
+        }
+      ],
+      "leak": "The removed helper's comment and the removed call-site comments explain both bugs, including the vendor observation."
+    },
+    {
+      "id": "poll_override_90020bd",
+      "kind": "bug",
+      "direction": "reverse",
+      "commit": "90020bd",
+      "subject": "fix(j2534): ?poll= overrides the profile's rotation instead of being ignored (#12)",
+      "base_rev": "90020bd",
+      "post_rev": "5ec331c",
+      "diff": "docs/fixtures/corpus/poll_override_90020bd/change.diff",
+      "index": "docs/fixtures/corpus/poll_override_90020bd/repo_context.json",
+      "proposal": "J2534 request modes: the set scheduler owns requests whenever the profile has mux defs, ?poll= is rejected at parse time unless ?filter= gives it a channel, and the single-PID poll request is built on the first channel.",
+      "known_bugs": [
+        {
+          "id": "poll_ignored",
+          "summary": "sched_mode is true whenever the set has entries and the worker checks it before poll_pid, so ?poll= under a profile with mux defs is silently ignored and the URI's PID is never requested on its own.",
+          "file": "core/src/j2534_transport.cpp",
+          "symbols": ["poll_pid", "sched_mode", "sched.count", "ignored", "silently"]
+        },
+        {
+          "id": "poll_needs_filter_at_parse",
+          "summary": "parse_query rejects ?poll= without ?filter= before the profile's declared channels are known, so ?profile=obd2&poll=0x0C fails although the profile supplies the channel.",
+          "file": "core/src/j2534_transport.cpp",
+          "symbols": ["parse_query", "rx_id", "QT_ERR_NO_TRANSPORT", "filter"]
+        }
+      ],
+      "leak": "Removed comments describe finding 12: the precedence rule and why the channel rule moved to attach."
+    },
+    {
+      "id": "connect_start_4a86231",
+      "kind": "bug",
+      "direction": "reverse",
+      "commit": "4a86231",
+      "subject": "fix(bridge): start sessions on GUI thread; keep unsubscribed rows live",
+      "base_rev": "4a86231",
+      "post_rev": "9c3ef16",
+      "diff": "docs/fixtures/corpus/connect_start_4a86231/change.diff",
+      "index": "docs/fixtures/corpus/connect_start_4a86231/repo_context.json",
+      "proposal": "Bridge connect: connectCoreOnly creates, registers and starts the session on the connect thread and hands it to the queued GUI completion through the lambda capture; drop the pending-session member and startSession. The signal model updates only subscribed rows, so the Live checkbox gates both the plot and the value.",
+      "known_bugs": [
+        {
+          "id": "start_before_gui_owns",
+          "summary": "The session is started on the connect thread before the GUI thread has taken it, and the destructor knows nothing of a session whose queued completion was dropped, so a bridge destroyed mid-connect leaves a running worker calling onFrame with a freed `this`.",
+          "file": "app/qttunebridge.cpp",
+          "symbols": ["qttune_session_start", "connectCoreOnly", "invokeMethod", "destructor", "destroyed", "freed", "use-after-free", "onFrame", "m_connectThread"]
+        },
+        {
+          "id": "unsubscribed_rows_freeze",
+          "summary": "updateValues skips rows whose subscribed flag is false, so a signal unticked in the Live list stops updating everywhere, including the Dashboard gauges that read every row.",
+          "file": "app/qttunebridge.cpp",
+          "symbols": ["subscribed", "updateValues", "Dashboard", "gauge", "freeze"]
+        }
+      ],
+      "leak": "Removed comments explain why the session was not started off-thread and why values update regardless of subscription."
+    },
+    {
+      "id": "decode_length_b47687c",
+      "kind": "bug",
+      "direction": "reverse",
+      "commit": "b47687c",
+      "subject": "fix(bridge): honor payload length in signal decode and report drops from worker path",
+      "base_rev": "b47687c",
+      "post_rev": "b975457",
+      "diff": "docs/fixtures/corpus/decode_length_b47687c/change.diff",
+      "index": "docs/fixtures/corpus/decode_length_b47687c/repo_context.json",
+      "proposal": "Bridge cleanup after the coalescing change: setSignalSet takes an opaque pointer, signal decode reads the standard 8-byte CAN payload, the staging buffer is rebuilt per frame, and dropped frames are reported from the GUI-side frame handler.",
+      "known_bugs": [
+        {
+          "id": "decode_length_8",
+          "summary": "qttune_decode_signal is called with a hardcoded length of 8 instead of the frame's data_length, so short frames decode bytes past their payload and CAN FD frames lose signals beyond byte 8.",
+          "file": "app/qttunebridge.cpp",
+          "symbols": ["qttune_decode_signal", "data_length", "hardcoded", "8-byte", "8 bytes", "CAN FD", "CAN-FD"]
+        },
+        {
+          "id": "staging_clear_per_frame",
+          "summary": "handleFrameInternal clears m_stagingBuffer before decoding each frame, so the coalesced batch carries only the last frame's signals and every other frame's values in the 100 ms window are lost.",
+          "file": "app/qttunebridge.cpp",
+          "symbols": ["m_stagingBuffer", "clear()", "staging", "last frame", "coalesc"]
+        },
+        {
+          "id": "drops_unreported_when_saturated",
+          "summary": "Drops are counted in onFrame but reported only from handleFrameInternal, which does not run while the backlog is saturated, so the user is never told about drops while they happen.",
+          "file": "app/qttunebridge.cpp",
+          "symbols": ["m_droppedFrames", "m_lastReportedDropped", "droppedFramesChanged", "MaxInFlightFrames", "m_inFlightFrames", "drop"]
+        },
+        {
+          "id": "payload_length_unclamped",
+          "summary": "payloadHex reads data_length bytes of the 64-byte inline buffer without clamping, so a transport reporting a longer length makes the bridge read past the buffer.",
+          "file": "app/qttunebridge.cpp",
+          "symbols": ["payloadHex", "data_length", "sizeof(frame->data)", "clamp", "past the"]
+        }
+      ],
+      "leak": "Removed FIX comments name the hardcoded length, the clear-and-refill and the worker-path drop reporting. The post-state is three commits after the bridge fixture's base, so this fixture reviews the same file as the bridge fixture, from the other direction."
+    },
+    {
+      "id": "init_noops_cf03331",
+      "kind": "clean",
+      "direction": "forward",
+      "commit": "cf03331",
+      "subject": "refactor(core): ecuio_init and ecuio_shutdown are optional no-ops",
+      "base_rev": "76189e7",
+      "post_rev": "cf03331",
+      "diff": "docs/fixtures/corpus/init_noops_cf03331/change.diff",
+      "index": "docs/fixtures/corpus/init_noops_cf03331/repo_context.json",
+      "proposal": "Core needs no global setup: ecuio_init and ecuio_shutdown become optional no-ops, init always returns ECUIO_OK, and the bridge and QML drop the coreInitialized gate.",
+      "known_bugs": [],
+      "leak": "None: a forward diff. Ten files across the app, QML and core layers; the layer note follows the first file (app/qml/HomePage.qml), a known limitation (backlog #8)."
+    },
+    {
+      "id": "ecu_support_7d297b4",
+      "kind": "clean",
+      "direction": "forward",
+      "commit": "7d297b4",
+      "subject": "feat(bridge): log what each ECU supports",
+      "base_rev": "fdb12e1",
+      "post_rev": "7d297b4",
+      "diff": "docs/fixtures/corpus/ecu_support_7d297b4/change.diff",
+      "index": "docs/fixtures/corpus/ecu_support_7d297b4/repo_context.json",
+      "proposal": "Bridge: log what each channel's ECU said it supports, once per update, from the coalescing tick: the supported-PID count and range, and each request dropped from the rotation with its reason.",
+      "known_bugs": [],
+      "leak": "None: a forward diff."
+    }
+  ]
+}

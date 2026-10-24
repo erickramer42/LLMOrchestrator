@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Callable, List, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from retrieval import IDENT, code_like
 
@@ -137,16 +137,20 @@ def post_state_lacks(repo: str, rev: str) -> Callable[[str], bool]:
 
 def collect(measure: Callable[..., dict], summary: Callable[[dict], str],
             models: str, proposal: str, code_diff: str, code_context: str,
-            header: bool, runs: int) -> None:
+            header: bool, runs: int, index_path: Optional[str] = None) -> None:
     """Take runs samples with measure (debate.run_round1_review or
     run_round2_pair), printing each record's path, summary(result) and
     any agent failures. Stops when the input is refused, since every run
     would be, or when a request failed, since an unreachable server would
     only fill coach_artifacts/ with failure records. A runaway that
     exhausts its retries is a result worth keeping."""
+    # index_path is passed only when given, so measures without the
+    # parameter (and the tests' fakes) keep working.
+    kwargs = {"index_path": index_path} if index_path else {}
     for i in range(1, runs + 1):
         started = time.monotonic()
-        res = measure(proposal, code_diff, code_context, header_artifact=header)
+        res = measure(proposal, code_diff, code_context, header_artifact=header,
+                      **kwargs)
         print(f"[{i}/{runs}] {res['record_path']}: {summary(res)}, "
               f"{(time.monotonic() - started) / 60:.1f} min")
         failures = res.get("agent_failures", [])
@@ -179,6 +183,9 @@ def main(name: str, measure: Callable[..., dict], summary: Callable[[dict], str]
     run_p.add_argument("--header", action="store_true",
                        help="Review target is header-only (C ABI stub)")
     run_p.add_argument("--runs", type=int, default=1)
+    run_p.add_argument("--index-file", metavar="PATH",
+                       help="Repo context index to retrieve from, instead of "
+                            "repo_context.json (a corpus fixture's own)")
 
     score_p = sub.add_parser("score", help=score_help)
     score_p.add_argument("records", nargs="+", metavar="RECORD", help=records_help)
@@ -196,7 +203,7 @@ def main(name: str, measure: Callable[..., dict], summary: Callable[[dict], str]
         collect(measure, summary, models, args.proposal,
                 read_input(args.diff) if args.diff else "",
                 read_input(args.context) if args.context else "",
-                args.header, args.runs)
+                args.header, args.runs, args.index_file)
         return
     if bool(args.repo) != bool(args.rev):
         parser.error("--repo and --rev go together")
