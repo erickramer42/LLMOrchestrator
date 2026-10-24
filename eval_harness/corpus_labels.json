@@ -1,5 +1,5 @@
 {
-  "about": "Hand labels of round-1 reviewer items on the corpus fixtures (docs/fixtures/corpus.json), each judged against its fixture's post_rev. Keys: #n stored blocker, #en evidence-demoted, #hn hedge-demoted, numbered as eval_harness.corpus score lists them. An item may carry several known-bug ids when its claim covers several. Labelled 2026-10-23 for ADR-0002's fourteenth measurement (the corpus baseline).",
+  "about": "Hand labels of round-1 reviewer items on the corpus fixtures (docs/fixtures/corpus.json), each judged against its fixture's post_rev. Keys: #n stored blocker, #en evidence-demoted, #hn hedge-demoted, numbered as eval_harness.corpus score lists them. An item may carry several known-bug ids when its claim covers several. Labelled 2026-10-23 for ADR-0002's fourteenth measurement (the corpus baseline). The sixteenth measurement's fresh sample (records 20261024_033005 to 20261024_041842, sample 'fresh') was labelled the same way, before any judge variant was replayed on it.",
   "classes": {
     "unlisted": "valid but minor: a change the same fix commit reverted, not a functional bug",
     "invariant-elsewhere": "false: a removed or missing check whose invariant another function enforces in the post-state",
@@ -8,51 +8,756 @@
     "deletion": "false: removed code or a removed comment presented as current",
     "other-fp": "false: any other claim the post-state refutes"
   },
-  "valid": ["unlisted"],
+  "valid": [
+    "unlisted"
+  ],
   "notes": {
     "poll_override_90020bd": "In the post-state (5ec331c) parse_query rejects ?poll= without ?filter=, and resolve_channels then builds exactly one channel from the filter, so chans[0] is always the poll's channel; chans is a fixed array besides. Every claim of a missing channel check for poll mode is invariant-elsewhere.",
     "ecu_support_7d297b4": "ecuio_dropped_request_t.request is uint8_t[3] with length 2 or 3, and the support struct is value-initialized, so request[0] is in bounds. pollChannelSupport and applyConnectedState both run on the GUI thread (the coalescing timer and the queued connect completion).",
-    "decode_length_b47687c": "c7477e #4: the missing m_lastReportedDropped reset on connect is benign. The first notifyDropped compares a zeroed m_droppedFrames with the old value and emits, which is what refreshes the UI; with the reset the stale count would stay on screen. Labelled other-fp. The typed setSignalSet parameter is labelled unlisted: b47687c reverted it as a FIX, but a void* on an internal C++ method is not a functional bug."
+    "decode_length_b47687c": "c7477e #4: the missing m_lastReportedDropped reset on connect is benign. The first notifyDropped compares a zeroed m_droppedFrames with the old value and emits, which is what refreshes the UI; with the reset the stale count would stay on screen. Labelled other-fp. The typed setSignalSet parameter is labelled unlisted: b47687c reverted it as a FIX, but a void* on an internal C++ method is not a functional bug.",
+    "fresh_rule": "A claim that states a known bug's defect is credited to it even when a side detail is wrong (68d66c #e1 calls the internal header an ABI; 68d66c #e3 says the helper checked BUFFER_OVERFLOW; 0390ed #3 calls the inlined code orphaned). A claim whose asserted consequence is false is not credited even when it points at the buggy line (c1e188 #3 says scheduler and poll both run; the worker's branches are exclusive).",
+    "decode_length_b47687c_fresh": "7a3f78 #1 and 2964be #3 claim a data race on m_stagingBuffer; handleFrameInternal is queued to the GUI thread, where the coalescing timer also runs. 2964be #4: m_lastReportedDropped is updated in the post-state. 2964be #e1: the post-state (b975457) builds without the signals.h include in the header."
   },
   "records": {
-    "round1_20261024_015410_fa2343": {"fixture": "backoff_clamp_d1c20c0", "labels": {}},
-    "round1_20261024_015502_76a2a7": {"fixture": "backoff_clamp_d1c20c0", "labels": {"#1": ["backoff_overshoot"]}},
-    "round1_20261024_015632_4e5f79": {"fixture": "backoff_clamp_d1c20c0", "labels": {"#1": ["backoff_overshoot"]}},
-    "round1_20261024_015724_b9c6e3": {"fixture": "backoff_clamp_d1c20c0", "labels": {"#1": ["backoff_overshoot"]}},
-    "round1_20261024_015802_5890c6": {"fixture": "backoff_clamp_d1c20c0", "labels": {"#1": ["backoff_overshoot"]}},
-
-    "round1_20261024_015846_a0d8f9": {"fixture": "trusted_count_6420f09", "labels": {"#e1": ["count_under_error", "static_batch_replay"], "#e2": ["static_batch_replay"]}},
-    "round1_20261024_015922_0afd91": {"fixture": "trusted_count_6420f09", "labels": {"#e1": ["static_batch_replay"], "#e2": ["count_under_error"]}},
-    "round1_20261024_020039_6792a6": {"fixture": "trusted_count_6420f09", "labels": {"#1": ["count_under_error"], "#2": ["static_batch_replay"], "#e1": ["deletion"]}},
-    "round1_20261024_020154_132869": {"fixture": "trusted_count_6420f09", "labels": {"#1": ["count_under_error", "static_batch_replay"], "#e1": ["count_under_error"], "#h1": ["count_under_error", "static_batch_replay"]}},
-    "round1_20261024_020216_cbbc92": {"fixture": "trusted_count_6420f09", "labels": {"#e1": ["static_batch_replay"], "#e2": ["count_under_error"]}},
-
-    "round1_20261024_020347_9fd096": {"fixture": "poll_override_90020bd", "labels": {"#1": ["invariant-elsewhere"], "#2": ["invariant-elsewhere"]}},
-    "round1_20261024_020502_1187b7": {"fixture": "poll_override_90020bd", "labels": {"#1": ["invariant-elsewhere"], "#2": ["invariant-elsewhere"], "#h1": ["poll_needs_filter_at_parse"]}},
-    "round1_20261024_020612_836d42": {"fixture": "poll_override_90020bd", "labels": {"#1": ["invariant-elsewhere"], "#2": ["poll_ignored"], "#3": ["invariant-elsewhere"], "#h1": ["invariant-elsewhere"]}},
-    "round1_20261024_020639_cde245": {"fixture": "poll_override_90020bd", "labels": {"#1": ["invariant-elsewhere"], "#2": ["poll_needs_filter_at_parse"]}},
-    "round1_20261024_020825_e7a76e": {"fixture": "poll_override_90020bd", "labels": {"#1": ["invariant-elsewhere"], "#2": ["thread-confusion"]}},
-
-    "round1_20261024_020932_b90266": {"fixture": "connect_start_4a86231", "labels": {"#e1": ["start_before_gui_owns"], "#e2": ["start_before_gui_owns"]}},
-    "round1_20261024_021207_93ee19": {"fixture": "connect_start_4a86231", "labels": {"#e1": ["start_before_gui_owns"], "#e2": ["start_before_gui_owns"], "#e3": ["start_before_gui_owns"]}},
-    "round1_20261024_021315_77f026": {"fixture": "connect_start_4a86231", "labels": {"#e1": ["start_before_gui_owns"], "#e2": ["deletion"], "#h1": ["start_before_gui_owns"]}},
-    "round1_20261024_021418_cab81e": {"fixture": "connect_start_4a86231", "labels": {"#1": ["start_before_gui_owns"], "#2": ["unsubscribed_rows_freeze"]}},
-    "round1_20261024_021537_e69478": {"fixture": "connect_start_4a86231", "labels": {"#1": ["start_before_gui_owns"], "#2": ["thread-confusion"], "#3": ["deletion"], "#e1": ["start_before_gui_owns"]}},
-
-    "round1_20261024_021611_2cc988": {"fixture": "decode_length_b47687c", "labels": {"#1": ["unlisted"], "#2": ["decode_length_8"], "#3": ["drops_unreported_when_saturated"], "#4": ["staging_clear_per_frame"]}},
-    "round1_20261024_021923_a3126d": {"fixture": "decode_length_b47687c", "labels": {"#1": ["drops_unreported_when_saturated"], "#2": ["decode_length_8"], "#3": ["staging_clear_per_frame"]}},
-    "round1_20261024_022015_4f567e": {"fixture": "decode_length_b47687c", "labels": {"#1": ["decode_length_8"], "#2": ["drops_unreported_when_saturated"], "#3": ["staging_clear_per_frame"], "#4": ["unlisted"]}},
-    "round1_20261024_022620_c7477e": {"fixture": "decode_length_b47687c", "labels": {"#1": ["decode_length_8"], "#2": ["other-fp"], "#3": ["other-fp"], "#4": ["other-fp"]}},
-
-    "round1_20261024_023305_43afe8": {"fixture": "init_noops_cf03331", "labels": {}},
-    "round1_20261024_023502_909b05": {"fixture": "init_noops_cf03331", "labels": {}},
-    "round1_20261024_023543_3a636c": {"fixture": "init_noops_cf03331", "labels": {}},
-    "round1_20261024_023747_539398": {"fixture": "init_noops_cf03331", "labels": {}},
-
-    "round1_20261024_024106_a2024a": {"fixture": "ecu_support_7d297b4", "labels": {"#1": ["thread-confusion"], "#h1": ["thread-confusion"]}},
-    "round1_20261024_024325_5c03e4": {"fixture": "ecu_support_7d297b4", "labels": {"#1": ["bounds-fixed-array"]}},
-    "round1_20261024_024445_85f63c": {"fixture": "ecu_support_7d297b4", "labels": {}},
-    "round1_20261024_024505_345679": {"fixture": "ecu_support_7d297b4", "labels": {"#1": ["bounds-fixed-array"], "#e1": ["thread-confusion"]}},
-    "round1_20261024_024702_0019d0": {"fixture": "ecu_support_7d297b4", "labels": {"#1": ["bounds-fixed-array"], "#h1": ["thread-confusion"], "#h2": ["thread-confusion"], "#h3": ["thread-confusion"]}}
+    "round1_20261024_015410_fa2343": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "labels": {}
+    },
+    "round1_20261024_015502_76a2a7": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261024_015632_4e5f79": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261024_015724_b9c6e3": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261024_015802_5890c6": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261024_015846_a0d8f9": {
+      "fixture": "trusted_count_6420f09",
+      "labels": {
+        "#e1": [
+          "count_under_error",
+          "static_batch_replay"
+        ],
+        "#e2": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261024_015922_0afd91": {
+      "fixture": "trusted_count_6420f09",
+      "labels": {
+        "#e1": [
+          "static_batch_replay"
+        ],
+        "#e2": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261024_020039_6792a6": {
+      "fixture": "trusted_count_6420f09",
+      "labels": {
+        "#1": [
+          "count_under_error"
+        ],
+        "#2": [
+          "static_batch_replay"
+        ],
+        "#e1": [
+          "deletion"
+        ]
+      }
+    },
+    "round1_20261024_020154_132869": {
+      "fixture": "trusted_count_6420f09",
+      "labels": {
+        "#1": [
+          "count_under_error",
+          "static_batch_replay"
+        ],
+        "#e1": [
+          "count_under_error"
+        ],
+        "#h1": [
+          "count_under_error",
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261024_020216_cbbc92": {
+      "fixture": "trusted_count_6420f09",
+      "labels": {
+        "#e1": [
+          "static_batch_replay"
+        ],
+        "#e2": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261024_020347_9fd096": {
+      "fixture": "poll_override_90020bd",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261024_020502_1187b7": {
+      "fixture": "poll_override_90020bd",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ],
+        "#h1": [
+          "poll_needs_filter_at_parse"
+        ]
+      }
+    },
+    "round1_20261024_020612_836d42": {
+      "fixture": "poll_override_90020bd",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "poll_ignored"
+        ],
+        "#3": [
+          "invariant-elsewhere"
+        ],
+        "#h1": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261024_020639_cde245": {
+      "fixture": "poll_override_90020bd",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "poll_needs_filter_at_parse"
+        ]
+      }
+    },
+    "round1_20261024_020825_e7a76e": {
+      "fixture": "poll_override_90020bd",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "thread-confusion"
+        ]
+      }
+    },
+    "round1_20261024_020932_b90266": {
+      "fixture": "connect_start_4a86231",
+      "labels": {
+        "#e1": [
+          "start_before_gui_owns"
+        ],
+        "#e2": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261024_021207_93ee19": {
+      "fixture": "connect_start_4a86231",
+      "labels": {
+        "#e1": [
+          "start_before_gui_owns"
+        ],
+        "#e2": [
+          "start_before_gui_owns"
+        ],
+        "#e3": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261024_021315_77f026": {
+      "fixture": "connect_start_4a86231",
+      "labels": {
+        "#e1": [
+          "start_before_gui_owns"
+        ],
+        "#e2": [
+          "deletion"
+        ],
+        "#h1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261024_021418_cab81e": {
+      "fixture": "connect_start_4a86231",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#2": [
+          "unsubscribed_rows_freeze"
+        ]
+      }
+    },
+    "round1_20261024_021537_e69478": {
+      "fixture": "connect_start_4a86231",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#2": [
+          "thread-confusion"
+        ],
+        "#3": [
+          "deletion"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261024_021611_2cc988": {
+      "fixture": "decode_length_b47687c",
+      "labels": {
+        "#1": [
+          "unlisted"
+        ],
+        "#2": [
+          "decode_length_8"
+        ],
+        "#3": [
+          "drops_unreported_when_saturated"
+        ],
+        "#4": [
+          "staging_clear_per_frame"
+        ]
+      }
+    },
+    "round1_20261024_021923_a3126d": {
+      "fixture": "decode_length_b47687c",
+      "labels": {
+        "#1": [
+          "drops_unreported_when_saturated"
+        ],
+        "#2": [
+          "decode_length_8"
+        ],
+        "#3": [
+          "staging_clear_per_frame"
+        ]
+      }
+    },
+    "round1_20261024_022015_4f567e": {
+      "fixture": "decode_length_b47687c",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "drops_unreported_when_saturated"
+        ],
+        "#3": [
+          "staging_clear_per_frame"
+        ],
+        "#4": [
+          "unlisted"
+        ]
+      }
+    },
+    "round1_20261024_022620_c7477e": {
+      "fixture": "decode_length_b47687c",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "other-fp"
+        ],
+        "#3": [
+          "other-fp"
+        ],
+        "#4": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261024_023305_43afe8": {
+      "fixture": "init_noops_cf03331",
+      "labels": {}
+    },
+    "round1_20261024_023502_909b05": {
+      "fixture": "init_noops_cf03331",
+      "labels": {}
+    },
+    "round1_20261024_023543_3a636c": {
+      "fixture": "init_noops_cf03331",
+      "labels": {}
+    },
+    "round1_20261024_023747_539398": {
+      "fixture": "init_noops_cf03331",
+      "labels": {}
+    },
+    "round1_20261024_024106_a2024a": {
+      "fixture": "ecu_support_7d297b4",
+      "labels": {
+        "#1": [
+          "thread-confusion"
+        ],
+        "#h1": [
+          "thread-confusion"
+        ]
+      }
+    },
+    "round1_20261024_024325_5c03e4": {
+      "fixture": "ecu_support_7d297b4",
+      "labels": {
+        "#1": [
+          "bounds-fixed-array"
+        ]
+      }
+    },
+    "round1_20261024_024445_85f63c": {
+      "fixture": "ecu_support_7d297b4",
+      "labels": {}
+    },
+    "round1_20261024_024505_345679": {
+      "fixture": "ecu_support_7d297b4",
+      "labels": {
+        "#1": [
+          "bounds-fixed-array"
+        ],
+        "#e1": [
+          "thread-confusion"
+        ]
+      }
+    },
+    "round1_20261024_024702_0019d0": {
+      "fixture": "ecu_support_7d297b4",
+      "labels": {
+        "#1": [
+          "bounds-fixed-array"
+        ],
+        "#h1": [
+          "thread-confusion"
+        ],
+        "#h2": [
+          "thread-confusion"
+        ],
+        "#h3": [
+          "thread-confusion"
+        ]
+      }
+    },
+    "round1_20261024_033005_294ce8": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ],
+        "#2": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261024_033042_1c41ce": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261024_033123_8c4032": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261024_033214_debb96": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ],
+        "#2": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261024_033246_cf5216": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261024_033331_9fa6f2": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "count_under_error"
+        ],
+        "#e1": [
+          "count_under_error",
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261024_033545_2b2369": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "fresh",
+      "labels": {
+        "#e1": [
+          "static_batch_replay"
+        ],
+        "#e2": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261024_033608_7f659b": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "fresh",
+      "labels": {
+        "#e1": [
+          "count_under_error"
+        ],
+        "#e2": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261024_033635_68d66c": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "fresh",
+      "labels": {
+        "#e1": [
+          "count_under_error"
+        ],
+        "#e2": [
+          "static_batch_replay"
+        ],
+        "#e3": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261024_033719_f79d56": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "fresh",
+      "labels": {
+        "#e1": [
+          "deletion"
+        ]
+      }
+    },
+    "round1_20261024_033816_2e9e9e": {
+      "fixture": "poll_override_90020bd",
+      "sample": "fresh",
+      "labels": {}
+    },
+    "round1_20261024_034208_53e32d": {
+      "fixture": "poll_override_90020bd",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261024_034425_c1e188": {
+      "fixture": "poll_override_90020bd",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ],
+        "#3": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261024_035002_b8ba71": {
+      "fixture": "poll_override_90020bd",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261024_035024_ad8cd8": {
+      "fixture": "connect_start_4a86231",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261024_035142_c3a584": {
+      "fixture": "connect_start_4a86231",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ],
+        "#e2": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261024_035222_fc5ac0": {
+      "fixture": "connect_start_4a86231",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ],
+        "#e2": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261024_035440_2e95fa": {
+      "fixture": "connect_start_4a86231",
+      "sample": "fresh",
+      "labels": {
+        "#e1": [
+          "other-fp"
+        ],
+        "#e2": [
+          "other-fp"
+        ],
+        "#e3": [
+          "start_before_gui_owns"
+        ],
+        "#e4": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261024_035612_b7e162": {
+      "fixture": "connect_start_4a86231",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261024_035703_61d927": {
+      "fixture": "decode_length_b47687c",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "staging_clear_per_frame"
+        ],
+        "#e1": [
+          "deletion"
+        ],
+        "#e2": [
+          "deletion"
+        ],
+        "#e3": [
+          "drops_unreported_when_saturated"
+        ]
+      }
+    },
+    "round1_20261024_035741_00f30b": {
+      "fixture": "decode_length_b47687c",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "drops_unreported_when_saturated"
+        ],
+        "#3": [
+          "staging_clear_per_frame"
+        ]
+      }
+    },
+    "round1_20261024_035838_7a3f78": {
+      "fixture": "decode_length_b47687c",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "thread-confusion"
+        ],
+        "#2": [
+          "decode_length_8"
+        ],
+        "#3": [
+          "unlisted"
+        ]
+      }
+    },
+    "round1_20261024_035913_0390ed": {
+      "fixture": "decode_length_b47687c",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "staging_clear_per_frame"
+        ],
+        "#3": [
+          "drops_unreported_when_saturated"
+        ]
+      }
+    },
+    "round1_20261024_040144_2964be": {
+      "fixture": "decode_length_b47687c",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "unlisted"
+        ],
+        "#2": [
+          "decode_length_8"
+        ],
+        "#3": [
+          "thread-confusion"
+        ],
+        "#4": [
+          "other-fp"
+        ],
+        "#e1": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261024_040231_f86926": {
+      "fixture": "init_noops_cf03331",
+      "sample": "fresh",
+      "labels": {}
+    },
+    "round1_20261024_040259_a0113c": {
+      "fixture": "init_noops_cf03331",
+      "sample": "fresh",
+      "labels": {}
+    },
+    "round1_20261024_040404_d1277d": {
+      "fixture": "init_noops_cf03331",
+      "sample": "fresh",
+      "labels": {}
+    },
+    "round1_20261024_040428_3ae94b": {
+      "fixture": "init_noops_cf03331",
+      "sample": "fresh",
+      "labels": {}
+    },
+    "round1_20261024_040705_f95c92": {
+      "fixture": "init_noops_cf03331",
+      "sample": "fresh",
+      "labels": {}
+    },
+    "round1_20261024_041234_a75d87": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "fresh",
+      "labels": {}
+    },
+    "round1_20261024_041505_d33d0d": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "fresh",
+      "labels": {}
+    },
+    "round1_20261024_041641_fe4fc2": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "thread-confusion"
+        ],
+        "#2": [
+          "thread-confusion"
+        ],
+        "#h1": [
+          "thread-confusion"
+        ]
+      }
+    },
+    "round1_20261024_041842_1711a2": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "fresh",
+      "labels": {
+        "#1": [
+          "thread-confusion"
+        ],
+        "#h1": [
+          "thread-confusion"
+        ]
+      }
+    }
   }
 }

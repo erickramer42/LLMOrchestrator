@@ -400,6 +400,13 @@ without reverse-engineering the ADRs.
   bridge deletion claim, and fails on 3 bridge removal objections (+0.11
   FPs), partly the #21 artifact. At most 9 of the 14 valid demotions
   quote pre-change code at all. Nothing changed in debates.
+  Amendment: filtered linkage (acronyms such as `PID` and `UI` are not
+  identifiers unless the index defines them) passes on both data sets
+  (corpus FPs per review 0.55 → 0.52, recall unchanged; bridge 0.25 →
+  0.18). The composed arm, removal words plus filtered linkage, misses
+  the corpus recall bar by one point (+0.09). A fresh sample of 35 corpus
+  runs, labelled before replay, decides both (sixteenth measurement,
+  registered in `1be7179`).
 
 **Known limitations (by design or pending):**
 - **Diffs above about 30K chars are refused** at `NUM_CTX` 24576 and
@@ -611,7 +618,8 @@ references elsewhere stay valid.
 - **#7 Stable real-diff corpus — BASELINE DONE (2026-10-23).** Seven
    fixtures in `docs/fixtures/corpus/`, 33 labelled runs (Current State;
    ADR-0002, fourteenth measurement). Replayed offline (fifteenth).
-   Next: a held-out corpus sample, and a live measurement of linkage.
+   Next: the fresh sample (sixteenth) decides filtered linkage as j8,
+   and whether the removal-word exception earns #21.
 - **#8 Multi-file diff layer handling.** Inject a layer map keyed by
    file; `diff_reader.diff_paths` already lists every changed path.
 - **#10 Codebase abstraction.** Move QtTune-specific bits behind config.

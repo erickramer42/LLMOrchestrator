@@ -1874,6 +1874,15 @@ class CorpusTests(NoSleep):
         self.assertEqual(s["unlabelled"], [])
         self.assertEqual(s["pooled"]["runs"], 33)
         self.assertEqual((s["pooled"]["stored"], s["pooled"]["valid"]), (42, 24))
+        # the sixteenth measurement's fresh sample, labelled before replay
+        fresh = sorted(Path(REPO_ROOT, "coach_artifacts").glob(
+            "measurement_round1_20261024_0[34]*.json"))
+        if fresh:
+            s = corpus.labelled_summary(corpus.score_records(
+                common.load_records([str(p) for p in fresh]), self.manifest), labels)
+            self.assertEqual(s["unlabelled"], [])
+            self.assertEqual(s["pooled"]["runs"], 33)
+            self.assertEqual((s["pooled"]["stored"], s["pooled"]["valid"]), (37, 24))
 
     def test_fingerprint_warning_is_per_fixture(self):
         fixtures = corpus.select(self.manifest, ["all"])[:2]
