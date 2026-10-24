@@ -31,6 +31,13 @@ Variants, on top of the current judge's evidence and hedge checks:
   lines). removed+linked also applies the linkage check, to post-change
   and pre-change quotes alike; removed+said accepts a pre-change quote
   only when the claim names a removal (REMOVAL_WORDS).
+- flinked: linked, with acronyms filtered out of the claim's identifiers
+  (ADR-0002, fifteenth measurement, amendment). An acronym is a token of
+  capital letters only (no digit, underscore or lowercase letter), such
+  as PID or UI, which code_like counts as code; it counts as an
+  identifier only when the review's index defines it as a type or
+  constant name (SCONFIG). removed+said+flinked composes it with the
+  removal-word exception.
 
 With --corpus, the records are grouped by corpus fixture (by diff hash,
 docs/fixtures/corpus.json), each judged against its own diff and scored
@@ -61,7 +68,10 @@ LABELS_PATH = Path(__file__).with_name("labels.json")
 CORPUS_LABELS_PATH = Path(__file__).with_name("corpus_labels.json")
 FP_CLASSES = ("deletion", "removal-objection", "other-fp")
 BASE_VARIANTS = ("j7", "gapped", "linked", "gapped+linked",
-                 "removed", "removed+linked", "removed+said")
+                 "removed", "removed+linked", "removed+said",
+                 "flinked", "gapped+flinked", "removed+said+flinked")
+# A bare all-caps word (flinked): an acronym unless the index defines it.
+ACRONYM = re.compile(r"[A-Z]+")
 # A match in a file's pre-change code is keyed by its path behind this
 # prefix, so vote and linked can tell the two sides apart.
 BEFORE = "before:"
@@ -85,6 +95,14 @@ class Diff(NamedTuple):
     sources: Dict[str, List[str]]   # adjudication.evidence_sources
     hunk_ids: Dict[str, List[Set[str]]]  # per path, identifiers of each hunk
     before: Dict[str, List[str]]    # pre-change code, as before_sources
+    symbols: frozenset = frozenset()  # type and constant names the index defines
+
+
+def index_symbols(index: dict) -> frozenset:
+    """The type and constant names an index defines: flinked's test for
+    whether an all-caps word is code."""
+    return frozenset([t["name"] for t in index.get("types", [])]
+                     + [c["name"] for c in index.get("constants", [])])
 
 
 def before_sources(code_diff: str) -> Dict[str, List[str]]:
@@ -149,9 +167,9 @@ def read_hunks(code_diff: str) -> Dict[str, List[Set[str]]]:
     return hunks
 
 
-def load_diff(code_diff: str) -> Diff:
+def load_diff(code_diff: str, symbols: frozenset = frozenset()) -> Diff:
     return Diff(evidence_sources(code_diff), read_hunks(code_diff),
-                before_sources(code_diff))
+                before_sources(code_diff), symbols)
 
 
 # ============ quotes ============
@@ -209,11 +227,21 @@ def verify(blocker: dict, diff: Diff, gapped: bool = False, before: bool = False
     return None
 
 
-def linked(blocker: dict, diff: Diff, where: Tuple[str, List[int]]) -> bool:
+def claim_identifiers(claim: str, diff: Diff, filtered: bool = False) -> Set[str]:
+    """The code identifiers a claim names. With filtered, acronyms are
+    left out unless the index defines them."""
+    ids = {n for n in IDENT.findall(claim) if code_like(n)}
+    if filtered:
+        ids = {n for n in ids if not ACRONYM.fullmatch(n) or n in diff.symbols}
+    return ids
+
+
+def linked(blocker: dict, diff: Diff, where: Tuple[str, List[int]],
+           filtered: bool = False) -> bool:
     """Whether the claim names an identifier of the hunk its quote came
     from. A claim naming no code identifier, or a quote from a source
     with no hunks, passes."""
-    ids = {n for n in IDENT.findall(blocker.get("claim", "")) if code_like(n)}
+    ids = claim_identifiers(blocker.get("claim", ""), diff, filtered)
     key, positions = where
     path = _path(key)
     if not ids or path not in diff.hunk_ids:
@@ -229,16 +257,18 @@ def judge(item: Item, diff: Diff, variant: str) -> Tuple[Optional[str], Optional
     """(why the variant demotes the blocker or None, where its quote
     matched). Evidence first, then linkage, then hedging, as a debate
     would run them."""
-    gapped = "gapped" in variant
+    parts = set(variant.split("+"))
+    gapped = "gapped" in parts
     where = verify(item.blocker, diff, gapped)
-    if where is None and "removed" in variant:
+    if where is None and "removed" in parts:
         before = verify(item.blocker, diff, gapped, before=True)
-        if before is not None and ("said" not in variant
+        if before is not None and ("said" not in parts
                                    or REMOVAL_WORDS.search(item.blocker["claim"])):
             where = before
     if where is None:
         return "evidence", None
-    if "linked" in variant and not linked(item.blocker, diff, where):
+    if (parts & {"linked", "flinked"}
+            and not linked(item.blocker, diff, where, filtered="flinked" in parts)):
         return "link", where
     if HEDGE_PATTERNS.search(item.blocker["hedge_text"]):
         return "hedge", where
@@ -314,11 +344,11 @@ def summarize(reviews: List[dict]) -> dict:
 
 
 def replay(records: List[tuple], code_diff: str, label_doc: dict,
-           n: int = 3, k: int = 2) -> dict:
+           n: int = 3, k: int = 2, symbols: frozenset = frozenset()) -> dict:
     """Every variant's per-review numbers, by sample set and pooled, the
     j7 reproduction check, and the blockers each base variant judges
     differently from j7."""
-    diff = load_diff(code_diff)
+    diff = load_diff(code_diff, symbols)
     diff_hash = text_sha256(code_diff)
     samples: Dict[str, List[List[Item]]] = {}
     excluded, mismatches, unlabelled = [], [], []
@@ -431,7 +461,9 @@ def replay_corpus(records: List[tuple], manifest: dict, label_doc: dict,
         else:
             slot = slots.setdefault(fixture["id"], {
                 "fixture": fixture, "samples": [],
-                "diff": load_diff(read_input(str(fixture["diff_path"])))})
+                "diff": load_diff(read_input(str(fixture["diff_path"])), index_symbols(
+                    json.loads(Path(fixture["index_path"]).read_text(encoding="utf-8"))
+                    if fixture.get("index_path") else {}))})
             items = raw_items(rec, entry["labels"])
             unlabelled += [(sample, i.key) for i in items if i.label is None]
             for i in items:
@@ -556,6 +588,9 @@ def main() -> None:
                              "against its own diff, scored with corpus labels")
     parser.add_argument("--labels", help="Labels file (default: labels.json, "
                                          "or corpus_labels.json with --corpus)")
+    parser.add_argument("--index", help="With --diff: the index whose type and "
+                                        "constant names flinked treats as code "
+                                        "(default: repo_context.json)")
     parser.add_argument("--n", type=int, default=3, help="Samples per voted review")
     parser.add_argument("--k", type=int, default=2, help="Samples a kept group must span")
     args = parser.parse_args()
@@ -571,8 +606,10 @@ def main() -> None:
         print_corpus_report(replay_corpus(load_records(args.records), load_manifest(),
                                           label_doc, args.n, args.k))
         return
+    from retrieval import CONTEXT_PATH
+    index = json.loads(Path(args.index or CONTEXT_PATH).read_text(encoding="utf-8"))
     print_report(replay(load_records(args.records), read_input(args.diff), label_doc,
-                        args.n, args.k))
+                        args.n, args.k, index_symbols(index)))
 
 
 if __name__ == "__main__":

@@ -2922,3 +2922,137 @@ thirteenth's.
    exception on removal objections without the artifact.
 3. Collect a held-out corpus sample (35 runs, about an hour of GPU) and
    score the surviving candidates on it.
+
+### Amendment (2026-10-23): filtered linkage and a composed arm
+
+Registered after the results above and before replaying either variant.
+
+**Filtered linkage (flinked).** `retrieval.code_like` counts any token
+with an uppercase letter after its first character as code, so the
+acronyms `PID` and `UI` were read as identifiers and decided 2 of
+linkage's 4 corpus demotions. The rule is defined on principle, not on
+those two cases: an acronym is a token of capital letters only, with no
+digit, underscore or lowercase letter. For linkage it counts as a code
+identifier only when the review's index defines it as a type or
+constant name. `SCONFIG`, a typedef in the core indexes, is the kind of
+all-caps name the escape keeps; the corpus has no other all-caps type
+or constant without an underscore. Tokens with digits (`J2534`) and
+mixed case are unchanged. Variants: flinked, gapped+flinked.
+
+**Composed arm (removed+said+flinked).** The removal-word exception
+(recall) with filtered linkage on every quote (precision); they address
+disjoint failures.
+
+**Retrieval audit.** The same `code_like` feeds one place in retrieval:
+the removed-only identifiers that mark or omit pack entries. Across the
+bridge fixture and the seven corpus fixtures, one pack is affected:
+`decode_length_b47687c` marks a purpose as naming removed-only
+identifiers `FIX, ID`, words from a removed comment. The mark itself is
+right (the purpose is the removed comment), the names are not. No
+entry is omitted because of an acronym, and the bridge pack is
+unaffected. Changing it changes what the models see, so it is a pack
+change with PACK_FORMAT_VERSION and PROMPT_VERSION bumps and its own
+measurement; it is recorded here, not fixed.
+
+**Rules:** as above; flinked and gapped+flinked are precision variants,
+the composed arm is an exception variant.
+
+| variant | data | metric | prediction |
+|---|---|---|---|
+| flinked, gapped+flinked | corpus | FPs per review | 0.48–0.55 |
+| flinked, gapped+flinked | corpus | mean recall | 0.44–0.47 |
+| flinked | bridge | FPs per review; race, gate | 0.18–0.21; 0.79, 0.29 |
+| removed+said+flinked | corpus | FPs per review | 0.50–0.58 |
+| removed+said+flinked | corpus | mean recall | 0.55–0.58 |
+| removed+said+flinked | bridge | FPs per review | 0.29–0.33 |
+
+**Expected by the rules:** flinked passes on both data sets. The
+composed arm is borderline on two conditions, corpus recall (+0.09 to
++0.12) and bridge FPs (+0.04 to +0.08); predicted to pass both,
+narrowly.
+
+**Amendment results (scored 2026-10-23):**
+
+| variant | corpus valid | corpus FP/rev | corpus recall | bridge FP/rev | bridge race, gate |
+|---|---|---|---|---|---|
+| j7 | 57% | 0.545 | 0.464 | 0.25 | 0.79, 0.29 |
+| flinked | 59% | 0.515 | 0.464 | 0.18 | 0.79, 0.29 |
+| gapped+flinked | 59% | 0.515 | 0.464 | 0.18 | 0.82, 0.29 |
+| removed+said+flinked | 62% | 0.545 | 0.555 | 0.29 | 0.79, 0.29 |
+
+| prediction | predicted | observed | |
+|---|---|---|---|
+| flinked, corpus FPs per review | 0.48–0.55 | 0.52 | HIT |
+| flinked, corpus mean recall | 0.44–0.47 | 0.46 | HIT |
+| flinked, bridge | 0.18–0.21; 0.79, 0.29 | 0.18; 0.79, 0.29 | HIT |
+| composed, corpus FPs per review | 0.50–0.58 | 0.55 | HIT |
+| composed, corpus mean recall | 0.55–0.58 | 0.55 | HIT |
+| composed, bridge FPs per review | 0.29–0.33 | 0.29 | HIT |
+| composed passes both borderline conditions | — | bridge passes (+0.04), corpus recall fails (+0.09) | MISSED |
+
+- **flinked passes on both data sets.** On the corpus it keeps the two
+  intended demotions (claims resting on `chan_count`) and drops the two
+  acronym accidents; on the bridge it equals linked.
+- **The composed arm fails by one point:** corpus recall +0.091 against
+  +0.10. Linkage cost it one valid item, 0afd91 #e2, whose claim names
+  `OP_WRITE` and `pNumMsgs` from another file's removed comment: the
+  leak, demoted for the reason linkage exists. Its bridge cost, +0.04,
+  is inside the limit: linkage takes out two of the bridge deletion
+  claims, and the rest is removal objections.
+
+## Sixteenth Measurement (Pending) — Fresh Corpus Sample
+
+**Status (2026-10-23): registered before any sample is taken.**
+
+**Why.** The 61 replayed samples have chosen variants three times
+(thirteenth, fifteenth, its amendment), and the labels' author knew the
+candidates. For a judge-only change, replaying fresh samples is the
+live measurement: the judge is deterministic and the model never sees
+it; only the replies are stochastic. So one fresh collection decides
+every judge candidate, at one collection's GPU cost.
+
+**Design:**
+- 35 round-1 samples, 5 per corpus fixture, through `python -m
+  eval_harness.corpus run --fixture all --runs 5`: prompt v11.1, judge
+  j7, the same indexes, so the requests and fingerprints equal the
+  fourteenth's. Retried first attempts are excluded, as before.
+- **Labels first.** Every item is labelled in
+  `eval_harness/corpus_labels.json` from `corpus score --labels none`
+  (which shows j7's split, the current judge's) before any variant is
+  replayed on the new records. The labeller knows the candidates; the
+  labels are fixed before their results are seen.
+- Then `replay --corpus` over the new records only.
+
+**Candidates and rules:**
+- **Precision: flinked** (with linked and gapped+flinked reported). It
+  becomes the judge change to ship (JUDGE_VERSION j8) if, on the fresh
+  samples, FPs per review fall below j7's on the same samples and mean
+  recall drops by at most 0.1. Shipping then needs the wiring checks:
+  unit tests, fake-driven request checks, the golden suite.
+- **Exception: removed+said and removed+said+flinked.** On the fresh
+  samples, the corpus conditions: mean recall rises by at least 0.10 and
+  FPs per review by at most 0.05. Meeting them does not ship anything;
+  it makes backlog #21 (bridge samples with a proposal in the diff's real
+  direction, a new bridge baseline, predicted first) the next step, so
+  the bridge condition can be judged without the proposal artifact.
+- Voting is reported and not a candidate (fifteenth measurement).
+
+**Predictions:**
+
+| metric (fresh samples) | prediction |
+|---|---|
+| j7 valid share | 50–68% |
+| j7 FPs per review | 0.40–0.70 |
+| j7 mean recall per known bug | 0.35–0.55 |
+| j7 FPs per clean review | 0.20–0.80 |
+| j7 evidence demotions per run | 0.30–0.70 |
+| first attempts that run away | 0–4 of 35 |
+| flinked FPs per review, below j7 by | 0.00–0.10 (passes) |
+| flinked mean recall, within | 0.03 of j7 |
+| removed+said, recall gain / FP rise | +0.05–0.15 / +0.00–0.06 |
+| removed+said+flinked, recall gain / FP rise | +0.04–0.13 / −0.03–+0.04 |
+
+**Expected:** flinked passes and becomes j8, by a small margin, because
+linkage acts on few blockers. The exception arms are a coin flip on the
++0.10 recall bar; the recall gain depends on how often the fresh
+replies quote removed lines of removed safety checks.

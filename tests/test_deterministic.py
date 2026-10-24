@@ -1564,6 +1564,22 @@ class ReplayTests(unittest.TestCase):
                               before=True)
         self.assertEqual(where, (replay.BEFORE + "app/x.cpp", [2]))
 
+    def test_flinked_drops_acronyms_unless_the_index_defines_them(self):
+        # ADR-0002, fifteenth measurement, amendment: PID and UI are words,
+        # SCONFIG is a typedef; mixed tokens and digits stay identifiers.
+        diff = replay.load_diff(REPLAY_DIFF, frozenset({"SCONFIG"}))
+        ids = replay.claim_identifiers(
+            "PID and UI break SCONFIG, m_count and J2534", diff, filtered=True)
+        self.assertEqual(ids, {"SCONFIG", "m_count", "J2534"})
+        self.assertIn("PID", replay.claim_identifiers("PID breaks", diff))
+        # linked demotes a claim naming only an acronym; flinked passes it
+        b = self.blocker("the PID request is wrong", GATE_LINE)
+        item = replay.Item("s", "#1", "", b, None)
+        self.assertEqual(replay.judge(item, diff, "linked")[0], "link")
+        self.assertIsNone(replay.judge(item, diff, "flinked")[0])
+        # 'flinked' must not switch on the 'linked' gate by substring alone
+        self.assertIsNone(replay.judge(item, diff, "gapped+flinked")[0])
+
     def test_corpus_replay_scores_per_fixture_with_list_labels(self):
         with tempfile.TemporaryDirectory() as tmp:
             diff_path = Path(tmp) / "x.diff"
