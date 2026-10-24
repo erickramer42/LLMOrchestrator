@@ -3605,3 +3605,187 @@ on-point arm: a passing line names one of the claim's identifiers.
 - none of the 3 false bridge items restored.
 
 Replies that come from retries are counted and reported apart.
+
+### Sign-off of the pilot (2026-10-24, before any model call)
+
+**Two notes on the Step 0 results:**
+- **Hedging bounds every fixed-claim protocol.** 6 of the 7 valid corpus
+  items that no quote restores fail because the claim itself hedges.
+  That is #12's rule ("Hedge Check j6": a hedged claim is never a
+  blocker) at work, not a weakness of the model. It is 6 of the 31
+  valid items, and about 16% of the recall gain readmitting every quote
+  failure would give (with 68d66c #e3). Any protocol that keeps the
+  claim fixed, as repair does, loses these. A prompt lever that gets
+  the reviewer to state the same bug without hedging is not bound by
+  it, since its claim is new.
+- **Step 0 is the standard first step for a recall lever.** A ceiling
+  check that calls the judge's own functions, registered with its
+  predictions, answers in seconds what a GPU batch would answer in
+  hours. Each future recall lever runs one before any live call.
+
+**The successor, v13 (`debate.REPAIR_V13_VERSION =
+"v13-repair-own-prompt"`)**, used only by `eval_harness.repair run
+--variant v13`; debates are unchanged (REPAIR_PASS off, v11.1):
+- **System prompt** (`debate.REPAIR_SYSTEM_PROMPT`): checking the quotes
+  of findings from the model's own earlier review, without reviewing
+  again; the evidence rules of the reviewer prompt's taxonomy (unchanged
+  or added lines, copied exactly; removed lines are not evidence; a
+  removal-caused defect quotes the code left unprotected; the file is a
+  diff path); claims cannot change or be added; leaving a finding out
+  costs nothing; its own JSON keys and "An empty list is a valid
+  answer". The generic retry message's "the keys from your
+  instructions" now names these keys.
+- **User message** (`repair_request_v13`): the fenced CODE DIFF section
+  (`STATIC_TEMPLATE`, the debate's fence; context "(none provided)"),
+  the layer note, and the findings as v12 showed them (claim, file, the
+  model's own quote, the reason). No proposal, no repo context pack, no
+  transcript closing line.
+- **Settings:** the reviewer model at 0.05 (`TEMPERATURE_RETRY`), as in
+  v12.
+- **Risks seen while writing, kept as designed:** the fence preamble
+  calls the diff "the material under review", and the layer notes are
+  review rules ("flag any Qt include as a blocker"). Either could pull
+  the model back toward reviewing. If the pilot shows re-reviews,
+  removing them is the wiring fix for the one re-pilot.
+
+**Exits, first attempts only, in this order** (`repair.pilot_exit`).
+"Usable" means a first attempt accepted in the repair schema.
+1. **Selectivity, loud:** any false bridge item restored, or 2 or more
+   of the 4 false corpus items. The repair line closes.
+2. **Wiring:** fewer than 4 usable first attempts, or more than 1
+   first-attempt runaway. Fix the prompt and re-pilot once. The
+   re-pilot's readings become the pilot of record. False restorations
+   from usable first attempts of the first pilot carry over.
+   - If the re-pilot also leaves fewer than 4 usable first attempts,
+     that is wiring again: the instrument gathered no signal. The pilot
+     ends, the batch does not run, and it is recorded as an instrument
+     failure, not as a finding about the model. It never trips the
+     incapacity exit by default.
+3. **Incapacity:** at most 2 of the 6 recoverable valid items restored.
+   The repair line closes. The name is given only after reading the
+   split:
+   - mostly declined (not returned): the model does not re-quote;
+   - mostly rejected by the judge: the matcher and the model disagree
+     about what a quote is, a separate lever to register later.
+4. **Pass:** at least 5 of the 6 recoverable valid items restored, at
+   most 1 of the 4 false corpus items, none of the 3 false bridge items.
+   The batch runs.
+5. **Marginal:** anything else (valid 3–4 of 6, false within the
+   tripwires). The batch runs with the prompt unchanged, and the ship
+   rule decides.
+
+Valid items from a call whose first attempt was not usable count as not
+restored. Replies from retries are reported apart and count toward no
+exit. Every nonconforming reply is read, even when the bar passes.
+
+Why loud failures only: with 6 valid and 7 false items, a model exactly
+at the ship rule's rates passes every clause about 21% of the time, a
+comfortably shippable one (85% valid, 15% / 5% false) about 59%, and a
+clearly failing one (50%, 50% / 30%) about 1%. Closing the line on a
+marginal miss would let n = 7 make the batch's decision.
+
+**Pilot predictions:**
+
+| quantity | predicted (point) |
+|---|---|
+| usable first attempts | 3–5 of 5 (4) |
+| first-attempt runaways | 0–2 (1; 819df9's 30K-char bridge request most likely) |
+| first-attempt re-reviews | 0–1 |
+| valid restored, of 6 recoverable | 2–5 (4) |
+| false corpus restored, of 4 | 0–2 (1) |
+| false bridge restored, of 3 | 0–1 (0) |
+| exit | marginal most likely, then selectivity |
+
+**The batch, if it runs:** the seventeenth's sets without the pilot's
+records. That is 62 corpus reviews with 29 offered items and 27 bridge
+reviews with 16 (`repair ceiling --set corpus|bridge --batch`).
+
+| | corpus recall | corpus FPs per review | bridge FPs per review |
+|---|---|---|---|
+| A (j8) | 0.437 | 0.435 | 0.185 |
+| judge ceiling (every recoverable item restored) | 0.550 (+0.113) | 0.516 (+0.081) | 0.444 (+0.259) |
+
+Recoverable in the batch: 18 of 24 valid corpus items, 5 of 5 false
+corpus items, 7 of 9 false bridge items. Of the 6 valid corpus items no
+quote restores, 5 are hedged. The ship rule, unchanged, therefore asks for:
+- about 88% of the batch's recoverable recall gain (+0.10 of +0.113);
+- at most 3 of the 5 recoverable false corpus items (3 of 62 reviews is
+  +0.048);
+- at most 1 of the 7 recoverable false bridge items (1 of 27 is
+  +0.037).
+
+The pilot's exclusion lowered the batch's ceiling from +0.137 to
++0.113, because b90266, 2e95fa, a0d8f9 and 61d927 hold 6 of the 24
+recoverable valid items.
+
+**Batch prediction, stated per recoverable item:** valid restored
+55–85% of 18, so corpus recall +0.06 to +0.10; false corpus 1–3 of 5;
+false bridge 1–3 of 7. Predicted to fail condition 1, which needs
+restoration near 88%. Condition 3 (bridge FPs) is the next most likely
+failure.
+
+### Pilot results (2026-10-24): exit 2, wiring
+
+`python -m eval_harness.repair run --variant v13 --pilot`, then
+`python -m eval_harness.repair pilot`. Records:
+`coach_artifacts/measurement_repair_v13_<source>.json` (5; repair
+fingerprint `09a782e33e7aa6d6`). About 21 minutes on the GPU.
+
+| call | first attempt | reply from | thinking chars per attempt | repairs |
+|---|---|---|---|---|
+| a0d8f9 | usable (187 s) | first | 32,795 | 2 |
+| b90266 | usable (30 s) | first | 5,851 | 0 |
+| 2e95fa | usable (36 s) | first | 7,199 | 1 |
+| 61d927 | runaway | retry (32 s) | 53,046; 6,866 | 0 |
+| 819df9 (bridge) | runaway | failed, 3 runaways | 47,884; 49,326; 73,627 | — |
+
+**Items by reply source, class, quote group and result:**
+
+| reply from | class | group | restored | rejected by the judge | declined | call failed |
+|---|---|---|---|---|---|---|
+| first | valid | before | 0 | 1 (hedge; not recoverable) | 1 | 0 |
+| first | valid | nowhere | 1 | 0 | 3 | 0 |
+| first | false | nowhere | 0 | 1 (quote) | 1 | 0 |
+| retry | valid | before | 0 | 0 | 1 | 0 |
+| retry | false | before | 0 | 0 | 2 | 0 |
+| failed | false | before / nowhere | 0 | 0 | 0 | 2 / 1 |
+
+**Exit 2, wiring:** 3 usable first attempts (fewer than 4) and 2
+first-attempt runaways (more than 1). No false item was restored, so
+nothing carries over to the re-pilot.
+
+| prediction | predicted | observed | |
+|---|---|---|---|
+| usable first attempts | 3–5 (4) | 3 | HIT, low edge |
+| first-attempt runaways | 0–2 (1; 819df9 most likely) | 2 (819df9, 61d927) | HIT, high edge |
+| first-attempt re-reviews | 0–1 | 0 | HIT |
+| valid restored, of 6 | 2–5 (4) | 1 | MISSED LOW |
+| false corpus restored, of 4 | 0–2 (1) | 0 | HIT |
+| false bridge restored, of 3 | 0–1 (0) | 0 (call failed) | HIT, no data |
+| exit | marginal, then selectivity | wiring | MISSED |
+
+**Reading the replies:**
+- **No re-reviews this time:** every accepted reply is in the repair
+  schema, and so is every runaway's visible work.
+- **The runaways judge whether each finding is true**, which the
+  system prompt asks for ("decide whether the code after the change
+  shows it").
+  - 61d927's thinking takes the findings one at a time and concludes
+    that its false ones are not shown, which is correct.
+  - 819df9's three attempts rebuild `onFrame` in full and end weighing
+    "genuine thread safety concerns", which echoes the bridge layer
+    note's "Thread-safety requirements are ACTIVE".
+- **The fast replies decline.**
+  - b90266 (30 s) and 2e95fa (36 s) declined 4 recoverable valid items.
+    v12 had restored both of b90266's.
+  - 2e95fa's one repair, of a false item, quoted 12 lines with comments
+    and failed the quote check.
+- **The one call in between, a0d8f9 (187 s), re-quoted both items:**
+  #e2 was restored, and #e1 failed the hedge check as Step 0 said it
+  must.
+- **The model appears bimodal:** it either declines quickly or
+  deliberates until the cap. Nothing here says which way more thinking
+  tips its selectivity.
+
+**Next, under the binding:** one re-pilot with a fixed prompt, whose
+readings become the pilot of record. The fix is not chosen yet.

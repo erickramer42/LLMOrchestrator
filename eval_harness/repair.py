@@ -3,7 +3,9 @@
 
     python -m eval_harness.repair run --set corpus|bridge
     python -m eval_harness.repair score --set corpus|bridge
-    python -m eval_harness.repair ceiling --set corpus|bridge
+    python -m eval_harness.repair ceiling --set corpus|bridge [--batch]
+    python -m eval_harness.repair run --variant v13 --pilot
+    python -m eval_harness.repair pilot
 
 For each labelled first-attempt record, `run` rebuilds the round-1
 request a debate sends today (debate._prepare and _render_transcript
@@ -30,7 +32,13 @@ some quote would restore (judge-quotable), which a quote naming one of
 the claim's identifiers would (on-point), which the hedge check blocks
 whatever the quote, and the arms with those items restored ('on-point'
 counts claims naming no identifier, which pass linkage anywhere;
-'named' leaves them out).
+'named' leaves them out). --batch leaves out the pilot's records.
+
+`--variant v13` makes the successor's call (debate.REPAIR_SYSTEM_PROMPT,
+the diff alone) and saves coach_artifacts/measurement_repair_v13_<source>.json;
+`--pilot` limits a run to the pilot set. `pilot` prints the pilot's
+items by class, quote group and result, first attempts and retries
+apart, and checks the registered exits.
 """
 
 import argparse
@@ -56,11 +64,27 @@ SETS = {
                "coach_artifacts/measurement_round2_20261023_*.json"],
 }
 OUT_DIR = Path("coach_artifacts")
+# The eighteenth measurement's pilot set, fixed before its Step 0 ran;
+# excluded from the successor's scored batch.
+PILOT = ("round1_20261024_020932_b90266",
+         "round1_20261024_035440_2e95fa",
+         "round1_20261024_015846_a0d8f9",
+         "round1_20261024_035703_61d927",
+         "round1_20261023_012856_819df9")
+VARIANTS = ("v12", "v13")
 
 
-def repair_fingerprint() -> str:
-    return debate.text_sha256(debate.REPAIR_TEMPLATE + debate.REPAIR_ITEM_TEMPLATE
-                              + "".join(debate.REPAIR_REASONS.values()))[:16]
+def repair_fingerprint(variant: str = "v12") -> str:
+    items = debate.REPAIR_ITEM_TEMPLATE + "".join(debate.REPAIR_REASONS.values())
+    if variant == "v13":
+        return debate.text_sha256(debate.REPAIR_SYSTEM_PROMPT + debate.REPAIR_V13_TEMPLATE
+                                  + items + debate.STATIC_TEMPLATE)[:16]
+    return debate.text_sha256(debate.REPAIR_TEMPLATE + items)[:16]
+
+
+def out_path(source: str, variant: str = "v12") -> Path:
+    tag = "" if variant == "v12" else f"{variant}_"
+    return OUT_DIR / f"measurement_repair_{tag}{source}.json"
 
 
 # ============ the samples ============
@@ -134,11 +158,15 @@ def _offer(sample: dict):
     return setup, items, demoted, debate.repair_offer(setup, demoted)
 
 
-def run(set_name: str, dry: bool = False) -> None:
-    """dry: list each record's offer and request size, call nothing."""
+def run(set_name: str, dry: bool = False, variant: str = "v12",
+        only: Optional[Tuple[str, ...]] = None) -> None:
+    """dry: list each record's offer and request size, call nothing.
+    only: the source records to run, all of the set's by default."""
     for sample in samples(set_name):
-        out_path = OUT_DIR / f"measurement_repair_{sample['id']}.json"
-        if out_path.exists():
+        if only is not None and sample["id"] not in only:
+            continue
+        path = out_path(sample["id"], variant)
+        if path.exists():
             print(f"{sample['id']}: done before, skipped")
             continue
         setup, items, demoted, offered = _offer(sample)
@@ -148,22 +176,28 @@ def run(set_name: str, dry: bool = False) -> None:
         assert len(offered) == len(demoted)
         proposal = sample["record"]["inputs"]["proposal"]
         transcript = debate._render_transcript(proposal, setup.static_section, 1)
+        code_diff = read_input(sample["diff_path"]) if variant == "v13" else None
         if dry:
-            chars = len(setup.reviewer_prompt) + len(
-                debate.repair_request(setup, transcript, offered))
+            chars = (len(debate.REPAIR_SYSTEM_PROMPT)
+                     + len(debate.repair_request_v13(setup, code_diff, offered))
+                     if code_diff is not None else len(setup.reviewer_prompt)
+                     + len(debate.repair_request(setup, transcript, offered)))
             print(f"{sample['id']}: offer {len(offered)} "
                   f"({', '.join(o['why'] for o in offered)}), request {chars} chars")
             continue
         telemetry: List[dict] = []
         started = time.monotonic()
-        repairs, skipped = debate.repair_call(setup, transcript, offered, telemetry)
+        repairs, skipped = debate.repair_call(setup, transcript, offered, telemetry,
+                                              code_diff=code_diff)
         outcomes = debate.apply_repairs(setup, offered, repairs or [])
         record = {
             "metadata": {
                 "mode": "repair_pair", "source_record": sample["id"], "set": set_name,
                 "fixture": sample["fixture"]["id"] if sample["fixture"] else "bridge",
-                "prompt_version": debate.REPAIR_VERSION, "judge_version": JUDGE_VERSION,
-                "repair_fingerprint": repair_fingerprint(),
+                "prompt_version": (debate.REPAIR_V13_VERSION if variant == "v13"
+                                   else debate.REPAIR_VERSION),
+                "judge_version": JUDGE_VERSION,
+                "repair_fingerprint": repair_fingerprint(variant),
                 "model": MODELS["code_reviewer"],
                 "temperature": debate.TEMPERATURE_RETRY,
                 "created": datetime.now(timezone.utc).isoformat()},
@@ -178,8 +212,8 @@ def run(set_name: str, dry: bool = False) -> None:
         }
         for row, x in zip(record["outcomes"], outcomes):
             row["restored_blocker"] = x["blocker"]
-        out_path.write_text(json.dumps(record, indent=2, ensure_ascii=False),
-                            encoding="utf-8")
+        path.write_text(json.dumps(record, indent=2, ensure_ascii=False),
+                        encoding="utf-8")
         restored = sum(1 for x in outcomes if x["blocker"])
         print(f"{sample['id']}: offered {len(offered)}, restored {restored}"
               + (f", skipped: {skipped}" if skipped else "")
@@ -190,15 +224,18 @@ def run(set_name: str, dry: bool = False) -> None:
 
 # ============ ceiling ============
 
-def ceiling(set_name: str) -> dict:
+def ceiling(set_name: str, batch: bool = False) -> dict:
     """Step 0 of the eighteenth measurement: what any repair could
     restore. Each offered item is tried with every post-change line of
-    every file as a one-line repair, judged by debate.apply_repairs."""
+    every file as a one-line repair, judged by debate.apply_repairs.
+    batch: without the pilot's records, as the successor's batch."""
     corpus_labels = json.loads(replay.CORPUS_LABELS_PATH.read_text(encoding="utf-8"))
     valid_classes = set(corpus_labels.get("valid", []))
     arms: Dict[str, Dict[str, list]] = {"A": {}, "judge": {}, "on-point": {}, "named": {}}
     rows = []
     for sample in samples(set_name):
+        if batch and sample["id"] in PILOT:
+            continue
         setup, items, demoted, offered = _offer(sample)
         candidates = [(path, line) for path, lines in setup.evidence.items()
                       for line in lines if line != _HUNK_BREAK]
@@ -379,19 +416,142 @@ def print_score(res: dict) -> None:
             print(f"   {r['source']} {r['key']} [{r['label']}] {r['restored'][:200]}")
 
 
+# ============ the pilot ============
+
+def first_attempt_kind(entry: dict) -> str:
+    """A telemetry entry's attempt as the pilot's exits read it: usable
+    (accepted in the repair schema), runaway (output cut at the cap),
+    re-review (the reviewer's schema), or other (any other rejection)."""
+    if entry["outcome"] == "ok":
+        return "usable"
+    if entry.get("done_reason") == "length":
+        return "runaway"
+    tail = entry.get("content_tail", "")
+    if '"blockers"' in tail or '"questions"' in tail or '"nits"' in tail:
+        return "re-review"
+    return "other"
+
+
+def pilot() -> dict:
+    """The pilot's items by class, quote group and result, split by the
+    attempt that gave the reply (first or retry), and the exit the
+    registered binding gives (ADR-0002, eighteenth measurement)."""
+    corpus_labels = json.loads(replay.CORPUS_LABELS_PATH.read_text(encoding="utf-8"))
+    valid_classes = set(corpus_labels.get("valid", []))
+    quotable = {(r["source"], r["key"]) for s in ("corpus", "bridge")
+                for r in ceiling(s)["items"] if r["passing"]}
+    calls, rows = [], []
+    for set_name in ("corpus", "bridge"):
+        for sample in samples(set_name):
+            if sample["id"] not in PILOT:
+                continue
+            path = out_path(sample["id"], "v13")
+            if not path.exists():
+                calls.append({"source": sample["id"], "missing": True})
+                continue
+            rep = json.loads(path.read_text(encoding="utf-8"))
+            tel = rep["telemetry"]
+            first = first_attempt_kind(tel[0]) if tel else "none"
+            accepted = next((t["attempt"] for t in tel if t["outcome"] == "ok"), None)
+            source = ("first" if accepted == 0 else "retry" if accepted is not None
+                      else "failed")
+            calls.append({"source": sample["id"], "first": first, "reply_from": source,
+                          "attempts": [first_attempt_kind(t) for t in tel],
+                          "repairs": len(rep["repairs"] or [])})
+            label_of = {i.key: i.label for i in replay.raw_items(sample["record"],
+                                                                  sample["labels"])}
+            for off, out in zip(rep["offered"], rep["outcomes"]):
+                result = out["result"]
+                kind = ("restored" if result == "restored" else
+                        "declined" if result == "not returned" else
+                        "failed" if result == "skipped" else f"rejected ({result})")
+                rows.append({"source": sample["id"], "set": set_name, "key": off["key"],
+                             "class": _item_class(set_name, sample, label_of.get(off["key"]),
+                                                  valid_classes),
+                             "why": off["why"], "result": kind, "reply_from": source,
+                             "quotable": (sample["id"], off["key"]) in quotable,
+                             "quote": out.get("quote")})
+    return {"calls": calls, "items": rows, "exit": pilot_exit(calls, rows)}
+
+
+def pilot_exit(calls: List[dict], rows: List[dict]) -> dict:
+    """The registered binding, first attempts only, in its order: a loud
+    selectivity failure, then wiring, then incapacity, then the bar."""
+    usable = [c for c in calls if c.get("first") == "usable"]
+    first = [r for r in rows if r["reply_from"] == "first"]
+    bridge_fp = sum(1 for r in first if r["set"] == "bridge" and r["class"] == "fp"
+                    and r["result"] == "restored")
+    corpus_fp = sum(1 for r in first if r["set"] == "corpus" and r["class"] == "fp"
+                    and r["result"] == "restored")
+    valid = [r for r in first if r["class"] == "valid" and r["quotable"]]
+    restored = sum(1 for r in valid if r["result"] == "restored")
+    runaways = sum(1 for c in calls if c.get("first") == "runaway")
+    counts = {"usable first attempts": len(usable), "first-attempt runaways": runaways,
+              "valid restored of 6 recoverable": restored,
+              "false corpus restored of 4": corpus_fp, "false bridge restored of 3": bridge_fp}
+    if bridge_fp >= 1 or corpus_fp >= 2:
+        exit_ = "selectivity: the repair line closes"
+    elif len(usable) < 4 or runaways > 1:
+        exit_ = "wiring: fix the prompt and re-pilot once"
+    elif restored <= 2:
+        declined = sum(1 for r in valid if r["result"] == "declined")
+        rejected = sum(1 for r in valid if r["result"].startswith("rejected"))
+        exit_ = (f"incapacity: the repair line closes (of the valid not restored, "
+                 f"{declined} declined, {rejected} rejected by the judge)")
+    elif restored >= 5 and corpus_fp <= 1 and bridge_fp == 0:
+        exit_ = "pass: the batch runs"
+    else:
+        exit_ = "marginal: the batch runs with the prompt unchanged"
+    return {"counts": counts, "exit": exit_}
+
+
+def print_pilot(res: dict) -> None:
+    print("calls: source, first attempt, reply from, attempts, repairs")
+    for c in res["calls"]:
+        if c.get("missing"):
+            print(f"   {c['source'][-6:]} MISSING")
+            continue
+        print(f"   {c['source'][-6:]} {c['first']:<9} {c['reply_from']:<6} "
+              f"{','.join(c['attempts'])} {c['repairs']}")
+    print("\nitems by reply source, class, quote group, result:")
+    counts = Counter((r["reply_from"], r["class"], r["why"], r["result"]) for r in res["items"])
+    for (src, cls, why, result), n in sorted(counts.items()):
+        print(f"   {src:<6} {cls:<12} {why:<8} {result:<22} {n}")
+    print("\nper item:")
+    for r in res["items"]:
+        print(f"   {r['source'][-6:]} {r['key']:<4} {r['class']}/{r['why']:<8} "
+              f"{'' if r['quotable'] else '(not quotable) '}{r['result']:<20} "
+              f"{r['reply_from']:<6} {(r['quote'] or '')[:80]}")
+    print()
+    for k, v in res["exit"]["counts"].items():
+        print(f"{k}: {v}")
+    print(f"exit: {res['exit']['exit']}")
+
+
 def main(argv: Optional[List[str]] = None) -> None:
     parser = argparse.ArgumentParser(description="The repair pass, paired on "
                                                  "archived round-1 replies")
-    parser.add_argument("command", choices=("run", "score", "ceiling"))
-    parser.add_argument("--set", choices=tuple(SETS), required=True)
+    parser.add_argument("command", choices=("run", "score", "ceiling", "pilot"))
+    parser.add_argument("--set", choices=tuple(SETS))
     parser.add_argument("--dry", action="store_true",
                         help="With run: list the offers, call nothing")
+    parser.add_argument("--variant", choices=VARIANTS, default="v12",
+                        help="With run: the repair request (v13: its own prompt)")
+    parser.add_argument("--pilot", action="store_true",
+                        help="With run: the pilot set only, corpus and bridge")
+    parser.add_argument("--batch", action="store_true",
+                        help="With ceiling: leave out the pilot's records")
     args = parser.parse_args(argv)
+    if args.command != "pilot" and not args.pilot and args.set is None:
+        parser.error("--set is required")
     sys.stdout.reconfigure(encoding="utf-8")
     if args.command == "run":
-        run(args.set, args.dry)
+        for set_name in (("corpus", "bridge") if args.pilot else (args.set,)):
+            run(set_name, args.dry, args.variant, PILOT if args.pilot else None)
+    elif args.command == "pilot":
+        print_pilot(pilot())
     elif args.command == "ceiling":
-        print_ceiling(ceiling(args.set))
+        print_ceiling(ceiling(args.set, args.batch))
     else:
         print_score(score(args.set))
 

@@ -1,0 +1,76 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261024_015846_a0d8f9",
+    "set": "corpus",
+    "fixture": "trusted_count_6420f09",
+    "prompt_version": "v13-repair-own-prompt",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "09a782e33e7aa6d6",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T22:23:08.187924+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "before",
+      "blocker": "claim: Removing the qttune_trusted_count function violates error propagation policy. The function was explicitly designed to handle vendor behavior where pNumMsgs is left untouched on error. Removing it will cause the code to trust potentially invalid counts, leading to memory safety issues and phantom frame replay in the surrogate.; file: core/src/j2534_loader.cpp; quote: num = qttune_trusted_count(rc, num);   /* finding 1: dirty count\n                                               under a hard error is\n                                               not a delivered frame */"
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "nowhere",
+      "blocker": "claim: Removing the qttune_trusted_count function in the surrogate violates thread safety and memory lifetime. The comment explicitly states s_read_batch is static and never cleared, so using an untrusted count would replay previous read's frames as phantoms.; file: surrogate/surrogate_main.cpp; quote: num = qttune_trusted_count(rc, num);\n\n     /* Finding 1: trust the count only under the status allowlist. A\n      * vendor may leave pNumMsgs untouched on error (VX observed:\n      * \"status 7, written 1\", bench 2026-10-20). A dirty count is\n      * doubly dangerous here: s_read_batch is static and never\n      * cleared, so it would replay the PREVIOUS read's frames as\n      * phantoms. */"
+    }
+  ],
+  "repairs": [
+    {
+      "id": 1,
+      "file": "core/src/j2534_loader.cpp",
+      "quote": "    long rc = handle->read_msgs(channel, &msg, &num, timeout_ms);"
+    },
+    {
+      "id": 2,
+      "file": "surrogate/surrogate_main.cpp",
+      "quote": "    const long rc = g_read_msgs(g_channel, s_read_batch, &num, timeout_ms);"
+    }
+  ],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "before",
+      "returned": true,
+      "result": "hedge",
+      "file": "core/src/j2534_loader.cpp",
+      "quote": "    long rc = handle->read_msgs(channel, &msg, &num, timeout_ms);",
+      "restored_blocker": null
+    },
+    {
+      "id": 2,
+      "why": "nowhere",
+      "returned": true,
+      "result": "restored",
+      "file": "surrogate/surrogate_main.cpp",
+      "quote": "    const long rc = g_read_msgs(g_channel, s_read_batch, &num, timeout_ms);",
+      "restored_blocker": "claim: Removing the qttune_trusted_count function in the surrogate violates thread safety and memory lifetime. The comment explicitly states s_read_batch is static and never cleared, so using an untrusted count would replay previous read's frames as phantoms.; file: surrogate/surrogate_main.cpp; quote:     const long rc = g_read_msgs(g_channel, s_read_batch, &num, timeout_ms);"
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 6820,
+      "prompt_eval_count": 2125,
+      "eval_count": 9272,
+      "thinking_chars": 32795,
+      "content_chars": 278,
+      "done_reason": "stop",
+      "wall_s": 187.46,
+      "outcome": "ok",
+      "reply": "{\"repairs\": [{\"id\": 1, \"file\": \"core/src/j2534_loader.cpp\", \"quote\": \"    long rc = handle->read_msgs(channel, &msg, &num, timeout_ms);\"}, {\"id\": 2, \"file\": \"surrogate/surrogate_main.cpp\", \"quote\": \"    const long rc = g_read_msgs(g_channel, s_read_batch, &num, timeout_ms);\"}]}"
+    }
+  ]
+}

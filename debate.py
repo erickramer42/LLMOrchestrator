@@ -99,6 +99,47 @@ REPAIR_REASONS = {
     "nowhere": "not found in that file",
 }
 
+# The repair successor (v13; ADR-0002, eighteenth measurement), piloted
+# and NOT SHIPPED: the seventeenth's calls mostly did a full review,
+# because the request kept the reviewer's role. v13 has its own system
+# prompt, which asks for quotes only and names its own output keys, and
+# sends the fenced diff and the layer note without the proposal, the
+# repo context pack or the transcript's closing line. The items and the
+# reasons are v12's.
+REPAIR_V13_VERSION = "v13-repair-own-prompt"
+
+REPAIR_SYSTEM_PROMPT = """You check the quotes of findings from your own earlier review of a code
+change. You do not review the code again, and you do not look for other
+problems.
+
+Each finding below was moved from blockers to questions because its quote
+was not found in the code as it reads after the change. For each one,
+decide whether the code after the change shows it. If it does, give the
+finding's id, the file, and a quote that shows it.
+
+Rules for a quote:
+- Copy it exactly from unchanged or added lines of the CODE DIFF, without
+  the leading '+' or space. Removed lines no longer exist and are not
+  evidence. If the finding is caused by a removal, quote the code after
+  the change that the removal leaves broken or unprotected.
+- The file is a path from the diff headers, and the quote must come from
+  that file.
+- You cannot change a finding or add one. Leave out every finding you
+  cannot quote that way: it stays a question, which costs nothing.
+
+Respond ONLY with this JSON:
+{"repairs": [{"id": 1, "file": "path/to/file", "quote": "exact code"}]}
+An empty list is a valid answer: {"repairs": []}"""
+
+REPAIR_V13_TEMPLATE = """
+FINDINGS TO QUOTE (moved to questions because their quotes were not
+found in the code as it reads after the change):
+
+{items}
+
+Respond with JSON only, using the "repairs" key.
+"""
+
 # Retrieved repo context. The pack is a snapshot of the indexed tree, which
 # need not match the code before or after the diff, so the diff wins
 # (code review 2026-10-21, finding 1; v6).
@@ -307,14 +348,7 @@ def _prepare(code_diff: str, code_context: str, header_artifact: bool,
 
     # Static transcript sections — built once, they never change.
     shown_context = code_context[:CONTEXT_CHAR_LIMIT]
-    truncation = (TRUNCATION_NOTE.format(shown=CONTEXT_CHAR_LIMIT,
-                                         total=len(code_context))
-                  if len(code_context) > CONTEXT_CHAR_LIMIT else "")
-    static_section = STATIC_TEMPLATE.format(
-        fence=text_sha256(f"{code_diff}\x00{code_context}")[:16],
-        diff=code_diff or '(no diff attached)',
-        context=shown_context or '(none provided)',
-        truncation=truncation)
+    static_section = _code_section(code_diff, code_context)
 
     # Without a path the layer is 'unknown', whose note says to apply every
     # rule (v10.2; before it, such input got no layer note at all).
@@ -329,6 +363,19 @@ def _prepare(code_diff: str, code_context: str, header_artifact: bool,
                   file_path, layer, layer_note,
                   evidence_sources(code_diff, shown_context),
                   hunk_identifiers(code_diff), symbols, before_sources(code_diff))
+
+
+def _code_section(code_diff: str, code_context: str) -> str:
+    """The fenced CODE DIFF and CODE CONTEXT, as every transcript opens
+    its static section (and the v13 repair request sends alone)."""
+    truncation = (TRUNCATION_NOTE.format(shown=CONTEXT_CHAR_LIMIT,
+                                         total=len(code_context))
+                  if len(code_context) > CONTEXT_CHAR_LIMIT else "")
+    return STATIC_TEMPLATE.format(
+        fence=text_sha256(f"{code_diff}\x00{code_context}")[:16],
+        diff=code_diff or '(no diff attached)',
+        context=code_context[:CONTEXT_CHAR_LIMIT] or '(none provided)',
+        truncation=truncation)
 
 
 def _render_transcript(proposal: str, static_section: str, round_num: int,
@@ -534,24 +581,40 @@ def repair_request(setup: _Setup, transcript: str, offered: List[dict]) -> str:
     """The repair call's user message: the round's transcript and the
     REPAIR section. Nothing in it comes from the original reply but the
     offered claims and quotes."""
-    items = "\n\n".join(REPAIR_ITEM_TEMPLATE.format(
+    return transcript + REPAIR_TEMPLATE.format(items=_repair_items(offered))
+
+
+def repair_request_v13(setup: _Setup, code_diff: str, offered: List[dict]) -> str:
+    """The v13 repair call's user message: the fenced diff, the layer
+    note and the findings, with nothing else from the transcript."""
+    return (f"{_code_section(code_diff, '')}\n{setup.layer_note}\n"
+            + REPAIR_V13_TEMPLATE.format(items=_repair_items(offered)))
+
+
+def _repair_items(offered: List[dict]) -> str:
+    return "\n\n".join(REPAIR_ITEM_TEMPLATE.format(
         id=o["id"], claim=o["evidence"].get("assertion") or o["evidence"].get("claim", ""),
         file=o["evidence"].get("file", ""), quote=o["evidence"].get("quote", ""),
         reason=REPAIR_REASONS[o["why"]]) for o in offered)
-    return transcript + REPAIR_TEMPLATE.format(items=items)
 
 
 def repair_call(setup: _Setup, transcript: str, offered: List[dict],
-                telemetry: List[dict]) -> Tuple[Optional[List[dict]], Optional[str]]:
+                telemetry: List[dict], code_diff: Optional[str] = None
+                ) -> Tuple[Optional[List[dict]], Optional[str]]:
     """The repair call: (repairs, None), or (None, why) when the request
     is estimated over the input limit or every attempt fails. Shared by
-    debates and the paired measurement (eval_harness.repair)."""
-    user = repair_request(setup, transcript, offered)
-    estimated = math.ceil((len(setup.reviewer_prompt) + len(user)) / CHARS_PER_TOKEN_FLOOR)
+    debates and the paired measurement (eval_harness.repair). With
+    code_diff it is the v13 call instead: REPAIR_SYSTEM_PROMPT and
+    repair_request_v13, the transcript unused."""
+    if code_diff is None:
+        system, user = setup.reviewer_prompt, repair_request(setup, transcript, offered)
+    else:
+        system, user = REPAIR_SYSTEM_PROMPT, repair_request_v13(setup, code_diff, offered)
+    estimated = math.ceil((len(system) + len(user)) / CHARS_PER_TOKEN_FLOOR)
     if estimated > NUM_CTX - NUM_PREDICT:
         return None, (f"request estimated at {estimated} tokens, over "
                       f"{NUM_CTX - NUM_PREDICT}")
-    reply = call_agent(MODELS["code_reviewer"], setup.reviewer_prompt, user,
+    reply = call_agent(MODELS["code_reviewer"], system, user,
                        TEMPERATURE_RETRY, validate=_validate_repair,
                        telemetry=telemetry)
     if _is_failure(reply):

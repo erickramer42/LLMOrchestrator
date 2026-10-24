@@ -1680,6 +1680,89 @@ class RepairSwitchTests(unittest.TestCase):
                                - res["arms"]["A"]["mean_recall"], 0.137, places=3)
 
 
+class RepairV13Tests(NoSleep):
+    """v13, the repair successor (ADR-0002, eighteenth measurement):
+    its own system prompt and the diff alone; and the pilot's exits."""
+
+    def offer(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            setup = debate._prepare(REPAIR_DIFF, "", False)
+        ev = {"file": "app/x.cpp", "quote": "m_inFlight.fetch_add(1);",
+              "claim": "m_inFlight leaks", "assertion": "m_inFlight leaks"}
+        return setup, debate.repair_offer(setup, [{"blocker": "b", "evidence": ev,
+                                                   "reason": "quote"}])
+
+    def test_the_v13_request_has_its_own_prompt_and_only_the_diff(self):
+        setup, offered = self.offer()
+        transcript = debate._render_transcript("THE PROPOSAL", setup.static_section, 1)
+        with fake_ollama({"repairs": [{"id": 1, "file": "app/x.cpp",
+                                       "quote": "m_dropped.fetch_add(1);"}]}) as post:
+            repairs, skipped = debate.repair_call(setup, transcript, offered, [],
+                                                  code_diff=REPAIR_DIFF)
+        messages = post.call_args.kwargs["json"]["messages"]
+        self.assertEqual(messages[0]["content"], debate.REPAIR_SYSTEM_PROMPT)
+        user = messages[1]["content"]
+        self.assertIn(REPAIR_DIFF.strip(), user)
+        self.assertIn("FINDINGS TO QUOTE", user)
+        self.assertIn("m_inFlight leaks", user)
+        self.assertIn(setup.layer_note, user)
+        for absent in ("THE PROPOSAL", "role specification", "REPO CONTEXT", "DEBATE ROUND"):
+            self.assertNotIn(absent, user)
+        self.assertIsNone(skipped)
+        self.assertEqual(debate.apply_repairs(setup, offered, repairs)[0]["result"],
+                         "restored")
+
+    def test_the_v12_request_is_unchanged_without_a_diff(self):
+        setup, offered = self.offer()
+        transcript = debate._render_transcript("p", setup.static_section, 1)
+        with fake_ollama(REPAIR_NONE) as post:
+            debate.repair_call(setup, transcript, offered, [])
+        messages = post.call_args.kwargs["json"]["messages"]
+        self.assertEqual(messages[0]["content"], setup.reviewer_prompt)
+        self.assertEqual(messages[1]["content"],
+                         debate.repair_request(setup, transcript, offered))
+
+    def exit_of(self, firsts, restored_valid=0, corpus_fp=0, bridge_fp=0, declined=0):
+        calls = [{"first": f} for f in firsts]
+        rows = ([{"reply_from": "first", "set": "corpus", "class": "valid", "quotable": True,
+                  "result": "restored"}] * restored_valid
+                + [{"reply_from": "first", "set": "corpus", "class": "valid",
+                    "quotable": True, "result": "declined"}] * declined
+                + [{"reply_from": "first", "set": "corpus", "class": "fp", "quotable": True,
+                    "result": "restored"}] * corpus_fp
+                + [{"reply_from": "first", "set": "bridge", "class": "fp", "quotable": True,
+                    "result": "restored"}] * bridge_fp)
+        return repair.pilot_exit(calls, rows)["exit"]
+
+    def test_the_pilot_exits_in_their_registered_order(self):
+        ok = ["usable"] * 5
+        # a loud selectivity failure closes the line, even when wiring failed
+        self.assertTrue(self.exit_of(ok, 6, bridge_fp=1).startswith("selectivity"))
+        self.assertTrue(self.exit_of(["runaway"] * 3 + ["usable"] * 2, 2,
+                                     corpus_fp=2).startswith("selectivity"))
+        # fewer than 4 usable first attempts is wiring, never incapacity
+        self.assertTrue(self.exit_of(["runaway", "re-review"] + ["usable"] * 3,
+                                     0).startswith("wiring"))
+        self.assertTrue(self.exit_of(["runaway"] * 2 + ["usable"] * 3, 5).startswith("wiring"))
+        inc = self.exit_of(ok, 2, declined=4)
+        self.assertTrue(inc.startswith("incapacity"))
+        self.assertIn("4 declined, 0 rejected", inc)
+        self.assertTrue(self.exit_of(ok, 5, corpus_fp=1).startswith("pass"))
+        self.assertTrue(self.exit_of(ok, 4).startswith("marginal"))
+        self.assertTrue(self.exit_of(["runaway"] + ["usable"] * 4, 3).startswith("marginal"))
+
+    def test_debates_never_send_the_v13_prompt(self):
+        with mock.patch.object(debate, "REPAIR_PASS", True):
+            setup, offered = self.offer()
+            with fake_ollama(REPAIR_NONE) as post:
+                debate._repair(setup, debate._render_transcript("p", setup.static_section, 1),
+                               {**REVIEWER_CLEAN, "blockers": [], "questions": ["b"]},
+                               [{"blocker": "b", "evidence": offered[0]["evidence"],
+                                 "reason": "quote"}], 1, 0, [])
+        self.assertEqual(post.call_args.kwargs["json"]["messages"][0]["content"],
+                         setup.reviewer_prompt)
+
+
 class RepairPassTests(NoSleep):
     """v12, the repair pass (ADR-0002, seventeenth measurement), measured
     and not shipped: switched on here to exercise the mechanism."""
