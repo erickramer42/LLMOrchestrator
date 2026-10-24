@@ -80,7 +80,10 @@ Last updated: 2026-10-22. That day, in order:
   with the reviewer's role, so it did not ship.
 - its successor's ceiling (eighteenth, Step 0) checked without a model:
   reachable by the judge's count, but only with a model that declines
-  the false claims the judge would accept.
+  the false claims the judge would accept;
+- the successor (v13, then v13.1) piloted live: the model declined its
+  own valid claims as readily as its false ones, so the repair route is
+  closed.
 
 Purpose of this file: anyone picking up this repo can orient in five
 minutes, run the existing validation, and continue the queued work
@@ -458,11 +461,13 @@ without reverse-engineering the ADRs.
   With quotes that name the claim's identifiers only, the ceiling is
   +0.083. The successor (v13, its own system prompt, the diff alone)
   was piloted on 5 fixed records. It exited as wiring: 3 usable first
-  attempts and 2 runaways. The runaways judged each finding's truth
-  until the output cap; the quick replies declined valid items. No
-  false item was restored. One re-pilot is allowed; its fix is not yet
-  chosen. Without the pilot's records the batch's ceiling is +0.113,
-  so the +0.10 bar needs about 88% of it.
+  attempts and 2 runaways. Its re-pilot (v13.1, without the layer note
+  and the "material under review" preamble) is the pilot of record. It
+  exited as incapacity: in 4 usable first attempts the model declined
+  all 5 recoverable valid items it read, and the judge rejected none.
+  No false item came back in either pilot. **The repair route is
+  closed.** A recall lever for removal-caused defects would have to act
+  when the claim is first written.
 
 **Known limitations (by design or pending):**
 - **Diffs above about 30K chars are refused** at `NUM_CTX` 24576 and

@@ -1,0 +1,87 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261024_035440_2e95fa",
+    "set": "corpus",
+    "fixture": "connect_start_4a86231",
+    "prompt_version": "v13.1-repair-no-review-context",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "71b3eb178777e3af",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T23:41:20.099220+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "nowhere",
+      "blocker": "claim: Memory leak: session is captured in lambda but never destroyed on failure or success paths in connectSessionAsync; file: app/qttunebridge.cpp; quote: QMetaObject::invokeMethod(this, [this, uri, err, session]() {\n            // JOIN FIRST, then clear the flag, then emit: assigning to a\n            // joinable std::thread terminates the process, and a QML\n            // handler can run SYNCHRONOUSLY inside connectingChanged —\n            // but a queued connection is safer.\n            if (m_connectThread.joinable()) {\n                m_connectThread.join();\n            }\n            m_connecting = false;\n            emit connectingChanged();\n            \n            if (!err.isEmpty()) {\n                emit logMessage(QStringLiteral(\"Connect failed: %1 (%2)\").arg(uri, err));\n                // Session is leaked here"
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "nowhere",
+      "blocker": "claim: Missing applyConnectedState call: successful connection does not apply connected state to GUI, breaking the connection workflow; file: app/qttunebridge.cpp; quote: QMetaObject::invokeMethod(this, [this, uri, err, session]() {\n            // JOIN FIRST, then clear the flag, then emit: assigning to a\n            // joinable std::thread terminates the process, and a QML\n            // handler can run SYNCHRONOUSLY inside connectingChanged —\n            // but a queued connection is safer.\n            if (m_connectThread.joinable()) {\n                m_connectThread.join();\n            }\n            m_connecting = false;\n            emit connectingChanged();\n            \n            if (!err.isEmpty()) {\n                emit logMessage(QStringLiteral(\"Connect failed: %1 (%2)\").arg(uri, err));\n            }\n            // Where is applyConnectedState(session, uri)?"
+    },
+    {
+      "id": 3,
+      "key": "#e3",
+      "why": "nowhere",
+      "blocker": "claim: Destructor no longer cleans up pending session, causing leak and potential use-after-free when bridge dies before async connect completes; file: app/qttunebridge.cpp; quote: QtTuneBridge::~QtTuneBridge()\n{\n    if (m_connectThread.joinable()) {\n        m_connectThread.join();\n    }\n-    // A connect whose queued completion never ran (it was dropped with\n-    // `this`) left its session pending. It was never started, so no\n-    // worker is calling onFrame; destroy it like any other.\n-    if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\n-        qttune_session_destroy(pending);\n-    }\n    if (m_session != nullptr) {\n        destroySessionLocked();\n    }\n}"
+    },
+    {
+      "id": 4,
+      "key": "#e4",
+      "why": "nowhere",
+      "blocker": "claim: Session is started in connectCoreOnly but never stopped if async connect is cancelled, leaving worker thread running with dangling bridge reference; file: app/qttunebridge.cpp; quote: QString QtTuneBridge::connectCoreOnly(const QString& uri,\n                                       qttune_session_t** out_session)\n {\n     // ...\n-    // Pure-core half: safe on ANY thread. Creates, registers, starts. On\n-    // failure, cleans up fully (the unregister/destroy calls are core API,\n-    // mutex-safe off-thread) and returns the error string. On success the\n-    // caller owns *out_session and must applyConnectedState() on the GUI\n-    // thread. Touches no Qt models, timers, or properties.\n     const qttune_status_t rc = qttune_session_start(session);\n     if (rc != QT_OK) {\n         qttune_unregister_frame_callback(session, &QtTuneBridge::onFrame, this);\n         qttune_session_destroy(session);\n         return QString::fromUtf8(qttune_status_string(rc));\n     }\n\n     *out_session = session;\n     return {};\n }"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "nowhere",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 2,
+      "why": "nowhere",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 3,
+      "why": "nowhere",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 4,
+      "why": "nowhere",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 13235,
+      "prompt_eval_count": 3697,
+      "eval_count": 3402,
+      "thinking_chars": 14287,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 62.64,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261024_020932_b90266",
+    "set": "corpus",
+    "fixture": "connect_start_4a86231",
+    "prompt_version": "v13.1-repair-no-review-context",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "71b3eb178777e3af",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T23:40:17.457830+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "before",
+      "blocker": "claim: Memory leak: session created by connectCoreOnly is leaked when bridge is destroyed before queued lambda executes; file: app/qttunebridge.cpp; quote: if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\n        qttune_session_destroy(pending);\n    }"
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "nowhere",
+      "blocker": "claim: Memory leak: destructor no longer cleans up session captured by dropped lambda in async connect path; file: app/qttunebridge.cpp; quote: QMetaObject::invokeMethod(this, [this, uri, err, session]() {\n    // JOIN FIRST, then clear the flag, then emit: assigning to a\n    // joinable std::thread terminates the process, and a QML\n    // handler can run SYNCHRONOUSLY inside connectingChanged —\n    // so join first, then mutate state, to avoid races.\n    if (m_connectThread.joinable()) {\n        m_connectThread.join();\n    }\n    m_connecting = false;\n    emit connectingChanged();\n\n    if (!err.isEmpty()) {\n        emit logMessage(QStringLiteral(\"Connect failed: %1 (%2)\").arg(uri, err));\n        return;\n    }\n\n    applyConnectedState(session, uri);\n});"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 2,
+      "why": "nowhere",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 10740,
+      "prompt_eval_count": 3082,
+      "eval_count": 1171,
+      "thinking_chars": 5900,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 28.24,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}

@@ -3789,3 +3789,152 @@ nothing carries over to the re-pilot.
 
 **Next, under the binding:** one re-pilot with a fixed prompt, whose
 readings become the pilot of record. The fix is not chosen yet.
+
+### Re-pilot, v13.1 (registered 2026-10-24, before its calls)
+
+**The fix (option 1):** v13 without the two parts registered as review
+context. `debate.REPAIR_V13_1_VERSION = "v13.1-repair-no-review-context"`
+(repair fingerprint `71b3eb178777e3af`; v13's stays `09a782e33e7aa6d6`).
+- **No layer note.**
+- **The fence preamble without "the material under review":**
+  `REPAIR_STATIC_TEMPLATE` opens "The CODE DIFF and CODE CONTEXT below
+  each sit between a BEGIN DATA line and an END DATA line". The fence,
+  its mark and the two DATA sections are v13's.
+- **Everything else is v13's:** the system prompt, the findings, the
+  closing line, the reviewer model at 0.05 and the 12,288-token output
+  cap.
+
+Requests are about 350 characters shorter (6,565 to 30,106 with the
+system prompt).
+- **Considered and not taken:**
+  - **A task-specific output cap.** a0d8f9's productive call used
+    9,272 output tokens, thinking included, so a cap of a few thousand
+    would have made it a runaway. A cap safe for it saves little, and
+    a capped attempt is still a runaway first attempt, so the exit
+    would not change.
+  - **Option 2,** which recasts the task as a lookup. It would remove
+    the model's own discrimination, which is what the pilot measures
+    and the only protection repairs have.
+
+**Records:** `coach_artifacts/measurement_repair_v13.1_<source>.json`.
+Read with `python -m eval_harness.repair pilot --variant v13.1`. The
+re-pilot's readings are the pilot of record. v13's pilot restored no
+false item, so nothing carries over.
+
+**Amendment to the exits: an arithmetic exit**, checked after
+incapacity and before the bar.
+- **The rule:** if the restored share of the recoverable valid items
+  in usable first attempts is below 59%, the repair line closes on
+  arithmetic, recorded as such. With all 6 read, that is 3 or fewer
+  restored.
+- **Why 59%:** a rate r projects a batch gain of about r × 0.113, and
+  59% is the rate that reaches two-thirds of the +0.10 bar (+0.067).
+  3 of 6 projects +0.057; 4 of 6, +0.075.
+- **Why it rarely misfires:** passing the batch takes about 88%
+  restoration, and a model at 88% restores 3 or fewer of 6 about 3% of
+  the time.
+- **The denominator** is the items of usable first attempts, so a
+  runaway call cannot trigger the arithmetic exit; that stays wiring.
+  The pass bar still counts items from unusable calls as not restored.
+- **What it changes:** 3 of 6 moves from marginal (the batch runs) to
+  closed. 4 of 6 stays marginal.
+
+The other exits stand as registered, and a second wiring failure ends
+the pilot as an instrument failure.
+
+**Predictions for the re-pilot:**
+
+| quantity | predicted (point) |
+|---|---|
+| usable first attempts | 3–5 (4) |
+| first-attempt runaways | 0–2 (1; a 61d927-type deliberation) |
+| 819df9 (bridge) first attempt usable | 40% |
+| valid restored, of 6 recoverable | 1–4 (2) |
+| false corpus / bridge restored | 0–1 of 4 / 0–1 of 3 |
+| exit | incapacity or arithmetic most likely, then wiring |
+
+If a 61d927-type runaway persists without the review context, it is
+recorded as the reviewer's open-ended runaway (#16, #19) appearing in a
+narrow task, not as contamination.
+
+### Re-pilot results (2026-10-24): exit 3, incapacity (declined); the repair line closes
+
+`python -m eval_harness.repair run --variant v13.1 --pilot`, then
+`python -m eval_harness.repair pilot --variant v13.1`. Records:
+`coach_artifacts/measurement_repair_v13.1_<source>.json` (5). About 15
+minutes on the GPU. This is the pilot of record.
+
+| call | first attempt | reply from | thinking chars per attempt | repairs |
+|---|---|---|---|---|
+| a0d8f9 | runaway | retry 2 (166 s) | 48,337; 49,336; 34,696 | 2 |
+| b90266 | usable (28 s) | first | 5,900 | 0 |
+| 2e95fa | usable (63 s) | first | 14,287 | 0 |
+| 61d927 | usable (128 s) | first | 28,132 | 0 |
+| 819df9 (bridge) | usable (32 s) | first | 4,495 | 0 |
+
+**Items by reply source, class, quote group and result:**
+
+| reply from | class | group | restored | rejected by the judge | declined |
+|---|---|---|---|---|---|
+| first | valid | before | 0 | 0 | 2 |
+| first | valid | nowhere | 0 | 0 | 3 |
+| first | false | before | 0 | 0 | 4 |
+| first | false | nowhere | 0 | 0 | 3 |
+| retry | valid | before | 0 | 1 (hedge; not recoverable) | 0 |
+| retry | valid | nowhere | 1 | 0 | 0 |
+
+**Exit 3, incapacity:** 4 usable first attempts and 1 runaway, so the
+wiring exit does not apply. 0 of the 5 recoverable valid items read in
+usable first attempts were restored; a0d8f9 #e2 was the sixth, in the
+runaway call. No false item was restored. **Named after the split:
+declined.** All 5 were left out by the model, and the judge rejected
+none, so the matcher-disagreement reading does not arise. **The repair
+line closes;** the batch does not run.
+
+| prediction | predicted | observed | |
+|---|---|---|---|
+| usable first attempts | 3–5 (4) | 4 | HIT |
+| first-attempt runaways | 0–2 (1; a 61d927-type) | 1 (a0d8f9, another type) | HIT |
+| 819df9 first attempt usable | 40% | yes | — |
+| valid restored, of 6 recoverable | 1–4 (2) | 0 | MISSED LOW |
+| false corpus / bridge restored | 0–1 / 0–1 | 0 / 0 | HIT / HIT |
+| exit | incapacity or arithmetic, then wiring | incapacity | HIT |
+
+**Reading the replies:**
+- **Removing the review context removed its runaways.** Under v13,
+  819df9 ran away three times into thread safety; under v13.1 it
+  declined in 32 s. 61d927 answered in 128 s instead of running away.
+  The layer note was contamination.
+- **The remaining runaway is new: indecision about removal-caused
+  findings.**
+  - a0d8f9's thinking drafts the right repairs, then doubts them ("I'm
+    not sure if I should include both findings. Let me re-read the
+    task"). It reasons that "the code after the change shows the
+    removal happened", and goes round again until the cap.
+  - The system prompt asks whether the code after the change "shows"
+    a finding, and also says to quote the code a removal leaves
+    unprotected. For removal-caused defects, which 18 of the 31 valid
+    corpus offers are, the model reads those as in tension.
+  - This is not the reviewer's open-ended runaway (#16, #19), since it
+    loops on one decision rather than searching.
+- **The fast declines hold without the review context.** b90266
+  declined in 28 s both times, though v12 restored both its items and
+  Step 0 shows them recoverable. Across both pilots, usable first
+  attempts restored 1 of 10 recoverable valid items read.
+- **The one restoration rests on a loose quote.** In both pilots it
+  came from a0d8f9 #e2. Under v13.1 its quote was a comment line ("/*
+  Frames are collected whatever the status: per J2534-1 a read that"),
+  which passes only because linkage reads the whole hunk.
+- **The guard held, and says little.** No false item came back in
+  either pilot; with the valid ones declined too, that shows a model
+  that declines, not one that discriminates.
+
+**Conclusion:** within this measurement, the reviewer model does not
+re-quote its own quote-failed claims when asked in a narrow call. It
+declines valid and false alike, or deliberates to the cap over whether
+a removal can be shown. The repair route (v12, v13, v13.1) is closed. A
+recall lever for the removal-caused loss would have to work when the
+claim is first written: in round 1's prompt, or as a new claim, which
+is also the only route past the 6 hedged items. The pack-side work on
+invariant-elsewhere is the other candidate. Neither is registered.
+Debates are unchanged: v11.1 with the repair pass off.

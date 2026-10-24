@@ -4,8 +4,8 @@
     python -m eval_harness.repair run --set corpus|bridge
     python -m eval_harness.repair score --set corpus|bridge
     python -m eval_harness.repair ceiling --set corpus|bridge [--batch]
-    python -m eval_harness.repair run --variant v13 --pilot
-    python -m eval_harness.repair pilot
+    python -m eval_harness.repair run --variant v13|v13.1 --pilot
+    python -m eval_harness.repair pilot [--variant v13.1]
 
 For each labelled first-attempt record, `run` rebuilds the round-1
 request a debate sends today (debate._prepare and _render_transcript
@@ -71,7 +71,13 @@ PILOT = ("round1_20261024_020932_b90266",
          "round1_20261024_015846_a0d8f9",
          "round1_20261024_035703_61d927",
          "round1_20261023_012856_819df9")
-VARIANTS = ("v12", "v13")
+VARIANTS = ("v12", "v13", "v13.1")
+VERSIONS = {"v12": debate.REPAIR_VERSION, "v13": debate.REPAIR_V13_VERSION,
+            "v13.1": debate.REPAIR_V13_1_VERSION}
+# The arithmetic exit (v13.1's amendment): a restoration rate below this,
+# of the recoverable valid items in usable first attempts, projects below
+# two-thirds of the +0.10 bar against the batch's +0.113 ceiling.
+ARITHMETIC_RATE = 0.59
 
 
 def repair_fingerprint(variant: str = "v12") -> str:
@@ -79,6 +85,9 @@ def repair_fingerprint(variant: str = "v12") -> str:
     if variant == "v13":
         return debate.text_sha256(debate.REPAIR_SYSTEM_PROMPT + debate.REPAIR_V13_TEMPLATE
                                   + items + debate.STATIC_TEMPLATE)[:16]
+    if variant == "v13.1":
+        return debate.text_sha256(debate.REPAIR_SYSTEM_PROMPT + debate.REPAIR_V13_TEMPLATE
+                                  + items + debate.REPAIR_STATIC_TEMPLATE)[:16]
     return debate.text_sha256(debate.REPAIR_TEMPLATE + items)[:16]
 
 
@@ -176,10 +185,10 @@ def run(set_name: str, dry: bool = False, variant: str = "v12",
         assert len(offered) == len(demoted)
         proposal = sample["record"]["inputs"]["proposal"]
         transcript = debate._render_transcript(proposal, setup.static_section, 1)
-        code_diff = read_input(sample["diff_path"]) if variant == "v13" else None
+        code_diff = read_input(sample["diff_path"]) if variant != "v12" else None
         if dry:
-            chars = (len(debate.REPAIR_SYSTEM_PROMPT)
-                     + len(debate.repair_request_v13(setup, code_diff, offered))
+            chars = (len(debate.REPAIR_SYSTEM_PROMPT) + len(
+                debate.repair_request_v13(setup, code_diff, offered, VERSIONS[variant]))
                      if code_diff is not None else len(setup.reviewer_prompt)
                      + len(debate.repair_request(setup, transcript, offered)))
             print(f"{sample['id']}: offer {len(offered)} "
@@ -188,14 +197,14 @@ def run(set_name: str, dry: bool = False, variant: str = "v12",
         telemetry: List[dict] = []
         started = time.monotonic()
         repairs, skipped = debate.repair_call(setup, transcript, offered, telemetry,
-                                              code_diff=code_diff)
+                                              code_diff=code_diff,
+                                              version=VERSIONS[variant])
         outcomes = debate.apply_repairs(setup, offered, repairs or [])
         record = {
             "metadata": {
                 "mode": "repair_pair", "source_record": sample["id"], "set": set_name,
                 "fixture": sample["fixture"]["id"] if sample["fixture"] else "bridge",
-                "prompt_version": (debate.REPAIR_V13_VERSION if variant == "v13"
-                                   else debate.REPAIR_VERSION),
+                "prompt_version": VERSIONS[variant],
                 "judge_version": JUDGE_VERSION,
                 "repair_fingerprint": repair_fingerprint(variant),
                 "model": MODELS["code_reviewer"],
@@ -432,7 +441,7 @@ def first_attempt_kind(entry: dict) -> str:
     return "other"
 
 
-def pilot() -> dict:
+def pilot(variant: str = "v13") -> dict:
     """The pilot's items by class, quote group and result, split by the
     attempt that gave the reply (first or retry), and the exit the
     registered binding gives (ADR-0002, eighteenth measurement)."""
@@ -445,7 +454,7 @@ def pilot() -> dict:
         for sample in samples(set_name):
             if sample["id"] not in PILOT:
                 continue
-            path = out_path(sample["id"], "v13")
+            path = out_path(sample["id"], variant)
             if not path.exists():
                 calls.append({"source": sample["id"], "missing": True})
                 continue
@@ -476,7 +485,9 @@ def pilot() -> dict:
 
 def pilot_exit(calls: List[dict], rows: List[dict]) -> dict:
     """The registered binding, first attempts only, in its order: a loud
-    selectivity failure, then wiring, then incapacity, then the bar."""
+    selectivity failure, then wiring, then incapacity, then the
+    arithmetic exit (v13.1's amendment), then the bar. The recoverable
+    valid items read are those of usable first attempts."""
     usable = [c for c in calls if c.get("first") == "usable"]
     first = [r for r in rows if r["reply_from"] == "first"]
     bridge_fp = sum(1 for r in first if r["set"] == "bridge" and r["class"] == "fp"
@@ -488,6 +499,7 @@ def pilot_exit(calls: List[dict], rows: List[dict]) -> dict:
     runaways = sum(1 for c in calls if c.get("first") == "runaway")
     counts = {"usable first attempts": len(usable), "first-attempt runaways": runaways,
               "valid restored of 6 recoverable": restored,
+              "recoverable valid in usable first attempts": len(valid),
               "false corpus restored of 4": corpus_fp, "false bridge restored of 3": bridge_fp}
     if bridge_fp >= 1 or corpus_fp >= 2:
         exit_ = "selectivity: the repair line closes"
@@ -498,6 +510,9 @@ def pilot_exit(calls: List[dict], rows: List[dict]) -> dict:
         rejected = sum(1 for r in valid if r["result"].startswith("rejected"))
         exit_ = (f"incapacity: the repair line closes (of the valid not restored, "
                  f"{declined} declined, {rejected} rejected by the judge)")
+    elif restored < ARITHMETIC_RATE * len(valid):
+        exit_ = (f"arithmetic: the repair line closes ({restored} of {len(valid)} "
+                 f"restored projects below two-thirds of the bar)")
     elif restored >= 5 and corpus_fp <= 1 and bridge_fp == 0:
         exit_ = "pass: the batch runs"
     else:
@@ -536,7 +551,8 @@ def main(argv: Optional[List[str]] = None) -> None:
     parser.add_argument("--dry", action="store_true",
                         help="With run: list the offers, call nothing")
     parser.add_argument("--variant", choices=VARIANTS, default="v12",
-                        help="With run: the repair request (v13: its own prompt)")
+                        help="With run and pilot: the repair request (v13, v13.1: "
+                             "its own prompt)")
     parser.add_argument("--pilot", action="store_true",
                         help="With run: the pilot set only, corpus and bridge")
     parser.add_argument("--batch", action="store_true",
@@ -549,7 +565,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         for set_name in (("corpus", "bridge") if args.pilot else (args.set,)):
             run(set_name, args.dry, args.variant, PILOT if args.pilot else None)
     elif args.command == "pilot":
-        print_pilot(pilot())
+        print_pilot(pilot("v13" if args.variant == "v12" else args.variant))
     elif args.command == "ceiling":
         print_ceiling(ceiling(args.set, args.batch))
     else:

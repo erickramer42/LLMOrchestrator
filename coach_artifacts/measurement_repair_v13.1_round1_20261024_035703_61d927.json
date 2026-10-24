@@ -1,0 +1,74 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261024_035703_61d927",
+    "set": "corpus",
+    "fixture": "decode_length_b47687c",
+    "prompt_version": "v13.1-repair-no-review-context",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "71b3eb178777e3af",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T23:43:28.144028+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "before",
+      "blocker": "claim: notifyDropped() method is removed but was called in handleFrameInternal, creating undefined reference; file: app/qttunebridge.cpp; quote: notifyDropped();"
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "before",
+      "blocker": "claim: notifyDropped() is declared in header but removed from implementation, and the call site was also removed, leaving incomplete code; file: app/qttunebridge.cpp; quote: notifyDropped();"
+    },
+    {
+      "id": 3,
+      "key": "#e3",
+      "why": "before",
+      "blocker": "claim: Dropped frame reporting was removed from onFrame but the comment mentioned it should be reported from the worker path; file: app/qttunebridge.cpp; quote: // FIX: report drops from the worker path too. Previously drops were"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 2,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 3,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 13743,
+      "prompt_eval_count": 4123,
+      "eval_count": 6687,
+      "thinking_chars": 28132,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 128.04,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}

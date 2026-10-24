@@ -1712,6 +1712,24 @@ class RepairV13Tests(NoSleep):
         self.assertEqual(debate.apply_repairs(setup, offered, repairs)[0]["result"],
                          "restored")
 
+    def test_the_v13_1_request_drops_the_review_context(self):
+        setup, offered = self.offer()
+        with fake_ollama(REPAIR_NONE) as post:
+            debate.repair_call(setup, "", offered, [], code_diff=REPAIR_DIFF,
+                               version=debate.REPAIR_V13_1_VERSION)
+        messages = post.call_args.kwargs["json"]["messages"]
+        self.assertEqual(messages[0]["content"], debate.REPAIR_SYSTEM_PROMPT)
+        user = messages[1]["content"]
+        v13 = debate.repair_request_v13(setup, REPAIR_DIFF, offered)
+        self.assertIn("material under review", v13)
+        self.assertIn(setup.layer_note, v13)
+        self.assertNotIn("material under review", user)
+        self.assertNotIn(setup.layer_note, user)
+        # the same fence, findings and closing line as v13
+        fence = debate.text_sha256(f"{REPAIR_DIFF}\x00")[:16]
+        self.assertIn(f"<<<BEGIN DATA {fence}>>>\n{REPAIR_DIFF}", user)
+        self.assertTrue(user.endswith(v13[v13.index("\nFINDINGS TO QUOTE"):]))
+
     def test_the_v12_request_is_unchanged_without_a_diff(self):
         setup, offered = self.offer()
         transcript = debate._render_transcript("p", setup.static_section, 1)
@@ -1749,6 +1767,10 @@ class RepairV13Tests(NoSleep):
         self.assertIn("4 declined, 0 rejected", inc)
         self.assertTrue(self.exit_of(ok, 5, corpus_fp=1).startswith("pass"))
         self.assertTrue(self.exit_of(ok, 4).startswith("marginal"))
+        # the arithmetic exit: below 59% of the recoverable valid items read
+        self.assertTrue(self.exit_of(ok, 3, declined=3).startswith("arithmetic"))
+        self.assertTrue(self.exit_of(ok, 4, declined=2).startswith("marginal"))
+        self.assertTrue(self.exit_of(ok, 3, declined=2).startswith("marginal"))
         self.assertTrue(self.exit_of(["runaway"] + ["usable"] * 4, 3).startswith("marginal"))
 
     def test_debates_never_send_the_v13_prompt(self):
