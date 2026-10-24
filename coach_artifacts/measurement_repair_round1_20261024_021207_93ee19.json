@@ -1,0 +1,74 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261024_021207_93ee19",
+    "set": "corpus",
+    "fixture": "connect_start_4a86231",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T14:35:47.793449+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "nowhere",
+      "blocker": "claim: Memory leak: session not destroyed when bridge destroyed during async connect; file: app/qttunebridge.cpp; quote: QMetaObject::invokeMethod(this, [this, uri, err, session]() {\n            // JOIN FIRST, then clear the flag, then emit: assigning to a\n            // joinable std::thread terminates the process, and a QML\n            // handler can run SYNCHRONOUSLY inside connectingChanged —\n            if (m_connectThread.joinable()) {\n                m_connectThread.join();\n            }\n            m_connecting = false;\n            emit connectingChanged();"
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "nowhere",
+      "blocker": "claim: Use-after-free: session started in connectCoreOnly, worker may call onFrame on destroyed bridge; file: app/qttunebridge.cpp; quote: const qttune_status_t rc = qttune_session_start(session);\n    if (rc != QT_OK) {\n        qttune_unregister_frame_callback(session, &QtTuneBridge::onFrame, this);\n        qttune_session_destroy(session);\n        return QString::fromUtf8(qttune_status_string(rc));\n    }\n\n    *out_session = session;\n    return {};"
+    },
+    {
+      "id": 3,
+      "key": "#e3",
+      "why": "before",
+      "blocker": "claim: Removed destructor cleanup for pending session leaks; file: app/qttunebridge.cpp; quote: // A connect whose queued completion never ran (it was dropped with\n    // `this`) left its session pending. It was never started, so no\n    // worker is calling onFrame; destroy it like any other.\n    if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\n        qttune_session_destroy(pending);\n    }"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "nowhere",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 2,
+      "why": "nowhere",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 3,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 16334,
+      "prompt_eval_count": 4484,
+      "eval_count": 1229,
+      "thinking_chars": 5141,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 25.11,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}

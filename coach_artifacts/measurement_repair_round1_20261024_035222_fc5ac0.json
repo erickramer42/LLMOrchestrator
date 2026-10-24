@@ -1,0 +1,89 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261024_035222_fc5ac0",
+    "set": "corpus",
+    "fixture": "connect_start_4a86231",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T15:50:41.393508+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "nowhere",
+      "blocker": "claim: Use-after-free potential: session started in worker thread means workers call onFrame on potentially destroyed bridge object; file: app/qttunebridge.cpp; quote: qttune_status_t rc2 = qttune_session_start(session);"
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "before",
+      "blocker": "claim: Removed cleanup code that was needed to destroy leaked session when lambda dropped; file: app/qttunebridge.cpp; quote: if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\n        qttune_session_destroy(pending);\n    }"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "nowhere",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 2,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 15302,
+      "prompt_eval_count": 4230,
+      "eval_count": 12288,
+      "thinking_chars": 51727,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 251.39,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 4230 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "he original code updated all entries.\n\n      For the first issue, I need to quote the code that shows the violation.\n\n      For the second issue, this is an intentional change based on the proposal, so it's not a violation.\n\n      Let me focus on the first issue.\n\n      The session is started in `connectCoreOnly`:\n      ```\n      +    rc = qttune_session_start(session);\n      ```\n\n      The lambda",
+      "content_tail": ""
+    },
+    {
+      "attempt": 1,
+      "temperature": 0.05,
+      "prompt_chars": 15343,
+      "prompt_eval_count": 4245,
+      "eval_count": 2423,
+      "thinking_chars": 9060,
+      "content_chars": 911,
+      "done_reason": "stop",
+      "wall_s": 75.45,
+      "outcome": "schema violation: expected an object with a 'repairs' list",
+      "thinking_tail": "sion.exchange(nullptr)) {\n    qttune_session_destroy(pending);\n}\n```\n\nBut this was removed in the new code. And there's no replacement for it.\n\nSo the blocker is:\n- The session is started in the worker thread\n- If the bridge is destroyed before the lambda is processed, the session will call `onFrame` on a destroyed object\n- The destructor doesn't clean up this case\n\nLet me write the JSON response.",
+      "content_tail": "tring::fromUtf8(qttune_status_string(rc));\\n    }\\n\\n    *out_session = session;\"}], \"questions\": [], \"nits\": [\"The comment for connectCoreOnly should clarify that the session is now started in the worker thread, which changes the lifetime semantics\", \"Consider adding a guard in the destructor to handle the case where the worker thread has started a session but the queued completion was dropped\"]}"
+    },
+    {
+      "attempt": 2,
+      "temperature": 0.05,
+      "prompt_chars": 15474,
+      "prompt_eval_count": 4279,
+      "eval_count": 8,
+      "thinking_chars": 0,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 33.88,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}

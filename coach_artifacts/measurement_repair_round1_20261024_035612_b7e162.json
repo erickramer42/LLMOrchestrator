@@ -1,0 +1,76 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261024_035612_b7e162",
+    "set": "corpus",
+    "fixture": "connect_start_4a86231",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T16:09:59.915959+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "before",
+      "blocker": "claim: Removed cleanup code for pending session in destructor: original code destroyed m_pendingSession if it existed; new code removed this but the session is now started, requiring different cleanup logic; file: app/qttunebridge.cpp; quote: // A connect whose queued completion never ran (it was dropped with\n    // `this`) left its session pending. It was never started, so no\n    // worker is calling onFrame; destroy it like any other.\n    if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\n        qttune_session_destroy(pending);\n    }"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 15342,
+      "prompt_eval_count": 4231,
+      "eval_count": 12288,
+      "thinking_chars": 50272,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 262.61,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 4231 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": " any other.\n-    if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\n-        qttune_session_destroy(pending);\n-    }\n     if (m_session != nullptr) {\n         destroySessionLocked();\n     }\n```\n\nThe comment says \"It was never started\". But in the new code, the session IS started. So the comment is outdated.\n\nBut more importantly, the cleanup code was removed.\n\nLet me think about",
+      "content_tail": ""
+    },
+    {
+      "attempt": 1,
+      "temperature": 0.05,
+      "prompt_chars": 15383,
+      "prompt_eval_count": 4246,
+      "eval_count": 12288,
+      "thinking_chars": 55297,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 263.22,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 4246 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": " cleanup.\n\nLooking at the new code, I don't think it needs the same cleanup because the session is now started in connectCoreOnly and passed directly to the lambda.\n\nBut wait, there's still a potential issue. What if the bridge is destroyed while the thread is still running? The destructor joins the thread, so the thread should finish before the destructor continues.\n\nActually, I think I'm overcom",
+      "content_tail": ""
+    },
+    {
+      "attempt": 2,
+      "temperature": 0.05,
+      "prompt_chars": 15424,
+      "prompt_eval_count": 4261,
+      "eval_count": 8,
+      "thinking_chars": 0,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 44.55,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}

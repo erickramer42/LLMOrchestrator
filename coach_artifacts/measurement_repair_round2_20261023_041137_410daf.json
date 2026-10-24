@@ -1,0 +1,78 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round2_20261023_041137_410daf",
+    "set": "bridge",
+    "fixture": "bridge",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T17:05:27.695609+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "nowhere",
+      "blocker": "claim: FrameListModel::appendFrame is missing beginInsertRows call before push_back - violates QAbstractListModel contract; file: app/qttunebridge.cpp; quote: void FrameListModel::appendFrame(const QVariantMap& frame)\n{\n    m_frames.push_back(frame);\n    endInsertRows();"
+    }
+  ],
+  "repairs": null,
+  "skipped": "repair call failed: reply was not valid JSON (done_reason=length: output truncated after 9972 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "nowhere",
+      "returned": false,
+      "result": "skipped",
+      "blocker": null,
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 34245,
+      "prompt_eval_count": 9942,
+      "eval_count": 12288,
+      "thinking_chars": 45911,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 268.91,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 9942 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "e diff and extract the quote.\n\nThe diff shows:\n```\n@@ -49,172 +51,47 @@ void FrameListModel::appendFrame(const QVariantMap& frame)\n     m_frames.push_back(frame);\n     endInsertRows();\n```\n\nThe function signature is in the hunk header. The two lines of code are shown below. But I need to include the function signature in my quote.\n\nSo the quote should be:\n```\nvoid FrameListModel::appendFrame(const",
+      "content_tail": ""
+    },
+    {
+      "attempt": 1,
+      "temperature": 0.05,
+      "prompt_chars": 34286,
+      "prompt_eval_count": 9957,
+      "eval_count": 12288,
+      "thinking_chars": 43537,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 268.71,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 9957 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "m_frames.push_back(frame);\n     endInsertRows();\n```\n\nWait, I need to look at the actual diff content. Let me parse it more carefully.\n\nLooking at the diff:\n```\ndiff --git a/app/qttunebridge.cpp b/app/qttunebridge.cpp\nindex 7d81ffb..1c195f8 100644\n--- a/app/qttunebridge.cpp\n+++ b/app/qttunebridge.cpp\n@@ -49,172 +51,47 @@ void FrameListModel::appendFrame(const QVariantMap& frame)\n     m_frames.push",
+      "content_tail": ""
+    },
+    {
+      "attempt": 2,
+      "temperature": 0.05,
+      "prompt_chars": 34327,
+      "prompt_eval_count": 9972,
+      "eval_count": 12288,
+      "thinking_chars": 42636,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 268.26,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 9972 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "appendFrame` function.\n\nActually, looking at the diff header:\n```\n@@ -49,172 +51,47 @@ void FrameListModel::appendFrame(const QVariantMap& frame)\n```\n\nThis says the old file had 172 lines starting at line 49, and the new file has 47 lines starting at line 51.\n\nBut looking at the diff content, I see that the `appendFrame` function is shown with changes. Let me look at the entire diff.\n\nOK I think I",
+      "content_tail": ""
+    }
+  ]
+}

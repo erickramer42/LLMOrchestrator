@@ -1,0 +1,56 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round2_20261023_191044_61e3c6",
+    "set": "bridge",
+    "fixture": "bridge",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T17:23:25.006464+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "nowhere",
+      "blocker": "claim: Memory lifetime violation: frame is captured by value in lambda but comment claims it's 'stack-owned by mock_worker' - the copy may dangle if mock_worker's stack frame is unwound before lambda executes; file: app/qttunebridge.cpp; quote: // frame is stack-owned by mock_worker\n    const qttune_frame_t copy = *frame;  // frame is stack-owned by mock_worker\n\n    QMetaObject::invokeMethod(self, [self, copy]() {\n        self->handleFrameInternal(&copy);\n    }, Qt::QueuedConnection);"
+    }
+  ],
+  "repairs": [
+    {
+      "id": 1,
+      "file": "app/qttunebridge.cpp",
+      "quote": "const qttune_frame_t copy = *frame;   // frame is stack-owned by mock_worker"
+    }
+  ],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "nowhere",
+      "returned": true,
+      "result": "hedge",
+      "file": "app/qttunebridge.cpp",
+      "quote": "const qttune_frame_t copy = *frame;   // frame is stack-owned by mock_worker",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 34463,
+      "prompt_eval_count": 9998,
+      "eval_count": 2832,
+      "thinking_chars": 11136,
+      "content_chars": 181,
+      "done_reason": "stop",
+      "wall_s": 53.75,
+      "outcome": "ok",
+      "reply": "{\n  \"repairs\": [\n    {\n      \"id\": 1,\n      \"file\": \"app/qttunebridge.cpp\",\n      \"quote\": \"const qttune_frame_t copy = *frame;   // frame is stack-owned by mock_worker\"\n    }\n  ]\n}"
+    }
+  ]
+}

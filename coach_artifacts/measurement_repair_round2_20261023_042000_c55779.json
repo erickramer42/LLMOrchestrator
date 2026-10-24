@@ -1,0 +1,89 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round2_20261023_042000_c55779",
+    "set": "bridge",
+    "fixture": "bridge",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T17:14:27.567679+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "nowhere",
+      "blocker": "claim: LiveViewPage.qml deleted but Main.qml still references QtTune.signalModel; file: app/qml/Main.qml; quote: text: QtTune.connected ? qsTr(\"Subscribed: %1 signals · batched @ 10 Hz\").arg(QtTune.signalModel.subscribedCount) : qsTr(\"Connect a session to stream decoded values\")"
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "before",
+      "blocker": "claim: Tests removed that validated thread safety and backpressure behavior; file: tests/test_bridge.cpp; quote: TEST(BridgeTest, SignalBatchesAreCoalesced)"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "nowhere",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 2,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 34486,
+      "prompt_eval_count": 10005,
+      "eval_count": 12288,
+      "thinking_chars": 48293,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 269.1,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 10005 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "rrentFrameCount` exceeds MaxFrames, frames will be dropped. But the model might have evicted old frames, so the model size might be small.\n\nThis seems like a bug. The check should be based on the model size, not the total count.\n\nBut is it a blocker? Let me think...\n\nActually, I think the issue is more subtle. Let me think about the race condition again.\n\nThe race condition is:\n1. Frame 1 arrives,",
+      "content_tail": ""
+    },
+    {
+      "attempt": 1,
+      "temperature": 0.05,
+      "prompt_chars": 34527,
+      "prompt_eval_count": 10020,
+      "eval_count": 3829,
+      "thinking_chars": 13467,
+      "content_chars": 1124,
+      "done_reason": "stop",
+      "wall_s": 110.5,
+      "outcome": "schema violation: expected an object with a 'repairs' list",
+      "thinking_tail": "_currentFrameCount` is accessed from multiple threads without synchronization.\n\n**Questions:**\n1. The removed tests validated thread safety and backpressure behavior - are these behaviors still being tested elsewhere?\n\n**Nits:**\n1. The comment about \"frame is stack-owned by mock_worker\" in `onFrame` might be misleading if the frame ownership is not clearly defined.\n\nLet me write the JSON response.",
+      "content_tail": " production code, or does it rely on mock-specific implementation details?\",\n    \"Should the backpressure check in onFrame use a separate atomic counter instead of m_currentFrameCount?\"\n  ],\n  \"nits\": [\n    \"Consider adding a comment explaining why m_currentFrameCount doesn't need atomic access (if intentional)\",\n    \"The TODO comment about coalescing for v0.3 should be addressed or removed\"\n  ]\n}"
+    },
+    {
+      "attempt": 2,
+      "temperature": 0.05,
+      "prompt_chars": 34658,
+      "prompt_eval_count": 10054,
+      "eval_count": 8656,
+      "thinking_chars": 33468,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 160.26,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}

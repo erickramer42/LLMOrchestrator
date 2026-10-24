@@ -1,0 +1,76 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261024_021537_e69478",
+    "set": "corpus",
+    "fixture": "connect_start_4a86231",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T14:42:56.177111+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "nowhere",
+      "blocker": "claim: Missing session cleanup in destructor: removed m_pendingSession cleanup leaves sessions unowned if async connect completes after bridge destruction; file: app/qttunebridge.cpp; quote: qttune_session_t* pending = m_pendingSession.exchange(nullptr);"
+    }
+  ],
+  "repairs": null,
+  "skipped": "repair call failed: schema violation: expected an object with a 'repairs' list",
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "nowhere",
+      "returned": false,
+      "result": "skipped",
+      "blocker": null,
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 15017,
+      "prompt_eval_count": 4153,
+      "eval_count": 12288,
+      "thinking_chars": 52723,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 236.47,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 4153 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "oting the violation.\n\nActually, I think the user wants me to find code that shows the problem. Let me look at the code one more time...\n\nOK, I think I've been overthinking this. Let me just look at the code and see if I can find a quote that shows the violation.\n\nThe violation is: \"Missing session cleanup in destructor\"\n\nTo show this, I need to quote code that demonstrates the missing cleanup. But",
+      "content_tail": ""
+    },
+    {
+      "attempt": 1,
+      "temperature": 0.05,
+      "prompt_chars": 15058,
+      "prompt_eval_count": null,
+      "eval_count": null,
+      "thinking_chars": 0,
+      "content_chars": 0,
+      "done_reason": null,
+      "wall_s": 19.8,
+      "outcome": "request failed: HTTPError {\"error\":\"an error was encountered while running the model: CUDA error: out of memory\"}"
+    },
+    {
+      "attempt": 2,
+      "temperature": 0.05,
+      "prompt_chars": 15058,
+      "prompt_eval_count": 4168,
+      "eval_count": 5364,
+      "thinking_chars": 21320,
+      "content_chars": 1154,
+      "done_reason": "stop",
+      "wall_s": 118.77,
+      "outcome": "schema violation: expected an object with a 'repairs' list",
+      "thinking_tail": ":invokeMethod(this, [this, uri, err, session]() {\n```\n\nIf the bridge is destroyed before the lambda runs, the lambda is dropped, and the session leaks.\n\nSo the blocker is clear.\n\nLet me also check if there are any other issues.\n\nLooking at the `m_connecting` flag, it's a plain `bool` which is not thread-safe. But the comment says it's OK. I'll leave this as a question.\n\nNow let me write my review.",
+      "content_tail": "ia lambda) and GUI thread\",\n    \"What is the ownership semantics of qttune_session_t? Is it a pointer to heap-allocated memory that requires explicit destruction?\"\n  ],\n  \"nits\": [\n    \"Consider making m_connecting atomic for thread safety\",\n    \"The comment about 'values and history update regardless' was removed but the new code only updates subscribed entries - verify this is intentional\"\n  ]\n}"
+    }
+  ]
+}

@@ -39,6 +39,13 @@ Any edit to a prompt here must be reflected by bumping PROMPT_VERSION."""
 # and a removal-caused defect is quoted from the code left unprotected.
 # Only the pair measurement's candidate arm sent it, as the twelfth
 # measurement's samples.
+# v12 (2026-10-24, ADR-0002 seventeenth measurement; NOT SHIPPED): the
+# repair pass. In round 1, a reviewer blocker demoted because its quote
+# was not found is offered back in one repair call (debate.REPAIR_TEMPLATE);
+# the reviewer may give a new quote, never a new claim. Measured paired on
+# archived replies, it recovered 2 of 31 valid items: most calls ran away
+# or re-reviewed. It is off in debates (debate.REPAIR_PASS), which stay
+# v11.1; its records carry debate.REPAIR_VERSION.
 # v11.1 (2026-10-23, ADR-0002 twelfth measurement): v11 measured as not
 # worse than v9's feedback and shipped. From round 2 on a debate sends
 # the previous round's replies in the CRITIQUES section, the last round

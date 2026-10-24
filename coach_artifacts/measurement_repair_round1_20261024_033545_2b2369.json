@@ -1,0 +1,92 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261024_033545_2b2369",
+    "set": "corpus",
+    "fixture": "trusted_count_6420f09",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T15:07:29.990968+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "before",
+      "blocker": "claim: Removing the trusted count validation exposes the code to vendor behavior that can cause use-after-free and buffer replay attacks. The surrogate uses a static buffer s_read_batch that is never cleared. If a vendor returns an error status but leaves num>0 (as documented in the finding), the code will process frames from a stale buffer.; file: surrogate/surrogate_main.cpp; quote: unsigned long num = QTTUNE_SUR_MAX_FRAMES_PER_READ;\n    const long rc = g_read_msgs(g_channel, s_read_batch, &num, timeout_ms);\n\n    /* Finding 1: trust the count only under the status allowlist. A\n       vendor may leave pNumMsgs untouched on error (VX observed:\n       \"status 7, written 1\", bench 2026-10-20). A dirty count is\n       doubly dangerous here: s_read_batch is static and never\n       cleared, so it would replay the PREVIOUS read's frames as\n       phantoms. */\n    num = qttune_trusted_count(rc, num);"
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "nowhere",
+      "blocker": "claim: The core loader also removes the trusted count validation, but the PASSTHRU_MSG struct has a Data[QTTUNE_PT_MSG_DATA_SIZE] array. Without validation, corrupted or stale data could be read from the Data array if the vendor leaves it populated while reporting an error.; file: core/src/j2534_loader.cpp; quote: PASSTHRU_MSG msg = {};\n    unsigned long num = 1;\n    long rc = handle->read_msgs(channel, &msg, &num, timeout_ms);\n-    num = qttune_trusted_count(rc, num);\n\n    if (num == 0) {\n        *got_frame = false;"
+    }
+  ],
+  "repairs": null,
+  "skipped": "repair call failed: schema violation: expected an object with a 'repairs' list",
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "before",
+      "returned": false,
+      "result": "skipped",
+      "blocker": null,
+      "restored_blocker": null
+    },
+    {
+      "id": 2,
+      "why": "nowhere",
+      "returned": false,
+      "result": "skipped",
+      "blocker": null,
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 11460,
+      "prompt_eval_count": 3349,
+      "eval_count": 12288,
+      "thinking_chars": 48485,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 261.95,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 3349 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "again:\n\nFor surrogate_main.cpp, the code after the change (lines 134-140 approximately) is:\n```\nunsigned long num = QTTUNE_SUR_MAX_FRAMES_PER_READ;\nconst long rc = g_read_msgs(g_channel, s_read_batch, &num, timeout_ms);\n\n/* Frames are collected whatever the status: per J2534-1 a read that\n * asks for N messages with a nonzero timeout returns ERR_TIMEOUT\n * together with however many arrived, so on",
+      "content_tail": ""
+    },
+    {
+      "attempt": 1,
+      "temperature": 0.05,
+      "prompt_chars": 11501,
+      "prompt_eval_count": 3364,
+      "eval_count": 12288,
+      "thinking_chars": 61658,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 262.1,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 3364 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "r that is never cleared. If a vendor returns an error status but leaves num>0, the code will process frames from a stale buffer.\n\nThe loader also removes the trusted count validation, but the PASSTHRU_MSG struct has a Data array. Without validation, corrupted or stale data could be read from the Data array if the vendor leaves it populated while reporting an error.\n\nThe proposal claims to simplify",
+      "content_tail": ""
+    },
+    {
+      "attempt": 2,
+      "temperature": 0.05,
+      "prompt_chars": 11542,
+      "prompt_eval_count": 3379,
+      "eval_count": 442,
+      "thinking_chars": 0,
+      "content_chars": 1568,
+      "done_reason": "stop",
+      "wall_s": 49.94,
+      "outcome": "schema violation: expected an object with a 'repairs' list",
+      "thinking_tail": "",
+      "content_tail": "tion, corrupted or stale data could be read from the Data array if the vendor leaves it populated while reporting an error.\",\n      \"file\": \"core/src/j2534_loader.cpp\",\n      \"quote\": \"PASSTHRU_MSG msg = {};\\n    unsigned long num = 1;\\n    long rc = handle->read_msgs(channel, &msg, &num, timeout_ms);\\n\\n    if (num == 0) {\\n        *got_frame = false;\"\n    }\n  ],\n  \"questions\": [],\n  \"nits\": []\n}"
+    }
+  ]
+}

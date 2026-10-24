@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261024_040144_2964be",
+    "set": "corpus",
+    "fixture": "decode_length_b47687c",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T16:16:59.255156+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "before",
+      "blocker": "claim: Header includes removed breaking C++ type access: the #include for \"qttune/signals.h\" was removed from the header, making QttuneSignalSet undefined and breaking the static_cast in the implementation.; file: app/qttunebridge.h; quote: #include \"qttune/signals.h\""
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 17897,
+      "prompt_eval_count": 5185,
+      "eval_count": 9264,
+      "thinking_chars": 35458,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 211.48,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}

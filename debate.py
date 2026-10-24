@@ -18,8 +18,10 @@ from adjudication import (AGENT_FAILURE_VERDICT, INPUT_TOO_LARGE_VERDICT,
                           JUDGE_VERSION, MAX_ROUNDS_VERDICT,
                           MEASUREMENT_VERDICT, NO_INPUT_VERDICT, PAIR_VERDICT,
                           convergence_verdict, demote_hedged_blockers,
+                          _coerce_item, before_sources,
                           demote_unverified_blockers, derive_verdict,
-                          evidence_sources, hunk_identifiers,
+                          evidence_sources, hunk_identifiers, judge_repaired,
+                          quote_location,
                           normalize_agent_output)
 from agent_client import call_agent, failure_result
 from config import (CHARS_PER_TOKEN_FLOOR, MAX_DEBATE_ROUNDS, MODELS, NUM_CTX,
@@ -58,6 +60,44 @@ CODE CONTEXT:
 
 TRUNCATION_NOTE = ("[The CODE CONTEXT is truncated: the first {shown} of "
                    "{total} characters are shown.]\n")
+
+# The repair pass (v12; ADR-0002, seventeenth measurement): in round 1,
+# blockers demoted because their quote was not found are offered back.
+# Measured and NOT SHIPPED: debates run with REPAIR_PASS off, so their
+# requests and fingerprints are v11.1's. eval_harness.repair calls it
+# directly, and the tests switch it on to exercise the mechanism.
+# It shows the reviewer its own claims and quotes and why each failed,
+# never code beyond the transcript, and the reply can carry a new quote
+# only: the claim cannot change.
+REPAIR_PASS = False
+REPAIR_VERSION = "v12-repair-pass"  # stamped on the repair measurement's records
+
+REPAIR_TEMPLATE = """
+
+REPAIR (blockers from your reply that were moved to questions):
+The blockers below were moved to questions because their quotes were
+not found in the code as it reads after the change. For each one you
+can show in that code, give its id, the file, and a quote copied
+exactly from unchanged or added lines, without the leading '+' or
+space. Leave out every one you cannot quote that way: it stays a
+question, which costs nothing. You cannot change a claim or add a
+blocker.
+
+{items}
+
+Respond with JSON only: {{"repairs": [{{"id": 1, "file": "path/to/file", "quote": "exact code"}}]}}
+An empty list is a valid answer: {{"repairs": []}}
+"""
+
+REPAIR_ITEM_TEMPLATE = """[{id}] claim: {claim}
+    file: {file}
+    your quote: {quote}
+    why it failed: {reason}"""
+
+REPAIR_REASONS = {
+    "before": "found only in the code before the change",
+    "nowhere": "not found in that file",
+}
 
 # Retrieved repo context. The pack is a snapshot of the indexed tree, which
 # need not match the code before or after the diff, so the diff wins
@@ -233,6 +273,7 @@ class _Setup(NamedTuple):
     evidence: Dict[str, List[str]]  # post-change lines reviewer blocker quotes are checked against
     hunks: Dict[str, List[set]]     # each file's hunk identifiers, for claim-quote linkage (j8)
     symbols: frozenset              # the index's type and constant names, for linkage
+    before: Dict[str, List[str]]    # pre-change lines, to say why a quote failed (v12)
 
 
 def _prepare(code_diff: str, code_context: str, header_artifact: bool,
@@ -287,7 +328,7 @@ def _prepare(code_diff: str, code_context: str, header_artifact: bool,
     return _Setup(reviewer_prompt, static_section, pack_text, pack_report,
                   file_path, layer, layer_note,
                   evidence_sources(code_diff, shown_context),
-                  hunk_identifiers(code_diff), symbols)
+                  hunk_identifiers(code_diff), symbols, before_sources(code_diff))
 
 
 def _render_transcript(proposal: str, static_section: str, round_num: int,
@@ -381,7 +422,12 @@ def _run_settings(setup: _Setup, mode: str, max_rounds: int,
             TRUNCATION_NOTE, TRANSCRIPT_TEMPLATE,
             # only the pair measurement's V9_ARM still sends v9's feedback
             FEEDBACK_TEMPLATE if mode == PAIR_MODE else "",
-            setup.layer_note, CRITIQUES_TEMPLATE,
+            setup.layer_note,
+            # the repair pass's templates join CRITIQUES_TEMPLATE's part only
+            # when it runs, so with it off (not shipped) the hash is v11.1's
+            CRITIQUES_TEMPLATE + (REPAIR_TEMPLATE + REPAIR_ITEM_TEMPLATE
+                                  + "".join(REPAIR_REASONS.values())
+                                  if REPAIR_PASS else ""),
             # the pack's template and format, not its input-derived text
             REPO_CONTEXT_TEMPLATE + PACK_FORMAT_VERSION if setup.pack_text else ""),
     }
@@ -448,6 +494,128 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
     return _with_diagnostics(result, agent_failures, setup, check)
 
 
+def _validate_repair(raw):
+    """A repair reply: {"repairs": [{"id", "file", "quote"}]}. Items of
+    another shape are dropped; a reply without the list is invalid."""
+    if not isinstance(raw, dict) or not isinstance(raw.get("repairs"), list):
+        return None, "expected an object with a 'repairs' list"
+    repairs = []
+    for item in raw["repairs"]:
+        if not isinstance(item, dict):
+            continue
+        try:
+            rid = int(item.get("id"))
+        except (TypeError, ValueError):
+            continue
+        quote, file = item.get("quote"), item.get("file")
+        if isinstance(quote, str) and quote.strip():
+            repairs.append({"id": rid, "file": str(file or ""), "quote": quote})
+    return {"repairs": repairs}, None
+
+
+def repair_offer(setup: _Setup, demoted: List[dict]) -> List[dict]:
+    """The demoted blockers the repair pass offers back: those whose quote
+    was not found (not linkage demotions, not hedge demotions), with
+    evidence to show. Each gets an id and the reason shown to the
+    reviewer: its quote is found only in the code before the change, or
+    nowhere in that file."""
+    offered = []
+    for d in demoted:
+        ev = d.get("evidence")
+        if d.get("reason") != "quote" or not ev:
+            continue
+        before = quote_location(ev, setup.before) is not None
+        offered.append({"id": len(offered) + 1, "blocker": d["blocker"],
+                        "evidence": ev, "why": "before" if before else "nowhere"})
+    return offered
+
+
+def repair_request(setup: _Setup, transcript: str, offered: List[dict]) -> str:
+    """The repair call's user message: the round's transcript and the
+    REPAIR section. Nothing in it comes from the original reply but the
+    offered claims and quotes."""
+    items = "\n\n".join(REPAIR_ITEM_TEMPLATE.format(
+        id=o["id"], claim=o["evidence"].get("assertion") or o["evidence"].get("claim", ""),
+        file=o["evidence"].get("file", ""), quote=o["evidence"].get("quote", ""),
+        reason=REPAIR_REASONS[o["why"]]) for o in offered)
+    return transcript + REPAIR_TEMPLATE.format(items=items)
+
+
+def repair_call(setup: _Setup, transcript: str, offered: List[dict],
+                telemetry: List[dict]) -> Tuple[Optional[List[dict]], Optional[str]]:
+    """The repair call: (repairs, None), or (None, why) when the request
+    is estimated over the input limit or every attempt fails. Shared by
+    debates and the paired measurement (eval_harness.repair)."""
+    user = repair_request(setup, transcript, offered)
+    estimated = math.ceil((len(setup.reviewer_prompt) + len(user)) / CHARS_PER_TOKEN_FLOOR)
+    if estimated > NUM_CTX - NUM_PREDICT:
+        return None, (f"request estimated at {estimated} tokens, over "
+                      f"{NUM_CTX - NUM_PREDICT}")
+    reply = call_agent(MODELS["code_reviewer"], setup.reviewer_prompt, user,
+                       TEMPERATURE_RETRY, validate=_validate_repair,
+                       telemetry=telemetry)
+    if _is_failure(reply):
+        return None, f"repair call failed: {reply.get('failure_reason')}"
+    return reply.get("repairs", []), None
+
+
+def apply_repairs(setup: _Setup, offered: List[dict], repairs: List[dict]) -> List[dict]:
+    """Each offered blocker's outcome: the first repair given for its id,
+    rebuilt as the original claim with the new file and quote, judged by
+    judge_repaired. Unknown and repeated ids are ignored."""
+    by_id, outcomes = {}, []
+    for r in repairs:
+        by_id.setdefault(r["id"], r)
+    for o in offered:
+        r = by_id.get(o["id"])
+        out = {"id": o["id"], "why": o["why"], "returned": r is not None,
+               "result": "not returned", "blocker": None}
+        if r is not None:
+            ev = dict(o["evidence"], file=r["file"], quote=r["quote"])
+            verdict = judge_repaired(ev, setup.evidence, setup.hunks, setup.symbols)
+            out["result"] = verdict or "restored"
+            out["file"], out["quote"] = r["file"], r["quote"]
+            if verdict is None:
+                out["blocker"] = _coerce_item({
+                    "claim": ev.get("assertion") or ev.get("claim", ""),
+                    "file": r["file"], "quote": r["quote"]})
+        outcomes.append(out)
+    return outcomes
+
+
+def _repair(setup: _Setup, transcript: str, reviewer: dict, demoted: List[dict],
+            n_unquoted: int, n_hedged: int, telemetry: List[dict]) -> Tuple[dict, dict, int]:
+    """The repair pass on one round's reviewer output (v12). Returns the
+    output with restored blockers moved from the evidence-demoted part of
+    its questions back to its blockers, the repair record, and how many
+    were restored. A failed or skipped call restores nothing."""
+    offered = repair_offer(setup, demoted)
+    record = {"offered": len(offered), "restored": 0, "skipped": None,
+              "items": [], "before": {
+                  "blockers": list(reviewer.get("blockers", []) or []),
+                  "questions": list(reviewer.get("questions", []) or [])}}
+    if not offered:
+        return reviewer, record, 0
+    repairs, record["skipped"] = repair_call(setup, transcript, offered, telemetry)
+    if repairs is None:
+        return reviewer, record, 0
+    outcomes = apply_repairs(setup, offered, repairs)
+    record["items"] = [{k: v for k, v in o.items() if k != "blocker"} for o in outcomes]
+    restored = [(o, x) for o, x in zip(offered, outcomes) if x["blocker"]]
+    if not restored:
+        return reviewer, record, 0
+    out = dict(reviewer)
+    questions = list(out.get("questions", []) or [])
+    start, end = len(questions) - n_hedged - n_unquoted, len(questions) - n_hedged
+    segment = questions[start:end]
+    for o, _ in restored:
+        segment.remove(o["blocker"])
+    out["questions"] = questions[:start] + segment + questions[end:]
+    out["blockers"] = list(out.get("blockers", []) or []) + [x["blocker"] for _, x in restored]
+    record["restored"] = len(restored)
+    return out, record, len(restored)
+
+
 def _run_round(setup: _Setup, proposal: str, round_num: int,
                with_engineer: bool = True, critiques: str = "",
                temperature: Optional[float] = None) -> dict:
@@ -468,11 +636,22 @@ def _run_round(setup: _Setup, proposal: str, round_num: int,
                           telemetry=telemetry["reviewer"])
 
     # ============ GUARDRAILS: unquoted, then hedged blockers (before storing) ============
+    demoted: List[dict] = []
     reviewer, unquoted = demote_unverified_blockers(reviewer, setup.evidence,
                                                     "questions", setup.hunks,
-                                                    setup.symbols)
+                                                    setup.symbols, demoted)
     reviewer, rev_demoted = demote_hedged_blockers(reviewer, "questions")
+    # ============ REPAIR PASS, round 1 only (v12; ADR-0002, seventeenth) ============
+    repair_record = None
+    if REPAIR_PASS and round_num == 1 and not _is_failure(reviewer):
+        telemetry["reviewer_repair"] = []
+        reviewer, repair_record, restored = _repair(
+            setup, transcript, reviewer, demoted, unquoted, rev_demoted,
+            telemetry["reviewer_repair"])
+        unquoted -= restored
     entry = {"round": round_num, "reviewer": reviewer}
+    if repair_record is not None:
+        entry["repair"] = repair_record
     hedge_stats = {"reviewer_demoted": rev_demoted}
 
     if with_engineer:

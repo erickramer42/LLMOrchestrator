@@ -3159,3 +3159,280 @@ a supplied context, which has no hunks.
   hunks, fails them. The live golden suite passed 10/10 under j8. Round-1
   requests are unchanged; a debate's round 2
   differs only when linkage moved a blocker.
+
+## Seventeenth Measurement — Repair Pass for Quote Failures (not shipped)
+
+**Status (2026-10-24): drafted before any code or model call, signed off
+with the amendment below, implemented, run and scored: not shipped
+(Results, below).**
+
+**Why.** The quote rule is the largest recall loss left. Under j8, the 66
+archived corpus runs hold 31 valid blockers demoted for their quote: 18
+quote code as it read before the change, and 13 quote text found on
+neither side. No matching rule can recover the 13; only the model can,
+by quoting again. A stronger prompt is not the lever: since v9 the
+reviewer prompt has asked for the post-change line a removal leaves
+unprotected, and the corpus reviewer quoted removed lines anyway. One
+re-quote is on record: in the twelfth measurement, 8dc61a's round 2
+restated a demoted race blocker with a quote that passed.
+
+**A correction.** The review that proposed this design said a re-quoted
+deletion claim cannot pass linkage, because removed-only names are in
+no hunk. That is wrong for j8 as shipped: `hunk_identifiers` takes every
+line of a hunk, removed lines and the header included. A deletion claim
+naming a removed symbol can pass linkage by quoting a post-change line
+of the hunk that removed it. **Containment is empirical:** the false
+positive ceilings below are the defense, not linkage.
+
+### Design
+
+**The protocol.** After a round's evidence check (with linkage) and hedge
+check, if any reviewer blocker was demoted because its quote was not
+found, the reviewer gets one repair call:
+- **Request:** the reviewer's system prompt, and as the user message the
+  round's transcript followed by a REPAIR section. Each item lists an id,
+  the claim, the file, the quote it gave and why it failed: "found only
+  in the code before the change" or "not found in that file". The
+  section gives no code beyond the transcript and no hint of a line.
+- **Reply schema:** `{"repairs": [{"id": 1, "file": "...", "quote": "..."}]}`.
+  The claim is never sent back, so it cannot change. The instruction
+  makes dropping the default: an item left out stays a question, and so
+  does a quote that is not copied exactly from the code after the
+  change.
+- **Re-entry:** each repair is rebuilt as the original claim with the new
+  file and quote, then judged as any blocker is: evidence and linkage
+  (j8, on the original claim), then hedging. A passing item moves from
+  the end of the questions back to the blockers; a failing one stays.
+  Unknown or repeated ids and extra fields are ignored.
+- **Settings:** temperature TEMPERATURE_RETRY (0.05), a narrow task;
+  `call_agent` with a validator, so a malformed reply is retried and then
+  fails closed, leaving every item a question. The request is estimated
+  as the input check estimates round 1; over the limit, the repair is
+  skipped and the record says so. The bridge fixture's round-1 request
+  is estimated at 11,098 of 12,288 tokens, which leaves about 3,500
+  characters for the section.
+
+**What is not offered, and why:**
+- **Hedge demotions.** A repair turn on a hedged claim invites a
+  confident restatement: an exemption from the hedge check by another
+  door (#12 closed: a hedged blocker is never a blocker).
+- **Linkage demotions.** Their quotes were found; linkage judged that the
+  claim rests on code the quote does not show. A repair would let the
+  claim fetch that code, which is how the invariant-elsewhere class
+  passes. None of the 7 archived linkage demotions is valid.
+- **The original reply.** The schema needs only the code and the items,
+  which the records and the committed fixtures determine, so every
+  request is exactly reconstructible. Whether the reply's presence
+  would change repair quality is not tested here.
+
+**Records:** `telemetry.repairs[]`, one entry per repair call, with the
+attempt telemetry and, per offered item, its id, failure reason, the
+returned quote and the result after re-judging. The split before repair
+is kept beside the split after it. Separately, records start storing the
+reviewer's raw reply text, whichever arm runs.
+
+**Versions:** a new model-facing template, so PROMPT_VERSION
+`v12-repair-pass`. The repair template joins the fingerprint, so every
+debate's fingerprint changes; round-1 requests stay byte-identical
+(pinned by a test). The repair changes which blockers stand but not the
+judge's rules, so JUDGE_VERSION stays j8; the record stamps the repair
+pass in its metadata.
+
+### Measurement
+
+**Paired, on archived samples.** Every record's round 1 is already in
+hand, so one repair call per record with quote failures gives both arms
+on the same replies: A, the j8 split as stored; B, the split after
+repair. Pairing removes the between-sample noise the sixteenth measured
+(57% → 65% valid on identical requests).
+- **Corpus:** the 66 runs of the fourteenth and sixteenth measurements.
+- **Bridge:** the 28 labelled samples (G3, the eleventh's and twelfth's
+  round 1).
+- **Requests:** built with today's templates from each committed fixture
+  and the record's proposal: what the shipped repair would send. The G3
+  items came from v9's unfenced transcript; their repair calls see
+  v11.1's fenced one. The code is the same.
+- **Scoring is mechanical.** A repaired item keeps its claim, so its
+  label transfers and no new labelling is needed.
+- **Development data.** These labels' authors knew the candidates, and
+  the samples have chosen judge variants before. The repair variant was
+  not selected on outcomes from them, the fresh model calls are the
+  measurement, and immutable claims make the labels transfer
+  mechanically, which keeps that harmless.
+
+**Baselines (j8, the same records):**
+- **Corpus:** 64% valid, 0.41 FPs per review, mean recall 0.41, 0.39 FPs
+  per clean review. If every quote failure came back: 0.55 FPs, recall
+  0.58. Quote failures: 31 valid, 9 false (6 quote pre-change code).
+- **Bridge:** 0.18 FPs per review, race 0.79, gate 0.29. Quote failures:
+  4 valid (race claims whose quotes matched nowhere), 12 false (8 quote
+  pre-change code), 3 deleted-test objections.
+
+**Rule:** v12 ships if all three hold:
+1. corpus mean recall rises by at least 0.10;
+2. corpus FPs per review rise by at most 0.05;
+3. bridge FPs per review rise by at most 0.05, with race and gate found
+   dropping by at most 0.1.
+
+A repair can only readmit, so race and gate can only hold or rise, and
+that clause is kept for form. The teeth are the two FP ceilings. The
+arithmetic: condition 1 needs about 60% of the possible recall gain;
+condition 2 allows about 3 of the corpus's 9 false quote failures back;
+condition 3 allows 1 of the bridge's 12. Reported apart: readmitted
+bridge deletion claims by count, readmitted deleted-test objections,
+repair calls, runaways, size skips and failed repairs.
+
+**Predictions:**
+
+| metric | prediction |
+|---|---|
+| repair calls, corpus / bridge | 20–30 / 8–15 |
+| corpus valid items readmitted | 16–26 of 31 (9–15 of the 18 pre-change quotes, 7–11 of the 13 found nowhere) |
+| corpus false items readmitted | 2–5 of 9 |
+| corpus mean recall | +0.08 to +0.14 |
+| corpus FPs per review | +0.03 to +0.08 |
+| bridge false items readmitted | 2–6 of 12 (+0.07 to +0.21 FPs per review) |
+| bridge race found | 0.79 → 0.82–0.89 |
+| repair-call runaways / size skips | 0–3 / 0–2 |
+
+**Expected by the rule:** v12 fails on the bridge ceiling, through
+deletion claims re-quoted from their own hunks; the corpus conditions
+are a coin flip. If it fails only there, the next candidate is a
+linkage scope that counts post-change lines only for repaired quotes, a
+judge change to register on its own, not tuned here.
+
+**Order once signed off:** implement with fake-driven tests (a hedged
+item is never offered; a claim cannot change; unknown ids are ignored;
+the reply re-enters every check; round-1 requests byte-identical; the
+size skip), then the paired repair calls, then the golden suite, then
+the results and a commit message.
+
+### Sign-off and amendment (2026-10-24, before any model call)
+
+The three open choices are confirmed as drafted:
+1. **Linkage demotions are not offered.** The reason is the mechanism,
+   not the 0 of 7 on record: a linkage repair lets a claim shop for the
+   code it rests on, which is how the invariant-elsewhere class passes.
+   It stands even if a later sample shows a valid linkage demotion.
+2. **Each item shows the model its own quote.** It is the model's text,
+   not code the judge supplies, and the failure reason means little
+   without it. Residual risk: a fabricated quote of the "not found"
+   group is echoed back and may be reinforced; the drop-as-default
+   instruction is the guard.
+3. **Repair calls run at 0.05.** The measurement is of the protocol as
+   shipped, so the retry temperature is what should be measured.
+
+**Amendment: the repair pass runs in round 1 only.** The draft said
+"after a round's evidence check", which would ship repairs in rounds 2
+and later that no measurement sees: every measurement since the fifth
+scores round 1. Rounds 2 and later keep v11.1's CRITIQUES section, which
+already carries the demoted items as reviewer questions and has
+recovered one (8dc61a). This follows the rule that nothing unmeasured
+ships, as the v10.1 fence-only amendment did. A repair pass in later
+rounds would be its own measurement.
+
+**No golden fixture is added for the repair path.** Live, the golden
+fixtures rarely demote a quote, so the suite's repair path is nearly
+idle; the fake-driven tests cover its mechanics, and the paired calls
+exercise the reply schema live and at scale. Adding a fixture would
+also change the suite's count.
+
+**As implemented** (`debate.py`, `adjudication.py`, `agent_client.py`):
+- `REPAIR_TEMPLATE`, `REPAIR_ITEM_TEMPLATE` and `REPAIR_REASONS` are
+  model-facing, named `v12-repair-pass` (`debate.REPAIR_VERSION`), and
+  join the fingerprint only when the pass runs. As measured, debates do
+  not run it (Results).
+- `demote_unverified_blockers` reports each demotion's reason (`quote`
+  or `link`); `repair_offer` keeps the quote failures that have
+  evidence, and says whether the quote is found in the code before the
+  change (`adjudication.before_sources`); `apply_repairs` re-judges with
+  `judge_repaired` (evidence, linkage on the original claim, hedging).
+- A round-1 entry gains `repair` (offered, restored, skipped, per-item
+  results, and the split before repair) and `telemetry.reviewer_repair`;
+  `evidence_demotions` counts what stays demoted, so the scorers' tail
+  reading holds. Every accepted reply's text is kept in its telemetry
+  entry as `reply`.
+- Tests: 188 → 195 at sign-off, 198 after the results (the pass off by
+  default, v11.1's fingerprint pinned). Offering linkage demotions,
+  repairing in every round, and not decrementing the demotion count
+  each fail them.
+
+### Results (scored 2026-10-24)
+
+`python -m eval_harness.repair run|score --set corpus|bridge`; 33 repair
+records in `coach_artifacts/measurement_repair_*.json` (22 corpus, 11
+bridge), one per source record with quote failures. A dry run before any
+call matched the registration: 40 corpus items (31 valid, 9 false) and
+19 bridge items; every request was under the size limit.
+
+| arm | corpus valid | corpus FP/rev | corpus recall | bridge FP/rev | bridge race, gate |
+|---|---|---|---|---|---|
+| A (j8) | 64.0% | 0.409 | 0.413 | 0.179 | 0.786, 0.286 |
+| B (after repair) | 64.9% | 0.409 | 0.422 | 0.179 | 0.786, 0.286 |
+
+**Offered items by label class, quote group and result** (`before`:
+the quote is found only in the code before the change; `nowhere`):
+
+| set | class | group | offered | restored | re-quoted, demoted again | not returned | call failed |
+|---|---|---|---|---|---|---|---|
+| corpus | valid | before | 18 | 1 | 0 | 16 | 1 |
+| corpus | valid | nowhere | 13 | 1 | 0 | 7 | 5 |
+| corpus | false | before | 6 | 0 | 0 | 5 | 1 |
+| corpus | false | nowhere | 3 | 0 | 0 | 1 | 2 |
+| bridge | valid | nowhere | 4 | 1 | 0 | 2 | 1 |
+| bridge | false | before | 8 | 0 | 0 | 7 | 1 |
+| bridge | false | nowhere | 4 | 0 | 1 (hedge) | 2 | 1 |
+| bridge | deleted test | both | 3 | 0 | 0 | 3 | 0 |
+
+The three restored items: b90266 #e1 and #e2 (the session-lifetime bug,
+one from each group) and 5ef90b #e1 (the race, in a run that already
+stored it). 61e3c6 #e1, a false lifetime claim, came back with a passing
+quote and was demoted by the hedge check.
+
+| prediction | predicted | observed | |
+|---|---|---|---|
+| repair calls, corpus / bridge | 20–30 / 8–15 | 22 / 11 | HIT / HIT |
+| corpus valid readmitted | 16–26 of 31 | 2 | MISSED LOW |
+| of the 18 pre-change quotes / 13 found nowhere | 9–15 / 7–11 | 1 / 1 | MISSED LOW |
+| corpus false readmitted | 2–5 of 9 | 0 | MISSED LOW |
+| corpus mean recall | +0.08 to +0.14 | +0.009 | MISSED LOW |
+| corpus FPs per review | +0.03 to +0.08 | +0.000 | MISSED LOW |
+| bridge false readmitted | 2–6 of 12 | 0 | MISSED LOW |
+| bridge race found | 0.82–0.89 | 0.79 | MISSED LOW |
+| repair-call runaways / size skips | 0–3 / 0–2 | 34 of 77 attempts / 0 | MISSED HIGH / HIT |
+| fails on the bridge ceiling | — | fails condition 1 instead | MISSED |
+
+**By the rule: v12 fails condition 1** (corpus recall +0.009 against
++0.10) and does not ship. Debates run with `debate.REPAIR_PASS` off and
+stay PROMPT_VERSION v11.1 with v11.1's fingerprint (`8e76794ac4946aab`
+on the bridge fixture, now pinned by a test); the repair code stays for
+the measurement and a successor. The live golden suite passed 10/10 on
+the final code.
+
+**Why it failed: the calls mostly did not attempt the task.**
+- **First attempts, 33:** 19 ran to the 12,288-token output cap with
+  30,000–73,000 characters of thinking, 6 replied in the reviewer's own
+  schema (blockers, questions, nits: a fresh review), and 8 replied in
+  the repair schema, 2 of them with repairs.
+- **Retries:** 18 of the 26 accepted replies came after a corrective
+  retry; 16 were an empty list, 14 of those with no thinking (an eval
+  count of about 8 tokens). That is the low-thinking retry mode taking
+  the default the instruction offered.
+- **The request contradicted itself.** The system prompt is the
+  reviewer's role specification, and the transcript ends with "RESPOND
+  WITH JSON ONLY using your role specification" before the REPAIR
+  section asks for another object. The model read it as a request for a
+  full review, which is what its runaways and schema violations look
+  like. The fake-driven tests answer what they are told, so they could
+  not see the conflict; a live pilot of a few calls would have.
+- **The registered question is unanswered.** Whether the model can
+  re-quote when it attempts the task: 2 of the 8 first attempts in the
+  repair schema returned repairs, too few to tell.
+- **The guard held:** no false item came back as a blocker on either
+  data set. With so few attempts, that says little about the risk.
+
+**What this leaves:** a successor would give the repair call its own
+short system prompt (the quoting rules, not the review task) and only
+the code part of the transcript, and would pilot a handful of live calls
+before the full paired batch. That is a new prompt and a new
+registration; the paired archive and the runner are ready for it.

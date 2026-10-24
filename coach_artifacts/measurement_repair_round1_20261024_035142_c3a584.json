@@ -1,0 +1,75 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261024_035142_c3a584",
+    "set": "corpus",
+    "fixture": "connect_start_4a86231",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T15:44:40.431086+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "before",
+      "blocker": "claim: Memory leak: destructor no longer cleans up pending session, but lambda now captures session directly; file: app/qttunebridge.cpp; quote: if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\n        qttune_session_destroy(pending);\n    }"
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "nowhere",
+      "blocker": "claim: Removed cleanup code that prevented session leak in destruction path; file: app/qttunebridge.cpp; quote: // A connect whose queued completion never ran (it was dropped with\n    // `this` left its session pending. It was never started, so no\n    // worker is calling onFrame; destroy it like any other.\n-    if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\n-        qttune_session_destroy(pending);\n-    }"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 2,
+      "why": "nowhere",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 15533,
+      "prompt_eval_count": 4289,
+      "eval_count": 12288,
+      "thinking_chars": 80700,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 253.39,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 4289 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "pture mechanism introduces potential memory management risks. If the bridge is destroyed before the queued completion executes, the session could be leaked, creating a subtle resource management vulnerability.\n\nThe atomic exchange mechanism in the destructor seems designed to handle this scenario, but the implementation details require careful verification to ensure complete resource cleanup.\n\nThe",
+      "content_tail": ""
+    },
+    {
+      "attempt": 1,
+      "temperature": 0.05,
+      "prompt_chars": 15574,
+      "prompt_eval_count": 4304,
+      "eval_count": 8451,
+      "thinking_chars": 34882,
+      "content_chars": 1005,
+      "done_reason": "stop",
+      "wall_s": 181.91,
+      "outcome": "ok",
+      "reply": "{\"verdict\": \"reject\", \"blockers\": [{\"claim\": \"Memory leak: destructor no longer cleans up pending session, but lambda now captures session directly\", \"file\": \"app/qttunebridge.cpp\", \"quote\": \"if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\\n        qttune_session_destroy(pending);\\n    }\"}, {\"claim\": \"Removed cleanup code that prevented session leak in destruction path\", \"file\": \"app/qttunebridge.cpp\", \"quote\": \"// A connect whose queued completion never ran (it was dropped with\\n    // `this` left its session pending. It was never started, so no\\n    // worker is calling onFrame; destroy it like any other.\\n    if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\\n        qttune_session_destroy(pending);\\n    }\"}], \"questions\": [], \"nits\": [\"The updateValues change adds && e.subscribed which may alter intended behavior - the comment states 'subscribed or not: see Entry::subscribed' but the new code only updates for subscribed entries\"], \"repairs\": []}"
+    }
+  ]
+}

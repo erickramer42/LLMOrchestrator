@@ -1,0 +1,83 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round2_20261023_040201_5ef90b",
+    "set": "bridge",
+    "fixture": "bridge",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T16:42:21.175297+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "nowhere",
+      "blocker": "claim: Thread safety violation: m_currentFrameCount is incremented in handleFrameInternal on the GUI thread, but the backpressure check in onFrame (worker thread) reads it without synchronization, causing a data race.; file: app/qttunebridge.cpp; quote: ++m_currentFrameCount;\n\n    // and sync the drop counter to the GUI thread while we're here:"
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "before",
+      "blocker": "claim: Removed signal batching implementation breaks signal decoding. The diff removes all SignalListModel code and the m_stagingBuffer used for coalescing signal updates, eliminating the signal decoding functionality entirely.; file: app/qttunebridge.cpp; quote: // Decode signals into staging buffer\n-    const QttuneSignalSet* set = qttune_mock_signal_set();\n-    m_stagingBuffer.clear();\n-    for (uint32_t i = 0; i < set->count; ++i) {\n-        const QttuneSignalDef& def = set->defs[i];\n-        float val = 0.0f;\n-        if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {\n-            m_stagingBuffer.emplace_back(def.id, val);\n-        }\n-    }"
+    }
+  ],
+  "repairs": [
+    {
+      "id": 1,
+      "file": "app/qttunebridge.cpp",
+      "quote": "++m_currentFrameCount;"
+    }
+  ],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "nowhere",
+      "returned": true,
+      "result": "restored",
+      "file": "app/qttunebridge.cpp",
+      "quote": "++m_currentFrameCount;",
+      "restored_blocker": "claim: Thread safety violation: m_currentFrameCount is incremented in handleFrameInternal on the GUI thread, but the backpressure check in onFrame (worker thread) reads it without synchronization, causing a data race.; file: app/qttunebridge.cpp; quote: ++m_currentFrameCount;"
+    },
+    {
+      "id": 2,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 35060,
+      "prompt_eval_count": 10163,
+      "eval_count": 12288,
+      "thinking_chars": 72227,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 270.11,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 10163 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "pressure check occurs in the worker thread before queuing, but the actual frame count increment happens later in the GUI thread. This creates a potential race condition where the frame count might not accurately reflect the current state during the check.\n\nThe atomic operations on m_droppedFrames suggest some thread safety considerations, but the non-atomic m_currentFrameCount introduces potential",
+      "content_tail": ""
+    },
+    {
+      "attempt": 1,
+      "temperature": 0.05,
+      "prompt_chars": 35101,
+      "prompt_eval_count": 10178,
+      "eval_count": 9909,
+      "thinking_chars": 38342,
+      "content_chars": 91,
+      "done_reason": "stop",
+      "wall_s": 223.18,
+      "outcome": "ok",
+      "reply": "{\"repairs\": [{\"id\": 1, \"file\": \"app/qttunebridge.cpp\", \"quote\": \"++m_currentFrameCount;\"}]}"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261023_013254_698a1c",
+    "set": "bridge",
+    "fixture": "bridge",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T16:22:35.209309+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "before",
+      "blocker": "claim: C ABI integrity violation: qttune_decode_signal was called with hardcoded 8-byte buffer assumption instead of using frame->data_length for CAN-FD compatibility; file: app/qttunebridge.cpp; quote: if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 34255,
+      "prompt_eval_count": 9952,
+      "eval_count": 2132,
+      "thinking_chars": 8689,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 90.33,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}

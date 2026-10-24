@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round2_20261023_033100_97c2dd",
+    "set": "bridge",
+    "fixture": "bridge",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T16:34:07.851773+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "before",
+      "blocker": "claim: Test infrastructure broken: forceFrameCountForTesting() was removed from the header but is required by the StreamingContinuesPastTenThousandFrames test which validates the backpressure behavior; file: app/qttunebridge.h; quote: Q_INVOKABLE void forceFrameCountForTesting(int count);"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 34281,
+      "prompt_eval_count": 9945,
+      "eval_count": 3059,
+      "thinking_chars": 12167,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 96.72,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}

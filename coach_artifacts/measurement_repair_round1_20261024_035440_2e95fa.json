@@ -1,0 +1,120 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261024_035440_2e95fa",
+    "set": "corpus",
+    "fixture": "connect_start_4a86231",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T16:00:29.469272+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "nowhere",
+      "blocker": "claim: Memory leak: session is captured in lambda but never destroyed on failure or success paths in connectSessionAsync; file: app/qttunebridge.cpp; quote: QMetaObject::invokeMethod(this, [this, uri, err, session]() {\n            // JOIN FIRST, then clear the flag, then emit: assigning to a\n            // joinable std::thread terminates the process, and a QML\n            // handler can run SYNCHRONOUSLY inside connectingChanged —\n            // but a queued connection is safer.\n            if (m_connectThread.joinable()) {\n                m_connectThread.join();\n            }\n            m_connecting = false;\n            emit connectingChanged();\n            \n            if (!err.isEmpty()) {\n                emit logMessage(QStringLiteral(\"Connect failed: %1 (%2)\").arg(uri, err));\n                // Session is leaked here"
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "nowhere",
+      "blocker": "claim: Missing applyConnectedState call: successful connection does not apply connected state to GUI, breaking the connection workflow; file: app/qttunebridge.cpp; quote: QMetaObject::invokeMethod(this, [this, uri, err, session]() {\n            // JOIN FIRST, then clear the flag, then emit: assigning to a\n            // joinable std::thread terminates the process, and a QML\n            // handler can run SYNCHRONOUSLY inside connectingChanged —\n            // but a queued connection is safer.\n            if (m_connectThread.joinable()) {\n                m_connectThread.join();\n            }\n            m_connecting = false;\n            emit connectingChanged();\n            \n            if (!err.isEmpty()) {\n                emit logMessage(QStringLiteral(\"Connect failed: %1 (%2)\").arg(uri, err));\n            }\n            // Where is applyConnectedState(session, uri)?"
+    },
+    {
+      "id": 3,
+      "key": "#e3",
+      "why": "nowhere",
+      "blocker": "claim: Destructor no longer cleans up pending session, causing leak and potential use-after-free when bridge dies before async connect completes; file: app/qttunebridge.cpp; quote: QtTuneBridge::~QtTuneBridge()\n{\n    if (m_connectThread.joinable()) {\n        m_connectThread.join();\n    }\n-    // A connect whose queued completion never ran (it was dropped with\n-    // `this`) left its session pending. It was never started, so no\n-    // worker is calling onFrame; destroy it like any other.\n-    if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\n-        qttune_session_destroy(pending);\n-    }\n    if (m_session != nullptr) {\n        destroySessionLocked();\n    }\n}"
+    },
+    {
+      "id": 4,
+      "key": "#e4",
+      "why": "nowhere",
+      "blocker": "claim: Session is started in connectCoreOnly but never stopped if async connect is cancelled, leaving worker thread running with dangling bridge reference; file: app/qttunebridge.cpp; quote: QString QtTuneBridge::connectCoreOnly(const QString& uri,\n                                       qttune_session_t** out_session)\n {\n     // ...\n-    // Pure-core half: safe on ANY thread. Creates, registers, starts. On\n-    // failure, cleans up fully (the unregister/destroy calls are core API,\n-    // mutex-safe off-thread) and returns the error string. On success the\n-    // caller owns *out_session and must applyConnectedState() on the GUI\n-    // thread. Touches no Qt models, timers, or properties.\n     const qttune_status_t rc = qttune_session_start(session);\n     if (rc != QT_OK) {\n         qttune_unregister_frame_callback(session, &QtTuneBridge::onFrame, this);\n         qttune_session_destroy(session);\n         return QString::fromUtf8(qttune_status_string(rc));\n     }\n\n     *out_session = session;\n     return {};\n }"
+    }
+  ],
+  "repairs": null,
+  "skipped": "repair call failed: schema violation: expected an object with a 'repairs' list",
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "nowhere",
+      "returned": false,
+      "result": "skipped",
+      "blocker": null,
+      "restored_blocker": null
+    },
+    {
+      "id": 2,
+      "why": "nowhere",
+      "returned": false,
+      "result": "skipped",
+      "blocker": null,
+      "restored_blocker": null
+    },
+    {
+      "id": 3,
+      "why": "nowhere",
+      "returned": false,
+      "result": "skipped",
+      "blocker": null,
+      "restored_blocker": null
+    },
+    {
+      "id": 4,
+      "why": "nowhere",
+      "returned": false,
+      "result": "skipped",
+      "blocker": null,
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 18368,
+      "prompt_eval_count": 4995,
+      "eval_count": 12288,
+      "thinking_chars": 73533,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 259.49,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 4995 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "ces a complex synchronization challenge.\n\nThe core issue stems from the session's lifecycle being tied to the lambda's execution, which can be cancelled if the bridge is destroyed before the asynchronous operation completes.\n\nThe destructor's thread joining mechanism ensures the lambda completes before proceeding with resource cleanup, but the session's destruction depends on the lambda's specific",
+      "content_tail": ""
+    },
+    {
+      "attempt": 1,
+      "temperature": 0.05,
+      "prompt_chars": 18409,
+      "prompt_eval_count": 5010,
+      "eval_count": 12288,
+      "thinking_chars": 71917,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 266.47,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 5010 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "or handling and resource management.\n\nThe code checks for connection errors, logs failure messages, and manages session lifecycle through careful pointer handling and thread synchronization. I see the code is checking for errors and managing session state. The lambda captures the session, and there's a potential memory leak if the connection fails. The code needs to handle both success and failure",
+      "content_tail": ""
+    },
+    {
+      "attempt": 2,
+      "temperature": 0.05,
+      "prompt_chars": 18450,
+      "prompt_eval_count": 5025,
+      "eval_count": 935,
+      "thinking_chars": 0,
+      "content_chars": 3659,
+      "done_reason": "stop",
+      "wall_s": 62.11,
+      "outcome": "schema violation: expected an object with a 'repairs' list",
+      "thinking_tail": "",
+      "content_tail": ", or properties.\\n     const qttune_status_t rc = qttune_session_start(session);\\n     if (rc != QT_OK) {\\n         qttune_unregister_frame_callback(session, &QtTuneBridge::onFrame, this);\\n         qttune_session_destroy(session);\\n         return QString::fromUtf8(qttune_status_string(rc));\\n     }\\n\\n     *out_session = session;\\n     return {};\\n }\"\n    }\n  ],\n  \"questions\": [],\n  \"nits\": []\n}"
+    }
+  ]
+}

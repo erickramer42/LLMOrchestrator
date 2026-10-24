@@ -395,6 +395,48 @@ def _quote_linked(evidence: dict, sources: Dict[str, List[str]],
     return bool(ids & set().union(*(hunks[path][h] for h in found if h < len(hunks[path]))))
 
 
+def before_sources(code_diff: str) -> Dict[str, List[str]]:
+    """Each file's code as it read BEFORE the change: context and removed
+    lines in order, with the hunk breaks evidence_sources puts in. Never
+    evidence; the repair pass (v12) uses it to tell the reviewer that a
+    quote came from code the change removed. Mirrors evidence_sources
+    with '+' skipped instead of '-'."""
+    files: Dict[str, List[str]] = {}
+    paths: List[str] = []
+    after_minus = False
+    for tag, text in read_diff(code_diff):
+        if tag in ("---", "+++"):
+            if tag == "---" or not after_minus:
+                paths = []
+            after_minus = tag == "---"
+            if text != DEV_NULL and text not in paths:
+                paths.append(text)
+                files.setdefault(text, [])
+            continue
+        after_minus = False
+        if tag == "+":
+            continue
+        line = _HUNK_BREAK if tag == "@@" else text
+        for p in paths or [UNFILED_SOURCE]:
+            files.setdefault(p, []).append(line)
+    return {p: [s for s in map(_squash, lines) if s] for p, lines in files.items()}
+
+
+def judge_repaired(evidence: dict, sources: Dict[str, List[str]],
+                   hunks: Dict[str, List[Set[str]]],
+                   symbols: FrozenSet[str]) -> Optional[str]:
+    """A repaired blocker judged as any blocker is: its new quote by the
+    evidence check, its original claim by linkage, then by the hedge
+    check. None when it stands, else 'quote', 'link' or 'hedge'."""
+    if not _quote_verified(evidence, sources):
+        return "quote"
+    if not _quote_linked(evidence, sources, hunks, symbols):
+        return "link"
+    if HEDGE_PATTERNS.search(evidence.get("claim", "")):
+        return "hedge"
+    return None
+
+
 def _quote_verified(evidence: Optional[dict], sources: Dict[str, List[str]]) -> bool:
     if not evidence:
         return False
@@ -413,7 +455,8 @@ def _quote_verified(evidence: Optional[dict], sources: Dict[str, List[str]]) -> 
 def demote_unverified_blockers(agent_out: dict, sources: Dict[str, List[str]],
                                concern_key: str = "questions",
                                hunks: Optional[Dict[str, List[Set[str]]]] = None,
-                               symbols: FrozenSet[str] = frozenset()) -> Tuple[dict, int]:
+                               symbols: FrozenSet[str] = frozenset(),
+                               details: Optional[List[dict]] = None) -> Tuple[dict, int]:
     """Guardrail (judge j4): a blocker must quote its evidence from the
     code as it reads after the change. A blocker whose quote is not found
     in the post-change lines of the file it names (or in the supplied
@@ -425,6 +468,9 @@ def demote_unverified_blockers(agent_out: dict, sources: Dict[str, List[str]],
     when symbols, the index's type and constant names, holds them.
     Reads blocker_evidence from normalize_agent_output and keeps it
     aligned with the kept blockers, for demote_hedged_blockers.
+    details, when given, receives one entry per demoted blocker, in
+    order: its text, its evidence and why ('quote' or 'link'), which the
+    repair pass reads (v12).
     Returns (output, number of blockers demoted, for either reason)."""
     if (not isinstance(agent_out, dict) or not agent_out
             or agent_out.get("verdict") == "PARSE_FAILURE"):
@@ -435,12 +481,17 @@ def demote_unverified_blockers(agent_out: dict, sources: Dict[str, List[str]],
     kept, kept_evidence, demoted = [], [], []
     for i, b in enumerate(out.get("blockers", []) or []):
         ev = evidence[i] if i < len(evidence) else None
-        if _quote_verified(ev, sources) and (
-                hunks is None or _quote_linked(ev, sources, hunks, symbols)):
+        reason = (None if _quote_verified(ev, sources) else "quote")
+        if reason is None and hunks is not None and not _quote_linked(
+                ev, sources, hunks, symbols):
+            reason = "link"
+        if reason is None:
             kept.append(b)
             kept_evidence.append(ev)
         else:
             demoted.append(b)
+            if details is not None:
+                details.append({"blocker": b, "evidence": ev, "reason": reason})
 
     if demoted:
         out["blockers"] = kept

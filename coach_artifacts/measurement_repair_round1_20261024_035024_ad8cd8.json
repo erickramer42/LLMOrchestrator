@@ -1,0 +1,76 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261024_035024_ad8cd8",
+    "set": "corpus",
+    "fixture": "connect_start_4a86231",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T15:37:25.103733+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "before",
+      "blocker": "claim: The destructor no longer cleans up in-flight sessions. The removed m_pendingSession cleanup was necessary for the old design where session wasn't started yet. With the new design where session IS started before queuing, the destructor must handle started sessions that may still be calling onFrame.; file: app/qttunebridge.cpp; quote: // A connect whose queued completion never ran (it was dropped with\n    // `this`) left its session pending. It was never started, so no\n    // worker is calling onFrame; destroy it like any other.\n    if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\n        qttune_session_destroy(pending);\n    }"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 15441,
+      "prompt_eval_count": 4251,
+      "eval_count": 12288,
+      "thinking_chars": 50699,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 251.06,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 4251 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": " is destroyed.\n-QString QtTuneBridge::startSession(qttune_session_t* session)\n-{\n-    const qttune_status_t rc = qttune_session_start(session);\n+    rc = qttune_session_start(session);\n     if (rc != QT_OK) {\n         qttune_unregister_frame_callback(session, &QtTuneBridge::onFrame, this);\n         qttune_session_destroy(session);\n         return QString::fromUtf8(qttune_status_string(rc));\n     }",
+      "content_tail": ""
+    },
+    {
+      "attempt": 1,
+      "temperature": 0.05,
+      "prompt_chars": 15482,
+      "prompt_eval_count": 4266,
+      "eval_count": 12288,
+      "thinking_chars": 50954,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 252.74,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 4266 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "ion is never stored.\n\nThis is a bug. The session is created, started, passed to the lambda, and then lost.\n\nFor the repair request, I need to find a quote from the code AFTER the change that shows the destructor doesn't clean up sessions.\n\nLooking at the new destructor:\n```cpp\nvoid QtTuneBridge::~QtTuneBridge()\n{\n    if (m_connectThread.joinable()) {\n        m_connectThread.join();\n    }\n    if (m",
+      "content_tail": ""
+    },
+    {
+      "attempt": 2,
+      "temperature": 0.05,
+      "prompt_chars": 15523,
+      "prompt_eval_count": 4281,
+      "eval_count": 8,
+      "thinking_chars": 0,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 33.25,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}

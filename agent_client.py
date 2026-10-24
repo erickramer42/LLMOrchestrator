@@ -70,6 +70,11 @@ def _attempt_stats(attempt: int, temperature: float, prompt_chars: int,
     if reason and (thinking or content):
         stats["thinking_tail"] = thinking[-FAILURE_TAIL_CHARS:]
         stats["content_tail"] = content[-FAILURE_TAIL_CHARS:]
+    elif not reason:
+        # The accepted reply verbatim (v12): records keep what the model
+        # said, not only what normalization made of it. Thinking is not
+        # kept.
+        stats["reply"] = content
     return stats
 
 

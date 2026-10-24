@@ -1,0 +1,74 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261023_012856_819df9",
+    "set": "bridge",
+    "fixture": "bridge",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T16:21:04.860037+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "before",
+      "blocker": "claim: C ABI integrity violation: qttune_decode_signal is called with a hardcoded 8-byte buffer size in handleFrameInternal, but qttune_frame_t.data is 64 bytes. This assumes 8-byte CAN frames when the ABI supports CAN-FD with 64+ byte payloads.; file: app/qttunebridge.cpp; quote: if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {"
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "nowhere",
+      "blocker": "claim: Thread safety violation: handleFrameInternal accesses m_connected without synchronization despite being called from the GUI thread via QMetaObject::invokeMethod, while onFrame (worker thread) also accesses m_connected. The atomic check order creates a race condition.; file: app/qttunebridge.cpp; quote: if (self->m_connected.load(std::memory_order_acquire)) {\n        self->m_droppedFrames.fetch_add(1, std::memory_order_relaxed);\n        return;\n    }\n\n    const qttune_frame_t copy = *frame;\n\n    QMetaObject::invokeMethod(self, [self, copy]() {\n        self->handleFrameInternal(&copy);\n    }, Qt::QueuedConnection);"
+    },
+    {
+      "id": 3,
+      "key": "#e3",
+      "why": "before",
+      "blocker": "claim: Buffer size assumption violation: The code assumes 8-byte CAN frames with hardcoded buffer size, but qttune_frame_t.data is 64 bytes to support CAN-FD. This violates the ABI's support for 64+ byte payloads.; file: app/qttunebridge.cpp; quote: for (uint32_t i = 0; i < set->count; ++i) {\n        const QttuneSignalDef& def = set->defs[i];\n        float val = 0.0f;\n        if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {\n            m_stagingBuffer.emplace_back(def.id, val);\n        }\n    }"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 2,
+      "why": "nowhere",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 3,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 35607,
+      "prompt_eval_count": 10326,
+      "eval_count": 941,
+      "thinking_chars": 3526,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 69.11,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261023_012351_55c897",
+    "set": "bridge",
+    "fixture": "bridge",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T16:19:55.696269+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "nowhere",
+      "blocker": "claim: Removed m_inFlightFrames atomic counter eliminates the backpressure mechanism that prevented queue overflow during high-throughput scenarios; file: app/qttunebridge.h; quote:     int m_currentFrameCount = 0;\n-    int m_lastReportedDropped = 0;\n+\n+    FrameListModel* m_sourceModel = nullptr;  // canonical storage\n+    FrameSortProxy* m_sortProxy = nullptr;    // view-facing\n\n-    std::atomic<int> m_inFlightFrames{0};   // posted-but-not-yet-processed count\n-    static constexpr int MaxInFlightFrames = 1000;   // queue backlog bound"
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "nowhere",
+      "blocker": "claim: Deleted forceFrameCountForTesting method removes the testing hook for simulating high-load scenarios; the test now has no way to verify the backpressure behavior; file: tests/test_bridge.cpp; quote: TEST(BridgeTest, StreamingContinuesPastTenThousandFrames)\n-    bridge.forceFrameCountForTesting(9999);\n\n    spinLoop(600);   // ~12 more frames at 50ms"
+    },
+    {
+      "id": 3,
+      "key": "#e3",
+      "why": "before",
+      "blocker": "claim: Signal batching infrastructure removed without replacement; the staging buffer and coalescing timer that were used to batch signal updates have been deleted; file: app/qttunebridge.h; quote: -    QTimer* m_coalesceTimer = nullptr;\n-    std::vector<std::pair<uint16_t, float>> m_stagingBuffer;\n-    int m_signalBatchCount = 0;"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "nowhere",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 2,
+      "why": "nowhere",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 3,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 35342,
+      "prompt_eval_count": 10232,
+      "eval_count": 6788,
+      "thinking_chars": 26364,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 174.41,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}

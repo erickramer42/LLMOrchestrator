@@ -1,0 +1,75 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261024_021315_77f026",
+    "set": "corpus",
+    "fixture": "connect_start_4a86231",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T14:36:36.126282+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "before",
+      "blocker": "claim: Memory leak: destructor no longer cleans up pending session when bridge is destroyed before queued lambda executes; file: app/qttunebridge.cpp; quote: // A connect whose queued completion never ran (it was dropped with\n// `this`) left its session pending. It was never started, so no\n// worker is calling onFrame; destroy it like any other.\nif (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\n    qttune_session_destroy(pending);\n}"
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "before",
+      "blocker": "claim: Missing member declaration: m_pendingSession is used in destructor but declared as removed; file: app/qttunebridge.h; quote: // Atomic only for the test seam: both owners read it after joining\n// the connect thread.\nstd::atomic<qttune_session_t*> m_pendingSession{nullptr};"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 2,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 15594,
+      "prompt_eval_count": 4298,
+      "eval_count": 2421,
+      "thinking_chars": 8848,
+      "content_chars": 1208,
+      "done_reason": "stop",
+      "wall_s": 45.65,
+      "outcome": "schema violation: expected an object with a 'repairs' list",
+      "thinking_tail": "we need to track the session somehow.\n\nOne approach: use a member variable to track the in-flight session, similar to the old `m_pendingSession` but with different semantics.\n\nAnother approach: don't start the session in `connectCoreOnly`, keep the two-phase approach.\n\nThe author's approach of merging the phases is cleaner but requires careful handling of the lifetime.\n\nLet me write my review now.",
+      "content_tail": " thread.\\nstd::atomic<qttune_session_t*> m_pendingSession{nullptr};\"\n    }\n  ],\n  \"questions\": [],\n  \"nits\": [\n    \"The updateValues change to check e.subscribed is correct but the removed comment about 'Values and history update regardless' was misleading\",\n    \"Consider adding a comment explaining why the session must be tracked in the destructor even after the two-phase connect is merged\"\n  ]\n}"
+    },
+    {
+      "attempt": 1,
+      "temperature": 0.05,
+      "prompt_chars": 15725,
+      "prompt_eval_count": 4332,
+      "eval_count": 8,
+      "thinking_chars": 0,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 2.68,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}

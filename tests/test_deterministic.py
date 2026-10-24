@@ -51,6 +51,7 @@ logging.getLogger("agent_client").addHandler(logging.NullHandler())
 
 REVIEWER_CLEAN = {"verdict": "approve", "blockers": [], "questions": [], "nits": []}
 ENGINEER_CLEAN = {"verdict": "approve", "blockers": [], "concerns": [], "questions": []}
+REPAIR_NONE = {"repairs": []}  # a repair call's reply that restores nothing (v12)
 
 # A diff with one added line that reviewer blockers can quote (judge j3).
 QUOTE = "memcpy(buf, msg->data, msg->len);"
@@ -547,9 +548,11 @@ class AgentClientTests(NoSleep):
         self.assertEqual(failed["thinking_tail"],
                          loop[-agent_client.FAILURE_TAIL_CHARS:])
         self.assertEqual(failed["content_tail"], "")
-        # successful attempts keep sizes only, never the text
+        # successful attempts keep sizes and the reply (v12), never thinking
         self.assertEqual(ok["thinking_chars"], len("Short check."))
         self.assertNotIn("thinking_tail", ok)
+        self.assertEqual(json.loads(ok["reply"]), REVIEWER_CLEAN)
+        self.assertNotIn("reply", failed)
 
     def test_every_request_caps_output(self):
         with fake_ollama(REVIEWER_CLEAN) as post:
@@ -806,7 +809,8 @@ class DebateTests(NoSleep):
         # The bake-off reviews the same snippets; its abi_type_leak copy
         # had drifted by a space (code review finding 9).
         bake = {name: code for name, _, code, _ in bakeoff.CASES}
-        for sent, name in zip(transcripts(post), ("canfd_buffer_overflow",
+        reviews = [s for s in transcripts(post) if "REPAIR (blockers" not in s]
+        for sent, name in zip(reviews, ("canfd_buffer_overflow",
                                                   "abi_type_leak", "clean_pattern")):
             self.assertIn(f"\n{bake[name]}\n", sent)
 
@@ -1627,6 +1631,170 @@ class ReplayTests(unittest.TestCase):
                 replay.verify(gapped, self.diff, gapped=True))
         self.assertEqual((sorted(tail[1][1]), sorted(head[1][1])), ([2, 3, 4], [1, 3, 4]))
         self.assertEqual(replay.vote([[tail], [head]], self.diff, k=2), [])
+
+
+REPAIR_DIFF = ("--- a/app/x.cpp\n+++ b/app/x.cpp\n"
+               "@@ -1,4 +1,4 @@ void onFrame()\n"
+               " if (self->m_count >= MaxFrames) {\n"
+               "-    m_inFlight.fetch_add(1);\n"
+               "+    m_dropped.fetch_add(1);\n"
+               "     return;\n"
+               " }\n")
+
+
+class RepairSwitchTests(unittest.TestCase):
+    def test_the_repair_pass_is_off_by_default(self):
+        # ADR-0002, seventeenth measurement: measured, not shipped
+        self.assertFalse(debate.REPAIR_PASS)
+        self.assertEqual(debate.PROMPT_VERSION, "v11.1-critiques-feedback")
+
+    def test_debates_keep_the_v11_1_fingerprint(self):
+        # A part added to the hash, even an empty one, changes it: the
+        # bridge fixture's debates must still group with v11.1's records.
+        diff = (REPO_ROOT / "docs/fixtures/qttune_bridge_refactor.diff").read_text(
+            encoding="utf-8")
+        with contextlib.redirect_stderr(io.StringIO()):
+            setup = debate._prepare(diff, "", False)
+        self.assertEqual(debate._run_settings(setup, "debate", 3, {})["prompt_fingerprint"],
+                         "8e76794ac4946aab")
+
+
+class RepairPassTests(NoSleep):
+    """v12, the repair pass (ADR-0002, seventeenth measurement), measured
+    and not shipped: switched on here to exercise the mechanism."""
+
+    def setUp(self):
+        super().setUp()
+        switch = mock.patch.object(debate, "REPAIR_PASS", True)
+        switch.start()
+        self.addCleanup(switch.stop)
+        self._cwd = os.getcwd()
+        self._tmp = tempfile.TemporaryDirectory()
+        os.chdir(self._tmp.name)
+
+    def tearDown(self):
+        os.chdir(self._cwd)
+        self._tmp.cleanup()
+
+    def review(self, blockers, *replies):
+        rev = {**REVIEWER_CLEAN, "blockers": blockers}
+        with fake_ollama(rev, *replies) as post:
+            result = debate.run_round1_review("p", REPAIR_DIFF, "")
+        rec = json.loads(Path(result["record_path"]).read_text(encoding="utf-8"))
+        return rec["outputs"]["round_history"][0], post
+
+    def block(self, claim, quote, file="app/x.cpp"):
+        return {"claim": claim, "file": file, "quote": quote}
+
+    def test_a_removed_line_quote_is_offered_and_restored_with_its_claim(self):
+        removed = self.block("removing m_inFlight leaves m_count unbounded",
+                             "m_inFlight.fetch_add(1);")
+        entry, post = self.review([removed], {"repairs": [
+            {"id": 1, "file": "app/x.cpp", "quote": "m_dropped.fetch_add(1);",
+             "claim": "a different claim"}]})
+        self.assertEqual(post.call_count, 2)
+        request = post.call_args_list[1].kwargs["json"]["messages"][1]["content"]
+        self.assertIn("REPAIR (blockers from your reply", request)
+        self.assertIn("your quote: m_inFlight.fetch_add(1);", request)
+        self.assertIn("found only in the code before the change", request)
+        # the claim is the original; the reply's claim field is ignored
+        self.assertEqual(entry["reviewer"]["blockers"], [
+            "claim: removing m_inFlight leaves m_count unbounded; file: app/x.cpp; "
+            "quote: m_dropped.fetch_add(1);"])
+        self.assertEqual(entry["reviewer"]["questions"], [])
+        self.assertEqual(entry["evidence_demotions"]["reviewer_demoted"], 0)
+        self.assertEqual(entry["repair"]["restored"], 1)
+        self.assertEqual(entry["repair"]["items"][0]["why"], "before")
+        self.assertEqual(entry["repair"]["before"]["questions"], [
+            "claim: removing m_inFlight leaves m_count unbounded; file: app/x.cpp; "
+            "quote: m_inFlight.fetch_add(1);"])
+        self.assertEqual(post.call_args_list[1].kwargs["json"]["options"]["temperature"],
+                         debate.TEMPERATURE_RETRY)
+
+    def test_the_repaired_quote_reenters_every_check(self):
+        b1 = self.block("m_count races", "no such line")
+        b2 = self.block("m_lastReported races", "no such line either")
+        b3 = self.block("m_count overflows", "still no such line")
+        b4 = self.block("m_count might overflow", "nor this")
+        entry, _ = self.review([b1, b2, b3, b4], {"repairs": [
+            {"id": 1, "file": "app/x.cpp", "quote": "if (self->m_count >= MaxFrames) {"},
+            {"id": 2, "file": "app/x.cpp", "quote": "m_dropped.fetch_add(1);"},  # unlinked
+            {"id": 3, "file": "app/x.cpp", "quote": "made up code();"},          # not found
+            {"id": 4, "file": "app/x.cpp", "quote": "if (self->m_count >= MaxFrames) {"},
+            {"id": 9, "file": "app/x.cpp", "quote": "if (self->m_count >= MaxFrames) {"},
+            {"id": 1, "file": "app/x.cpp", "quote": "made up code();"}]})        # repeat
+        results = [i["result"] for i in entry["repair"]["items"]]
+        self.assertEqual(results, ["restored", "link", "quote", "hedge"])
+        self.assertEqual([b.split(";")[0] for b in entry["reviewer"]["blockers"]],
+                         ["claim: m_count races"])
+        self.assertEqual(entry["evidence_demotions"]["reviewer_demoted"], 3)
+        # the scorers' tail reading still finds the three left
+        unquoted, hedged = common.demoted_tail(entry)
+        self.assertEqual([q.split(";")[0] for q in unquoted],
+                         ["claim: m_lastReported races", "claim: m_count overflows",
+                          "claim: m_count might overflow"])
+
+    def test_hedged_and_unlinked_blockers_are_never_offered(self):
+        hedged = self.block("m_count might overflow", "if (self->m_count >= MaxFrames) {")
+        unlinked = self.block("m_lastReported races", "if (self->m_count >= MaxFrames) {")
+        entry, post = self.review([hedged, unlinked])
+        self.assertEqual(post.call_count, 1)  # no repair call
+        self.assertEqual(entry["repair"]["offered"], 0)
+        self.assertEqual(entry["telemetry"]["reviewer_repair"], [])
+
+    def test_a_failed_repair_restores_nothing(self):
+        entry, post = self.review([self.block("m_count races", "no such line")],
+                                  "not json", "still not json", ["a list"])
+        self.assertEqual(post.call_count, 4)
+        self.assertIn("repair call failed", entry["repair"]["skipped"])
+        self.assertEqual(entry["reviewer"]["blockers"], [])
+        self.assertEqual(entry["evidence_demotions"]["reviewer_demoted"], 1)
+
+    def test_an_oversized_repair_request_is_skipped(self):
+        # the claim travels in the repair request, not in round 1's
+        long_claim = "m_count races " + "x" * 40000
+        entry, post = self.review([self.block(long_claim, "no such line")])
+        self.assertEqual(post.call_count, 1)
+        self.assertIn("estimated", entry["repair"]["skipped"])
+
+    def test_round_one_requests_are_unchanged_and_later_rounds_never_repair(self):
+        # a stored blocker keeps the debate going past round 1
+        rev = {**REVIEWER_CLEAN, "blockers": [
+            self.block("m_count is read off-thread", "if (self->m_count >= MaxFrames) {"),
+            self.block("m_count races", "no such line")]}
+        with fake_ollama(rev, REPAIR_NONE, ENGINEER_CLEAN,
+                         *[rev, ENGINEER_CLEAN] * (debate.MAX_DEBATE_ROUNDS - 1)) as post:
+            result = debate.run_debate("p", REPAIR_DIFF, "")
+        sent = [c.kwargs["json"]["messages"][1]["content"] for c in post.call_args_list]
+        setup = debate._prepare(REPAIR_DIFF, "", False)
+        self.assertEqual(sent[0], debate._render_transcript("p", setup.static_section, 1))
+        self.assertEqual(sum("REPAIR (blockers" in s for s in sent), 1)
+        self.assertTrue(sent[1].startswith(sent[0]))
+        rounds = json.loads(Path(result["decision_record_path"]).read_text(
+            encoding="utf-8"))["outputs"]["round_history"]
+        self.assertIn("repair", rounds[0])
+        self.assertTrue(all("repair" not in r for r in rounds[1:]))
+
+    def test_debates_run_without_the_repair_pass(self):
+        # Not shipped: with the switch at its default, a quote failure
+        # makes no repair call and the fingerprint is v11.1's.
+        with mock.patch.object(debate, "REPAIR_PASS", False):
+            entry, post = self.review([self.block("m_count races", "no such line")])
+            setup = debate._prepare(REPAIR_DIFF, "", False)
+            off = debate._run_settings(setup, "debate", 1, {})["prompt_fingerprint"]
+            with mock.patch.object(debate, "REPAIR_TEMPLATE", "changed"):
+                same = debate._run_settings(setup, "debate", 1, {})["prompt_fingerprint"]
+        self.assertEqual(post.call_count, 1)
+        self.assertNotIn("repair", entry)
+        self.assertEqual(off, same)
+
+    def test_the_fingerprint_names_the_repair_template(self):
+        rec_fp = debate._run_settings(debate._prepare(REPAIR_DIFF, "", False),
+                                      "debate", 1, {})["prompt_fingerprint"]
+        with mock.patch.object(debate, "REPAIR_TEMPLATE", debate.REPAIR_TEMPLATE + " "):
+            changed = debate._run_settings(debate._prepare(REPAIR_DIFF, "", False),
+                                           "debate", 1, {})["prompt_fingerprint"]
+        self.assertNotEqual(rec_fp, changed)
 
 
 class LinkageTests(unittest.TestCase):

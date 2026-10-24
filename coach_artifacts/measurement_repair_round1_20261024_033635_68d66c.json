@@ -1,0 +1,102 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round1_20261024_033635_68d66c",
+    "set": "corpus",
+    "fixture": "trusted_count_6420f09",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T15:19:31.592640+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "before",
+      "blocker": "claim: C ABI integrity violation: the removed qttune_trusted_count function was part of the C API boundary in j2534_ptypes.h, and the new code removes the safety mechanism without providing an equivalent one. The code now unconditionally trusts the vendor's reported message count, which violates the trust rule documented in the original code comments.; file: core/include/qttune/j2534_ptypes.h; quote: static inline unsigned long qttune_trusted_count(unsigned long status,\n                                                 unsigned long reported)\n{\n    switch (status) {\n    case QTTUNE_PT_STATUS_NOERROR:\n    case QTTUNE_PT_STATUS_TIMEOUT:\n        return reported;\n    default:\n        return 0;\n    }\n}"
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "nowhere",
+      "blocker": "claim: Unsafe buffer handling: removing the qttune_trusted_count call in surrogate_main.cpp leaves the code vulnerable to phantom frame replay. The comment explicitly states that s_read_batch is static and never cleared, so an untrusted count would replay previous read's frames as phantoms.; file: surrogate/surrogate_main.cpp; quote: /* Finding 1: trust the count only under the status allowlist. A\n   * vendor may leave pNumMsgs untouched on error (VX observed:\n   * \"status 7, written 1\", bench 2026-10-20). A dirty count is\n   * doubly dangerous here: s_read_batch is static and never\n   * cleared, so it would replay the PREVIOUS read's frames as\n   * phantoms. */\nnum = qttune_trusted_count(rc, num);"
+    },
+    {
+      "id": 3,
+      "key": "#e3",
+      "why": "before",
+      "blocker": "claim: Missing safety mechanism for vendor count trust: the proposal claims to 'take the vendor's reported message count as the number of frames delivered' but removes the explicit check for QTTUNE_PT_STATUS_BUFFER_OVERFLOW which is part of the trust rule. The new code in j2534_loader.cpp unconditionally uses the count without any status validation.; file: core/src/j2534_loader.cpp; quote: long rc = handle->read_msgs(channel, &msg, &num, timeout_ms);\n-    num = qttune_trusted_count(rc, num);   /* finding 1: dirty count\n-                                               under a hard error is\n-                                               not a delivered frame */"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 2,
+      "why": "nowhere",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 3,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 12188,
+      "prompt_eval_count": 3542,
+      "eval_count": 12288,
+      "thinking_chars": 51859,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 262.44,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 3542 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "ever the status: per J2534-1 a read that\n * asks for N messages with a nonzero timeout returns ERR_TIMEOUT\n * together with however many arrived, so on a conforming vendor the\"\n\nThis suggests that the new approach is to always use the count. But the original code had a comment that explicitly warned about the danger of this approach!\n\nI think the proposal is introducing a bug. The safety mechanism",
+      "content_tail": ""
+    },
+    {
+      "attempt": 1,
+      "temperature": 0.05,
+      "prompt_chars": 12229,
+      "prompt_eval_count": 3557,
+      "eval_count": 12288,
+      "thinking_chars": 52908,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 264.94,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 3557 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "three should be questions, not blockers.\n\nNow let me think about the actual verdict.\n\nLooking at the code diff:\n1. The `qttune_trusted_count` function is removed from the header\n2. The calls to `qttune_trusted_count` are removed from the loader and surrogate\n\nThe original code had a safety mechanism that only trusted the vendor's reported count under certain status conditions. The proposal removes",
+      "content_tail": ""
+    },
+    {
+      "attempt": 2,
+      "temperature": 0.05,
+      "prompt_chars": 12270,
+      "prompt_eval_count": 3572,
+      "eval_count": 8,
+      "thinking_chars": 0,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 37.42,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}

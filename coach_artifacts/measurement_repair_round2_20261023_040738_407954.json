@@ -1,0 +1,89 @@
+{
+  "metadata": {
+    "mode": "repair_pair",
+    "source_record": "round2_20261023_040738_407954",
+    "set": "bridge",
+    "fixture": "bridge",
+    "prompt_version": "v12-repair-pass",
+    "judge_version": "j8-claim-quote-linkage",
+    "repair_fingerprint": "42661b01253e5b13",
+    "model": "laguna-xs-2.1",
+    "temperature": 0.05,
+    "created": "2026-10-24T16:52:01.794598+00:00"
+  },
+  "offered": [
+    {
+      "id": 1,
+      "key": "#e1",
+      "why": "before",
+      "blocker": "claim: C ABI integrity violation: The code includes 'qttune/signals.h' which is not part of the stable ABI interface. The diff header includes 'qttune/core.h' but the removed lines show SignalListModel was removed, and the code references qttune_mock_signal_set() and qttune_decode_signal() which may not be part of the stable C API.; file: app/qttunebridge.cpp; quote: #include \"qttune/signals.h\""
+    },
+    {
+      "id": 2,
+      "key": "#e2",
+      "why": "before",
+      "blocker": "claim: Buffer size assumption violation: The code assumes CAN-FD buffer size (64 bytes) but processes signal decoding with hardcoded 8 bytes, which is incorrect for CAN-FD frames that can carry up to 64 bytes.; file: app/qttunebridge.cpp; quote: if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {"
+    }
+  ],
+  "repairs": [],
+  "skipped": null,
+  "outcomes": [
+    {
+      "id": 1,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    },
+    {
+      "id": 2,
+      "why": "before",
+      "returned": false,
+      "result": "not returned",
+      "restored_blocker": null
+    }
+  ],
+  "telemetry": [
+    {
+      "attempt": 0,
+      "temperature": 0.05,
+      "prompt_chars": 34772,
+      "prompt_eval_count": 10086,
+      "eval_count": 12288,
+      "thinking_chars": 47106,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 269.83,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 10086 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "being removed. So after the change, QTimer should not be included.\n\nBut I need to check if QTimer is still used anywhere in the code.\n\nLooking at the diff for qttunebridge.cpp, I see that the SignalListModel class is removed, and with it, the m_coalesceTimer member. So QTimer should not be needed anymore.\n\nLet me verify this by looking at the member variables section:\n\nBefore:\n```cpp\n    QTimer* m",
+      "content_tail": ""
+    },
+    {
+      "attempt": 1,
+      "temperature": 0.05,
+      "prompt_chars": 34813,
+      "prompt_eval_count": 10101,
+      "eval_count": 12288,
+      "thinking_chars": 48849,
+      "content_chars": 0,
+      "done_reason": "length",
+      "wall_s": 268.91,
+      "outcome": "reply was not valid JSON (done_reason=length: output truncated after 10101 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+      "thinking_tail": "e an issue.\n\nActually, I realize I should look at the code more carefully. Let me check the diff for the `onFrame` function again.\n\nLooking at the diff, the old code had:\n```\n-    // Backpressure: bound the QUEUED backlog, not the lifetime count.\n-    // The model handles total memory via its own ring eviction.\n-    if (self->m_inFlightFrames.load(std::memory_order_relaxed) >= MaxInFlightFrames) {",
+      "content_tail": ""
+    },
+    {
+      "attempt": 2,
+      "temperature": 0.05,
+      "prompt_chars": 34854,
+      "prompt_eval_count": 10116,
+      "eval_count": 8,
+      "thinking_chars": 0,
+      "content_chars": 15,
+      "done_reason": "stop",
+      "wall_s": 41.87,
+      "outcome": "ok",
+      "reply": "{\"repairs\": []}"
+    }
+  ]
+}
