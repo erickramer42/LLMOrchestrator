@@ -1540,6 +1540,57 @@ class ReplayTests(unittest.TestCase):
         out = replay.replay([("p", rec)], REPLAY_DIFF, labels, n=1, k=1)
         self.assertEqual(out["mismatches"], [("r1", "#1", None, "evidence")])
 
+    def test_removed_variants_accept_pre_change_quotes_as_registered(self):
+        # ADR-0002, fifteenth measurement: a quote of a removed line fails
+        # the evidence check; removed accepts it, removed+said only when
+        # the claim names a removal, removed+linked only when linked.
+        def judged(claim, variant, quote="m_inFlight.fetch_add(1);"):
+            b = self.blocker(claim, quote)
+            return replay.judge(replay.Item("s", "#e1", claim, b, None), self.diff,
+                                variant)[0]
+        said = "Removing m_inFlight leaves the queue unbounded"
+        plain = "m_inFlight leaves the queue unbounded"
+        self.assertEqual(judged(said, "j7"), "evidence")
+        self.assertIsNone(judged(plain, "removed"))
+        self.assertIsNone(judged(said, "removed+said"))
+        self.assertEqual(judged(plain, "removed+said"), "evidence")
+        self.assertIsNone(judged(said, "removed+linked"))
+        self.assertEqual(judged("m_lastReported races", "removed+linked"), "link")
+        # an added line is not pre-change code
+        self.assertEqual(judged(said, "removed", quote="m_dropped.fetch_add(1);"
+                                + "\nemit changed();"), "evidence")
+        # a pre-change match is keyed apart and votes on its own lines
+        where = replay.verify(self.blocker(said, "m_inFlight.fetch_add(1);"), self.diff,
+                              before=True)
+        self.assertEqual(where, (replay.BEFORE + "app/x.cpp", [2]))
+
+    def test_corpus_replay_scores_per_fixture_with_list_labels(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            diff_path = Path(tmp) / "x.diff"
+            diff_path.write_text(REPLAY_DIFF, encoding="utf-8")
+            manifest = {"fixtures": [{"id": "fx", "kind": "bug", "diff_path": diff_path,
+                                      "known_bugs": [{"id": "bug1"}, {"id": "bug2"}]}]}
+            stored = flat("m_count is read off-thread", GATE_LINE)
+            removed = flat("Removing m_inFlight leaves the queue unbounded",
+                           "m_inFlight.fetch_add(1);")
+            recs = [("a", round1_record("r1", [stored], diff=REPLAY_DIFF,
+                                        questions=[removed], evidence_demoted=1)),
+                    ("b", round1_record("r2", [], diff=REPLAY_DIFF)),
+                    ("c", round1_record("r3", [], diff=ROUND1_DIFF))]
+            labels = {"valid": ["unlisted"], "records": {
+                "r1": {"labels": {"#1": ["bug1"], "#e1": ["bug2"]}},
+                "r2": {"labels": {}}, "r3": {"labels": {}}}}
+            out = replay.replay_corpus(recs, manifest, labels, n=2, k=2)
+        self.assertEqual(out["mismatches"], [])
+        self.assertEqual(out["excluded"], [("r3", "not a corpus diff")])
+        j7 = out["results"]["j7"]["fx"]
+        self.assertEqual((j7["reviews"], j7["blockers"], j7["valid"]), (2, 1, 1))
+        self.assertEqual(j7["recall"], {"bug1": 0.5, "bug2": 0.0})
+        self.assertEqual(out["results"]["removed"]["fx"]["recall"]["bug2"], 0.5)
+        self.assertEqual(out["results"]["j7"]["pooled"]["mean_recall"], 0.25)
+        # one 2-of-2 vote over r1 and r2: nothing recurs, nothing kept
+        self.assertEqual(out["results"]["vote 2-of-2 @j7"]["fx"]["blockers"], 0)
+
     def test_vote_keeps_groups_that_recur_across_samples(self):
         def kept(claim, quote, label):
             b = self.blocker(claim, quote)

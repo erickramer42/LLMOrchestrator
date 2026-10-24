@@ -2735,3 +2735,190 @@ these labels:
 3. **Invariant-elsewhere:** a recall-side lever (more of the same file in
    the pack, or the function that enforces the invariant) is a pack
    change with its own PACK_FORMAT_VERSION.
+
+## Fifteenth Measurement — Corpus Replay and a Removed-Line Exception
+
+**Status (2026-10-23): registered before any variant was scored, then
+scored the same night (Results, below).** Before registering, only
+the sanity check has run: j7 reproduces every stored split, 28 bridge
+samples and 33 corpus samples.
+
+**Why now.** The fourteenth left two questions that the archived replies
+can answer with no model call:
+- **Does voting survive correlated faults?** The thirteenth's voting gain
+  came from false positives that appeared once. On the corpus,
+  invariant-elsewhere recurs in 5 of 5 `poll_override` runs and
+  bounds-fixed-array in 3 of 5 `ecu_support` runs.
+- **Can the removal-caused recall loss be fixed in the judge?** The
+  evidence check demoted 14 valid items on the corpus, all quoting
+  removed lines. The reviewer prompt has said since v9 to quote "the code
+  after the change that the removal leaves broken or unprotected", and
+  the corpus reviewer quoted removed lines anyway, so a stronger prompt
+  has weak prior odds. A judge exception is cheap to replay, and its
+  risk, readmitting the bridge fixture's deletion and removal-objection
+  classes, can be measured on the bridge records it would affect.
+
+**Variants** (`eval_harness/replay.py`, `--corpus` for the corpus):
+- the thirteenth's: j7, gapped, linked, gapped+linked, and 2-of-3 voting
+  over each;
+- **removed:** a quote the evidence check rejects is accepted when it is
+  found in the named file's code as it read before the change (context
+  and removed lines, same matching rules);
+- **removed+linked:** removed, with claim–quote linkage on every quote,
+  pre-change ones included;
+- **removed+said:** removed, but a pre-change quote is accepted only when
+  the claim names a removal (`remov…`, `delet…`, `no longer`, `dropp…`,
+  `eliminat…`). The word list was fixed here, after reading the corpus
+  claims, so this variant is partly tuned on the corpus; the bridge
+  records are its test.
+
+Votes are counted as in the thirteenth: every kept member counts, so a
+blocker that recurs is counted once per sample it appears in.
+
+**Data:** corpus, the fourteenth's 33 runs with `corpus_labels.json`;
+bridge, the thirteenth's 28 samples with `labels.json` (glob
+`measurement_round1_20261023_01*`, `measurement_round2_20261023_*`).
+
+**Rules, recorded before scoring:**
+- **Precision variants** (gapped, linked, gapped+linked, voting) become
+  candidates for a live measurement if, on the corpus, FPs per review
+  fall and mean recall per known bug drops by at most 0.1.
+- **Exception variants** become candidates if all three hold: corpus mean
+  recall rises by at least 0.10; corpus FPs per review rise by at most
+  0.05; bridge FPs per review rise by at most 0.05, with race and gate
+  found dropping by at most 0.1. The bridge's readmitted false positives
+  are reported by class: removal objections there are partly an
+  artifact of its mismatched proposal (backlog #21), deletion claims are
+  not.
+
+**Baselines (j7):** corpus 57% valid, 0.55 FPs per review, mean recall
+0.46, 0.44 FPs per clean review. Bridge 0.25 FPs per review, race 0.79,
+gate 0.29.
+
+**Predictions:**
+
+| variant | data | metric | prediction |
+|---|---|---|---|
+| gapped | corpus | FPs per review | 0.52–0.58 |
+| gapped | corpus | mean recall | 0.46–0.50 |
+| linked, gapped+linked | corpus | FPs per review | 0.48–0.55 (0–2 FPs demoted) |
+| linked, gapped+linked | corpus | mean recall | 0.40–0.46 |
+| vote 2-of-3 @j7 | corpus | FPs per review | 0.60–1.20, not below j7 |
+| vote 2-of-3 @j7 | corpus | mean recall | 0.40–0.55 |
+| removed | corpus | mean recall | 0.58–0.65 |
+| removed | corpus | FPs per review | 0.58–0.64 |
+| removed | corpus | valid share | 62–68% |
+| removed+linked | corpus | all three | within 0.03 (3 points) of removed |
+| removed+said | corpus | mean recall | 0.58–0.65 |
+| removed+said | corpus | FPs per review | 0.56–0.62 |
+| removed | bridge | FPs per review | 0.45–0.80 |
+| removed | bridge | race, gate found | race 0.79–0.85, gate 0.35–0.55 |
+| removed+linked | bridge | FPs per review | 0.40–0.75 |
+| removed+said | bridge | FPs per review | 0.35–0.65 |
+
+**Expected by the rules:** no precision variant passes on the corpus
+(linkage demotes too few, voting keeps the recurring faults). No
+exception variant passes: each fails the bridge condition, through
+removal objections and deletion claims that quote removed lines. If so,
+the removal-caused loss is not a judge problem that a quote rule can
+solve, because the judge cannot tell a removal the change intends from
+a removal that breaks something; that takes a reader of intent, so the
+next lever is a measured prompt or protocol change.
+
+### Results (scored 2026-10-23)
+
+`python -m eval_harness.replay --corpus "coach_artifacts/measurement_round1_20261024_0[12]*.json"`
+and the thirteenth's bridge command. j7 reproduced every stored split
+on both, and the bridge's j7, gapped, linked and voting rows equal the
+thirteenth's.
+
+| variant | corpus valid | corpus FP/rev | corpus recall | clean FP/rev | bridge FP/rev | bridge race, gate |
+|---|---|---|---|---|---|---|
+| j7 | 57% | 0.55 | 0.46 | 0.44 | 0.25 | 0.79, 0.29 |
+| gapped | 57% | 0.55 | 0.46 | 0.44 | 0.25 | 0.82, 0.29 |
+| linked | 59% | 0.48 | 0.44 | 0.44 | 0.18 | 0.79, 0.29 |
+| gapped+linked | 59% | 0.48 | 0.44 | 0.44 | 0.18 | 0.82, 0.29 |
+| vote 2-of-3 @j7 | 58% | 0.98 | 0.53 | 1.07 | 0.16 | 0.92, 0.47 |
+| vote 2-of-3 @linked | 64% | 0.72 | 0.48 | 1.07 | 0.16 | 0.92, 0.47 |
+| removed | 62% | 0.61 | 0.59 | 0.44 | 0.50 | 0.79, 0.29 |
+| removed+linked | 62% | 0.55 | 0.53 | 0.44 | 0.39 | 0.79, 0.29 |
+| removed+said | 61% | 0.58 | 0.57 | 0.44 | 0.36 | 0.79, 0.29 |
+
+| prediction | predicted | observed | |
+|---|---|---|---|
+| gapped, corpus FPs per review | 0.52–0.58 | 0.55 | HIT |
+| gapped, corpus mean recall | 0.46–0.50 | 0.46 | HIT |
+| linked, corpus FPs per review | 0.48–0.55 | 0.48 | HIT |
+| linked, corpus mean recall | 0.40–0.46 | 0.44 | HIT |
+| vote @j7, corpus FPs per review | 0.60–1.20 | 0.98 | HIT |
+| vote @j7, corpus mean recall | 0.40–0.55 | 0.53 | HIT |
+| removed, corpus mean recall | 0.58–0.65 | 0.59 | HIT |
+| removed, corpus FPs per review | 0.58–0.64 | 0.61 | HIT |
+| removed, corpus valid share | 62–68% | 62% | HIT |
+| removed+linked within 0.03 of removed | — | recall 0.06 and FPs 0.06 lower | MISSED |
+| removed+said, corpus mean recall | 0.58–0.65 | 0.57 | MISSED LOW |
+| removed+said, corpus FPs per review | 0.56–0.62 | 0.58 | HIT |
+| removed, bridge FPs per review | 0.45–0.80 | 0.50 | HIT |
+| removed, bridge race / gate | 0.79–0.85 / 0.35–0.55 | 0.79 / 0.29 | HIT / MISSED LOW |
+| removed+linked, bridge FPs per review | 0.40–0.75 | 0.39 | MISSED LOW |
+| removed+said, bridge FPs per review | 0.35–0.65 | 0.36 | HIT |
+| no precision variant passes | — | linked passes | MISSED |
+| no exception variant passes | — | none passes | HIT |
+
+**By the rules:**
+- **linked and gapped+linked pass on the corpus:** FPs per review 0.55
+  → 0.48, mean recall 0.46 → 0.44. With the thirteenth's bridge pass,
+  claim–quote linkage is now a candidate on both data sets.
+- **gapped** changes nothing on the corpus: none of its demoted quotes
+  skip lines. It stays a bridge-only recall fix.
+- **Voting fails.** FPs per review rise from 0.55 to 0.98, and on clean
+  fixtures from 0.44 to 1.07. The recurring faults the fourteenth
+  pointed at are kept, and counted once per sample they recur in.
+- **No exception passes.** removed fails the corpus FP limit (+0.06)
+  and the bridge (+0.25). removed+linked fails corpus recall (+0.07)
+  and the bridge (+0.14). removed+said meets both corpus conditions
+  (recall +0.11, FPs +0.03) and fails the bridge (+0.11).
+
+**What the variants changed:**
+- **The exception can readmit at most 9 of the 14 valid demotions,**
+  not 14. Only 9 quote code that exists before the change; the other 5
+  quote text found on neither side as written (comment blocks re-flowed,
+  lines joined). The fourteenth's reading that all 14 quoted removed
+  lines overstated it.
+- **removed readmits 4 deletion claims on the bridge,** with 3 removal
+  objections and 2 deleted-test objections. That is the risk the
+  exception was registered against, measured.
+- **removed+said readmits no deletion claim on the bridge.** Its whole
+  bridge rise is 3 removal objections and the 2 deleted-test items.
+  Removal objections on the bridge fixture are partly the artifact of
+  its mismatched proposal (#21); the rule was registered without an
+  exception for them, so the variant fails as registered.
+- **Linkage is half accident on the corpus.** Of its 4 corpus
+  demotions, 2 turn on all-caps words that `code_like` counts as
+  identifiers: `PID` demoted an invariant-elsewhere FP, `UI` demoted a
+  valid `drops_unreported_when_saturated` blocker. The other 2 are the
+  intended signal: claims resting on `chan_count`, which the quoted
+  hunk never touches.
+
+**Reading:**
+- **Same-model voting is ruled out on the evidence.** Redundancy needs
+  independent faults; the corpus shows they are not. Diversity (another
+  model or another prompt) is the remaining form of redundancy, and it
+  needs live samples.
+- **The removal-caused loss is mostly not a quote-matching problem.**
+  At best a judge exception recovers 9 of 14, and the safest gate tried
+  (removal words) still readmits removal objections, which a judge that
+  reads no intent cannot tell from harmful removals.
+- **These 61 samples have now chosen variants twice.** Anything picked
+  from them needs fresh samples before it ships: a held-out corpus run,
+  labelled before any variant is applied to it.
+
+**Open choices (not decided here):**
+1. Measure linkage live as a judge change (JUDGE_VERSION bump), as is
+   or with bare all-caps words excluded from its identifiers; the second
+   is a new variant and needs registering first.
+2. For removed+said: accept the rule's result, or fix #21 first (bridge
+   samples with a proposal in the diff's real direction) and judge the
+   exception on removal objections without the artifact.
+3. Collect a held-out corpus sample (35 runs, about an hour of GPU) and
+   score the surviving candidates on it.

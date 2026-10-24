@@ -388,6 +388,18 @@ without reverse-engineering the ADRs.
   0.44 blockers per run, all false. False positives recur across runs
   more than on the bridge fixture, so voting is not expected to
   transfer as replayed.
+- **Corpus replay (2026-10-23; ADR-0002, fifteenth measurement).**
+  `python -m eval_harness.replay --corpus` re-judges the corpus runs
+  offline with its labels; three removed-line exception variants were
+  added and replayed on both data sets. Claim–quote linkage passes on
+  the corpus too (FPs per review 0.55 → 0.48, recall 0.46 → 0.44), but 2
+  of its 4 corpus decisions turned on all-caps words (`PID`, `UI`).
+  Voting fails (FPs 0.55 → 0.98). No exception passes: the best,
+  removed+said (accept a pre-change quote when the claim names a
+  removal), lifts corpus recall to 0.57 for +0.03 FPs, readmits no
+  bridge deletion claim, and fails on 3 bridge removal objections (+0.11
+  FPs), partly the #21 artifact. At most 9 of the 14 valid demotions
+  quote pre-change code at all. Nothing changed in debates.
 
 **Known limitations (by design or pending):**
 - **Diffs above about 30K chars are refused** at `NUM_CTX` 24576 and
@@ -506,7 +518,7 @@ without reverse-engineering the ADRs.
 | `eval_harness/raw_call.py` | The probe's and the bake-off's model call: a raw Ollama request with the settings their records were taken with (num_ctx 16384, no output cap, temperature 0.2 then 0.05, 600s), independent of agent_client and config. An HTTP error keeps Ollama's message. |
 | `eval_harness/common.py` | What the two measurement scripts share: the `run`/`score` command line, the sample runner (stops on refused input or an unreachable server), record loading, the reviewer's attempt status, demoted-blocker recovery, M1 and M2 candidates. |
 | `eval_harness/round1.py` | Round-1 measurements. `run` collects samples through `debate.run_round1_review`, so unlike the probe and bake-off it uses agent_client and config. `score` counts M1 and lists M2 candidates over measurement or debate records, first attempts on one diff only, and lists evidence-demoted (`#e`) and hedge-demoted (`#h`) items separately. |
-| `eval_harness/replay.py` | Offline replay, no model: rebuilds each round-1 reply's raw blockers (stored plus demoted) from archived records and re-judges them under deterministic variants: gapped quotes, claim–quote linkage, k-of-n voting. Scores them with the hand labels; checks that the current judge reproduces every stored split (ADR-0002, thirteenth measurement). |
+| `eval_harness/replay.py` | Offline replay, no model: rebuilds each round-1 reply's raw blockers (stored plus demoted) from archived records and re-judges them under deterministic variants: gapped quotes, claim–quote linkage, k-of-n voting, and removed-line exceptions (removed, removed+linked, removed+said). Scores them with the hand labels; checks that the current judge reproduces every stored split (ADR-0002, thirteenth measurement). With `--corpus`, groups records by corpus fixture, judges each against its own diff and scores with `corpus_labels.json` (fifteenth). |
 | `eval_harness/labels.json` | Hand labels per round-1 reviewer blocker (race, gate, deletion, removal objection, deleted test, other FP) for G3 and the eleventh's and twelfth's round 1, transcribed from ADR-0002; the few not in the ADR are marked `hand`. |
 | `eval_harness/corpus.py` | The real-diff corpus (#7). `list` describes each fixture without a model (size, layer, pack, input and base checks); `run` collects round-1 samples through `debate.run_round1_review` with the fixture's own index; `score` reports per fixture blockers per run, recall per known bug by the symbols a stored blocker's claim names, bugs found only among demoted blockers, and the blockers matching no known bug. |
 | `eval_harness/corpus_labels.json` | Hand labels per round-1 item on the corpus baseline (known-bug ids, `unlisted`, and false-positive classes), each judged against its fixture's `post_rev`; read by `eval_harness.corpus score` (ADR-0002, fourteenth measurement). |
@@ -598,9 +610,8 @@ references elsewhere stay valid.
    unresolved questions as a fresh debate. Depends on #2.
 - **#7 Stable real-diff corpus — BASELINE DONE (2026-10-23).** Seven
    fixtures in `docs/fixtures/corpus/`, 33 labelled runs (Current State;
-   ADR-0002, fourteenth measurement). Next on it: replay the judge
-   candidates offline against `corpus_labels.json`, then the
-   removal-caused recall loss.
+   ADR-0002, fourteenth measurement). Replayed offline (fifteenth).
+   Next: a held-out corpus sample, and a live measurement of linkage.
 - **#8 Multi-file diff layer handling.** Inject a layer map keyed by
    file; `diff_reader.diff_paths` already lists every changed path.
 - **#10 Codebase abstraction.** Move QtTune-specific bits behind config.
