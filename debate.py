@@ -19,7 +19,8 @@ from adjudication import (AGENT_FAILURE_VERDICT, INPUT_TOO_LARGE_VERDICT,
                           MEASUREMENT_VERDICT, NO_INPUT_VERDICT, PAIR_VERDICT,
                           convergence_verdict, demote_hedged_blockers,
                           demote_unverified_blockers, derive_verdict,
-                          evidence_sources, normalize_agent_output)
+                          evidence_sources, hunk_identifiers,
+                          normalize_agent_output)
 from agent_client import call_agent, failure_result
 from config import (CHARS_PER_TOKEN_FLOOR, MAX_DEBATE_ROUNDS, MODELS, NUM_CTX,
                     NUM_PREDICT, REVIEWER_HEADER_PROMPT, REVIEWER_IMPL_PROMPT,
@@ -181,24 +182,35 @@ def _load_repo_index(path: Optional[Path] = None) -> dict:
         return {"_load_error": f"{type(exc).__name__}: {exc}"}
 
 
+def _index_symbols(index: dict) -> frozenset:
+    """The type and constant names an index defines, which claim-quote
+    linkage counts as code even when written in capitals only (j8)."""
+    try:
+        return frozenset([str(t["name"]) for t in index.get("types", [])]
+                         + [str(c["name"]) for c in index.get("constants", [])])
+    except (KeyError, TypeError, AttributeError):
+        return frozenset()
+
+
 def _retrieve_pack(code_diff: str,
-                   index_path: Optional[str] = None) -> Tuple[str, dict]:
-    """(pack_text, pack_report) for the diff, from the index at index_path
-    (default: the checked-in one next to retrieval.py). The report names
-    the file read as index_file. Never raises: retrieval is an aid, so a
-    missing, corrupt or malformed index degrades the debate to no
-    retrieval, with the reason in report['error']."""
+                   index_path: Optional[str] = None) -> Tuple[str, dict, frozenset]:
+    """(pack_text, pack_report, index symbols) for the diff, from the
+    index at index_path (default: the checked-in one next to retrieval.py).
+    The report names the file read as index_file. Never raises: retrieval
+    is an aid, so a missing, corrupt or malformed index degrades the
+    debate to no retrieval, with the reason in report['error'], and no
+    symbols."""
     path = Path(index_path) if index_path else CONTEXT_PATH
     repo_index = _load_repo_index(path)
     if "_load_error" in repo_index:
-        return "", {"error": repo_index["_load_error"], "index_file": str(path)}
+        return "", {"error": repo_index["_load_error"], "index_file": str(path)}, frozenset()
     try:
         pack_text, report = build_context_pack(code_diff, repo_index)
     except Exception as exc:  # malformed index content, e.g. an entry without "name"
         return "", {"error": f"malformed index: {type(exc).__name__}: {exc}",
-                    "index_file": str(path)}
+                    "index_file": str(path)}, frozenset()
     report["index_file"] = str(path)
-    return pack_text, report
+    return pack_text, report, _index_symbols(repo_index)
 
 
 def _base_mismatch(pack_report: dict) -> List[str]:
@@ -219,6 +231,8 @@ class _Setup(NamedTuple):
     layer: str  # 'unknown' when no path is found
     layer_note: str
     evidence: Dict[str, List[str]]  # post-change lines reviewer blocker quotes are checked against
+    hunks: Dict[str, List[set]]     # each file's hunk identifiers, for claim-quote linkage (j8)
+    symbols: frozenset              # the index's type and constant names, for linkage
 
 
 def _prepare(code_diff: str, code_context: str, header_artifact: bool,
@@ -233,7 +247,7 @@ def _prepare(code_diff: str, code_context: str, header_artifact: bool,
                        else REVIEWER_IMPL_PROMPT)
 
     # ============ CONTEXT PACK RETRIEVAL ============
-    pack_text, pack_report = _retrieve_pack(code_diff, index_path)
+    pack_text, pack_report, symbols = _retrieve_pack(code_diff, index_path)
     if pack_report.get("error"):
         print(f"WARNING: repo context retrieval unavailable "
               f"({pack_report['error']}); continuing without it.",
@@ -272,7 +286,8 @@ def _prepare(code_diff: str, code_context: str, header_artifact: bool,
     # Quotes may come only from code the reviewer was shown.
     return _Setup(reviewer_prompt, static_section, pack_text, pack_report,
                   file_path, layer, layer_note,
-                  evidence_sources(code_diff, shown_context))
+                  evidence_sources(code_diff, shown_context),
+                  hunk_identifiers(code_diff), symbols)
 
 
 def _render_transcript(proposal: str, static_section: str, round_num: int,
@@ -454,7 +469,8 @@ def _run_round(setup: _Setup, proposal: str, round_num: int,
 
     # ============ GUARDRAILS: unquoted, then hedged blockers (before storing) ============
     reviewer, unquoted = demote_unverified_blockers(reviewer, setup.evidence,
-                                                    "questions")
+                                                    "questions", setup.hunks,
+                                                    setup.symbols)
     reviewer, rev_demoted = demote_hedged_blockers(reviewer, "questions")
     entry = {"round": round_num, "reviewer": reviewer}
     hedge_stats = {"reviewer_demoted": rev_demoted}

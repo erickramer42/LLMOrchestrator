@@ -3,9 +3,9 @@ hedge demotion. Pure functions: no I/O, no LLM calls. Fully unit-testable
 in CI."""
 
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, FrozenSet, List, Optional, Set, Tuple
 
-from diff_reader import DEV_NULL, read_diff
+from diff_reader import DEV_NULL, IDENT, code_like, read_diff
 
 # Stamped into every decision record: a judge change alters final verdicts
 # and round counts without touching any prompt, so the prompt fingerprint
@@ -22,8 +22,11 @@ from diff_reader import DEV_NULL, read_diff
 # lines, so the reviewer could not block it, and empty or oversized input
 # still went to the models. j7 refuses such input, reads lines outside any
 # file as evidence for any file, and ignores a reply's own
-# blocker_evidence (code review 2026-10-23, findings 13, 16 and 17).
-JUDGE_VERSION = "j7-input-checks"
+# blocker_evidence (code review 2026-10-23, findings 13, 16 and 17). j8
+# also demotes a blocker whose claim names code identifiers, none of
+# which occurs in the hunk its quote comes from (claim-quote linkage;
+# ADR-0002, sixteenth measurement).
+JUDGE_VERSION = "j8-claim-quote-linkage"
 
 
 # ============ VERDICTS ============
@@ -79,7 +82,9 @@ def _evidence(item) -> Optional[dict]:
         return None
     return {"file": str(item.get("file") or ""),
             "quote": str(item.get("quote") or ""),
-            "claim": _coerce_item({k: v for k, v in item.items() if k != "quote"})}
+            "claim": _coerce_item({k: v for k, v in item.items() if k != "quote"}),
+            # the claim field alone, which linkage reads (j8)
+            "assertion": _coerce_item(item.get("claim") or "")}
 
 
 def normalize_agent_output(raw, role: str) -> Tuple[Optional[dict], Optional[str]]:
@@ -294,6 +299,102 @@ def _fragment_found(fragment: List[str], source: List[str]) -> bool:
     return " ".join(fragment) in " ".join(source)
 
 
+def _fragment_positions(fragment: List[str], source: List[str]) -> Optional[List[int]]:
+    """Where _fragment_found finds the fragment: the positions of the
+    source lines it matched, or None."""
+    k = len(fragment)
+    for j in range(len(source) - k + 1):
+        if all(q in source[j + i] for i, q in enumerate(fragment)):
+            return list(range(j, j + k))
+    joined, starts, pos = " ".join(fragment), [], 0
+    for line in source:
+        starts.append(pos)
+        pos += len(line) + 1
+    at = " ".join(source).find(joined)
+    if at < 0:
+        return None
+    return [i for i, s in enumerate(starts)
+            if s < at + len(joined) and s + len(source[i]) > at]
+
+
+def quote_location(evidence: Optional[dict], sources: Dict[str, List[str]]
+                   ) -> Optional[Tuple[str, List[int]]]:
+    """(source key, matched line positions) where _quote_verified finds
+    the quote, trying the same sources in the same order; None when it
+    does not find it."""
+    if not evidence:
+        return None
+    fragments = _quote_fragments(evidence.get("quote", ""))
+    if not fragments or max(len(line.replace(" ", "")) for f in fragments
+                            for line in f) < MIN_QUOTE_CHARS:
+        return None
+    path = _match_file(evidence.get("file", ""), sources)
+    for p in ([path] if path else []) + [s for s in _ANY_FILE_SOURCES if s in sources]:
+        spots = [_fragment_positions(f, sources[p]) for f in fragments]
+        if all(s is not None for s in spots):
+            return p, sorted(set().union(*spots))
+    return None
+
+
+# ============ CLAIM-QUOTE LINKAGE (judge j8) ============
+
+# A token of capital letters only (PID, UI): an acronym, not code, unless
+# the index of the reviewed repo defines it as a type or constant name.
+ACRONYM = re.compile(r"[A-Z]+")
+
+
+def hunk_identifiers(code_diff: str) -> Dict[str, List[Set[str]]]:
+    """Each file's hunks as the identifiers on all their lines: removed
+    lines and the hunk header's context included. Hunk i holds the lines
+    after the i-th hunk break in the file's evidence source (hunk 0 is
+    what precedes the first), and paths are tracked as evidence_sources
+    tracks them."""
+    hunks: Dict[str, List[Set[str]]] = {}
+    paths: List[str] = []
+    after_minus = False
+    for tag, text in read_diff(code_diff):
+        if tag in ("---", "+++"):
+            if tag == "---" or not after_minus:
+                paths = []
+            after_minus = tag == "---"
+            if text != DEV_NULL and text not in paths:
+                paths.append(text)
+                hunks.setdefault(text, [set()])
+            continue
+        after_minus = False
+        for p in paths:
+            if tag == "@@":
+                hunks[p].append(set())
+            hunks[p][-1] |= set(IDENT.findall(text))
+    return hunks
+
+
+def claim_identifiers(claim: str, symbols: Optional[FrozenSet[str]] = None) -> Set[str]:
+    """The code identifiers a claim names. With symbols (the index's type
+    and constant names), acronyms are left out unless symbols holds them."""
+    ids = {n for n in IDENT.findall(claim) if code_like(n)}
+    if symbols is not None:
+        ids = {n for n in ids if not ACRONYM.fullmatch(n) or n in symbols}
+    return ids
+
+
+def _quote_linked(evidence: dict, sources: Dict[str, List[str]],
+                  hunks: Dict[str, List[Set[str]]], symbols: FrozenSet[str]) -> bool:
+    """Whether a verified blocker's claim names an identifier of the hunk
+    its quote comes from. A claim naming no code identifier passes, and so
+    does a quote from a source without hunks (a supplied context)."""
+    where = quote_location(evidence, sources)
+    if where is None:
+        return True
+    ids = claim_identifiers(evidence.get("assertion", ""), symbols)
+    path, positions = where
+    if not ids or path not in hunks:
+        return True
+    source = sources[path]
+    found = {source[:i].count(_HUNK_BREAK) for i in positions}
+    return bool(ids & set().union(*(hunks[path][h] for h in found if h < len(hunks[path]))))
+
+
 def _quote_verified(evidence: Optional[dict], sources: Dict[str, List[str]]) -> bool:
     if not evidence:
         return False
@@ -310,15 +411,21 @@ def _quote_verified(evidence: Optional[dict], sources: Dict[str, List[str]]) -> 
 
 
 def demote_unverified_blockers(agent_out: dict, sources: Dict[str, List[str]],
-                               concern_key: str = "questions") -> Tuple[dict, int]:
+                               concern_key: str = "questions",
+                               hunks: Optional[Dict[str, List[Set[str]]]] = None,
+                               symbols: FrozenSet[str] = frozenset()) -> Tuple[dict, int]:
     """Guardrail (judge j4): a blocker must quote its evidence from the
     code as it reads after the change. A blocker whose quote is not found
     in the post-change lines of the file it names (or in the supplied
     context, or in diff lines under no file header) moves to the end of
     concern_key, as hedge demotion does.
+    With hunks (hunk_identifiers of the diff; judge j8), a blocker whose
+    quote is found is demoted the same way when its claim names code
+    identifiers and none occurs in the quote's hunk; acronyms count only
+    when symbols, the index's type and constant names, holds them.
     Reads blocker_evidence from normalize_agent_output and keeps it
     aligned with the kept blockers, for demote_hedged_blockers.
-    Returns (output, number of blockers demoted)."""
+    Returns (output, number of blockers demoted, for either reason)."""
     if (not isinstance(agent_out, dict) or not agent_out
             or agent_out.get("verdict") == "PARSE_FAILURE"):
         return agent_out, 0
@@ -328,7 +435,8 @@ def demote_unverified_blockers(agent_out: dict, sources: Dict[str, List[str]],
     kept, kept_evidence, demoted = [], [], []
     for i, b in enumerate(out.get("blockers", []) or []):
         ev = evidence[i] if i < len(evidence) else None
-        if _quote_verified(ev, sources):
+        if _quote_verified(ev, sources) and (
+                hunks is None or _quote_linked(ev, sources, hunks, symbols)):
             kept.append(b)
             kept_evidence.append(ev)
         else:

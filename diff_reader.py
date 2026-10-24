@@ -15,6 +15,18 @@ _FILE_HEADER = re.compile(r"^(?:---|\+\+\+) (?:[ab]/)?([^\t]*[^\t\s])")
 _BLOB_LINE = re.compile(r"^index ([0-9a-f]{7,64})\.\.[0-9a-f]{7,64}\b")
 
 
+# An identifier token, and whether a name reads as code. Shared by the
+# judge (claim-quote linkage, j8) and retrieval, which re-exports both.
+IDENT = re.compile(r"\b[A-Za-z_]\w*\b")
+
+
+def code_like(name: str) -> bool:
+    """A name that reads as code, not an English word: snake_case,
+    camelCase or PascalCase, or containing a digit."""
+    return ("_" in name or any(c.isdigit() for c in name)
+            or any(c.isupper() for c in name[1:]))
+
+
 def read_diff(code_diff: str) -> Iterator[Tuple[str, str]]:
     """Each line of a unified diff as (tag, text):
     - '---' or '+++': a file header; text is the path without its a/ or

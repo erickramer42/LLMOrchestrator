@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 from typing import List, Tuple
 
-from diff_reader import base_blobs, diff_paths, read_diff
+from diff_reader import IDENT, base_blobs, code_like, diff_paths, read_diff
 
 CONTEXT_FILE = "repo_context.json"
 # Module-relative, so --index writes and debates read the same file
@@ -46,7 +46,8 @@ MAX_CONSTANTS = 10
 MAX_CALL_SITES = 15
 MAX_RELATED_CALL_SITES = 10
 
-IDENT = re.compile(r"\b[A-Za-z_]\w*\b")
+# IDENT and code_like live in diff_reader (the judge uses them too) and
+# are re-exported from here.
 
 
 # ============ TEXT HELPERS (shared with indexer.py) ============
@@ -122,13 +123,6 @@ def removed_identifiers(code_diff: str) -> set:
         elif tag in (" ", "+", "@@"):
             kept |= set(IDENT.findall(text))
     return removed - kept
-
-
-def code_like(name: str) -> bool:
-    """A name that reads as code, not an English word: snake_case,
-    camelCase or PascalCase, or containing a digit."""
-    return ("_" in name or any(c.isdigit() for c in name)
-            or any(c.isupper() for c in name[1:]))
 
 
 def _type_line(t: dict) -> str:

@@ -55,9 +55,11 @@ import sys
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
-from adjudication import (_ANY_FILE_SOURCES, _HUNK_BREAK, HEDGE_PATTERNS,
+from adjudication import (_ANY_FILE_SOURCES, _HUNK_BREAK, ACRONYM, HEDGE_PATTERNS,
                           MIN_QUOTE_CHARS, UNFILED_SOURCE, _match_file,
-                          _quote_fragments, _squash, evidence_sources)
+                          _quote_fragments, _squash, evidence_sources,
+                          hunk_identifiers)
+from adjudication import claim_identifiers as _judge_claim_identifiers
 from debate import text_sha256
 from diff_reader import DEV_NULL, read_diff
 from eval_harness.common import (demoted_tail, load_records, parse_blocker,
@@ -70,8 +72,8 @@ FP_CLASSES = ("deletion", "removal-objection", "other-fp")
 BASE_VARIANTS = ("j7", "gapped", "linked", "gapped+linked",
                  "removed", "removed+linked", "removed+said",
                  "flinked", "gapped+flinked", "removed+said+flinked")
-# A bare all-caps word (flinked): an acronym unless the index defines it.
-ACRONYM = re.compile(r"[A-Z]+")
+# flinked is judge j8's linkage (adjudication.claim_identifiers, ACRONYM);
+# records stamped j8 are reproduced with it.
 # A match in a file's pre-change code is keyed by its path behind this
 # prefix, so vote and linked can tell the two sides apart.
 BEFORE = "before:"
@@ -143,28 +145,9 @@ def _path(key: str) -> str:
 
 
 def read_hunks(code_diff: str) -> Dict[str, List[Set[str]]]:
-    """Each file's hunks as the identifiers on all their lines, removed
-    lines and the header's context included. Hunk i holds the lines
-    after the i-th hunk break in the file's evidence source, so it
-    tracks paths exactly as adjudication.evidence_sources does."""
-    hunks: Dict[str, List[Set[str]]] = {}
-    paths: List[str] = []
-    after_minus = False
-    for tag, text in read_diff(code_diff):
-        if tag in ("---", "+++"):
-            if tag == "---" or not after_minus:
-                paths = []
-            after_minus = tag == "---"
-            if text != DEV_NULL and text not in paths:
-                paths.append(text)
-                hunks.setdefault(text, [set()])
-            continue
-        after_minus = False
-        for p in paths:
-            if tag == "@@":
-                hunks[p].append(set())
-            hunks[p][-1] |= set(IDENT.findall(text))
-    return hunks
+    """Each file's hunks as identifier sets: the judge's own
+    (adjudication.hunk_identifiers, j8)."""
+    return hunk_identifiers(code_diff)
 
 
 def load_diff(code_diff: str, symbols: frozenset = frozenset()) -> Diff:
@@ -230,10 +213,7 @@ def verify(blocker: dict, diff: Diff, gapped: bool = False, before: bool = False
 def claim_identifiers(claim: str, diff: Diff, filtered: bool = False) -> Set[str]:
     """The code identifiers a claim names. With filtered, acronyms are
     left out unless the index defines them."""
-    ids = {n for n in IDENT.findall(claim) if code_like(n)}
-    if filtered:
-        ids = {n for n in ids if not ACRONYM.fullmatch(n) or n in diff.symbols}
-    return ids
+    return _judge_claim_identifiers(claim, diff.symbols if filtered else None)
 
 
 def linked(blocker: dict, diff: Diff, where: Tuple[str, List[int]],
@@ -290,6 +270,19 @@ def raw_items(record: dict, labels: Dict[str, str]) -> List[Item]:
 
 def stored_reason(key: str) -> Optional[str]:
     return {"#e": "evidence", "#h": "hedge"}.get(key[:2])
+
+
+def current_judge(record: dict) -> str:
+    """The variant that reproduces a record's stored split: flinked for
+    records stamped j8 (linkage), j7 for earlier ones."""
+    version = str(record.get("metadata", {}).get("judge_version") or "")
+    return "flinked" if version.startswith("j8") else "j7"
+
+
+def as_stored(reason: Optional[str]) -> Optional[str]:
+    """A demotion reason as a record stores it: linkage demotions sit
+    with the evidence demotions (#e) since j8."""
+    return "evidence" if reason == "link" else reason
 
 
 # ============ voting ============
@@ -367,8 +360,8 @@ def replay(records: List[tuple], code_diff: str, label_doc: dict,
             items = raw_items(rec, entry["labels"])
             unlabelled += [(sample, i.key) for i in items if i.label is None]
             for i in items:
-                reason, _ = judge(i, diff, "j7")
-                if reason != stored_reason(i.key):
+                reason, _ = judge(i, diff, current_judge(rec))
+                if as_stored(reason) != stored_reason(i.key):
                     mismatches.append((sample, i.key, stored_reason(i.key), reason))
             samples.setdefault(entry["set"], []).append(items)
 
@@ -467,8 +460,8 @@ def replay_corpus(records: List[tuple], manifest: dict, label_doc: dict,
             items = raw_items(rec, entry["labels"])
             unlabelled += [(sample, i.key) for i in items if i.label is None]
             for i in items:
-                reason, _ = judge(i, slot["diff"], "j7")
-                if reason != stored_reason(i.key):
+                reason, _ = judge(i, slot["diff"], current_judge(rec))
+                if as_stored(reason) != stored_reason(i.key):
                     mismatches.append((sample, i.key, stored_reason(i.key), reason))
             slot["samples"].append(items)
 

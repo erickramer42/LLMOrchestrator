@@ -3000,9 +3000,9 @@ narrowly.
   is inside the limit: linkage takes out two of the bridge deletion
   claims, and the rest is removal objections.
 
-## Sixteenth Measurement (Pending) — Fresh Corpus Sample
+## Sixteenth Measurement — Fresh Corpus Sample
 
-**Status (2026-10-23): registered before any sample is taken.**
+**Status: registered 2026-10-23 before any sample was taken (`1be7179`), scored the same night (Results, below).**
 
 **Why.** The 61 replayed samples have chosen variants three times
 (thirteenth, fifteenth, its amendment), and the labels' author knew the
@@ -3056,3 +3056,106 @@ every judge candidate, at one collection's GPU cost.
 linkage acts on few blockers. The exception arms are a coin flip on the
 +0.10 recall bar; the recall gain depends on how often the fresh
 replies quote removed lines of removed safety checks.
+
+### Results (scored 2026-10-23)
+
+35 samples in 49 minutes, records
+`coach_artifacts/measurement_round1_20261024_033005_294ce8.json` to
+`..._041842_1711a2.json` (UTC). Two first attempts ran away and were
+retried (`40a1ea` on `poll_override_90020bd`, `5cc5be` on
+`ecu_support_7d297b4`), leaving 33 scored runs. The labels were
+committed in `4d832ea` before the replay ran; j7 reproduced every stored
+split.
+
+| variant | valid | FPs per review | mean recall | FPs per clean review |
+|---|---|---|---|---|
+| j7 | 65% | 0.39 | 0.36 | 0.33 |
+| linked, flinked, gapped+flinked | 71% | 0.30 | 0.36 | 0.33 |
+| removed+said | 65% | 0.52 | 0.42 | 0.33 |
+| removed+said+flinked | 70% | 0.39 | 0.42 | 0.33 |
+| vote 2-of-3 @j7 | 79% | 0.53 | 0.39 | 0.00 |
+
+| prediction | predicted | observed | |
+|---|---|---|---|
+| j7 valid share | 50–68% | 65% | HIT |
+| j7 FPs per review | 0.40–0.70 | 0.39 | MISSED LOW |
+| j7 mean recall | 0.35–0.55 | 0.36 | HIT |
+| j7 FPs per clean review | 0.20–0.80 | 0.33 | HIT |
+| j7 evidence demotions per run | 0.30–0.70 | 0.70 | HIT |
+| first attempts that run away | 0–4 of 35 | 2 | HIT |
+| flinked FPs below j7 by | 0.00–0.10 | 0.09 | HIT |
+| flinked mean recall within 0.03 of j7 | — | +0.00 | HIT |
+| removed+said recall gain / FP rise | +0.05–0.15 / +0.00–0.06 | +0.05 / +0.12 | HIT / MISSED HIGH |
+| removed+said+flinked recall gain / FP rise | +0.04–0.13 / −0.03–+0.04 | +0.05 / +0.00 | HIT / HIT |
+| flinked passes, by a small margin | — | passes | HIT |
+
+**By the rules:**
+- **flinked passes:** FPs per review 0.39 → 0.30 on the fresh samples,
+  mean recall unchanged. It demoted 3 items, all invariant-elsewhere
+  false positives whose claims rest on `chan_count`, which the quoted
+  hunk never touches, and no valid item. No acronym decided anything
+  here, so flinked and linked agree on this sample. By the registered
+  rule it becomes judge j8.
+- **Neither exception arm earns #21.** Both raise recall by 0.055,
+  against the 0.10 bar. removed+said also raises FPs by 0.12: of its 12
+  readmitted items, 8 are valid and 4 false, 3 of them deletion claims
+  that say "removed" (`notifyDropped()` is removed but still called).
+  The removal-word gate does not keep the deletion class out of fresh
+  corpus data, so the bridge result was not only the #21 artifact.
+- **Voting** stays out (fifteenth). On this sample its clean-fixture
+  rate is 0.00, but its FPs per review still rise, 0.39 → 0.53.
+
+**Reading:**
+- **The fresh sample agrees with the replayed one on every decision.**
+  Linkage helps a little and costs nothing; the removed-line exception
+  trades false positives for recall at a bad rate on either data set.
+- **The removal-caused loss stays open.** Demoted valid items are as
+  common on the fresh sample (17) as on the baseline (17). A judge rule
+  cannot tell a removal the change intends from one that breaks
+  something; the remaining levers are the prompt or the protocol, and
+  they need live measurement.
+- **The baseline numbers moved between samples:** valid share 57% →
+  65%, FPs per review 0.55 → 0.39, recall 0.46 → 0.36. Same requests,
+  same judge. Ranges of this width between two 33-run samples are the
+  noise floor any later single-sample comparison on this corpus has to
+  clear.
+
+## Claim–Quote Linkage j8 (2026-10-23)
+
+Shipped by the sixteenth measurement's rule: `JUDGE_VERSION`
+`j8-claim-quote-linkage`. In `demote_unverified_blockers`, a reviewer
+blocker whose quote is verified is still demoted to a question when its
+claim names code identifiers and none of them occurs in the hunk its
+quote comes from: any line of that hunk, removed lines and the hunk
+header included. A token of capital letters only (`PID`, `UI`) is not an
+identifier unless the reviewed repo's index defines it as a type or
+constant. A claim naming no identifier passes, and so does a quote from
+a supplied context, which has no hunks.
+
+- **What it is for:** a verified quote proves the code exists, not that
+  it supports the claim. Linkage catches the claim that rests on code
+  the quote does not show, as the invariant-elsewhere class does.
+- **Measured:** corpus FPs per review 0.39 → 0.30 on fresh samples and
+  0.55 → 0.52 on the baseline, recall unchanged on both; bridge 0.25 →
+  0.18, race and gate unchanged (thirteenth, fifteenth and sixteenth
+  measurements).
+- **What changes in code:** `IDENT` and `code_like` moved from
+  retrieval to `diff_reader` (retrieval re-exports them);
+  `adjudication.hunk_identifiers`, `claim_identifiers` and
+  `quote_location` are the judge's, and the replay imports them, so the
+  replayed variant and the shipped judge cannot drift. `blocker_evidence`
+  gains `assertion`, the claim field alone, which linkage reads; the
+  hedge check still reads `claim`. The debate carries the diff's hunk
+  identifiers and the index's names in `_Setup`.
+- **Records:** linkage demotions are counted with the quote demotions in
+  `evidence_demotions` and sit with them at the end of `questions` (`#e`
+  in the scorers). The replay reproduces j8 records with `flinked` and
+  older ones with j7.
+- **Verified:** tests pin linkage's cases (outside the hunk, a removed
+  line, the hunk header, acronyms with and without the index, a context
+  quote, no hunks) and a debate's j8 stamp; a test checks that the judge
+  decides every raw item of the 66 archived corpus runs exactly as the
+  replayed `flinked` did. Removing the linkage call, or the debate's
+  hunks, fails them. The live golden suite passed 10/10 under j8. Round-1
+  requests are unchanged; a debate's round 2
+  differs only when linkage moved a blocker.

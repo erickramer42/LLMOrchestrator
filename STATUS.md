@@ -63,6 +63,16 @@ Last updated: 2026-10-22. That day, in order:
   (ADR-0002, thirteenth measurement): two cheap judge fixes and 2-of-3
   voting are candidates for the corpus (#7).
 
+2026-10-23, night:
+- the real-diff corpus (#7) built and its baseline scored (fourteenth
+  measurement): 57% of stored blockers valid, against 80–94% on the
+  bridge fixture;
+- judge variants replayed on it (fifteenth): voting and removed-line
+  exceptions fail, claim–quote linkage passes once acronyms are not
+  counted as identifiers;
+- a fresh sample of 35 corpus runs, labelled before replay (sixteenth),
+  confirms it, and judge j8 ships claim–quote linkage.
+
 Purpose of this file: anyone picking up this repo can orient in five
 minutes, run the existing validation, and continue the queued work
 without reverse-engineering the ADRs.
@@ -407,6 +417,15 @@ without reverse-engineering the ADRs.
   the corpus recall bar by one point (+0.09). A fresh sample of 35 corpus
   runs, labelled before replay, decides both (sixteenth measurement,
   registered in `1be7179`).
+- **Judge j8, claim–quote linkage (2026-10-23; ADR-0002, sixteenth
+  measurement and "Claim–Quote Linkage j8").** On the fresh sample,
+  linkage cut FPs per review from 0.39 to 0.30 with recall unchanged,
+  demoting 3 invariant-elsewhere claims and no valid one, so it shipped:
+  a verified blocker whose claim names code identifiers, none in its
+  quote's hunk, is a question. Acronyms count only when the index
+  defines them. Neither removed-line exception earned #21 (recall
+  +0.055 against +0.10). The removal-caused recall loss stays open: 17
+  valid items were demoted in each sample.
 
 **Known limitations (by design or pending):**
 - **Diffs above about 30K chars are refused** at `NUM_CTX` 24576 and
@@ -510,7 +529,7 @@ without reverse-engineering the ADRs.
 | `orchestrator.py` | Thin CLI entrypoint: argument parsing and dispatch only. Modes `--golden`, `--proposal` and `--index` are mutually exclusive; `--proposal` needs `--diff` or `--context`; inputs read as UTF-8. Its re-export shim was retired on 2026-10-23 (backlog #9): import from the module that defines a symbol. |
 | `config.py` | Central configuration: MODELS dict, num_ctx, the output cap, the input check's chars-per-token floor, timeouts, temperatures, and prompt composition. Single place to swap models (probe and bake-off excepted). |
 | `agent_client.py` | Ollama client. Single agent turn, JSON-mode enforcement, retries with corrective messages, optional per-attempt telemetry (token counts, thinking/reply sizes, done_reason, wall time; tails of failed replies). Holds `FAILURE_SENTINEL`; retry notes are warnings on the `agent_client` logger. The ONLY module that touches the network. |
-| `adjudication.py` | Pure adjudication logic, no I/O: every final verdict string, `normalize_agent_output()` (keeps reviewer blockers' file, quote and claim as `blocker_evidence`, and drops a reply's own), `derive_verdict()`, `convergence_verdict()`, `evidence_sources()` and `demote_unverified_blockers()` (quotes must be post-change code; since j7 lines outside any file header count for any file), `demote_hedged_blockers()` (judge j6: reads a reviewer blocker without its quote; both demotions return the output and the demoted count), `JUDGE_VERSION`. CI-importable. |
+| `adjudication.py` | Pure adjudication logic, no I/O: every final verdict string, `normalize_agent_output()` (keeps reviewer blockers' file, quote and claim as `blocker_evidence`, and drops a reply's own), `derive_verdict()`, `convergence_verdict()`, `evidence_sources()` and `demote_unverified_blockers()` (quotes must be post-change code; since j7 lines outside any file header count for any file; since j8 a claim must name an identifier of its quote's hunk, if it names any, via `hunk_identifiers()` and `claim_identifiers()`), `demote_hedged_blockers()` (judge j6: reads a reviewer blocker without its quote; both demotions return the output and the demoted count), `JUDGE_VERSION`. CI-importable. |
 | `diff_reader.py` | The one unified-diff reader, pure: `read_diff()` yields headers, hunk headers and context/removed/added lines, counted by hunk length inside a hunk and read by first character outside one; `diff_paths()` lists the post-change paths; `base_blobs()` reads git's pre-change blob ids. Used by the evidence check, retrieval and its index-base check, and layer identification. |
 | `debate.py` | The debate loop. Transcript templates incl. `REPO_CONTEXT_TEMPLATE`; loads `repo_context.json`, calls `build_context_pack` (never fatal: errors degrade to no retrieval), injects retrieval into the transcript, records `repo_context_pack` (report, pack text, hash, index version, base check) and per-round telemetry in decision records. `_input_check` refuses empty or oversized input before any model call (j7). The transcript fences the diff and context as data (v10.1), and from round 2 on carries the previous round's replies in a CRITIQUES section (v11.1). A round is `_run_round` (agent calls, then guardrails) and `_judge`. Applies the evidence check and then hedge demotion to reviewer replies, and records `evidence_demotions` and `hedge_demotions` per round. Ends with AGENT_FAILURE on exhausted agent calls. Two measurement modes: `run_round1_review`, the debate's first reviewer call alone, and `run_round2_pair`, which compares the candidate CRITIQUES section with a debate's own feedback in round 2. `review_round1` is the golden suite's unsaved round-1 reviewer call. |
 | `golden_tests.py` | Golden suite: 3 LLM-backed model fixtures (from `review_fixtures.py`) + `run_hedge_unit_tests()` (7 deterministic guardrail cases, production-derived texts). Since 2026-10-23 each fixture is reviewed through `debate.review_round1` at 0.05, evidence check included; 10/10 live that day. |
@@ -618,8 +637,10 @@ references elsewhere stay valid.
 - **#7 Stable real-diff corpus — BASELINE DONE (2026-10-23).** Seven
    fixtures in `docs/fixtures/corpus/`, 33 labelled runs (Current State;
    ADR-0002, fourteenth measurement). Replayed offline (fifteenth).
-   Next: the fresh sample (sixteenth) decides filtered linkage as j8,
-   and whether the removal-word exception earns #21.
+   Fresh sample scored (sixteenth): linkage shipped as j8; no
+   removed-line exception earned #21. Next on the corpus: the
+   removal-caused recall loss, a prompt or protocol change measured
+   live.
 - **#8 Multi-file diff layer handling.** Inject a layer map keyed by
    file; `diff_reader.diff_paths` already lists every changed path.
 - **#10 Codebase abstraction.** Move QtTune-specific bits behind config.

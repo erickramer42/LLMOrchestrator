@@ -422,7 +422,8 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(len(out["blockers"]), 1)
         self.assertEqual(out["blocker_evidence"],
                          [{"file": "core/src/x.cpp", "quote": QUOTE,
-                           "claim": "claim: kept; file: core/src/x.cpp"}])
+                           "claim": "claim: kept; file: core/src/x.cpp",
+                           "assertion": "kept"}])
 
     def test_failures_pass_through(self):
         failed = failure_result("x")
@@ -1626,6 +1627,117 @@ class ReplayTests(unittest.TestCase):
                 replay.verify(gapped, self.diff, gapped=True))
         self.assertEqual((sorted(tail[1][1]), sorted(head[1][1])), ([2, 3, 4], [1, 3, 4]))
         self.assertEqual(replay.vote([[tail], [head]], self.diff, k=2), [])
+
+
+class LinkageTests(unittest.TestCase):
+    """Judge j8: claim-quote linkage (ADR-0002, sixteenth measurement)."""
+
+    def judged(self, claim, quote=GATE_LINE, symbols=frozenset(), diff=REPLAY_DIFF):
+        raw = {**REVIEWER_CLEAN, "blockers": [
+            {"claim": claim, "file": "app/x.cpp", "quote": quote}]}
+        out, _ = adjudication.normalize_agent_output(raw, "reviewer")
+        return adjudication.demote_unverified_blockers(
+            out, adjudication.evidence_sources(diff), "questions",
+            adjudication.hunk_identifiers(diff), symbols)
+
+    def test_a_claim_naming_only_identifiers_outside_its_hunk_is_demoted(self):
+        out, n = self.judged("m_lastReported races between threads")
+        self.assertEqual((n, out["blockers"]), (1, []))
+        self.assertIn("m_lastReported races", out["questions"][-1])
+
+    def test_a_claim_naming_an_identifier_of_its_hunk_stays(self):
+        for claim in ("m_count is read off-thread",          # a context line
+                      "removing m_inFlight unbounds it",       # a removed line
+                      "onFrame drops frames",                  # the hunk header
+                      "nothing bounds the queue"):             # no identifier
+            out, n = self.judged(claim)
+            self.assertEqual(n, 0, claim)
+
+    def test_acronyms_count_only_when_the_index_defines_them(self):
+        self.assertEqual(self.judged("the PID request is wrong")[1], 0)
+        self.assertEqual(self.judged("SCONFIG is wrong")[1], 0)  # an acronym: skipped
+        self.assertEqual(self.judged("SCONFIG is wrong",
+                                     symbols=frozenset({"SCONFIG"}))[1], 1)
+
+    def test_without_hunks_the_j7_check_is_unchanged(self):
+        raw = {**REVIEWER_CLEAN, "blockers": [{"claim": "m_lastReported races",
+                                               "file": "app/x.cpp", "quote": GATE_LINE}]}
+        out, _ = adjudication.normalize_agent_output(raw, "reviewer")
+        _, n = adjudication.demote_unverified_blockers(
+            out, adjudication.evidence_sources(REPLAY_DIFF), "questions")
+        self.assertEqual(n, 0)
+
+    def test_a_context_quote_has_no_hunk_and_passes(self):
+        raw = {**REVIEWER_CLEAN, "blockers": [{"claim": "m_other races",
+                                               "file": "x.h", "quote": "uint8_t buf[8];"}]}
+        out, _ = adjudication.normalize_agent_output(raw, "reviewer")
+        _, n = adjudication.demote_unverified_blockers(
+            out, adjudication.evidence_sources("", "uint8_t buf[8];"), "questions",
+            adjudication.hunk_identifiers(""), frozenset())
+        self.assertEqual(n, 0)
+
+    def test_quote_location_agrees_with_the_evidence_check(self):
+        sources = adjudication.evidence_sources(REPLAY_DIFF)
+        for quote in (GATE_LINE, "appendFrame(vm);\n++m_count;", "m_inFlight.fetch_add(1);",
+                      "if (self->m_count >= MaxFrames) { m_dropped.fetch_add(1);"):
+            ev = {"file": "app/x.cpp", "quote": quote}
+            self.assertEqual(adjudication.quote_location(ev, sources) is not None,
+                             adjudication._quote_verified(ev, sources), quote)
+
+    def test_debates_stamp_j8_and_demote_unlinked_blockers(self):
+        cwd, tmp = os.getcwd(), tempfile.TemporaryDirectory()
+        os.chdir(tmp.name)
+        try:
+            unlinked = {**REVIEWER_CLEAN, "blockers": [
+                {"claim": "m_lastReported races", "file": "app/x.cpp", "quote": GATE_LINE}]}
+            with mock.patch.object(agent_client.time, "sleep"), \
+                    fake_ollama(unlinked) as post:
+                result = debate.run_round1_review("p", REPLAY_DIFF, "")
+            rec = json.loads(Path(result["record_path"]).read_text(encoding="utf-8"))
+        finally:
+            os.chdir(cwd)
+            tmp.cleanup()
+        self.assertEqual(rec["metadata"]["judge_version"], "j8-claim-quote-linkage")
+        first = rec["outputs"]["round_history"][0]
+        self.assertEqual(first["reviewer"]["blockers"], [])
+        self.assertEqual(first["evidence_demotions"]["reviewer_demoted"], 1)
+        self.assertNotIn("blocker_evidence", first["reviewer"])
+
+    def test_j8_on_archived_corpus_replies_equals_the_replayed_flinked(self):
+        # What shipped is what was measured: for every raw reviewer item of
+        # the corpus records, the judge's own check (quote, then linkage)
+        # decides as replay's flinked does.
+        records = sorted(Path(REPO_ROOT, "coach_artifacts").glob(
+            "measurement_round1_20261024_0*.json"))
+        if not records:
+            self.skipTest("corpus records not present")
+        manifest = corpus.load_manifest()
+        by_hash = {debate.text_sha256(f["diff_path"].read_text(encoding="utf-8")): f
+                   for f in manifest["fixtures"]}
+        checked = 0
+        for path in records:
+            rec = json.loads(path.read_text(encoding="utf-8"))
+            fixture = by_hash.get(rec["inputs"]["diff_sha256"])
+            if fixture is None or not rec["outputs"]["round_history"]:
+                continue
+            code_diff = fixture["diff_path"].read_text(encoding="utf-8")
+            index = json.loads(fixture["index_path"].read_text(encoding="utf-8"))
+            symbols = debate._index_symbols(index)
+            sources = adjudication.evidence_sources(code_diff)
+            hunks = adjudication.hunk_identifiers(code_diff)
+            rdiff = replay.load_diff(code_diff, replay.index_symbols(index))
+            for item in replay.raw_items(rec, {}):
+                b = item.blocker
+                if not b["quote"]:
+                    continue
+                ev = {"file": b["file"], "quote": b["quote"], "assertion": b["claim"]}
+                judge_keeps = (adjudication._quote_verified(ev, sources)
+                               and adjudication._quote_linked(ev, sources, hunks, symbols))
+                reason, _ = replay.judge(item, rdiff, "flinked")
+                self.assertEqual(judge_keeps, reason in (None, "hedge"),
+                                 f"{item.sample} {item.key}")
+                checked += 1
+        self.assertGreater(checked, 100)
 
 
 # ============ indexer ============

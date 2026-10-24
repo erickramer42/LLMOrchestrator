@@ -91,7 +91,10 @@ without any model.
    - Measured: valid stored blockers rose from 42% to 94% (ADR-0002,
      tenth measurement).
    - Known limit: a quote proves the code exists, not that it supports
-     the claim.
+     the claim. Since judge j8 a claim that names code identifiers must
+     name one from the hunk its quote comes from, which catches claims
+     resting on code the quote does not show (ADR-0002, sixteenth
+     measurement).
 
 3. **Hedged claims are questions.** A blocker must be a demonstrable
    violation. Blockers phrased as speculation ("may", "might", "could",
