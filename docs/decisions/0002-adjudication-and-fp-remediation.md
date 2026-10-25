@@ -3437,10 +3437,14 @@ the code part of the transcript, and would pilot a handful of live calls
 before the full paired batch. That is a new prompt and a new
 registration; the paired archive and the runner are ready for it.
 
-## Eighteenth Measurement (Draft) — Repair Successor: Ceiling Check and Pilot
+## Eighteenth Measurement — Repair Successor: Ceiling Check and Pilot (closed)
 
-**Status (2026-10-24): the pilot set and the ceiling check are registered
-before the check runs and before any successor prompt is written.**
+**Status (2026-10-24): closed.** The pilot set and the ceiling check
+were registered before the check ran and before any successor prompt
+was written. The pilot (v13) exited as wiring and its re-pilot (v13.1),
+the pilot of record, as incapacity: the model declined its recoverable
+valid items. The repair route is closed and the batch did not run (Re-pilot
+results, below).
 
 The seventeenth left the registered question unanswered: its calls
 mostly did not attempt the task. A successor would give the repair call

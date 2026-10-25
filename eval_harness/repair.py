@@ -35,10 +35,13 @@ counts claims naming no identifier, which pass linkage anywhere;
 'named' leaves them out). --batch leaves out the pilot's records.
 
 `--variant v13` makes the successor's call (debate.REPAIR_SYSTEM_PROMPT,
-the diff alone) and saves coach_artifacts/measurement_repair_v13_<source>.json;
-`--pilot` limits a run to the pilot set. `pilot` prints the pilot's
-items by class, quote group and result, first attempts and retries
-apart, and checks the registered exits.
+the diff and the layer note) and saves
+coach_artifacts/measurement_repair_v13_<source>.json; `--variant v13.1`,
+the re-pilot and pilot of record, drops the layer note and the "material
+under review" preamble and saves measurement_repair_v13.1_<source>.json.
+`--pilot` limits a run to the pilot set. `pilot --variant v13|v13.1`
+prints that variant's items by class, quote group and result, first
+attempts and retries apart, and checks the registered exits.
 """
 
 import argparse
