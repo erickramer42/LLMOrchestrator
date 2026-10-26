@@ -85,6 +85,18 @@ Last updated: 2026-10-22. That day, in order:
   own valid claims as readily as its false ones, so the repair route is
   closed.
 
+2026-10-25:
+- this file synced with `cdbb8df` (test count, suggested order, file
+  map);
+- the nineteenth measurement drafted in ADR-0002, reviewed and signed
+  off (70 corpus runs, the example kept, the seventeenth's bars plus a
+  secondary rule decided in advance), and implemented as PROMPT_VERSION
+  v14-removal-quotes: a round-1 prompt change asking for the post-change
+  line a removal leaves unprotected, never a removed line;
+- v14 piloted and measured on 69 corpus and 9 bridge runs: not shipped.
+  Corpus recall rose 0.05 against the 0.10 bar, and bridge race recall
+  fell 0.23. The prompt is v11.1 again.
+
 Purpose of this file: anyone picking up this repo can orient in five
 minutes, run the existing validation, and continue the queued work
 without reverse-engineering the ADRs.
@@ -110,7 +122,7 @@ without reverse-engineering the ADRs.
   path, evidence check included. Run live that way on 2026-10-23 at
   v10.2: 10/10, as predicted, every fixture answered on the first
   attempt with no demotion (ADR-0002, "Golden Suite Routing").
-- Deterministic regression suite: 161 stdlib unittest cases in `tests/`,
+- Deterministic regression suite: 205 stdlib unittest cases in `tests/`,
   with Ollama faked at the HTTP layer. No model needed; CI-ready.
 - FP-rate probe (5-run aggregates), model bake-off
 - Repo indexer (`--index`): typedefs, constants, layer map, LLM purpose
@@ -468,6 +480,25 @@ without reverse-engineering the ADRs.
   No false item came back in either pilot. **The repair route is
   closed.** A recall lever for removal-caused defects would have to act
   when the claim is first written.
+- **Round-1 removal quotes, measured, not shipped (2026-10-25;
+  ADR-0002, nineteenth measurement).** Of the 31 valid corpus quote
+  failures, 26 quote a removed line, and 16 are blocks copied across a
+  removal; none of the 9 false ones has that shape. v14 changed only the
+  reviewer prompt's quote rule: post-change lines only, never a removed
+  one, and for a removal the line that now runs without it, with one
+  example. On 69 fresh corpus runs and 9 bridge runs:
+  - corpus mean recall 0.41 → 0.46 (+0.05, against a bar of +0.10);
+  - corpus FPs per review 0.41 → 0.35;
+  - valid quote failures per run 0.47 → 0.30 (the secondary rule needed
+    0.24);
+  - bridge race 0.79 → 0.56 and gate 0.29 → 0.56.
+
+  More of the gain came from new claims than from better quotes: recall
+  counting demoted items rose 0.10. 17 of 21 valid quote failures still
+  quote removed lines. In five valid claims that did quote the code a
+  removal affects, the code was in another hunk than the removal, and
+  linkage (j8) demoted them. The prompt is v11.1 again (fingerprint
+  `8e76794ac4946aab`).
 
 **Known limitations (by design or pending):**
 - **Diffs above about 30K chars are refused** at `NUM_CTX` 24576 and
@@ -573,7 +604,7 @@ without reverse-engineering the ADRs.
 | `agent_client.py` | Ollama client. Single agent turn, JSON-mode enforcement, retries with corrective messages, optional per-attempt telemetry (token counts, thinking/reply sizes, done_reason, wall time; tails of failed replies). Holds `FAILURE_SENTINEL`; retry notes are warnings on the `agent_client` logger. The ONLY module that touches the network. |
 | `adjudication.py` | Pure adjudication logic, no I/O: every final verdict string, `normalize_agent_output()` (keeps reviewer blockers' file, quote and claim as `blocker_evidence`, and drops a reply's own), `derive_verdict()`, `convergence_verdict()`, `evidence_sources()` and `demote_unverified_blockers()` (quotes must be post-change code; since j7 lines outside any file header count for any file; since j8 a claim must name an identifier of its quote's hunk, if it names any, via `hunk_identifiers()` and `claim_identifiers()`), `demote_hedged_blockers()` (judge j6: reads a reviewer blocker without its quote; both demotions return the output and the demoted count), `JUDGE_VERSION`. CI-importable. |
 | `diff_reader.py` | The one unified-diff reader, pure: `read_diff()` yields headers, hunk headers and context/removed/added lines, counted by hunk length inside a hunk and read by first character outside one; `diff_paths()` lists the post-change paths; `base_blobs()` reads git's pre-change blob ids. Used by the evidence check, retrieval and its index-base check, and layer identification. |
-| `debate.py` | The debate loop. Transcript templates incl. `REPO_CONTEXT_TEMPLATE`; loads `repo_context.json`, calls `build_context_pack` (never fatal: errors degrade to no retrieval), injects retrieval into the transcript, records `repo_context_pack` (report, pack text, hash, index version, base check) and per-round telemetry in decision records. `_input_check` refuses empty or oversized input before any model call (j7). The transcript fences the diff and context as data (v10.1), and from round 2 on carries the previous round's replies in a CRITIQUES section (v11.1). A round is `_run_round` (agent calls, then guardrails) and `_judge`. Applies the evidence check and then hedge demotion to reviewer replies, and records `evidence_demotions` and `hedge_demotions` per round. Ends with AGENT_FAILURE on exhausted agent calls. Two measurement modes: `run_round1_review`, the debate's first reviewer call alone, and `run_round2_pair`, which compares the candidate CRITIQUES section with a debate's own feedback in round 2. `review_round1` is the golden suite's unsaved round-1 reviewer call. |
+| `debate.py` | The debate loop. Transcript templates incl. `REPO_CONTEXT_TEMPLATE`; loads `repo_context.json`, calls `build_context_pack` (never fatal: errors degrade to no retrieval), injects retrieval into the transcript, records `repo_context_pack` (report, pack text, hash, index version, base check) and per-round telemetry in decision records. `_input_check` refuses empty or oversized input before any model call (j7). The transcript fences the diff and context as data (v10.1), and from round 2 on carries the previous round's replies in a CRITIQUES section (v11.1). A round is `_run_round` (agent calls, then guardrails) and `_judge`. Applies the evidence check and then hedge demotion to reviewer replies, and records `evidence_demotions` and `hedge_demotions` per round. Ends with AGENT_FAILURE on exhausted agent calls. Two measurement modes: `run_round1_review`, the debate's first reviewer call alone, and `run_round2_pair`, which compares the candidate CRITIQUES section with a debate's own feedback in round 2. `review_round1` is the golden suite's unsaved round-1 reviewer call. The repair pass's helpers (`repair_offer`, `repair_call`, `apply_repairs`, `REPAIR_SYSTEM_PROMPT`) stay for `eval_harness/repair.py`; debates run with `REPAIR_PASS` off. |
 | `golden_tests.py` | Golden suite: 3 LLM-backed model fixtures (from `review_fixtures.py`) + `run_hedge_unit_tests()` (7 deterministic guardrail cases, production-derived texts). Since 2026-10-23 each fixture is reviewed through `debate.review_round1` at 0.05, evidence check included; 10/10 live that day. |
 | `review_fixtures.py` | The code snippets the golden suite and the bake-off share. Both send them as written, so add a fixture rather than edit one. |
 | `reviewer_prompt.py` | Single source of truth for agent system prompts. PROMPT_VERSION (currently v11.1-critiques-feedback: reviewer blockers are `{claim, file, quote}`, the transcript fences the reviewed code, input without a path gets the unknown-layer note, and from round 2 on the previous round's replies go in a CRITIQUES section; the templates are in debate.py). |
@@ -587,9 +618,9 @@ without reverse-engineering the ADRs.
 | `eval_harness/common.py` | What the two measurement scripts share: the `run`/`score` command line, the sample runner (stops on refused input or an unreachable server), record loading, the reviewer's attempt status, demoted-blocker recovery, M1 and M2 candidates. |
 | `eval_harness/round1.py` | Round-1 measurements. `run` collects samples through `debate.run_round1_review`, so unlike the probe and bake-off it uses agent_client and config. `score` counts M1 and lists M2 candidates over measurement or debate records, first attempts on one diff only, and lists evidence-demoted (`#e`) and hedge-demoted (`#h`) items separately. |
 | `eval_harness/replay.py` | Offline replay, no model: rebuilds each round-1 reply's raw blockers (stored plus demoted) from archived records and re-judges them under deterministic variants: gapped quotes, claim–quote linkage, k-of-n voting, and removed-line exceptions (removed, removed+linked, removed+said). Scores them with the hand labels; checks that the current judge reproduces every stored split (ADR-0002, thirteenth measurement). With `--corpus`, groups records by corpus fixture, judges each against its own diff and scores with `corpus_labels.json` (fifteenth). |
-| `eval_harness/labels.json` | Hand labels per round-1 reviewer blocker (race, gate, deletion, removal objection, deleted test, other FP) for G3 and the eleventh's and twelfth's round 1, transcribed from ADR-0002; the few not in the ADR are marked `hand`. |
+| `eval_harness/labels.json` | Hand labels per round-1 reviewer blocker (race, gate, deletion, removal objection, deleted test, other FP) for G3 and the eleventh's and twelfth's round 1, transcribed from ADR-0002; the few not in the ADR are marked `hand`. Set `nineteenth` holds the v14 bridge samples, labeled by hand before scoring. |
 | `eval_harness/corpus.py` | The real-diff corpus (#7). `list` describes each fixture without a model (size, layer, pack, input and base checks); `run` collects round-1 samples through `debate.run_round1_review` with the fixture's own index; `score` reports per fixture blockers per run, recall per known bug by the symbols a stored blocker's claim names, bugs found only among demoted blockers, and the blockers matching no known bug. |
-| `eval_harness/corpus_labels.json` | Hand labels per round-1 item on the corpus baseline (known-bug ids, `unlisted`, and false-positive classes), each judged against its fixture's `post_rev`; read by `eval_harness.corpus score` (ADR-0002, fourteenth measurement). |
+| `eval_harness/corpus_labels.json` | Hand labels per round-1 item on the corpus baseline (known-bug ids, `unlisted`, and false-positive classes), each judged against its fixture's `post_rev`; read by `eval_harness.corpus score` (ADR-0002, fourteenth measurement). Besides the baseline's records (no `sample` field), sample `fresh` (sixteenth) and `v14` (nineteenth), each labeled before scoring; a test pins each one's counts. |
 | `eval_harness/repair.py` | The repair pass measured paired on archived round-1 replies (seventeenth measurement): `run` rebuilds each labelled record's round-1 request and j8 split, offers its quote failures as a debate would and makes the repair call; `score` compares the j8 split with the split after repair, per label class and quote group. `--dry` lists offers without calling. `ceiling` (eighteenth, Step 0, no model) tries every post-change line as a repair of every offered item and reports what any repair could restore (`--batch` without the pilot's records). `run --variant v13|v13.1 --pilot` makes the successor's calls on the pilot set, saved as `measurement_repair_<variant>_<source>.json`; `pilot --variant v13|v13.1` prints that variant's split and the registered exit (the pilot of record is v13.1). |
 | `docs/fixtures/corpus.json` | The corpus manifest: per fixture its commit, direction, base and post-state revisions, diff and index paths, proposal, known bugs with symbols, and what the removed lines leak. |
 | `docs/fixtures/corpus/<id>/` | One fixture: `change.diff` (tests, docs and `*.md` excluded) and `repo_context.json`, the `--no-llm` index of its base. |
@@ -598,7 +629,7 @@ without reverse-engineering the ADRs.
 | `tests/test_deterministic.py` | Stdlib unittest regression suite: adjudication, agent client (incl. telemetry and log records), diff reading (incl. base blobs), the evidence check and hedge check, debate (incl. the input checks, the layer note, retrieval in the transcript, the index-base warning, record provenance, malformed-index degradation, round-1 measurement mode, demotion order, the fence, the round-2 pair mode, the golden suite's path and its fixtures), eval scoring (incl. the round-1 and round-2 scorers, and the probe's and bake-off's raw call), indexer harvesting, CLI and module boundaries. Fake Ollama HTTP layer. CI-ready. |
 | `tests/test_retrieval.py` | Retrieval unit tests: paren-depth scanning, multiline lambda connects, truncation-budget accounting, matched and shown counts, section headers, related call sites, identifier matching, call-site/type/purpose rendering. |
 | `docs/decisions/0001-model-selection.md` | ADR-0001: model selection rationale, bake-off numbers. |
-| `docs/decisions/0002-adjudication-and-fp-remediation.md` | ADR-0002: the false-positive arc. Baseline triage, v1 guardrails, re-measurement, live-loop control, and context-pack N=3 results with the retroactive re-adjudication flag. Then the round-1 measurements (fifth to tenth: diff-authoritative retrieval, the hedging ban, evidence quotes), the judge versions j2 to j6, and the eleventh measurement (the transcript protocol, shipped as the fence only). |
+| `docs/decisions/0002-adjudication-and-fp-remediation.md` | ADR-0002: the false-positive arc. Baseline triage, v1 guardrails, re-measurement, live-loop control, and context-pack N=3 results with the retroactive re-adjudication flag. Then the round-1 measurements (fifth to tenth: diff-authoritative retrieval, the hedging ban, evidence quotes), the judge versions j2 to j8, the transcript protocol (eleventh, twelfth), the offline replay (thirteenth), the corpus and its replays (fourteenth to sixteenth), the repair pass and its successor (seventeenth, eighteenth, not shipped), and the drafted nineteenth (round-1 removal quotes). |
 | `docs/design.md` | The pipeline, outcomes, code layout and key design decisions, for readers who want depth after the README. |
 | `docs/results.md` | The measured precision story, its costs, the evidence files and how to reproduce them. Summarizes ADR-0002. |
 | `docs/usage.md` | Every command: tests, reviews, golden suite, indexer, eval harness, reading a record. |
@@ -606,8 +637,9 @@ without reverse-engineering the ADRs.
 | `docs/fixtures/qttune_bridge_refactor.diff` | Input diff for all bridge-refactor debates. Provenance (established 2026-10-13): reverse patch of QtTune `e0c4c31`; post-state identical to committed `8ffbf19` (blob `1c195f8`). Known bugs in the post-state: the `m_currentFrameCount` race and the gate-and-freeze (ADR-0002, "Re-Triage of the Early Runs"). |
 | `docs/fixtures/qttune_core_e08b455.h` | QtTune's `core/include/qttune/core.h` at `e08b455` (blob `1d45bda`), the clean header behind header review 194320 and both probe logs (2026-10-07). Identified by date and content; committed 2026-10-23 (backlog #13). |
 | `coach_artifacts/decision_debate_*.json` | Decision records. Nine archived: header review (194320), baseline (203917), v1 re-measurement (014257), feedback smoke (153541, see erratum caveat), live-loop control (170208), context-pack pilot (201540, unscored), and three scored context-pack runs (203802, 204845, 210548). Plus seven v5.2 telemetry runs on the bridge fixture, from 20261022, whose six scorable round 1s are the fifth measurement's arm 1: two at num_ctx 16384 (134539_3026b2, 140943_bbe168), three at 24576 (143424_1b11cc, 145342_743bc4, 153943_7a4809), and two at 24576 with num_predict 12288 (160429_15cc3f, 161800_5b3f1d). Records from 2026-10-10 on carry `prompt_fingerprint`, sampling settings, input hashes, layer, `agent_failures`; v5 records carry `repo_context_pack`; v5.2 records add the pack text and per-attempt `telemetry`. |
-| `coach_artifacts/measurement_round1_*.json` | Round-1 measurement records (`metadata.mode` `round1_reviewer`): one reviewer round, no engineer, no merge decision. Same provenance fields as decision records. Forty on input fixture `docs/fixtures/qttune_bridge_refactor.diff`, and the corpus baseline's 35 (`20261024_01*`, `20261024_02*`), whose inputs are `docs/fixtures/corpus/`. The v6 baseline: 2026-10-22, 205145_5d2fc3 to 210647_dc4008. Arm H (v7): `20261022_22*`. Arm G (v8 / j3): `20261023_00*`. Arm G3 (v9 / j4): `20261023_01*`. |
-| `coach_artifacts/measurement_round2_*.json` | Round-2 pair records (`metadata.mode` `round2_pair`): round 1 as `round_history`, the two round-2 reviewer replies under `outputs.round2_arms`. Ten, from the eleventh measurement (v10), `20261023_03*` and `20261023_04*` (UTC), on the bridge fixture. Their round 1 also scores as round-1 samples. |
+| `coach_artifacts/measurement_round1_*.json` | Round-1 measurement records (`metadata.mode` `round1_reviewer`): one reviewer round, no engineer, no merge decision. Same provenance fields as decision records. Forty on input fixture `docs/fixtures/qttune_bridge_refactor.diff`, and 70 on the corpus, whose inputs are `docs/fixtures/corpus/`: the baseline's 35 (`20261024_01*`, `20261024_02*`) the sixteenth measurement's fresh 35 (`20261024_03*`, `20261024_04*`), and the nineteenth's v14 sample: 70 corpus runs (`20261026_014403` to `_040210`) and 10 bridge runs (`20261026_012123` to `_014137`), plus its 3 pilot records (`20261026_011519`, `_011610`, `_011932`), which are not labeled or scored. The v6 baseline: 2026-10-22, 205145_5d2fc3 to 210647_dc4008. Arm H (v7): `20261022_22*`. Arm G (v8 / j3): `20261023_00*`. Arm G3 (v9 / j4): `20261023_01*`. |
+| `coach_artifacts/measurement_round2_*.json` | Round-2 pair records (`metadata.mode` `round2_pair`): round 1 as `round_history`, the two round-2 reviewer replies under `outputs.round2_arms`. Twenty on the bridge fixture: ten from the eleventh measurement (v10), `20261023_03*` and `20261023_04*` (UTC), and ten from the twelfth (v11), `20261023_18*` and `20261023_19*`. Their round 1 also scores as round-1 samples. |
+| `coach_artifacts/measurement_repair_*.json` | Repair-call records (`metadata.mode` `repair_pair`), one per source round-1 record: the offered items, the reply's repairs, each item's result and the call's telemetry. 33 from the seventeenth measurement (v12, `measurement_repair_round1_*`, `measurement_repair_round2_*`), and 5 each from the eighteenth's pilot and re-pilot (`measurement_repair_v13_*`, `measurement_repair_v13.1_*`). |
 | `probe_logs/fp_*.json` | 5-run probe aggregates backing the FP-rate claims. |
 | `requirements.txt` | Runtime deps (requests). |
 | `.github/workflows/` | CI: compile checks + regression suite, no Ollama. |
@@ -642,7 +674,7 @@ eval_harness.raw_call and (the bake-off) review_fixtures.
    PROMPT_VERSION. Transcript templates and the pack format are prompts
    too: a change to `build_context_pack`'s output also bumps
    `PACK_FORMAT_VERSION`, which feeds the fingerprint. Currently
-   v11.1-critiques-feedback.
+   v11.1-critiques-feedback (v14 measured and not shipped, nineteenth).
 5. **Evidence pairs.** Every committed decision record needs its input
    fixture committed alongside (docs/fixtures/).
 6. **Predict before measuring.** Expected outcome written to the ADR
@@ -659,14 +691,17 @@ eval_harness.raw_call and (the bake-off) review_fixtures.
 
 ## Backlog (ideas, loosely ordered)
 
-Suggested order as of 2026-10-23 (the live golden suite passed; #9,
-#11 and #17 done, #13 all but the probe rerun; the replay scored; the
-corpus built and its baseline scored): on the corpus, measure the
-replay's candidates (gapped quotes with claim–quote linkage, then 2-of-3
-voting) → recall levers, one measurement each: the call-site caveat
-(code review finding 9), #8 per-file layer notes, #14 structured
-outputs, #19 early runaway abort → a local-model bake-off on the corpus
-→ #18 early reject → the rest.
+Suggested order as of 2026-10-25 (judge j8 shipped; the repair route,
+seventeenth and eighteenth measurements, closed; the round-1 quote
+prompt, nineteenth, not shipped): invariant-elsewhere on the pack side
+(not drafted) → recall for removal-caused defects is open; the
+nineteenth found that linkage's hunk scope refuses quotes of the code a
+removal affects, a judge question to register on its own if pursued →
+recall levers, one measurement each: the call-site caveat (code review
+finding 9), #8 per-file layer notes, #14 structured outputs, #19 early
+runaway abort (its first question, whether the reviewer's runaways
+repeat, needs no GPU) → a local-model bake-off on the corpus → #18
+early reject → the rest.
 
 Done items are removed (#1, #3, #4, #5, #9, #11, #12, #15 and #17 so far); their history
 is in Current State, the ADRs and git. Numbers are not reused, so
@@ -681,9 +716,10 @@ references elsewhere stay valid.
    fixtures in `docs/fixtures/corpus/`, 33 labelled runs (Current State;
    ADR-0002, fourteenth measurement). Replayed offline (fifteenth).
    Fresh sample scored (sixteenth): linkage shipped as j8; no
-   removed-line exception earned #21. Next on the corpus: the
-   removal-caused recall loss, a prompt or protocol change measured
-   live.
+   removed-line exception earned #21. The repair pass and its successor
+   did not recover the removal-caused recall loss (seventeenth,
+   eighteenth), and a round-1 prompt change recovered half the bar
+   while costing the bridge race (nineteenth).
 - **#8 Multi-file diff layer handling.** Inject a layer map keyed by
    file; `diff_reader.diff_paths` already lists every changed path.
 - **#10 Codebase abstraction.** Move QtTune-specific bits behind config.

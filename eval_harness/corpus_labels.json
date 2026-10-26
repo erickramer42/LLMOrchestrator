@@ -16,7 +16,8 @@
     "ecu_support_7d297b4": "ecuio_dropped_request_t.request is uint8_t[3] with length 2 or 3, and the support struct is value-initialized, so request[0] is in bounds. pollChannelSupport and applyConnectedState both run on the GUI thread (the coalescing timer and the queued connect completion).",
     "decode_length_b47687c": "c7477e #4: the missing m_lastReportedDropped reset on connect is benign. The first notifyDropped compares a zeroed m_droppedFrames with the old value and emits, which is what refreshes the UI; with the reset the stale count would stay on screen. Labelled other-fp. The typed setSignalSet parameter is labelled unlisted: b47687c reverted it as a FIX, but a void* on an internal C++ method is not a functional bug.",
     "fresh_rule": "A claim that states a known bug's defect is credited to it even when a side detail is wrong (68d66c #e1 calls the internal header an ABI; 68d66c #e3 says the helper checked BUFFER_OVERFLOW; 0390ed #3 calls the inlined code orphaned). A claim whose asserted consequence is false is not credited even when it points at the buggy line (c1e188 #3 says scheduler and poll both run; the worker's branches are exclusive).",
-    "decode_length_b47687c_fresh": "7a3f78 #1 and 2964be #3 claim a data race on m_stagingBuffer; handleFrameInternal is queued to the GUI thread, where the coalescing timer also runs. 2964be #4: m_lastReportedDropped is updated in the post-state. 2964be #e1: the post-state (b975457) builds without the signals.h include in the header."
+    "decode_length_b47687c_fresh": "7a3f78 #1 and 2964be #3 claim a data race on m_stagingBuffer; handleFrameInternal is queued to the GUI thread, where the coalescing timer also runs. 2964be #4: m_lastReportedDropped is updated in the post-state. 2964be #e1: the post-state (b975457) builds without the signals.h include in the header.",
+    "v14_nineteenth": "Sample 'v14' (records 20261026_014403 to 20261026_040210; the retried fcda47 and the pilot's 011519 and 011610 are not labeled), labeled before scoring by the same rules. 06248d #1 says the inlined code uses <= and changes the result at the cap: false, other-fp. 896c70 #2: err is used after the join. 5e7ae7 #1: on failure connectCoreOnly destroys the session (as 2e95fa #e1). e6c961 #1: m_session is set in applyConnectedState. daaeb5 #4: the only Qt::QueuedConnection removed went with the drop-notify call; the frame invokeMethod is unchanged. b53474 #e1: updateValues reads values. A claim that the payloadHex clamp was removed is payload_length_unclamped whatever line it quotes."
   },
   "records": {
     "round1_20261024_015410_fa2343": {
@@ -758,6 +759,788 @@
           "thread-confusion"
         ]
       }
+    },
+    "round1_20261026_014403_51a64a": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261026_014525_06248d": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261026_014712_c67c12": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261026_014849_5b513b": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261026_015005_1e0323": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261026_015151_4d88ec": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "v14",
+      "labels": {
+        "#h1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261026_015252_a954db": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261026_015336_cc6522": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261026_015443_1fccd0": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261026_015545_e60f3e": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261026_015737_1be1b3": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v14",
+      "labels": {
+        "#e1": [
+          "count_under_error"
+        ],
+        "#e2": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261026_015832_32743b": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "count_under_error"
+        ],
+        "#e1": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261026_020037_056488": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "static_batch_replay"
+        ],
+        "#h1": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261026_020410_4661d7": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v14",
+      "labels": {
+        "#e1": [
+          "count_under_error",
+          "static_batch_replay"
+        ],
+        "#h1": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261026_020817_a4b595": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v14",
+      "labels": {
+        "#e1": [
+          "count_under_error",
+          "static_batch_replay"
+        ],
+        "#e2": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261026_021009_f1c9e4": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v14",
+      "labels": {
+        "#e1": [
+          "static_batch_replay"
+        ],
+        "#e2": [
+          "count_under_error"
+        ],
+        "#e3": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261026_021112_03e0e5": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "count_under_error"
+        ],
+        "#2": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261026_021252_e39632": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "count_under_error"
+        ],
+        "#2": [
+          "static_batch_replay"
+        ],
+        "#3": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261026_021604_4e2591": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "static_batch_replay"
+        ],
+        "#e1": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261026_021730_7433de": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v14",
+      "labels": {
+        "#e1": [
+          "count_under_error"
+        ],
+        "#e2": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261026_021847_036020": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_022111_277842": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#e1": [
+          "invariant-elsewhere"
+        ],
+        "#h1": [
+          "poll_needs_filter_at_parse"
+        ]
+      }
+    },
+    "round1_20261026_022359_be1b41": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_022551_91011b": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ],
+        "#e1": [
+          "poll_ignored"
+        ]
+      }
+    },
+    "round1_20261026_022725_a2a638": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v14",
+      "labels": {}
+    },
+    "round1_20261026_023032_705e0b": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_023315_3f4332": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_023529_b9c48b": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "poll_needs_filter_at_parse"
+        ],
+        "#h1": [
+          "poll_ignored"
+        ]
+      }
+    },
+    "round1_20261026_023632_6e890e": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_023854_a49a6a": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_023956_32ce1c": {
+      "fixture": "connect_start_4a86231",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261026_024051_896c70": {
+      "fixture": "connect_start_4a86231",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#2": [
+          "other-fp"
+        ],
+        "#3": [
+          "unsubscribed_rows_freeze"
+        ],
+        "#e1": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261026_024406_fa3031": {
+      "fixture": "connect_start_4a86231",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ],
+        "#h1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261026_024639_e530e8": {
+      "fixture": "connect_start_4a86231",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261026_024827_c240b3": {
+      "fixture": "connect_start_4a86231",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261026_024956_33e2ea": {
+      "fixture": "connect_start_4a86231",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "unsubscribed_rows_freeze"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261026_025128_97cf87": {
+      "fixture": "connect_start_4a86231",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#2": [
+          "unsubscribed_rows_freeze"
+        ]
+      }
+    },
+    "round1_20261026_025321_5e7ae7": {
+      "fixture": "connect_start_4a86231",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "other-fp"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ],
+        "#e2": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261026_025438_4c4e56": {
+      "fixture": "connect_start_4a86231",
+      "sample": "v14",
+      "labels": {
+        "#e1": [
+          "start_before_gui_owns"
+        ],
+        "#h1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261026_025924_e6c961": {
+      "fixture": "connect_start_4a86231",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "other-fp"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ],
+        "#h1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261026_030120_c19241": {
+      "fixture": "decode_length_b47687c",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#e1": [
+          "drops_unreported_when_saturated"
+        ]
+      }
+    },
+    "round1_20261026_030226_90e7f3": {
+      "fixture": "decode_length_b47687c",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "unlisted"
+        ],
+        "#3": [
+          "staging_clear_per_frame"
+        ],
+        "#e1": [
+          "drops_unreported_when_saturated"
+        ],
+        "#e2": [
+          "drops_unreported_when_saturated"
+        ]
+      }
+    },
+    "round1_20261026_030357_0b7e3a": {
+      "fixture": "decode_length_b47687c",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "drops_unreported_when_saturated"
+        ],
+        "#2": [
+          "payload_length_unclamped"
+        ],
+        "#3": [
+          "decode_length_8"
+        ],
+        "#4": [
+          "staging_clear_per_frame"
+        ],
+        "#e1": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261026_030817_5698d3": {
+      "fixture": "decode_length_b47687c",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "staging_clear_per_frame"
+        ],
+        "#3": [
+          "drops_unreported_when_saturated"
+        ]
+      }
+    },
+    "round1_20261026_031116_53cdab": {
+      "fixture": "decode_length_b47687c",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "drops_unreported_when_saturated"
+        ],
+        "#3": [
+          "staging_clear_per_frame"
+        ]
+      }
+    },
+    "round1_20261026_031528_a9fecd": {
+      "fixture": "decode_length_b47687c",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "drops_unreported_when_saturated"
+        ],
+        "#3": [
+          "payload_length_unclamped"
+        ],
+        "#4": [
+          "staging_clear_per_frame"
+        ]
+      }
+    },
+    "round1_20261026_031817_daaeb5": {
+      "fixture": "decode_length_b47687c",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "staging_clear_per_frame"
+        ],
+        "#3": [
+          "unlisted"
+        ],
+        "#4": [
+          "other-fp"
+        ],
+        "#5": [
+          "payload_length_unclamped"
+        ]
+      }
+    },
+    "round1_20261026_032027_fb2463": {
+      "fixture": "decode_length_b47687c",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "drops_unreported_when_saturated"
+        ],
+        "#3": [
+          "staging_clear_per_frame"
+        ]
+      }
+    },
+    "round1_20261026_032205_b53474": {
+      "fixture": "decode_length_b47687c",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "unlisted"
+        ],
+        "#2": [
+          "drops_unreported_when_saturated"
+        ],
+        "#3": [
+          "decode_length_8"
+        ],
+        "#e1": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261026_032358_b5fd77": {
+      "fixture": "decode_length_b47687c",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "unlisted"
+        ],
+        "#2": [
+          "staging_clear_per_frame"
+        ],
+        "#e1": [
+          "drops_unreported_when_saturated"
+        ],
+        "#h1": [
+          "decode_length_8"
+        ]
+      }
+    },
+    "round1_20261026_032500_bd1965": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v14",
+      "labels": {}
+    },
+    "round1_20261026_032629_7a0c7e": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v14",
+      "labels": {}
+    },
+    "round1_20261026_032830_017deb": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v14",
+      "labels": {
+        "#e1": [
+          "other-fp"
+        ],
+        "#e2": [
+          "other-fp"
+        ],
+        "#e3": [
+          "other-fp"
+        ],
+        "#h1": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261026_033438_68e211": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v14",
+      "labels": {}
+    },
+    "round1_20261026_033704_410afd": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v14",
+      "labels": {}
+    },
+    "round1_20261026_033857_9b84d0": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v14",
+      "labels": {}
+    },
+    "round1_20261026_033940_9578ed": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "other-fp"
+        ],
+        "#e1": [
+          "deletion"
+        ]
+      }
+    },
+    "round1_20261026_034040_bd3393": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v14",
+      "labels": {}
+    },
+    "round1_20261026_034217_5d23a3": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v14",
+      "labels": {}
+    },
+    "round1_20261026_034503_da2b82": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "v14",
+      "labels": {
+        "#1": [
+          "thread-confusion"
+        ],
+        "#2": [
+          "thread-confusion"
+        ],
+        "#3": [
+          "thread-confusion"
+        ]
+      }
+    },
+    "round1_20261026_034658_1ec549": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "v14",
+      "labels": {
+        "#h1": [
+          "thread-confusion"
+        ]
+      }
+    },
+    "round1_20261026_034834_1d0984": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "v14",
+      "labels": {}
+    },
+    "round1_20261026_035213_5a88e1": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "v14",
+      "labels": {}
+    },
+    "round1_20261026_035435_2df6a0": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "v14",
+      "labels": {}
+    },
+    "round1_20261026_035551_87988a": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "v14",
+      "labels": {}
+    },
+    "round1_20261026_035708_28c3b4": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "v14",
+      "labels": {}
+    },
+    "round1_20261026_035917_edad19": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "v14",
+      "labels": {
+        "#h1": [
+          "thread-confusion"
+        ],
+        "#h2": [
+          "thread-confusion"
+        ]
+      }
+    },
+    "round1_20261026_040110_cc10cb": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "v14",
+      "labels": {}
+    },
+    "round1_20261026_040210_bd89a5": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "v14",
+      "labels": {}
     }
   }
 }

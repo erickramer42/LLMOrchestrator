@@ -1652,6 +1652,8 @@ class RepairSwitchTests(unittest.TestCase):
     def test_debates_keep_the_v11_1_fingerprint(self):
         # A part added to the hash, even an empty one, changes it: the
         # bridge fixture's debates must still group with v11.1's records.
+        # v14 (0e64900137072695) was measured and not shipped (ADR-0002,
+        # nineteenth measurement).
         diff = (REPO_ROOT / "docs/fixtures/qttune_bridge_refactor.diff").read_text(
             encoding="utf-8")
         with contextlib.redirect_stderr(io.StringIO()):
@@ -2289,6 +2291,17 @@ class CorpusTests(NoSleep):
             self.assertEqual(s["unlabelled"], [])
             self.assertEqual(s["pooled"]["runs"], 33)
             self.assertEqual((s["pooled"]["stored"], s["pooled"]["valid"]), (37, 24))
+        # the nineteenth measurement's v14 sample, labeled before scoring;
+        # the globs leave out its pilot (011519, 011610)
+        v14 = sorted(p for g in ("measurement_round1_20261026_01[45]*.json",
+                                 "measurement_round1_20261026_0[234]*.json")
+                     for p in Path(REPO_ROOT, "coach_artifacts").glob(g))
+        if v14:
+            s = corpus.labelled_summary(corpus.score_records(
+                common.load_records([str(p) for p in v14]), self.manifest), labels)
+            self.assertEqual(s["unlabelled"], [])
+            self.assertEqual(s["pooled"]["runs"], 69)
+            self.assertEqual((s["pooled"]["stored"], s["pooled"]["valid"]), (80, 56))
 
     def test_fingerprint_warning_is_per_fixture(self):
         fixtures = corpus.select(self.manifest, ["all"])[:2]

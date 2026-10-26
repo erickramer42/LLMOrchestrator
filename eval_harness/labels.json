@@ -1,5 +1,5 @@
 {
- "about": "Hand labels of round-1 reviewer items on docs/fixtures/qttune_bridge_refactor.diff, judged against the post-state at QtTune 8ffbf19. Keys: #n stored blocker, #en evidence-demoted, #hn hedge-demoted, numbered as the round-1 scorer lists them. Transcribed from ADR-0002 (tenth, eleventh and twelfth measurements); items in 'hand' were labelled for the replay (thirteenth measurement), not in the ADR.",
+ "about": "Hand labels of round-1 reviewer items on docs/fixtures/qttune_bridge_refactor.diff, judged against the post-state at QtTune 8ffbf19. Keys: #n stored blocker, #en evidence-demoted, #hn hedge-demoted, numbered as the round-1 scorer lists them. Transcribed from ADR-0002 (tenth, eleventh and twelfth measurements); items in 'hand' were labelled for the replay (thirteenth measurement), not in the ADR. Set 'nineteenth' (v14 round-1 samples, 2026-10-25) was labeled by hand before scoring, so every key is in 'hand'; ce29c9 #3 says the lifetime count leaks memory, a false consequence, so it is other-fp, not gate.",
  "classes": {
   "race": "valid: m_currentFrameCount read on the worker thread, written on the GUI thread",
   "gate": "valid: the removed in-flight bound; the cumulative check bounds nothing",
@@ -294,6 +294,113 @@
     "#2": "other-fp",
     "#e1": "other-fp"
    },
+   "hand": []
+  },
+  "round1_20261026_012123_2a7cd9": {
+   "set": "nineteenth",
+   "labels": {
+    "#1": "gate",
+    "#e1": "removal-objection",
+    "#e2": "removal-objection"
+   },
+   "hand": [
+    "#1",
+    "#e1",
+    "#e2"
+   ]
+  },
+  "round1_20261026_012231_529ca6": {
+   "set": "nineteenth",
+   "labels": {
+    "#1": "race",
+    "#2": "gate",
+    "#3": "race"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3"
+   ]
+  },
+  "round1_20261026_012449_f7c5ba": {
+   "set": "nineteenth",
+   "labels": {
+    "#1": "gate",
+    "#2": "gate",
+    "#3": "gate"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3"
+   ]
+  },
+  "round1_20261026_013159_9ca798": {
+   "set": "nineteenth",
+   "labels": {
+    "#1": "gate",
+    "#2": "gate"
+   },
+   "hand": [
+    "#1",
+    "#2"
+   ]
+  },
+  "round1_20261026_013327_827391": {
+   "set": "nineteenth",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "race"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3"
+   ]
+  },
+  "round1_20261026_013442_ce29c9": {
+   "set": "nineteenth",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "other-fp",
+    "#4": "gate",
+    "#e1": "gate"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3",
+    "#4",
+    "#e1"
+   ]
+  },
+  "round1_20261026_013750_d8c1ee": {
+   "set": "nineteenth",
+   "labels": {
+    "#1": "race",
+    "#2": "race"
+   },
+   "hand": [
+    "#1",
+    "#2"
+   ]
+  },
+  "round1_20261026_013925_806c81": {
+   "set": "nineteenth",
+   "labels": {
+    "#1": "race",
+    "#2": "race"
+   },
+   "hand": [
+    "#1",
+    "#2"
+   ]
+  },
+  "round1_20261026_014137_f16309": {
+   "set": "nineteenth",
+   "labels": {},
    "hand": []
   }
  }

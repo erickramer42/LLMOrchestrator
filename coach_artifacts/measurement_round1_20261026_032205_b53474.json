@@ -1,0 +1,129 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261026_032205_b53474",
+    "created_utc": "2026-10-26T03:23:58.275626+00:00",
+    "prompt_version": "v14-removal-quotes",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 17309,
+      "estimated_tokens": 5770,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 1507,
+      "sections": {
+        "modified_files": 2,
+        "types": 4,
+        "constants": 2,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "entries": 8,
+      "index_version": "idx_20261024_014115",
+      "index_commit": "b47687c6c6d81dc85a539dcd0e17d662e2b3d42f",
+      "format_version": "f3-diff-authoritative",
+      "error": null,
+      "base_check": {
+        "checked": 2,
+        "mismatched": []
+      },
+      "shown": {
+        "modified_files": 2,
+        "types": 4,
+        "constants": 2,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\decode_length_b47687c\\repo_context.json",
+      "sha256": "157c98bba4a928fedebe2a6833fdbe6314746197115e3f555690bf8d8f1cbdc0",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qttunebridge.cpp] (bridge): FrameListModel\n[app/qttunebridge.h] (bridge): FIX: latest-value-per-signal-ID staging (merge, not clear-and-refill)  [only on the diff's removed lines: FIX, ID]\n\n--- KNOWN TYPES ---\nqttune_session_t (opaque): typedef struct qttune_session qttune_session_t;  // Forward-declared opaque handle types\nqttune_frame_t (struct): typedef struct qttune_frame { uint64_t timestamp_us; uint32_t channel_id; uint8_t data[64]; uint8_t data_length; uint8_t is_extended; uint8_t rsvd[3]; } qttune_frame_t;  // Frame structure - POD only, no pointers except length\nQttuneSignalDef (struct): typedef struct QttuneSignalDef { uint16_t id; char name[32]; QttuneSignalType type; uint8_t start_byte; uint8_t num_bytes; uint8_t bit_offset; uint8_t bit_length; float scale; float offset; char unit[16]; uint8_t decimal_places; uint32_t flags; uint32_t reserved[3]; } QttuneSignalDef;\nQttuneSignalSet (struct): typedef struct QttuneSignalSet { uint32_t version; uint32_t count; const QttuneSignalDef* defs; } QttuneSignalSet;  // Single canonical definition \u2014 no duplicates\n\n--- CONSTANTS ---\nMaxFrames = 10000 (const)\nMaxInFlightFrames = 1000 (const)\n\n--- OMITTED (indexed entries this diff removes or rewrites) ---\nqueued call site in app/qttunebridge.cpp using QueuedConnection, m_dropNotifyPending, notifyDropped\nqueued call site in app/qttunebridge.cpp using QueuedConnection"
+    },
+    "prompt_fingerprint": "0e64900137072695"
+  },
+  "inputs": {
+    "proposal": "Bridge cleanup after the coalescing change: setSignalSet takes an opaque pointer, signal decode reads the standard 8-byte CAN payload, the staging buffer is rebuilt per frame, and dropped frames are reported from the GUI-side frame handler.",
+    "original_proposal": "Bridge cleanup after the coalescing change: setSignalSet takes an opaque pointer, signal decode reads the standard 8-byte CAN payload, the staging buffer is rebuilt per frame, and dropped frames are reported from the GUI-side frame handler.",
+    "header_artifact": false,
+    "file_path": "app/qttunebridge.cpp",
+    "layer": "bridge",
+    "diff_sha256": "3fc6fd4098bab1a7684359958f377ec7a6f53985a49557c6348d0e7a163b49fb",
+    "diff_chars": 11213,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "claim: C ABI integrity violation: setSignalSet takes void* but implementation casts to QttuneSignalSet* exposing internal C type at the boundary; file: app/qttunebridge.h; quote: void setSignalSet(const void* set);  // opaque pointer to QttuneSignalSet",
+            "claim: Thread safety violation: drop notification logic removed from worker thread path, dropped frames will never be reported to GUI; file: app/qttunebridge.cpp; quote: if (self->m_inFlightFrames.load(std::memory_order_relaxed) >= MaxInFlightFrames) {\n        self->m_droppedFrames.fetch_add(1, std::memory_order_relaxed);\n        return;\n    }",
+            "claim: Buffer size assumption violation: hardcoded 8-byte payload instead of using actual data_length, breaks CAN-FD support; file: app/qttunebridge.cpp; quote: if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {"
+          ],
+          "questions": [
+            "Is notifyDropped() still being called anywhere after the diff? The function appears to be completely removed with no replacement caller",
+            "What happened to the m_dropNotifyPending atomic that was used for coordinating drop notifications from the worker thread?",
+            "Why was the merge logic for signal values removed, allowing duplicate entries in the staging buffer?",
+            "Is the missing <utility> include intentional or does std::pair usage cause compilation failure?",
+            "claim: Unused parameter bug: updateValues parameter 'values' is never used in the function body; file: app/qttunebridge.cpp; quote: void SignalListModel::updateValues(const std::vector<std::pair<uint16_t, float>>& values)\n{\n    for (auto& staged : m_stagingBuffer) {"
+          ],
+          "nits": [
+            "Comment says 'opaque pointer to QttuneSignalSet' but the header exposes the concrete type name in a comment, undermining the opaque claim",
+            "m_stagingBuffer.clear() is called inside the loop before iterating over signal definitions, which is correct but the original code had it outside the loop - verify this is intentional",
+            "The comment 'one contiguous range instead of per-row notifications' at line 175-176 seems unrelated to the actual code change"
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 1
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 17309,
+              "prompt_eval_count": 5038,
+              "eval_count": 4566,
+              "thinking_chars": 15119,
+              "content_chars": 2445,
+              "done_reason": "stop",
+              "wall_s": 112.75,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n        {\n            \"claim\": \"C ABI integrity violation: setSignalSet takes void* but implementation casts to QttuneSignalSet* exposing internal C type at the boundary\",\n            \"file\": \"app/qttunebridge.h\",\n            \"quote\": \"void setSignalSet(const void* set);  // opaque pointer to QttuneSignalSet\"\n        },\n        {\n            \"claim\": \"Thread safety violation: drop notification logic removed from worker thread path, dropped frames will never be reported to GUI\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"if (self->m_inFlightFrames.load(std::memory_order_relaxed) >= MaxInFlightFrames) {\\n        self->m_droppedFrames.fetch_add(1, std::memory_order_relaxed);\\n        return;\\n    }\"\n        },\n        {\n            \"claim\": \"Buffer size assumption violation: hardcoded 8-byte payload instead of using actual data_length, breaks CAN-FD support\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {\"\n        },\n        {\n            \"claim\": \"Unused parameter bug: updateValues parameter 'values' is never used in the function body\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"void SignalListModel::updateValues(const std::vector<std::pair<uint16_t, float>>& values)\\n{\\n    for (auto& staged : m_stagingBuffer) {\"\n        }\n    ],\n    \"questions\": [\n        \"Is notifyDropped() still being called anywhere after the diff? The function appears to be completely removed with no replacement caller\",\n        \"What happened to the m_dropNotifyPending atomic that was used for coordinating drop notifications from the worker thread?\",\n        \"Why was the merge logic for signal values removed, allowing duplicate entries in the staging buffer?\",\n        \"Is the missing <utility> include intentional or does std::pair usage cause compilation failure?\"\n    ],\n    \"nits\": [\n        \"Comment says 'opaque pointer to QttuneSignalSet' but the header exposes the concrete type name in a comment, undermining the opaque claim\",\n        \"m_stagingBuffer.clear() is called inside the loop before iterating over signal definitions, which is correct but the original code had it outside the loop - verify this is intentional\",\n        \"The comment 'one contiguous range instead of per-row notifications' at line 175-176 seems unrelated to the actual code change\"\n    ]\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-26T03:23:58.275342+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

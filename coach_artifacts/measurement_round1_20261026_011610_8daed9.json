@@ -1,0 +1,125 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261026_011610_8daed9",
+    "created_utc": "2026-10-26T01:19:32.230179+00:00",
+    "prompt_version": "v14-removal-quotes",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 14461,
+      "estimated_tokens": 4821,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 1942,
+      "sections": {
+        "modified_files": 2,
+        "types": 3,
+        "constants": 1,
+        "call_sites": 2,
+        "related_call_sites": 0,
+        "omitted": 1
+      },
+      "entries": 8,
+      "index_version": "idx_20261024_014114",
+      "index_commit": "4a86231a682f4017acd0b8303150dbb8341c42f9",
+      "format_version": "f3-diff-authoritative",
+      "error": null,
+      "base_check": {
+        "checked": 2,
+        "mismatched": []
+      },
+      "shown": {
+        "modified_files": 2,
+        "types": 3,
+        "constants": 1,
+        "call_sites": 2,
+        "related_call_sites": 0,
+        "omitted": 1
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\connect_start_4a86231\\repo_context.json",
+      "sha256": "0e901ed7293cc31ff508f7340a499475a999a68b0edf64685291a259b1679e58",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qttunebridge.cpp] (bridge): File/layer: app/qttunebridge.cpp | Qt6 Core, app layer, C++17\n[app/qttunebridge.h] (bridge): File/layer: app/qttunebridge.h | Qt6 Core, app layer, C++17\n\n--- KNOWN TYPES ---\nqttune_session_t (opaque): typedef struct qttune_session qttune_session_t;  // Forward-declared opaque handle types\nqttune_frame_t (struct): typedef struct qttune_frame { uint64_t timestamp_us; uint32_t arbitration_id; uint16_t channel_id; uint16_t data_length; uint8_t data[64]; uint32_t flags; uint32_t reserved; } qttune_frame_t;  // Frame structure \u2014 POD only, no pointers. Layout is pinned by the assertions below: 88 bytes, no hidden padding on any supported platform (ADR-0006).\nqttune_status_t (enum): typedef enum { QT_OK = 0, QT_ERR_NULL_ARGUMENT = 1, QT_ERR_NOT_IMPLEMENTED = 2, QT_ERR_NO_TRANSPORT = 3, QT_ERR_OUT_OF_MEMORY = 4, QT_ERR_SESSION_CLOSED = 5, QT_ERR_ALREADY_REGISTERED = 6, QT_ERR_LOAD_FAILED = 7, QT_ERR_VEHICLE_TIMEOUT = 8, QT_ERR_TRANSPORT_HARD_FAILURE = 9, QT_ERR_REQUEST_FAILED = 10, } qttune_status_t;  // Status codes - append-only evolution for ABI stability\n\n--- CONSTANTS ---\nMaxInFlightFrames = 1000 (const)\n\n--- QUEUED CONNECTION CALL SITES (indexed line numbers) ---\n[app/qttunebridge.cpp:563] QMetaObject::invokeMethod(self, [self]() { calls: m_dropNotifyPending.store, notifyDropped }, Qt::QueuedConnection);\n[app/qttunebridge.cpp:583] QMetaObject::invokeMethod(self, [self, copy]() { calls: m_inFlightFrames.fetch_sub, handleFrameInternal }, Qt::QueuedConnection);  // Lifetime contract: invoking with `self` as context object means the queued lambda is dropped if the bridge is destroyed before it runs. DO NOT change to a\u2026\n\n--- OMITTED (indexed entries this diff removes or rewrites) ---\nqueued call site in app/qttunebridge.cpp using core_err, m_pendingSession, startSession"
+    },
+    "prompt_fingerprint": "0e64900137072695"
+  },
+  "inputs": {
+    "proposal": "Bridge connect: connectCoreOnly creates, registers and starts the session on the connect thread and hands it to the queued GUI completion through the lambda capture; drop the pending-session member and startSession. The signal model updates only subscribed rows, so the Live checkbox gates both the plot and the value.",
+    "original_proposal": "Bridge connect: connectCoreOnly creates, registers and starts the session on the connect thread and hands it to the queued GUI completion through the lambda capture; drop the pending-session member and startSession. The signal model updates only subscribed rows, so the Live checkbox gates both the plot and the value.",
+    "header_artifact": false,
+    "file_path": "app/qttunebridge.cpp",
+    "layer": "bridge",
+    "diff_sha256": "f942c8200795e7c911cd7d5349c92d5f6979cce3a0b3e8b13c0dfc7b40cadd69",
+    "diff_chars": 7852,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [],
+          "questions": [
+            "How does the test for pendingSession work now that m_pendingSession and pendingSessionForTesting are removed?",
+            "Does qttune_session_destroy properly stop worker threads before returning?",
+            "Is the behavioral change in updateValues (only updating subscribed values) intentional, given the old comment stated 'Values and history update regardless'?",
+            "What happens if the connect thread starts successfully but the bridge is destroyed before the queued lambda runs?",
+            "claim: Race condition: session started on connect thread with callback registered to destroyed bridge object; file: app/qttunebridge.cpp; quote: const qttune_status_t rc = qttune_session_start(session);",
+            "claim: Race condition: callback user data 'this' can dangle if bridge destroyed before lambda executes; file: app/qttunebridge.cpp; quote: qttune_status_t rc = qttune_session_register_frame_callback(session, &QtTuneBridge::onFrame, this);"
+          ],
+          "nits": [
+            "Variable 'rc' is declared as 'const' in one place and non-const in another - inconsistent naming",
+            "Comment about subscribed behavior was removed from Entry struct but the old comment documented different behavior"
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 2
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 14461,
+              "prompt_eval_count": 4024,
+              "eval_count": 8872,
+              "thinking_chars": 36675,
+              "content_chars": 1409,
+              "done_reason": "stop",
+              "wall_s": 201.37,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n        {\n            \"claim\": \"Race condition: session started on connect thread with callback registered to destroyed bridge object\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"const qttune_status_t rc = qttune_session_start(session);\"\n        },\n        {\n            \"claim\": \"Race condition: callback user data 'this' can dangle if bridge destroyed before lambda executes\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"qttune_status_t rc = qttune_session_register_frame_callback(session, &QtTuneBridge::onFrame, this);\"\n        }\n    ],\n    \"questions\": [\n        \"How does the test for pendingSession work now that m_pendingSession and pendingSessionForTesting are removed?\",\n        \"Does qttune_session_destroy properly stop worker threads before returning?\",\n        \"Is the behavioral change in updateValues (only updating subscribed values) intentional, given the old comment stated 'Values and history update regardless'?\",\n        \"What happens if the connect thread starts successfully but the bridge is destroyed before the queued lambda runs?\"\n    ],\n    \"nits\": [\n        \"Variable 'rc' is declared as 'const' in one place and non-const in another - inconsistent naming\",\n        \"Comment about subscribed behavior was removed from Entry struct but the old comment documented different behavior\"\n    ]\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-26T01:19:32.230111+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

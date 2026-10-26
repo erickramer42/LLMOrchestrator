@@ -52,6 +52,13 @@ Any edit to a prompt here must be reflected by bumping PROMPT_VERSION."""
 # only, engineer blockers included, and the proposal stays the author's
 # text. Round 1 is unchanged. The pair measurement's V9_ARM keeps the
 # old format for comparison.
+# v14 (2026-10-25, ADR-0002 nineteenth measurement; NOT SHIPPED): the
+# quote rule. The schema no longer asked for "the code that shows it"; a
+# quote was post-change lines only, never a removed line or an ellipsis,
+# and a removal-caused defect quoted the line that now runs without the
+# removed code, with one example. Corpus recall rose 0.05 against the
+# 0.10 bar and bridge race recall fell 0.23, so the v11.1 text is back.
+# The v14 text is in the ADR.
 PROMPT_VERSION = "v11.1-critiques-feedback"
 
 AUTO_ENGINEER_PROMPT = """You are a senior automotive engineer advocating for QtTune's v0.2.0 goals:

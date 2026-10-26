@@ -1,0 +1,126 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261026_033940_9578ed",
+    "created_utc": "2026-10-26T03:40:40.685548+00:00",
+    "prompt_version": "v14-removal-quotes",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 16984,
+      "estimated_tokens": 5662,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 2620,
+      "sections": {
+        "modified_files": 10,
+        "types": 2,
+        "constants": 0,
+        "call_sites": 4,
+        "related_call_sites": 0,
+        "omitted": 0
+      },
+      "entries": 16,
+      "index_version": "idx_20261024_014118",
+      "index_commit": "76189e749d4f71f0224803bdb98b49ef36526db6",
+      "format_version": "f3-diff-authoritative",
+      "error": null,
+      "base_check": {
+        "checked": 10,
+        "mismatched": []
+      },
+      "shown": {
+        "modified_files": 10,
+        "types": 2,
+        "constants": 0,
+        "call_sites": 4,
+        "related_call_sites": 0,
+        "omitted": 0
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\init_noops_cf03331\\repo_context.json",
+      "sha256": "393694c10b3e6b591a6b125c323f6306e70202fd605727dc91101db3bc0d8013",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qml/HomePage.qml] (app): File/layer: app/qml/HomePage.qml | Qt6 Quick, UI layer\n[app/qml/LiveViewPage.qml] (app): File/layer: app/qml/LiveViewPage.qml | Qt6 Quick, UI layer\n[app/qml/Main.qml] (app): File/layer: app/qml/Main.qml | Qt6 Quick, UI layer\n[app/qml/SettingsPage.qml] (app): File/layer: app/qml/SettingsPage.qml | Qt6 Quick, UI layer\n[app/qttunebridge.cpp] (bridge): File/layer: app/qttunebridge.cpp | Qt6 Core, app layer, C++17\n[app/qttunebridge.h] (bridge): File/layer: app/qttunebridge.h | Qt6 Core, app layer, C++17\n[core/include/ecuio/core.h] (core): File/layer: core/include/ecuio/core.h | C ABI, public interface\n[core/include/ecuio/profile.h] (core): File/layer: core/include/ecuio/profile.h | C ABI, public\n[core/src/core.cpp] (core): File/layer: core/src/core.cpp | C++17, Qt-free, CI-validated headless build\n[core/src/profile_registry.cpp] (core): File/layer: core/src/profile_registry.cpp | C++17, Qt-free\n\n--- KNOWN TYPES ---\necuio_session_t (opaque): typedef struct ecuio_session ecuio_session_t;  // Forward-declared opaque handle types\necuio_status_t (enum): typedef enum { ECUIO_OK = 0, ECUIO_ERR_NULL_ARGUMENT = 1, ECUIO_ERR_NOT_IMPLEMENTED = 2, ECUIO_ERR_NO_TRANSPORT = 3, ECUIO_ERR_OUT_OF_MEMORY = 4, ECUIO_ERR_SESSION_CLOSED = 5, ECUIO_ERR_ALREADY_REGISTERED = 6, ECUIO_ERR_LOAD_FAILED = 7, ECUIO_ERR_VEHICLE_TIMEOUT = 8, ECUIO_ERR_TRANSPORT_HARD_FAILURE = 9, ECUIO_ERR_REQUEST_FAILED = 10, ECUIO_ERR_INVALID_ARGUMENT = 11,  // Status codes - append-only evolution for ABI stability\n\n--- QUEUED CONNECTION CALL SITES (indexed line numbers) ---\n[app/qttunebridge.cpp:570] QMetaObject::invokeMethod(this, [this, uri, core_err]() { calls: m_connectThread.joinable, m_connectThread.join, m_pendingSession.exchange, err.isEmpty, startSession, connectingChanged }, Qt::QueuedConnection);\n[app/qttunebridge.cpp:632] QMetaObject::invokeMethod(this, [this, uri]() { calls: m_disconnectThread.joinable, m_disconnectThread.join, disconnectingChanged, logMessage, QStringLiteral, arg }, Qt::QueuedConnection);\n[app/qttunebridge.cpp:790] QMetaObject::invokeMethod(self, [self]() { calls: m_dropNotifyPending.store, notifyDropped }, Qt::QueuedConnection);\n[app/qttunebridge.cpp:813] QMetaObject::invokeMethod(self, [self, copy, arrived]() { calls: m_inFlightFrames.fetch_sub, handleFrameInternal }, Qt::QueuedConnection);  // Lifetime contract: invoking with `self` as context object means the queued lambda is dropped if the bridge is destroyed before it runs. DO NOT change to a\u2026"
+    },
+    "prompt_fingerprint": "68f0a97305a3bc3e"
+  },
+  "inputs": {
+    "proposal": "Core needs no global setup: ecuio_init and ecuio_shutdown become optional no-ops, init always returns ECUIO_OK, and the bridge and QML drop the coreInitialized gate.",
+    "original_proposal": "Core needs no global setup: ecuio_init and ecuio_shutdown become optional no-ops, init always returns ECUIO_OK, and the bridge and QML drop the coreInitialized gate.",
+    "header_artifact": false,
+    "file_path": "app/qml/HomePage.qml",
+    "layer": "app",
+    "diff_sha256": "c7f100e43777336ffe89556909ad413c5e2f9c4ebe38847b8877678cfc57450e",
+    "diff_chars": 10067,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "claim: C ABI integrity violation: ecuio_init() is documented as optional but the C API still exposes it as a required lifecycle function, creating confusion about whether callers must call it. The API surface should either be cleaned up (remove from header) or the documentation should clearly state it's deprecated and ignored.; file: core/include/ecuio/core.h; quote: ecuio_status_t ecuio_init(void);\n void ecuio_shutdown(void);"
+          ],
+          "questions": [
+            "Does profile_registry.cpp or any other core code have hidden dependencies on g_initialized being set? The diff removes it but I don't see verification that all such dependencies are eliminated.",
+            "Is there a thread-safety concern with the profile registry's function-local static if multiple threads might access it before initialization? The comment mentions C++11 magic statics but the core should be verified for thread-safety without init.",
+            "Why does the QML layer still have Bridge.connecting and Bridge.disconnecting properties that the diff references, but there's no indication of how these relate to the removed coreInitialized property?",
+            "claim: Hidden dependency on removed global state: The diff removes g_initialized from core.cpp but profile_registry.cpp may still have implicit dependencies on it. The comment in profile_registry.cpp references core.h but doesn't verify that no code paths depend on initialization state.; file: core/src/profile_registry.cpp; quote: Registry& registry()\n {\n     static Registry r = {"
+          ],
+          "nits": [
+            "The comment in profile.h says 'Built-ins are always present (initialized on first registry access; core needs no ecuio_init, core.h)' but this is a comment about the built-ins, not about the profile registry's thread-safety guarantees.",
+            "The diff removes m_initialized from qttunebridge.h but doesn't update any comments that might reference it.",
+            "Consider adding a static_assert or runtime check in core.cpp to verify that the profile registry works without ecuio_init being called first."
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 1
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 16984,
+              "prompt_eval_count": 5077,
+              "eval_count": 1698,
+              "thinking_chars": 5548,
+              "content_chars": 2246,
+              "done_reason": "stop",
+              "wall_s": 60.65,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n        {\n            \"claim\": \"C ABI integrity violation: ecuio_init() is documented as optional but the C API still exposes it as a required lifecycle function, creating confusion about whether callers must call it. The API surface should either be cleaned up (remove from header) or the documentation should clearly state it's deprecated and ignored.\",\n            \"file\": \"core/include/ecuio/core.h\",\n            \"quote\": \"ecuio_status_t ecuio_init(void);\\n void ecuio_shutdown(void);\"\n        },\n        {\n            \"claim\": \"Hidden dependency on removed global state: The diff removes g_initialized from core.cpp but profile_registry.cpp may still have implicit dependencies on it. The comment in profile_registry.cpp references core.h but doesn't verify that no code paths depend on initialization state.\",\n            \"file\": \"core/src/profile_registry.cpp\",\n            \"quote\": \"Registry& registry()\\n {\\n     static Registry r = {\"\n        }\n    ],\n    \"questions\": [\n        \"Does profile_registry.cpp or any other core code have hidden dependencies on g_initialized being set? The diff removes it but I don't see verification that all such dependencies are eliminated.\",\n        \"Is there a thread-safety concern with the profile registry's function-local static if multiple threads might access it before initialization? The comment mentions C++11 magic statics but the core should be verified for thread-safety without init.\",\n        \"Why does the QML layer still have Bridge.connecting and Bridge.disconnecting properties that the diff references, but there's no indication of how these relate to the removed coreInitialized property?\"\n    ],\n    \"nits\": [\n        \"The comment in profile.h says 'Built-ins are always present (initialized on first registry access; core needs no ecuio_init, core.h)' but this is a comment about the built-ins, not about the profile registry's thread-safety guarantees.\",\n        \"The diff removes m_initialized from qttunebridge.h but doesn't update any comments that might reference it.\",\n        \"Consider adding a static_assert or runtime check in core.cpp to verify that the profile registry works without ecuio_init being called first.\"\n    ]\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-26T03:40:40.685488+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

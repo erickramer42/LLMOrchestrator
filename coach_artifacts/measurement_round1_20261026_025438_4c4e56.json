@@ -1,0 +1,125 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261026_025438_4c4e56",
+    "created_utc": "2026-10-26T02:59:24.135324+00:00",
+    "prompt_version": "v14-removal-quotes",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 14461,
+      "estimated_tokens": 4821,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 1942,
+      "sections": {
+        "modified_files": 2,
+        "types": 3,
+        "constants": 1,
+        "call_sites": 2,
+        "related_call_sites": 0,
+        "omitted": 1
+      },
+      "entries": 8,
+      "index_version": "idx_20261024_014114",
+      "index_commit": "4a86231a682f4017acd0b8303150dbb8341c42f9",
+      "format_version": "f3-diff-authoritative",
+      "error": null,
+      "base_check": {
+        "checked": 2,
+        "mismatched": []
+      },
+      "shown": {
+        "modified_files": 2,
+        "types": 3,
+        "constants": 1,
+        "call_sites": 2,
+        "related_call_sites": 0,
+        "omitted": 1
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\connect_start_4a86231\\repo_context.json",
+      "sha256": "0e901ed7293cc31ff508f7340a499475a999a68b0edf64685291a259b1679e58",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qttunebridge.cpp] (bridge): File/layer: app/qttunebridge.cpp | Qt6 Core, app layer, C++17\n[app/qttunebridge.h] (bridge): File/layer: app/qttunebridge.h | Qt6 Core, app layer, C++17\n\n--- KNOWN TYPES ---\nqttune_session_t (opaque): typedef struct qttune_session qttune_session_t;  // Forward-declared opaque handle types\nqttune_frame_t (struct): typedef struct qttune_frame { uint64_t timestamp_us; uint32_t arbitration_id; uint16_t channel_id; uint16_t data_length; uint8_t data[64]; uint32_t flags; uint32_t reserved; } qttune_frame_t;  // Frame structure \u2014 POD only, no pointers. Layout is pinned by the assertions below: 88 bytes, no hidden padding on any supported platform (ADR-0006).\nqttune_status_t (enum): typedef enum { QT_OK = 0, QT_ERR_NULL_ARGUMENT = 1, QT_ERR_NOT_IMPLEMENTED = 2, QT_ERR_NO_TRANSPORT = 3, QT_ERR_OUT_OF_MEMORY = 4, QT_ERR_SESSION_CLOSED = 5, QT_ERR_ALREADY_REGISTERED = 6, QT_ERR_LOAD_FAILED = 7, QT_ERR_VEHICLE_TIMEOUT = 8, QT_ERR_TRANSPORT_HARD_FAILURE = 9, QT_ERR_REQUEST_FAILED = 10, } qttune_status_t;  // Status codes - append-only evolution for ABI stability\n\n--- CONSTANTS ---\nMaxInFlightFrames = 1000 (const)\n\n--- QUEUED CONNECTION CALL SITES (indexed line numbers) ---\n[app/qttunebridge.cpp:563] QMetaObject::invokeMethod(self, [self]() { calls: m_dropNotifyPending.store, notifyDropped }, Qt::QueuedConnection);\n[app/qttunebridge.cpp:583] QMetaObject::invokeMethod(self, [self, copy]() { calls: m_inFlightFrames.fetch_sub, handleFrameInternal }, Qt::QueuedConnection);  // Lifetime contract: invoking with `self` as context object means the queued lambda is dropped if the bridge is destroyed before it runs. DO NOT change to a\u2026\n\n--- OMITTED (indexed entries this diff removes or rewrites) ---\nqueued call site in app/qttunebridge.cpp using core_err, m_pendingSession, startSession"
+    },
+    "prompt_fingerprint": "0e64900137072695"
+  },
+  "inputs": {
+    "proposal": "Bridge connect: connectCoreOnly creates, registers and starts the session on the connect thread and hands it to the queued GUI completion through the lambda capture; drop the pending-session member and startSession. The signal model updates only subscribed rows, so the Live checkbox gates both the plot and the value.",
+    "original_proposal": "Bridge connect: connectCoreOnly creates, registers and starts the session on the connect thread and hands it to the queued GUI completion through the lambda capture; drop the pending-session member and startSession. The signal model updates only subscribed rows, so the Live checkbox gates both the plot and the value.",
+    "header_artifact": false,
+    "file_path": "app/qttunebridge.cpp",
+    "layer": "bridge",
+    "diff_sha256": "f942c8200795e7c911cd7d5349c92d5f6979cce3a0b3e8b13c0dfc7b40cadd69",
+    "diff_chars": 7852,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [],
+          "questions": [
+            "What is the full implementation of applyConnectedState? Does it properly handle session ownership and cleanup on error paths?",
+            "What happens to the session in the lambda when err is non-empty? Is session guaranteed to be nullptr or valid?",
+            "How does onFrame behave with the new design where the session is started on the worker thread before the GUI thread is ready?",
+            "Is there cleanup logic in applyConnectedState or the lambda for the error case that isn't visible in this diff?",
+            "claim: Session lifetime leak: The old destructor cleaned up m_pendingSession for cases where the queued lambda was dropped with `this`. The new design captures session directly in the lambda, and when the bridge is destroyed before the lambda runs, Qt drops the lambda but leaves the session leaked. The cleanup code was removed without providing an alternative leak prevention mechanism.; file: app/qttunebridge.cpp; quote: if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\n        qttune_session_destroy(pending);\n    }",
+            "claim: Session started on worker thread violates the original design invariant: The old comment explicitly stated 'until the GUI thread has taken the session, no worker may call onFrame with `this`'. Starting the session on the worker thread means frames can arrive before the GUI thread is ready, and the onFrame callback could race with bridge destruction. The cleanup code removal assumes this is safe, but onFrame may still be active if the session started successfully.; file: app/qttunebridge.cpp; quote: rc = qttune_session_start(session);\n    if (rc != QT_OK) {\n        qttune_unregister_frame_callback(session, &QtTuneBridge::onFrame, this);\n        qttune_session_destroy(session);\n        return QString::fromUtf8(qttune_status_string(rc));\n    }"
+          ],
+          "nits": [
+            "The removed comment on Entry::subscribed ('Whether the strip chart plots this signal...') was actually documenting the value update behavior, not the plot behavior. The new code change to check subscribed was correct, but the comment removal eliminated useful documentation.",
+            "Consider adding an assertion or documentation about the lifetime contract for the session captured in the lambda."
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 1
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 1
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 14461,
+              "prompt_eval_count": 4024,
+              "eval_count": 11972,
+              "thinking_chars": 47307,
+              "content_chars": 2471,
+              "done_reason": "stop",
+              "wall_s": 286.06,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n        {\n            \"claim\": \"Session lifetime leak: The old destructor cleaned up m_pendingSession for cases where the queued lambda was dropped with `this`. The new design captures session directly in the lambda, and when the bridge is destroyed before the lambda runs, Qt drops the lambda but leaves the session leaked. The cleanup code was removed without providing an alternative leak prevention mechanism.\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\\n        qttune_session_destroy(pending);\\n    }\"\n        },\n        {\n            \"claim\": \"Session started on worker thread violates the original design invariant: The old comment explicitly stated 'until the GUI thread has taken the session, no worker may call onFrame with `this`'. Starting the session on the worker thread means frames can arrive before the GUI thread is ready, and the onFrame callback could race with bridge destruction. The cleanup code removal assumes this is safe, but onFrame may still be active if the session started successfully.\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"rc = qttune_session_start(session);\\n    if (rc != QT_OK) {\\n        qttune_unregister_frame_callback(session, &QtTuneBridge::onFrame, this);\\n        qttune_session_destroy(session);\\n        return QString::fromUtf8(qttune_status_string(rc));\\n    }\"\n        }\n    ],\n    \"questions\": [\n        \"What is the full implementation of applyConnectedState? Does it properly handle session ownership and cleanup on error paths?\",\n        \"What happens to the session in the lambda when err is non-empty? Is session guaranteed to be nullptr or valid?\",\n        \"How does onFrame behave with the new design where the session is started on the worker thread before the GUI thread is ready?\",\n        \"Is there cleanup logic in applyConnectedState or the lambda for the error case that isn't visible in this diff?\"\n    ],\n    \"nits\": [\n        \"The removed comment on Entry::subscribed ('Whether the strip chart plots this signal...') was actually documenting the value update behavior, not the plot behavior. The new code change to check subscribed was correct, but the comment removal eliminated useful documentation.\",\n        \"Consider adding an assertion or documentation about the lifetime contract for the session captured in the lambda.\"\n    ]\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-26T02:59:24.135077+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

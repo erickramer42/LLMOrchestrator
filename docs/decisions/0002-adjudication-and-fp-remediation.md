@@ -3942,3 +3942,363 @@ claim is first written: in round 1's prompt, or as a new claim, which
 is also the only route past the 6 hedged items. The pack-side work on
 invariant-elsewhere is the other candidate. Neither is registered.
 Debates are unchanged: v11.1 with the repair pass off.
+
+## Nineteenth Measurement — Removal-Caused Defects Quoted in Round 1 (not shipped)
+
+**Status (2026-10-25): drafted before any code change or model call,
+reviewed, and signed off with the amendments below. Implemented as
+PROMPT_VERSION `v14-removal-quotes`, piloted, run and scored. It did not
+ship: corpus recall rose 0.05 against the 0.10 bar, and bridge race
+recall fell 0.23 (Results). Debates stay v11.1.**
+
+**Why.** The quote rule is still the largest recall loss. Under j8, the
+66 archived corpus runs hold 31 valid blockers demoted for their quotes,
+0.47 per run, and the count held between samples (17 and 17 under j7,
+sixteenth measurement). The eighteenth measurement closed the route of
+fixing quotes after the fact: asked in a narrow call, the model declined
+its own valid claims. A lever has to act when the claim is first
+written, in round 1's prompt.
+
+The seventeenth measurement's "Why" said a stronger prompt is not the
+lever, because v9's prompt already asks for the post-change line a
+removal leaves unprotected. Two things found since then argue against
+that.
+- **The prompt points two ways.** The schema line asks for "the code
+  that shows it", while the rules ask for the post-change line a removal
+  leaves unprotected. For a removal, the code that shows it is the
+  removed line. Under v13.1 the a0d8f9 runaway went round this exact
+  tension until it hit the cap: "the code after the change shows the
+  removal happened" (eighteenth, "Reading the replies"). The round-1
+  prompt has the same pair of instructions
+  (`reviewer_prompt.REVIEWER_SYSTEM`).
+- **The quote failures have a shape the prompt can name.** A scratch
+  tally of the offered items' quote lines, each matched after
+  collapsing whitespace against the fixture's removed and post-change
+  lines (this is not the judge's matcher, so treat the split as
+  approximate):
+
+  | set | class | quote mixes post-change and removed lines | removed lines only | no removed line |
+  |---|---|---|---|---|
+  | corpus | valid (31) | 16 | 10 | 5 |
+  | corpus | false (9) | 0 | 6 | 3 |
+  | bridge | valid (4) | 2 | 0 | 2 |
+  | bridge | false (12) | 3 | 6 | 3 |
+  | bridge | deleted test (3) | 0 | 3 | 0 |
+
+  Two counts of the same 31 differ by what they count. The judge's
+  grouping (seventeenth) puts 18 in "before": the whole quote is found
+  in the code before the change. This tally finds 26 quotes with at
+  least one removed line: those 18, and 8 of the 13 found nowhere, which
+  mix removed lines with lines the matcher places nowhere.
+
+  On the corpus, the valid failures are mostly blocks copied across a
+  removal: the kept lines are around the removed check, and the removed
+  check is in the middle. The judge drops removed lines from the
+  evidence, so the kept lines alone are adjacent there and would pass.
+  No false failure has that shape. The false removed-only quotes are
+  mostly the deletion class: claims that removed code is still present.
+  The new rule gives them no legitimate quote, but they can adapt:
+  linkage reads the whole hunk, removed lines included, so a deletion
+  claim can pass by quoting an unrelated post-change line of its own
+  hunk (Step 0 of the eighteenth found a passing line for all 9). The 6
+  are 0.09 false positives per review over 66 runs; half of them moving
+  would add 0.045, nearly all of condition 2's 0.05. On the bridge, 3
+  false mixed blocks stand against 2 valid, so the bridge ceiling is
+  the other risk.
+
+### Design
+
+**Change** (PROMPT_VERSION `v14-removal-quotes`; reviewer system prompt
+only, so the header-scoped and implementation prompts both change):
+
+The schema's quote field, from
+`"the code that shows it, copied exactly from the CODE DIFF as it reads after the change"`
+to
+`"the code as it reads after the change, one line or adjacent lines, copied exactly from the CODE DIFF"`
+(amended at sign-off; the draft said "one line of the code", which
+contradicted the rule's "or lines that are adjacent").
+
+The quote rule, from
+
+```
+- Every blocker quotes the code that shows the violation as it reads AFTER the
+  change: unchanged or added lines, copied exactly, without the leading '+' or
+  space. Removed lines no longer exist and are not evidence; if the problem is
+  caused by a removal, quote the code after the change that the removal leaves
+  broken or unprotected. Blockers are checked mechanically: a blocker whose
+  quote is not found in that file's code after the change is moved to
+  questions.
+```
+
+to
+
+```
+- Every blocker quotes the code AFTER the change: an unchanged or added line,
+  copied exactly, without the leading '+' or space. Quote one line, or lines
+  that are adjacent after the change. Never include a removed ('-') line, and
+  never shorten a quote with '...'.
+- A removal can be the violation. Then the claim names what was removed, and
+  the quote is the line after the change that now runs without it: the call,
+  use or path the removed code checked or protected. A removed line is never
+  the quote, even when its removal is the problem. For example, if the diff
+  removes "if (handle == NULL) return ERR_INVALID;", quote the line that now
+  runs unchecked, such as "handle->close(handle);".
+- Blockers are checked mechanically: a blocker whose quote is not found in
+  that file's code after the change is moved to questions.
+```
+
+The other rules, the CHECK FOR list and the scope clauses are unchanged.
+
+**The example** was chosen so that it matches no known bug: no corpus
+fixture's known bug and neither bridge bug (race, gate) is a null check.
+An example can still prime null-check claims; the false positives by
+class are reported, so that would show up.
+
+**What it does not address:** the 6 valid corpus items the hedge check
+demotes (#12 stays closed), and deleted-test objections (since j4 they
+can't be blockers).
+
+**Versions:** a reviewer prompt change, so every request changes,
+round 1 included, and with it every fingerprint; the tests' fingerprint
+pin moves. JUDGE_VERSION stays j8. The golden suite runs live after the
+change, since its header fixture uses the changed prompt. The probe and
+bake-off read the same prompt text, so their requests change too; their
+logs predate v9 already. The prompt grows by about 350 characters (about
+120 tokens at the input check's floor), which leaves the bridge fixture's
+round-1 request, estimated at 11,098 tokens, under the 12,288 limit.
+
+### Measurement
+
+**Pilot first (the seventeenth's lesson).** Three live round-1 calls
+before the batch, one each on `trusted_count_6420f09`,
+`connect_start_4a86231` and the bridge fixture. Only their telemetry and
+schema validity are read, not their claims, and they are not scored.
+Exit to a wording fix if 2 or more of the 3 first attempts run away or
+fail schema validation.
+
+**Samples:** fresh round-1 samples at v14, judge j8, the same fixtures,
+indexes and proposals as the fourteenth and sixteenth measurements:
+- **Corpus:** `python -m eval_harness.corpus run --fixture all --runs 10`
+  (70 runs; sign-off).
+- **Bridge:** 10 samples with the original proposal (kept for
+  comparability; #21 not taken up here) through `eval_harness.round1
+  run`.
+- Retried first attempts are excluded, as before.
+
+**Labels first:** every item of the new records is labeled
+(`corpus_labels.json`; `labels.json` for the bridge) before anything is
+scored. The labeler knows the arm, since all samples are v14.
+
+**Baselines (j8, archived, the same requests apart from the prompt):**
+- **Corpus, 66 runs:** 64% valid, 0.41 FPs per review, mean recall 0.41
+  stored (0.59 counting demoted items), 0.39 FPs per clean review, 0.47
+  valid quote failures per run.
+- **Bridge, 28 samples:** 0.18 FPs per review, race 0.79, gate 0.29.
+
+**Rule (the seventeenth's bars; race and gate now matter, since a
+round-1 prompt change can lose them):** v14 ships if all three hold:
+1. corpus mean recall (stored) rises by at least 0.10;
+2. corpus FPs per review rise by at most 0.05;
+3. bridge FPs per review rise by at most 0.05, with race and gate found
+   each dropping by at most 0.1.
+
+A secondary rule for a recall gain of +0.05 to +0.09 was added at
+sign-off (below).
+
+**Reported apart:** valid quote failures per run, split by the shape
+above (the mechanism); recall counting demoted items (if it moves, the
+prompt changed which claims are made, not only how they are quoted);
+FPs by class, null-check claims included; deletion-class blockers
+stored per run on the bridge; runaways.
+
+**Noise:** between two 33-run samples on identical requests, valid share
+moved 57% → 65%, FPs per review 0.55 → 0.39 and recall 0.46 → 0.36
+(sixteenth). The recall bar is the same size as that swing, which is why
+the sample is twice the usual size.
+
+**Predictions:**
+
+| metric | prediction |
+|---|---|
+| pilot exit | passes (0–1 of 3 bad first attempts) |
+| first-attempt runaways, corpus | 0–6 of 70 (archived: 4 of 70) |
+| valid quote failures per run | 0.47 → 0.15–0.30 |
+| corpus valid share | 62–74% |
+| corpus FPs per review | 0.33–0.50 |
+| corpus mean recall, stored | +0.04 to +0.14 |
+| corpus recall counting demoted items | within 0.06 of 0.59 |
+| corpus FPs per clean review | 0.20–0.60 |
+| bridge FPs per review | 0.14–0.32 |
+| bridge race / gate | 0.60–0.90 / 0.10–0.50 |
+
+**Expected by the rule:** the mechanism works (quote failures fall by
+about half), and condition 1 is a coin flip (point estimate +0.08). If
+condition 3 fails, it fails through deletion or removal-objection
+blockers now quoted from post-change lines of their own hunks, which
+linkage lets through (seventeenth, "A correction").
+
+**Order once signed off:** edit the prompt and bump PROMPT_VERSION, then
+move the fingerprint pin and run the unit tests; then the pilot; then
+the batch; then the labels; then the score; then the golden suite;
+then the results and a commit message.
+
+### Sign-off (2026-10-25, before any model call)
+
+The draft offered three choices; each was decided as recommended, after
+a review of the draft:
+1. **70 corpus runs** (`--runs 10`), because the recall bar is as large
+   as the swing between two 33-run samples. The bridge takes 10.
+2. **The example stays.** The a0d8f9 tension was over what a removal's
+   quote is, and an example settles that in one line. Priming shows up
+   in the false positives by class.
+3. **The primary bars stay the seventeenth's,** so the recall levers
+   stay comparable across this ADR.
+
+**Amendments from the review:**
+- **The schema line** allows adjacent lines, as the rule does (Design).
+  A strict one-line rule would discard what the mixed blocks need: their
+  kept lines around a removed middle line, which are adjacent in the
+  judge's evidence.
+- **"Never shorten a quote with '...'"** is stricter than the judge,
+  which splits a quote at an ellipsis and checks each part. A stricter
+  prompt is safe, so it stays.
+- **The 18 and 26 figures** are both named in the "Why", and so is the
+  deletion class's way past the new rule, with its 0.09.
+
+**A secondary ship rule, added now so that it is not chosen after the
+result.** If condition 1 fails with corpus mean recall up by +0.05 to
++0.09, v14 still ships, as a partial, if all of these hold:
+- valid quote failures per run fall from 0.47 to 0.24 or fewer;
+- conditions 2 and 3 hold.
+
+The reason: recall per bug moved by 0.10 between identical samples,
+while valid quote failures held (17 and 17). A halving of the stable
+count shows that the prompt does what it is for, where a recall gain of
+that size alone could be noise. The cost of shipping on it is the
+baseline: v14's samples become what later round-1 measurements compare
+with.
+
+**The pilot's records are kept and excluded by id.** They land in
+`coach_artifacts/` beside the batch's and are named in the results, so
+the scoring globs leave them out.
+
+**As implemented:** `reviewer_prompt.REVIEWER_SYSTEM` as in Design, and
+PROMPT_VERSION `v14-removal-quotes`. The bridge fixture's debate
+fingerprint is `0e64900137072695` (v11.1: `8e76794ac4946aab`), pinned by
+a test. Its round-1 request is estimated at 11,224 of 12,288 tokens.
+Tests: 204, and both version pins fail on the v11.1 prompt.
+
+### Pilot (2026-10-25): passes
+
+Three records, excluded from scoring:
+`measurement_round1_20261026_011519_4ce224` (trusted_count),
+`..._011610_8daed9` (connect_start) and `..._011932_4513de` (bridge).
+All three first attempts were accepted (`done_reason` stop): 1,231,
+8,872 and 2,571 output tokens, in 51 s, 201 s and 86 s. None ran away,
+so the exit (2 or more bad first attempts) is not met, and the batch
+runs unchanged. The runner's progress line also prints each record's
+stored-blocker count, which the pilot did not mean to read: 0, 0 and 2.
+One sample each says nothing at the baseline's spread (trusted_count
+stored 4 blockers in 10 runs), and no decision rests on it.
+
+### Results (scored 2026-10-25): not shipped
+
+80 records, `measurement_round1_20261026_012123_2a7cd9` to
+`..._040210_bd89a5` (UTC): 10 bridge samples, then 70 corpus samples.
+Two first attempts ran away to the output cap and were retried, so they
+are excluded: `71f77e` (bridge) and `fcda47` (`init_noops`). That leaves
+9 bridge and 69 corpus runs. Every item was labeled before anything was
+scored (`corpus_labels.json`, sample `v14`; `labels.json`, set
+`nineteenth`). A test pins the corpus counts (69 runs, 80 stored, 56
+valid). Both arms are judged by j8. The stored split reproduces exactly.
+
+| | baseline (j8, archived) | v14 | change | bar |
+|---|---|---|---|---|
+| corpus mean recall, stored | 0.413 | 0.464 | +0.051 | ≥ +0.10 |
+| corpus FPs per review | 0.409 | 0.348 | −0.061 | ≤ +0.05 |
+| bridge FPs per review | 0.179 | 0.111 | −0.068 | ≤ +0.05 |
+| bridge race found | 0.786 | 0.556 | −0.230 | ≥ −0.1 |
+| bridge gate found | 0.286 | 0.556 | +0.270 | ≥ −0.1 |
+| corpus valid quote failures per run | 0.470 | 0.304 | −35% | ≤ 0.24 (secondary) |
+| corpus valid share | 64% | 70% | | |
+| corpus recall counting demoted items | 0.588 | 0.691 | +0.103 | |
+| corpus FPs per clean review | 0.389 | 0.211 | | |
+
+**By the rules: v14 does not ship.**
+- **Primary rule:** condition 1 fails (recall +0.051), and so does
+  condition 3 (race −0.23). Condition 2 holds.
+- **Secondary rule:** the recall gain is inside its band by one
+  thousandth, but the mechanism clause fails: valid quote failures fell
+  to 0.30, not to 0.24. Condition 3 fails here too.
+
+`reviewer_prompt.py` has the v11.1 text again, and the bridge
+fingerprint is `8e76794ac4946aab` once more (pinned). Because the
+debates' prompt is the one the live golden suite already passed with,
+the suite was not rerun.
+
+| prediction | predicted | observed | |
+|---|---|---|---|
+| pilot exit | passes | passes | HIT |
+| first-attempt runaways, corpus | 0–6 of 70 | 1 | HIT |
+| valid quote failures per run | 0.15–0.30 | 0.304 | MISSED HIGH |
+| corpus valid share | 62–74% | 70% | HIT |
+| corpus FPs per review | 0.33–0.50 | 0.348 | HIT |
+| corpus mean recall, stored | +0.04 to +0.14 | +0.051 | HIT |
+| recall counting demoted items | within 0.06 of 0.59 | 0.691 | MISSED HIGH |
+| corpus FPs per clean review | 0.20–0.60 | 0.211 | HIT |
+| bridge FPs per review | 0.14–0.32 | 0.111 | MISSED LOW |
+| bridge race / gate | 0.60–0.90 / 0.10–0.50 | 0.556 / 0.556 | MISSED LOW / MISSED HIGH |
+| quote failures fall by about half | — | by a third | MISSED |
+| condition 3 fails through deletion claims | — | fails through the race | MISSED |
+
+**Corpus demotions** (shapes from the same scratch tally as the "Why".
+"Mixed" includes a removed block quoted with a closing brace that is
+also a context line, so it overstates quotes that span a removal):
+
+| class | mixed | removed only | no removed line | linkage | all |
+|---|---|---|---|---|---|
+| valid, baseline (66 runs) | 16 | 10 | 5 | 0 | 31 |
+| valid, v14 (69 runs) | 9 | 8 | 4 | 5 | 26 |
+| false, baseline | 0 | 6 | 3 | 5 | 14 |
+| false, v14 | 4 | 0 | 0 | 4 | 8 |
+
+**Reading:**
+- **More of the gain came from what was claimed than from how it was
+  quoted.** Recall counting demoted items rose by 0.10, against 0.05 for
+  stored recall. The new claims are mostly removal-caused bugs: the
+  `payloadHex` clamp (`payload_length_unclamped`, stored in 0 of 9
+  baseline runs, 3 of 10 here), `unsubscribed_rows_freeze` (0.10 →
+  0.30) and `static_batch_replay` (0.20 → 0.40). A few others fell:
+  `poll_ignored` 0.11 → 0, `backoff_overshoot` 0.90 → 0.80,
+  `decode_length_8` 1.00 → 0.90. A one-run change on one fixture is
+  within this corpus's noise.
+- **The quote instruction was followed only in part.** 17 of the 21
+  valid quote failures still quote removed lines, and several keep the
+  `-` marker the prompt forbids (`a4b595`, `4e2591`, `7433de`). Removed
+  comments are still the most-quoted text on `trusted_count`.
+- **Where it was followed, linkage demoted the result.** Five valid
+  claims (the baseline had none) quote a post-change line as v14 asks,
+  for example the lambda that now carries the session, or the drop path
+  that lost its report. In each case the identifiers the claim names
+  appear only in another hunk, such as the removed destructor cleanup,
+  so j8 demoted them. Most removal-caused defects take effect away from
+  the removal, which is exactly where v14 sends the quote and where
+  hunk-level linkage refuses it.
+- **On the bridge, attention moved from the race to the gate.** The gate
+  is the removed in-flight bound, and a prompt about removals found it
+  in 5 of 9 runs, against 8 of 28 before. The race fell from 22 of 28 to
+  5 of 9. Nine samples are few, but the rule is the rule.
+- **False positives fell, and no example priming showed up.** Corpus
+  FPs per review fell from 0.41 to 0.35, and on clean fixtures from 0.39
+  to 0.21. There are no null-check claims, and no stored deletion claim.
+  The sixteenth measurement showed swings of this size between
+  identical samples, so this is not credited to v14.
+
+**Conclusion:** the stronger round-1 quote rule moved recall by half the
+bar on the corpus and cost the bridge its race. The removal-caused
+loss is not mainly a wording problem. The model keeps quoting removed
+text, and when it quotes the code a removal affects instead, linkage
+often refuses it, because that code is in another hunk. Linkage scope
+for such claims is a judge question (the eighteenth's Step 0 showed
+linkage is also what keeps false claims out), and it is not registered.
+Debates are unchanged: v11.1, j8.

@@ -1,0 +1,128 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261026_030226_90e7f3",
+    "created_utc": "2026-10-26T03:03:57.270282+00:00",
+    "prompt_version": "v14-removal-quotes",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 17309,
+      "estimated_tokens": 5770,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 1507,
+      "sections": {
+        "modified_files": 2,
+        "types": 4,
+        "constants": 2,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "entries": 8,
+      "index_version": "idx_20261024_014115",
+      "index_commit": "b47687c6c6d81dc85a539dcd0e17d662e2b3d42f",
+      "format_version": "f3-diff-authoritative",
+      "error": null,
+      "base_check": {
+        "checked": 2,
+        "mismatched": []
+      },
+      "shown": {
+        "modified_files": 2,
+        "types": 4,
+        "constants": 2,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\decode_length_b47687c\\repo_context.json",
+      "sha256": "157c98bba4a928fedebe2a6833fdbe6314746197115e3f555690bf8d8f1cbdc0",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qttunebridge.cpp] (bridge): FrameListModel\n[app/qttunebridge.h] (bridge): FIX: latest-value-per-signal-ID staging (merge, not clear-and-refill)  [only on the diff's removed lines: FIX, ID]\n\n--- KNOWN TYPES ---\nqttune_session_t (opaque): typedef struct qttune_session qttune_session_t;  // Forward-declared opaque handle types\nqttune_frame_t (struct): typedef struct qttune_frame { uint64_t timestamp_us; uint32_t channel_id; uint8_t data[64]; uint8_t data_length; uint8_t is_extended; uint8_t rsvd[3]; } qttune_frame_t;  // Frame structure - POD only, no pointers except length\nQttuneSignalDef (struct): typedef struct QttuneSignalDef { uint16_t id; char name[32]; QttuneSignalType type; uint8_t start_byte; uint8_t num_bytes; uint8_t bit_offset; uint8_t bit_length; float scale; float offset; char unit[16]; uint8_t decimal_places; uint32_t flags; uint32_t reserved[3]; } QttuneSignalDef;\nQttuneSignalSet (struct): typedef struct QttuneSignalSet { uint32_t version; uint32_t count; const QttuneSignalDef* defs; } QttuneSignalSet;  // Single canonical definition \u2014 no duplicates\n\n--- CONSTANTS ---\nMaxFrames = 10000 (const)\nMaxInFlightFrames = 1000 (const)\n\n--- OMITTED (indexed entries this diff removes or rewrites) ---\nqueued call site in app/qttunebridge.cpp using QueuedConnection, m_dropNotifyPending, notifyDropped\nqueued call site in app/qttunebridge.cpp using QueuedConnection"
+    },
+    "prompt_fingerprint": "0e64900137072695"
+  },
+  "inputs": {
+    "proposal": "Bridge cleanup after the coalescing change: setSignalSet takes an opaque pointer, signal decode reads the standard 8-byte CAN payload, the staging buffer is rebuilt per frame, and dropped frames are reported from the GUI-side frame handler.",
+    "original_proposal": "Bridge cleanup after the coalescing change: setSignalSet takes an opaque pointer, signal decode reads the standard 8-byte CAN payload, the staging buffer is rebuilt per frame, and dropped frames are reported from the GUI-side frame handler.",
+    "header_artifact": false,
+    "file_path": "app/qttunebridge.cpp",
+    "layer": "bridge",
+    "diff_sha256": "3fc6fd4098bab1a7684359958f377ec7a6f53985a49557c6348d0e7a163b49fb",
+    "diff_chars": 11213,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "claim: Signal decode uses hardcoded 8-byte buffer despite comment claiming CAN-FD support - the defensive length clamping was removed but the decode still uses hardcoded 8; file: app/qttunebridge.cpp; quote: if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {",
+            "claim: setSignalSet takes void* opaque pointer but immediately casts it to QttuneSignalSet* in implementation - this defeats opaque pointer purpose and indicates either the function signature or the implementation is wrong; file: app/qttunebridge.cpp; quote: void SignalListModel::setSignalSet(const void* set)\n{\n    const QttuneSignalSet* sigSet = static_cast<const QttuneSignalSet*>(set);",
+            "claim: Signal coalescing merge logic was removed - the staging buffer is now cleared on every frame instead of merging across the 100ms coalescing window; file: app/qttunebridge.cpp; quote:     m_stagingBuffer.clear();\n    for (uint32_t i = 0; i < set->count; ++i) {\n        const QttuneSignalDef& def = set->defs[i];\n        float val = 0.0f;\n        if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {\n            m_stagingBuffer.emplace_back(def.id, val);\n        }\n    }"
+          ],
+          "questions": [
+            "If signals.h is no longer included in the .cpp file, where does the QttuneSignalSet type definition come from for the static_cast in setSignalSet?",
+            "The comment claims CAN-FD support was added but the code still uses hardcoded 8-byte buffer - was this intentional or is the comment wrong?",
+            "Why does the header declare setSignalSet with void* if the implementation needs to know the full type definition of QttuneSignalSet?",
+            "claim: Drop frame reporting was completely removed - the notifyDropped() function and all its call sites were deleted, so dropped frames will never be reported to users; file: app/qttunebridge.cpp; quote:     // Decode signals into staging buffer\n    const QttuneSignalSet* set = qttune_mock_signal_set();\n    m_stagingBuffer.clear();\n    for (uint32_t i = 0; i < set->count; ++i) {\n        const QttuneSignalDef& def = set->defs[i];\n        float val = 0.0f;\n        if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {\n            m_stagingBuffer.emplace_back(def.id, val);\n        }\n    }",
+            "claim: notifyDropped() function was removed from header but never replaced - the drop counting logic exists but there's no way to report it to the UI; file: app/qttunebridge.h; quote: signals:\nprivate:\n    static void onFrame(const qttune_frame_t* frame, void* user_data);\n    void handleFrameInternal(const qttune_frame_t* frame);\n\n    bool m_initialized = false;"
+          ],
+          "nits": [
+            "Remove unused #include <algorithm> was correctly removed",
+            "The coalescing timer setup and teardown look correct"
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 2
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 17309,
+              "prompt_eval_count": 5038,
+              "eval_count": 3232,
+              "thinking_chars": 9776,
+              "content_chars": 3158,
+              "done_reason": "stop",
+              "wall_s": 90.47,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n        {\n            \"claim\": \"Drop frame reporting was completely removed - the notifyDropped() function and all its call sites were deleted, so dropped frames will never be reported to users\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"    // Decode signals into staging buffer\\n    const QttuneSignalSet* set = qttune_mock_signal_set();\\n    m_stagingBuffer.clear();\\n    for (uint32_t i = 0; i < set->count; ++i) {\\n        const QttuneSignalDef& def = set->defs[i];\\n        float val = 0.0f;\\n        if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {\\n            m_stagingBuffer.emplace_back(def.id, val);\\n        }\\n    }\"\n        },\n        {\n            \"claim\": \"Signal decode uses hardcoded 8-byte buffer despite comment claiming CAN-FD support - the defensive length clamping was removed but the decode still uses hardcoded 8\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {\"\n        },\n        {\n            \"claim\": \"setSignalSet takes void* opaque pointer but immediately casts it to QttuneSignalSet* in implementation - this defeats opaque pointer purpose and indicates either the function signature or the implementation is wrong\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"void SignalListModel::setSignalSet(const void* set)\\n{\\n    const QttuneSignalSet* sigSet = static_cast<const QttuneSignalSet*>(set);\"\n        },\n        {\n            \"claim\": \"Signal coalescing merge logic was removed - the staging buffer is now cleared on every frame instead of merging across the 100ms coalescing window\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"    m_stagingBuffer.clear();\\n    for (uint32_t i = 0; i < set->count; ++i) {\\n        const QttuneSignalDef& def = set->defs[i];\\n        float val = 0.0f;\\n        if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {\\n            m_stagingBuffer.emplace_back(def.id, val);\\n        }\\n    }\"\n        },\n        {\n            \"claim\": \"notifyDropped() function was removed from header but never replaced - the drop counting logic exists but there's no way to report it to the UI\",\n            \"file\": \"app/qttunebridge.h\",\n            \"quote\": \"signals:\\nprivate:\\n    static void onFrame(const qttune_frame_t* frame, void* user_data);\\n    void handleFrameInternal(const qttune_frame_t* frame);\\n\\n    bool m_initialized = false;\"\n        }\n    ],\n    \"questions\": [\n        \"If signals.h is no longer included in the .cpp file, where does the QttuneSignalSet type definition come from for the static_cast in setSignalSet?\",\n        \"The comment claims CAN-FD support was added but the code still uses hardcoded 8-byte buffer - was this intentional or is the comment wrong?\",\n        \"Why does the header declare setSignalSet with void* if the implementation needs to know the full type definition of QttuneSignalSet?\"\n    ],\n    \"nits\": [\n        \"Remove unused #include <algorithm> was correctly removed\",\n        \"The coalescing timer setup and teardown look correct\"\n    ]\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-26T03:03:57.270191+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}
