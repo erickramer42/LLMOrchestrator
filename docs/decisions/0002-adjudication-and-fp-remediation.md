@@ -5206,3 +5206,12 @@ fails on bridge false positives: 6 in 18 runs against the control's 2 in
 **Conclusion:** the correct per-file note costs bridge precision beyond
 the registered margin and does not change the target class. Backlog #8
 stays open as a known limitation. No successor is registered.
+
+**Rollback (2026-10-26).** v16 was committed as measured (`56252be`),
+so the code behind the records stays in history, and then rolled back:
+`file_metadata.py`, `debate.py` and `reviewer_prompt.py` (PROMPT_VERSION
+`v11.1-critiques-feedback`, with a history comment) are as they were at
+`eb10006`. The bridge debate fingerprint is `8e76794ac4946aab` again
+(pinned), and `poll_override`'s matches its archived v11.1 records, so
+debates send the requests the live golden suite passed with; the suite
+was not rerun. The v16 label counts stay pinned.

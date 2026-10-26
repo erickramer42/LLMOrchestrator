@@ -13,11 +13,10 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 | | |
 |---|---|
 | Shipped prompt | `v11.1-critiques-feedback` (debate fingerprint `8e76794ac4946aab`) |
-| Measured, not shipped | `v16-per-file-layers` (twenty-first measurement), in the working tree until it is rolled back |
 | Judge | `j8-claim-quote-linkage` |
 | Context-pack format | `f3-diff-authoritative` |
 | Models | reviewer `laguna-xs-2.1`, engineer `gemma4:12b`, on Ollama; `NUM_CTX` 24576, `NUM_PREDICT` 12288 |
-| Tests | 207 regression tests, no model needed; CI on Python 3.11 and 3.13 |
+| Tests | 204 regression tests, no model needed; CI on Python 3.11 and 3.13 |
 | Golden suite | 10/10 live (3 model fixtures, 7 hedge units) |
 
 **Headline numbers (judge j8, round-1 samples, hand-labeled):**
@@ -30,8 +29,9 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 
 ## In progress
 
-No measurement is registered. The twenty-first measurement's v16 code
-is in the working tree until it is rolled back to v11.1.
+No measurement is registered. The last three candidates (v14, v15,
+v16) were measured, not shipped and rolled back; the shipped prompt is
+v11.1.
 
 ## Recently closed
 

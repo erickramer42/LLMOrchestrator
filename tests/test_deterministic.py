@@ -43,8 +43,7 @@ from eval_harness import (bakeoff, common, corpus, probe, raw_call, replay, repa
                           round1, round2)
 from eval_harness.bakeoff import tally  # noqa: E402
 from eval_harness.probe import summarize  # noqa: E402
-from file_metadata import (LAYER_MAP_HEADER, get_layer_constraints,  # noqa: E402
-                           identify_layer, layer_note_for)
+from file_metadata import get_layer_constraints, identify_layer  # noqa: E402
 from golden_tests import run_hedge_unit_tests, score_fixture  # noqa: E402
 
 # The client's retry notes are warnings on its logger; keep them out of
@@ -459,27 +458,6 @@ class LayerTests(unittest.TestCase):
                          "app/qttunebridge.cpp")
         self.assertEqual(ex("", "// just a comment\nint x;\n"), "")
 
-    def test_one_layer_keeps_its_note(self):
-        # v16 (ADR-0002, twenty-first): single-layer requests are unchanged
-        for paths, layer in ((["app/a.cpp", "app/b.h"], "bridge"),
-                             (["core/src/x.cpp"], "core"), ([], "unknown")):
-            self.assertEqual(layer_note_for(paths),
-                             (get_layer_constraints(layer),) * 2, paths)
-
-    def test_several_layers_name_each_file_and_send_each_rule_block(self):
-        paths = ["app/qml/SettingsPage.qml", "surrogate/main.cpp", "core/src/x.cpp"]
-        note, template = layer_note_for(paths)
-        blocks = "\n".join(get_layer_constraints(layer)
-                           for layer in ("core", "app", "unknown"))
-        self.assertEqual(note, "FILE LAYERS: this diff changes files in 3 layers; "
-                               "each file's rules apply to that file only.\n"
-                               "- app/qml/SettingsPage.qml: app\n"
-                               "- surrogate/main.cpp: unknown\n"
-                               "- core/src/x.cpp: core\n" + blocks)
-        # the fingerprint's part names the rules, never the paths
-        self.assertEqual(template, LAYER_MAP_HEADER + blocks)
-        self.assertNotIn("SettingsPage", template)
-
 
 # ============ agent_client ============
 
@@ -624,28 +602,6 @@ class DebateTests(NoSleep):
             rec = self.record(result)
             self.assertEqual(rec["inputs"]["layer"], "unknown")
             self.assertIsNone(rec["inputs"]["file_path"])
-
-    def test_a_multi_layer_diff_gets_every_files_layer(self):
-        # Backlog #8 (v16): only the first file's note was sent.
-        def diff(*paths):
-            return "".join(f"--- a/{p}\n+++ b/{p}\n@@ -1 +1 @@\n-int a;\n+{QUOTE}\n"
-                           for p in paths)
-        fingerprints = []
-        for paths in (("app/qml/A.qml", "core/src/x.cpp"),
-                      ("app/qml/B.qml", "core/src/y.cpp")):
-            with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN) as post:
-                result = debate.run_debate("p", diff(*paths), "")
-            sent = transcripts(post)[0]
-            self.assertIn(f"- {paths[0]}: app\n- {paths[1]}: core\n", sent)
-            self.assertIn(get_layer_constraints("core"), sent)
-            self.assertIn(get_layer_constraints("app"), sent)
-            rec = self.record(result)
-            self.assertEqual(rec["inputs"]["layer"], "app")  # the first file's, as before
-            self.assertEqual(rec["inputs"]["layers"],
-                             {paths[0]: "app", paths[1]: "core"})
-            fingerprints.append(rec["metadata"]["prompt_fingerprint"])
-        # the paths differ, the templates don't
-        self.assertEqual(fingerprints[0], fingerprints[1])
 
     def test_object_blockers_and_null_concerns_do_not_crash(self):
         rev = {"verdict": "reject", "questions": [],
@@ -1691,26 +1647,19 @@ class RepairSwitchTests(unittest.TestCase):
     def test_the_repair_pass_is_off_by_default(self):
         # ADR-0002, seventeenth measurement: measured, not shipped
         self.assertFalse(debate.REPAIR_PASS)
-        self.assertEqual(debate.PROMPT_VERSION, "v16-per-file-layers")
+        self.assertEqual(debate.PROMPT_VERSION, "v11.1-critiques-feedback")
 
-    def test_debates_keep_the_v16_fingerprint(self):
+    def test_debates_keep_the_v11_1_fingerprint(self):
         # A part added to the hash, even an empty one, changes it: the
-        # repair templates stay out while the pass is off. v14
-        # (0e64900137072695) and v15 (d0a576d5de90cb90, pack f4) were
-        # measured and not shipped (ADR-0002, nineteenth and twentieth).
-        # v16 (twenty-first): the bridge diff spans two layers, so its
-        # fingerprint moves from v11.1's 8e76794ac4946aab; a single-layer
-        # diff (connect_start) keeps it.
-        def fingerprint(diff_path, index_path=None):
-            diff = (REPO_ROOT / diff_path).read_text(encoding="utf-8")
-            with contextlib.redirect_stderr(io.StringIO()):
-                setup = debate._prepare(diff, "", False, index_path=index_path)
-            return debate._run_settings(setup, "debate", 3, {})["prompt_fingerprint"]
-        self.assertEqual(fingerprint("docs/fixtures/qttune_bridge_refactor.diff"),
-                         "dbb1ed45156230be")
-        fixture = "docs/fixtures/corpus/connect_start_4a86231/"
-        self.assertEqual(fingerprint(fixture + "change.diff",
-                                     str(REPO_ROOT / fixture / "repo_context.json")),
+        # bridge fixture's debates must still group with v11.1's records.
+        # v14 (0e64900137072695), v15 (d0a576d5de90cb90, pack f4) and v16
+        # (dbb1ed45156230be, per-file layer notes) were measured and not
+        # shipped (ADR-0002, nineteenth to twenty-first measurements).
+        diff = (REPO_ROOT / "docs/fixtures/qttune_bridge_refactor.diff").read_text(
+            encoding="utf-8")
+        with contextlib.redirect_stderr(io.StringIO()):
+            setup = debate._prepare(diff, "", False)
+        self.assertEqual(debate._run_settings(setup, "debate", 3, {})["prompt_fingerprint"],
                          "8e76794ac4946aab")
 
     def test_the_ceiling_check_on_the_archived_offers(self):
