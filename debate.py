@@ -28,7 +28,7 @@ from config import (CHARS_PER_TOKEN_FLOOR, MAX_DEBATE_ROUNDS, MODELS, NUM_CTX,
                     NUM_PREDICT, REVIEWER_HEADER_PROMPT, REVIEWER_IMPL_PROMPT,
                     TEMPERATURE_EXPLORATION, TEMPERATURE_RETRY)
 from diff_reader import diff_paths
-from file_metadata import get_layer_constraints, identify_layer
+from file_metadata import identify_layer, layer_note_for
 from retrieval import CONTEXT_PATH, PACK_FORMAT_VERSION, build_context_pack
 from reviewer_prompt import PROMPT_VERSION, AUTO_ENGINEER_PROMPT
 
@@ -337,6 +337,8 @@ class _Setup(NamedTuple):
     hunks: Dict[str, List[set]]     # each file's hunk identifiers, for claim-quote linkage (j8)
     symbols: frozenset              # the index's type and constant names, for linkage
     before: Dict[str, List[str]]    # pre-change lines, to say why a quote failed (v12)
+    layers: Dict[str, str]          # each changed file's layer (v16)
+    layer_template: str             # layer_note without its paths, for the fingerprint
 
 
 def _prepare(code_diff: str, code_context: str, header_artifact: bool,
@@ -373,10 +375,13 @@ def _prepare(code_diff: str, code_context: str, header_artifact: bool,
     static_section = _code_section(code_diff, code_context)
 
     # Without a path the layer is 'unknown', whose note says to apply every
-    # rule (v10.2; before it, such input got no layer note at all).
+    # rule (v10.2; before it, such input got no layer note at all). Since
+    # v16 a diff spanning several layers names each file's; `layer` stays
+    # the first file's, so records compare across versions.
     file_path = extract_file_path(code_diff, code_context)
     layer = identify_layer(file_path)
-    layer_note = get_layer_constraints(layer)
+    paths = diff_paths(code_diff) or ([file_path] if file_path else [])
+    layer_note, layer_template = layer_note_for(paths)
     if pack_text:
         static_section += REPO_CONTEXT_TEMPLATE.format(pack=pack_text)
     static_section = f"{static_section}\n{layer_note}\n"
@@ -384,7 +389,8 @@ def _prepare(code_diff: str, code_context: str, header_artifact: bool,
     return _Setup(reviewer_prompt, static_section, pack_text, pack_report,
                   file_path, layer, layer_note,
                   evidence_sources(code_diff, shown_context),
-                  hunk_identifiers(code_diff), symbols, before_sources(code_diff))
+                  hunk_identifiers(code_diff), symbols, before_sources(code_diff),
+                  {p: identify_layer(p) for p in paths}, layer_template)
 
 
 def _code_section(code_diff: str, code_context: str,
@@ -462,6 +468,7 @@ def _record_inputs(setup: _Setup, proposal: str, original_proposal: str,
         "header_artifact": header_artifact,
         "file_path": setup.file_path or None,
         "layer": setup.layer,
+        "layers": setup.layers,
         "diff_sha256": text_sha256(code_diff) if code_diff else None,
         "diff_chars": len(code_diff),
         "context_sha256": text_sha256(code_context) if code_context else None,
@@ -493,7 +500,8 @@ def _run_settings(setup: _Setup, mode: str, max_rounds: int,
             TRUNCATION_NOTE, TRANSCRIPT_TEMPLATE,
             # only the pair measurement's V9_ARM still sends v9's feedback
             FEEDBACK_TEMPLATE if mode == PAIR_MODE else "",
-            setup.layer_note,
+            # the layer rules sent, without the per-file paths (v16)
+            setup.layer_template,
             # the repair pass's templates join CRITIQUES_TEMPLATE's part only
             # when it runs, so with it off (not shipped) the hash is v11.1's
             CRITIQUES_TEMPLATE + (REPAIR_TEMPLATE + REPAIR_ITEM_TEMPLATE

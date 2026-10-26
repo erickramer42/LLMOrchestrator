@@ -49,3 +49,25 @@ def get_layer_constraints(layer: str) -> str:
                 "- Qt fully permitted\n"
                 "- Focus on UI patterns, lifecycle, performance")
     return "FILE LAYER: unknown — apply all rules conservatively"
+
+
+# v16 (ADR-0002, twenty-first measurement): a diff whose files fall in
+# several layers gets each file's layer, then each layer's rules once,
+# strictest first. Before it, only the first file's note was sent.
+LAYER_ORDER = ("core", "bridge", "app", "unknown")
+LAYER_MAP_HEADER = ("FILE LAYERS: this diff changes files in {count} layers; "
+                    "each file's rules apply to that file only.\n")
+
+
+def layer_note_for(paths) -> tuple:
+    """(note, template) for the files a review covers. One layer, or no
+    path, gives that layer's note unchanged; several give the per-file
+    map. template is the note without its paths, for the fingerprint."""
+    layers = [identify_layer(p) for p in paths] or ["unknown"]
+    present = [layer for layer in LAYER_ORDER if layer in layers]
+    blocks = "\n".join(get_layer_constraints(layer) for layer in present)
+    if len(present) == 1:
+        return blocks, blocks
+    listing = "".join(f"- {p}: {layer}\n" for p, layer in zip(paths, layers))
+    return (LAYER_MAP_HEADER.format(count=len(present)) + listing + blocks,
+            LAYER_MAP_HEADER + blocks)

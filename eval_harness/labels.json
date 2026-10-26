@@ -1,5 +1,5 @@
 {
- "about": "Hand labels of round-1 reviewer items on docs/fixtures/qttune_bridge_refactor.diff, judged against the post-state at QtTune 8ffbf19. Keys: #n stored blocker, #en evidence-demoted, #hn hedge-demoted, numbered as the round-1 scorer lists them. Transcribed from ADR-0002 (tenth, eleventh and twelfth measurements); items in 'hand' were labelled for the replay (thirteenth measurement), not in the ADR. Set 'nineteenth' (v14 round-1 samples, 2026-10-25) was labeled by hand before scoring, so every key is in 'hand'; ce29c9 #3 says the lifetime count leaks memory, a false consequence, so it is other-fp, not gate. Set 'twentieth' (v15 round-1 samples, 2026-10-26) was labeled by hand before scoring, so every key is in 'hand'; c1b3fd #4 says payloadHex reads data_length unclamped, which is true at 8ffbf19 but predates the diff (it only realigns the line); it is other-fp, as 61e3c6 #2, the same claim, was.",
+ "about": "Hand labels of round-1 reviewer items on docs/fixtures/qttune_bridge_refactor.diff, judged against the post-state at QtTune 8ffbf19. Keys: #n stored blocker, #en evidence-demoted, #hn hedge-demoted, numbered as the round-1 scorer lists them. Transcribed from ADR-0002 (tenth, eleventh and twelfth measurements); items in 'hand' were labelled for the replay (thirteenth measurement), not in the ADR. Set 'nineteenth' (v14 round-1 samples, 2026-10-25) was labeled by hand before scoring, so every key is in 'hand'; ce29c9 #3 says the lifetime count leaks memory, a false consequence, so it is other-fp, not gate. Set 'twentieth' (v15 round-1 samples, 2026-10-26) was labeled by hand before scoring, so every key is in 'hand'; c1b3fd #4 says payloadHex reads data_length unclamped, which is true at 8ffbf19 but predates the diff (it only realigns the line); it is other-fp, as 61e3c6 #2, the same claim, was. Set 'control21' (v11.1 bridge round-1 samples, 2026-10-26, the twenty-first measurement's control) was labeled by hand before scoring; the failed e9c923 (three runaways) has no items. Set 'twentyfirst' (v16 round-1 samples, 2026-10-26) was labeled by hand before scoring; the retried 8f74e3 and the failed 9747cc are not labeled. 5700d8 #3 says the new threshold is ten times more restrictive, a wrong detail, but states the cumulative counter's defect, so it is gate; 25da38 #e3 (forceFrameCountForTesting) is deleted-test, as 97c2dd #e1 was.",
  "classes": {
   "race": "valid: m_currentFrameCount read on the worker thread, written on the GUI thread",
   "gate": "valid: the removed in-flight bound; the cumulative check bounds nothing",
@@ -664,6 +664,461 @@
    "set": "twentieth",
    "labels": {},
    "hand": []
+  },
+  "round1_20261026_191304_72dbd8": {
+   "set": "control21",
+   "labels": {},
+   "hand": []
+  },
+  "round1_20261026_191413_f92ee9": {
+   "set": "control21",
+   "labels": {
+    "#e1": "deletion",
+    "#e2": "removal-objection",
+    "#e3": "deletion"
+   },
+   "hand": [
+    "#e1",
+    "#e2",
+    "#e3"
+   ]
+  },
+  "round1_20261026_191500_228951": {
+   "set": "control21",
+   "labels": {
+    "#1": "other-fp",
+    "#2": "other-fp",
+    "#e1": "removal-objection"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#e1"
+   ]
+  },
+  "round1_20261026_191546_3023bd": {
+   "set": "control21",
+   "labels": {
+    "#e1": "deletion",
+    "#e2": "deletion",
+    "#e3": "deletion",
+    "#e4": "deletion",
+    "#e5": "deletion"
+   },
+   "hand": [
+    "#e1",
+    "#e2",
+    "#e3",
+    "#e4",
+    "#e5"
+   ]
+  },
+  "round1_20261026_193001_ec4711": {
+   "set": "control21",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#e1": "deleted-test"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#e1"
+   ]
+  },
+  "round1_20261026_193132_23aa7e": {
+   "set": "control21",
+   "labels": {
+    "#e1": "deletion",
+    "#e2": "deletion",
+    "#e3": "deletion",
+    "#e4": "deletion"
+   },
+   "hand": [
+    "#e1",
+    "#e2",
+    "#e3",
+    "#e4"
+   ]
+  },
+  "round1_20261026_193241_00c568": {
+   "set": "control21",
+   "labels": {
+    "#1": "race",
+    "#2": "gate"
+   },
+   "hand": [
+    "#1",
+    "#2"
+   ]
+  },
+  "round1_20261026_193543_1c5b5f": {
+   "set": "control21",
+   "labels": {
+    "#1": "race",
+    "#2": "race"
+   },
+   "hand": [
+    "#1",
+    "#2"
+   ]
+  },
+  "round1_20261026_193854_1f57f0": {
+   "set": "control21",
+   "labels": {
+    "#1": "race",
+    "#e1": "race"
+   },
+   "hand": [
+    "#1",
+    "#e1"
+   ]
+  },
+  "round1_20261026_193927_66c769": {
+   "set": "control21",
+   "labels": {
+    "#1": "gate",
+    "#2": "gate"
+   },
+   "hand": [
+    "#1",
+    "#2"
+   ]
+  },
+  "round1_20261026_194109_9bac1f": {
+   "set": "control21",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "gate"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3"
+   ]
+  },
+  "round1_20261026_194423_22f3a8": {
+   "set": "control21",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "race"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3"
+   ]
+  },
+  "round1_20261026_194735_d16a0b": {
+   "set": "control21",
+   "labels": {},
+   "hand": []
+  },
+  "round1_20261026_194831_b8a990": {
+   "set": "control21",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "gate"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3"
+   ]
+  },
+  "round1_20261026_195026_4edebd": {
+   "set": "control21",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "race"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3"
+   ]
+  },
+  "round1_20261026_195116_592293": {
+   "set": "control21",
+   "labels": {
+    "#1": "gate",
+    "#2": "gate"
+   },
+   "hand": [
+    "#1",
+    "#2"
+   ]
+  },
+  "round1_20261026_195436_e35184": {
+   "set": "control21",
+   "labels": {
+    "#1": "gate",
+    "#2": "race",
+    "#3": "gate"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3"
+   ]
+  },
+  "round1_20261026_195722_d15c0f": {
+   "set": "control21",
+   "labels": {
+    "#1": "gate",
+    "#2": "race",
+    "#e1": "deleted-test"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#e1"
+   ]
+  },
+  "round1_20261026_195825_962e76": {
+   "set": "control21",
+   "labels": {
+    "#1": "gate",
+    "#2": "gate"
+   },
+   "hand": [
+    "#1",
+    "#2"
+   ]
+  },
+  "round1_20261026_212221_bd6d22": {
+   "set": "twentyfirst",
+   "labels": {},
+   "hand": []
+  },
+  "round1_20261026_212416_f3da1d": {
+   "set": "twentyfirst",
+   "labels": {
+    "#1": "gate",
+    "#2": "gate"
+   },
+   "hand": [
+    "#1",
+    "#2"
+   ]
+  },
+  "round1_20261026_212648_615077": {
+   "set": "twentyfirst",
+   "labels": {
+    "#1": "race",
+    "#2": "race"
+   },
+   "hand": [
+    "#1",
+    "#2"
+   ]
+  },
+  "round1_20261026_212737_cceb4b": {
+   "set": "twentyfirst",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "race"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3"
+   ]
+  },
+  "round1_20261026_212920_40bc56": {
+   "set": "twentyfirst",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "gate"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3"
+   ]
+  },
+  "round1_20261026_213005_25da38": {
+   "set": "twentyfirst",
+   "labels": {
+    "#1": "gate",
+    "#e1": "deletion",
+    "#e2": "removal-objection",
+    "#e3": "deleted-test"
+   },
+   "hand": [
+    "#1",
+    "#e1",
+    "#e2",
+    "#e3"
+   ]
+  },
+  "round1_20261026_213148_ee91f8": {
+   "set": "twentyfirst",
+   "labels": {},
+   "hand": []
+  },
+  "round1_20261026_213223_5700d8": {
+   "set": "twentyfirst",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "gate",
+    "#e1": "other-fp"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3",
+    "#e1"
+   ]
+  },
+  "round1_20261026_213410_c0a7b7": {
+   "set": "twentyfirst",
+   "labels": {
+    "#1": "race",
+    "#2": "race"
+   },
+   "hand": [
+    "#1",
+    "#2"
+   ]
+  },
+  "round1_20261026_213451_6c3c52": {
+   "set": "twentyfirst",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "gate"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3"
+   ]
+  },
+  "round1_20261026_220045_d7f105": {
+   "set": "twentyfirst",
+   "labels": {
+    "#1": "gate",
+    "#2": "deleted-test",
+    "#e1": "removal-objection"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#e1"
+   ]
+  },
+  "round1_20261026_220149_566b43": {
+   "set": "twentyfirst",
+   "labels": {
+    "#1": "race",
+    "#e1": "gate"
+   },
+   "hand": [
+    "#1",
+    "#e1"
+   ]
+  },
+  "round1_20261026_220327_559651": {
+   "set": "twentyfirst",
+   "labels": {
+    "#1": "gate",
+    "#2": "gate",
+    "#3": "gate",
+    "#4": "removal-objection",
+    "#5": "removal-objection",
+    "#6": "removal-objection",
+    "#7": "removal-objection",
+    "#e1": "removal-objection"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3",
+    "#4",
+    "#5",
+    "#6",
+    "#7",
+    "#e1"
+   ]
+  },
+  "round1_20261026_220415_b0dd64": {
+   "set": "twentyfirst",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "race"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3"
+   ]
+  },
+  "round1_20261026_220541_fd1e6b": {
+   "set": "twentyfirst",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "gate",
+    "#4": "other-fp"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3",
+    "#4"
+   ]
+  },
+  "round1_20261026_220605_bb4956": {
+   "set": "twentyfirst",
+   "labels": {
+    "#1": "race",
+    "#2": "race",
+    "#3": "gate"
+   },
+   "hand": [
+    "#1",
+    "#2",
+    "#3"
+   ]
+  },
+  "round1_20261026_220733_aed765": {
+   "set": "twentyfirst",
+   "labels": {
+    "#1": "deletion",
+    "#e1": "deletion",
+    "#e2": "removal-objection",
+    "#h1": "gate"
+   },
+   "hand": [
+    "#1",
+    "#e1",
+    "#e2",
+    "#h1"
+   ]
+  },
+  "round1_20261026_220806_b94a4e": {
+   "set": "twentyfirst",
+   "labels": {
+    "#e1": "deletion",
+    "#e2": "deletion",
+    "#e3": "removal-objection",
+    "#e4": "deleted-test"
+   },
+   "hand": [
+    "#e1",
+    "#e2",
+    "#e3",
+    "#e4"
+   ]
   }
  }
 }

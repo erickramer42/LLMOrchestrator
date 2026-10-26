@@ -1,10 +1,49 @@
 # ADR-0002: Rule-Based Adjudication and False-Positive Remediation
 
 Date: 2026-10-13
-Status: Accepted (v1 remediation validated by re-measurement; live-loop
-control run 2026-10-13; context-pack measurement N=3 recorded 2026-10-13)
+Status: Accepted. A running log: every judge and prompt change measured
+since 2026-10-07, newest last.
 
 Supersedes the adjudication portions of ADR-0001.
+
+## Index
+
+Every section of this log, oldest first. Each measurement holds its
+prediction and ship rule as written before its first sample, then its
+results; changes made after seeing data are dated amendments.
+
+| Section | Date | Change | Outcome |
+|---|---|---|---|
+| [Blocker Triage](#blocker-triage-original-run-2026-10-07) | 2026-10-07 | First real diff, one debate | 2 of 12 blockers valid (after the re-triage below) |
+| [Decision](#decision) | 2026-10-07 | v1 guardrails: derived verdicts, hedge demotion, layer notes | Adopted |
+| [Re-Measurement After v1](#re-measurement-after-v1-2026-10-09) | 2026-10-09 | v1 on the same diff | 4 of 6 valid; layer-rule false positives gone |
+| [Intermediate Measurement: Live Feedback Loop, No Context Injection](#intermediate-measurement-2026-10-13--live-feedback-loop-no-context-injection) | 2026-10-13 | Live feedback loop as a control | Feedback reintroduced false blockers in round 3, so later measurements score round 1 |
+| [Fourth Measurement: Context Pack Injection](#fourth-measurement--context-pack-injection) | 2026-10-13 | Context pack from a repo index (N=3) | 3 of 10 valid; the race found once, the first gate blockers |
+| [Fifth Measurement: Context-Pack Ablation](#fifth-measurement--context-pack-ablation) | 2026-10-22 | Context-pack ablation | Claims of surviving removed code cite the stale pack; led to v6 |
+| [Convergence Rule j2](#convergence-rule-j2-2026-10-22) | 2026-10-22 | A blocker-free round converges | Shipped (judge j2) |
+| [Sixth Measurement: v6 Baseline](#sixth-measurement--v6-baseline) | 2026-10-22 | v6: diff authoritative over the pack | 42% valid; the surviving-code class persists without the pack |
+| [Seventh Measurement: Survival-Claim Check](#seventh-measurement--survival-claim-check-backlog-15) | 2026-10-22 | A survival-claim check | Parked |
+| [Eighth Measurement: Arm H: No Hedging Ban](#eighth-measurement--arm-h-no-hedging-ban) | 2026-10-22 | Arm H: no ban on hedged blockers | Not supported: the reviewer did not hedge more |
+| [Ninth Measurement: Arm G: Evidence-Quoted Blockers](#ninth-measurement--arm-g-evidence-quoted-blockers) | 2026-10-22 | Arm G: quotes from either side | Not shipped: false claims moved to removed lines |
+| [Tenth Measurement: Arm G3: Post-Change Quotes](#tenth-measurement--arm-g3-post-change-quotes) | 2026-10-22 | Arm G3: post-change quotes only | Shipped (v9, j4): 94% valid |
+| [Evidence Reader j5](#evidence-reader-j5-2026-10-22) | 2026-10-22 | One shared diff reader | No recorded result changed |
+| [Hedge Check j6](#hedge-check-j6-2026-10-22) | 2026-10-22 | The hedge check reads the claim, not the quote | No recorded result changed |
+| [Eleventh Measurement: Transcript Protocol v10](#eleventh-measurement--transcript-protocol-v10-backlog-11) | 2026-10-22 | Transcript protocol v10 | The fence shipped (v10.1); the critiques section did not |
+| [Input Checks j7](#input-checks-j7-2026-10-23) | 2026-10-23 | Empty and oversized input refused before any call | Shipped (judge j7) |
+| [Golden Suite Routing](#golden-suite-routing-2026-10-23-backlog-14) | 2026-10-23 | Golden fixtures through the real round-1 path | 10/10, as predicted |
+| [Unknown-Layer Note v10.2](#unknown-layer-note-v102-2026-10-23) | 2026-10-23 | A note for input with no path | Shipped (v10.2) |
+| [Re-Triage of the Early Runs](#re-triage-of-the-early-runs-2026-10-23-backlog-17) | 2026-10-23 | Early runs re-labeled against the diff's post-state | The 'false positives' were the real race |
+| [Twelfth Measurement: Feedback Section v11](#twelfth-measurement--feedback-section-v11-backlog-11) | 2026-10-23 | Feedback section v11 | Shipped (v11.1) |
+| [Thirteenth Measurement: Offline Replay of Judge Variants](#thirteenth-measurement--offline-replay-of-judge-variants) | 2026-10-23 | Offline replay of judge variants | Linkage and voting become corpus candidates |
+| [Fourteenth Measurement: Corpus Baseline](#fourteenth-measurement--corpus-baseline-backlog-7) | 2026-10-23 | Corpus of seven real diffs, baseline | 57% valid, mean recall 0.46 |
+| [Fifteenth Measurement: Corpus Replay and a Removed-Line Exception](#fifteenth-measurement--corpus-replay-and-a-removed-line-exception) | 2026-10-23 | Judge variants replayed on the corpus | Linkage passes; voting and removed-line exceptions fail |
+| [Sixteenth Measurement: Fresh Corpus Sample](#sixteenth-measurement--fresh-corpus-sample) | 2026-10-23 | A fresh corpus sample, labeled before replay | Linkage confirmed |
+| [Claim–Quote Linkage j8](#claimquote-linkage-j8-2026-10-23) | 2026-10-23 | Claim–quote linkage | Shipped (judge j8) |
+| [Seventeenth Measurement: Repair Pass for Quote Failures](#seventeenth-measurement--repair-pass-for-quote-failures) | 2026-10-24 | A repair call for demoted quotes | Not shipped: recall +0.009 |
+| [Eighteenth Measurement: Repair Successor: Ceiling Check and Pilot](#eighteenth-measurement--repair-successor-ceiling-check-and-pilot) | 2026-10-24 | A dedicated repair prompt: ceiling and pilots | Closed at the pilot |
+| [Nineteenth Measurement: Removal-Caused Defects Quoted in Round 1](#nineteenth-measurement--removal-caused-defects-quoted-in-round-1) | 2026-10-25 | A round-1 quote rule for removals | Not shipped: recall +0.05 of +0.10; cross-hunk linkage closed by its ceiling |
+| [Twentieth Measurement: Field Writers in the Context Pack](#twentieth-measurement--field-writers-in-the-context-pack) | 2026-10-26 | Field definitions and writers in the pack | Not shipped: target false positives rose |
+| [Twenty-First Measurement: Per-File Layer Notes](#twenty-first-measurement--per-file-layer-notes) | 2026-10-26 | Per-file layer notes | Not shipped: bridge false positives rose |
 
 ## Context
 
@@ -196,7 +235,7 @@ treated as stable measurements at current settings. The context-pack
 measurement should run multiple times (or score a multi-run aggregate)
 before claiming FP-class collapse.
 
-## Fourth Measurement (Pending) — Context Pack Injection
+## Fourth Measurement — Context Pack Injection
 
 **Design:** Same diff (`qttune_bridge_refactor.diff`), same proposal text,
 same models (laguna-xs-2.1 + gemma4:12b), PROMPT_VERSION v5-context-pack,
@@ -487,7 +526,7 @@ fall; it migrated to a new hallucination class. The tribunal now
 knows what the code contains; it still cannot reliably reason about
 what a diff removes. Per the standing loop, that is the next class to
 remediate and re-measure.
-## Fifth Measurement (Pending) — Context-Pack Ablation
+## Fifth Measurement — Context-Pack Ablation
 
 *Prediction recorded 2026-10-22, before any arm was scored.*
 
@@ -707,7 +746,7 @@ other 15 have reviewer blockers in every round and are unaffected.
 **Effect on measurements:** none. Measurements score round-1 reviewer
 output, which no judge rule can change.
 
-## Sixth Measurement (Pending) — v6 Baseline
+## Sixth Measurement — v6 Baseline
 
 *Prediction recorded 2026-10-22, before any v6 sample was run. No v6
 blocker has been seen.*
@@ -912,7 +951,7 @@ These blockers are removal objections, not M2.
     contained the name.
 - **Scorer check:** all 5 confirmed M2 were among the 16 candidates.
 
-## Seventh Measurement (Parked) — Survival-Claim Check (backlog #15)
+## Seventh Measurement — Survival-Claim Check (backlog #15)
 
 *Design and prediction recorded 2026-10-22, before the rule ran on
 any held-out blocker. Draft for review: nothing is implemented yet.*
@@ -1055,7 +1094,7 @@ The scorer rebuilds that from `survival_demotions`.
 4. Only if it ships: wire the rule into `run_debate` and
    `run_round1_review`, and bump `JUDGE_VERSION`.
 
-## Eighth Measurement (Pending) — Arm H: No Hedging Ban
+## Eighth Measurement — Arm H: No Hedging Ban
 
 *Prediction recorded 2026-10-22, before any H sample was run.*
 
@@ -1223,7 +1262,7 @@ prompt goes back to the v6 text, ban included. The ninth measurement, G,
 builds on v6, so it compares directly with the sixth. The unpredicted
 composition shift stays an observation; nothing relies on it.
 
-## Ninth Measurement (Pending) — Arm G: Evidence-Quoted Blockers
+## Ninth Measurement — Arm G: Evidence-Quoted Blockers
 
 *Design and prediction recorded 2026-10-22, before G was implemented
 or run.*
@@ -1423,7 +1462,7 @@ quote line against consecutive non-blank lines of one side.
   quote does. Every other valid blocker quotes the post-change side
   (context or added lines).
 
-## Tenth Measurement (Pending) — Arm G3: Post-Change Quotes
+## Tenth Measurement — Arm G3: Post-Change Quotes
 
 *Design and prediction recorded 2026-10-22, before G3 was implemented
 or run.*
@@ -1658,7 +1697,7 @@ one in the N=3 measurement, becomes a question. It stays in the
 record, and the verdict is APPROVED_WITH_OPEN_QUESTIONS, not a clean
 approval. Backlog #12 is closed.
 
-## Eleventh Measurement (Pending) — Transcript Protocol v10 (backlog #11)
+## Eleventh Measurement — Transcript Protocol v10 (backlog #11)
 
 *Design and prediction recorded 2026-10-22. v10 and the pair mode were
 implemented and unit-tested before this was written, and no v10 sample
@@ -2104,7 +2143,7 @@ measurement's held-out sets A (the v5 runs) and B (014257 and 170208).
 That rule stays frozen as recorded. If #15 is ever scored, A and B are
 no longer unseen by the labeller.
 
-## Twelfth Measurement (Pending) — Feedback Section v11 (backlog #11)
+## Twelfth Measurement — Feedback Section v11 (backlog #11)
 
 *Design and prediction recorded 2026-10-23, before any v11 sample was
 run. Drafted in the 2026-10-23 code review (finding 9) and approved as
@@ -2344,7 +2383,7 @@ blocker; the rest is protocol, feedback no longer reading as the
 author's text. Round-2 runaways in live debates are the number to
 watch (STATUS #16). Backlog #11 is closed.
 
-## Thirteenth Measurement (Pending) — Offline Replay of Judge Variants
+## Thirteenth Measurement — Offline Replay of Judge Variants
 
 *Design and prediction recorded 2026-10-23, before any variant was
 scored. The replay tool, the labels and the reproduction check below
@@ -2500,7 +2539,7 @@ set):
 - **None of this ships from the replay.** The corpus measurement decides
   (ADR-0002's next measurement; backlog #7).
 
-## Fourteenth Measurement (Pending) — Corpus Baseline (backlog #7)
+## Fourteenth Measurement — Corpus Baseline (backlog #7)
 
 **Status (2026-10-23): the set was approved as listed, with the
 `--no-llm` indexes and the fixtures' file sets unchanged, sampled the
@@ -3160,7 +3199,7 @@ a supplied context, which has no hunks.
   requests are unchanged; a debate's round 2
   differs only when linkage moved a blocker.
 
-## Seventeenth Measurement — Repair Pass for Quote Failures (not shipped)
+## Seventeenth Measurement — Repair Pass for Quote Failures
 
 **Status (2026-10-24): drafted before any code or model call, signed off
 with the amendment below, implemented, run and scored: not shipped
@@ -3437,7 +3476,7 @@ the code part of the transcript, and would pilot a handful of live calls
 before the full paired batch. That is a new prompt and a new
 registration; the paired archive and the runner are ready for it.
 
-## Eighteenth Measurement — Repair Successor: Ceiling Check and Pilot (closed)
+## Eighteenth Measurement — Repair Successor: Ceiling Check and Pilot
 
 **Status (2026-10-24): closed.** The pilot set and the ceiling check
 were registered before the check ran and before any successor prompt
@@ -3943,7 +3982,7 @@ is also the only route past the 6 hedged items. The pack-side work on
 invariant-elsewhere is the other candidate. Neither is registered.
 Debates are unchanged: v11.1 with the repair pass off.
 
-## Nineteenth Measurement — Removal-Caused Defects Quoted in Round 1 (not shipped)
+## Nineteenth Measurement — Removal-Caused Defects Quoted in Round 1
 
 **Status (2026-10-25): drafted before any code change or model call,
 reviewed, and signed off with the amendments below. Implemented as
@@ -4362,7 +4401,7 @@ An earlier rescore in this session put the v14 ceiling at +0.027 and
 +0.058. It counted linkage-demoted items as kept and skipped the hedge
 check that would have demoted them. The `j7` numbers above are correct.
 
-## Twentieth Measurement — Field Writers in the Context Pack (not shipped)
+## Twentieth Measurement — Field Writers in the Context Pack
 
 **Status (2026-10-26): drafted before any code change or model call,
 reviewed, and signed off with the amendments at the end. Implemented as
@@ -4836,3 +4875,334 @@ indexes are as they were at `d2a7dc8`. The bridge debate fingerprint is
 `8e76794ac4946aab` again (pinned), so debates send the requests the
 live golden suite passed with, and the suite was not rerun. The v15
 label counts stay pinned.
+
+## Twenty-First Measurement — Per-File Layer Notes
+
+**Status (2026-10-26): drafted before any code change or model call,
+and signed off with the choices recorded at the end. The bridge control
+was sampled before any code change.**
+
+**Why.** Backlog #8: a multi-file diff gets only its first file's layer
+note. `extract_file_path` returns `diff_paths(diff)[0]`, and the note
+for that file's layer is the only one sent. So the reviewer is told the
+wrong rules for every file in another layer. In the corpus and the
+bridge, four of eight requests carry a note that is wrong for some of
+their files:
+
+| fixture | note sent today | layers of the changed files |
+|---|---|---|
+| `poll_override` | app (first file: a QML comment change) | app, core |
+| `init_noops` | app | app, bridge, core |
+| `trusted_count` | core | core, unknown (`surrogate/`) |
+| bridge | bridge | bridge, app (`app/qml/Main.qml`) |
+| `backoff_clamp`, `connect_start`, `decode_length`, `ecu_support` | one layer | unchanged |
+
+On `poll_override`, every claim the invariant-elsewhere class rests on
+is about `core/src/j2534_transport.cpp`, reviewed under the app note
+("Qt fully permitted; focus on UI patterns, lifecycle, performance").
+The twentieth measurement named this as the one untested candidate cause
+of that class. It is a weak one: nothing in the app note invites a
+missing-check claim, and the core note's "buffer assumptions" line may
+invite bounds claims. The change is made because the input is wrong,
+and measured so that a correction that costs precision or recall is
+not shipped unseen.
+
+### Design
+
+**Change** (PROMPT_VERSION `v16-per-file-layers`; the layer notes are
+prompts). When a diff's changed files fall in one layer, the note is
+exactly today's, byte for byte. When they fall in two or more, the note
+lists each file's layer, then each layer's rules once, strictest first
+(core, bridge, app, unknown). For `poll_override`:
+
+```
+FILE LAYERS: this diff changes files in 2 layers; each file's rules apply to that file only.
+- app/qml/SettingsPage.qml: app
+- core/src/j2534_transport.cpp: core
+FILE LAYER: core (strictest)
+- NO Qt headers allowed — flag any Qt include as a blocker
+- All boundary functions must use extern "C"
+- Structs must be POD; handles opaque
+- Buffer assumptions: 8-byte CAN vs 64+ CAN-FD
+FILE LAYER: app (least restricted)
+- Qt fully permitted
+- Focus on UI patterns, lifecycle, performance
+```
+
+- **Paths come from `diff_reader.diff_paths`,** in diff order. A
+  `--context` input without a diff keeps today's single path from a `//`
+  comment line.
+- **Layers come from `identify_layer`,** unchanged. Its quirks stay:
+  `tests/test_bridge.cpp` is "bridge" (the substring rule), and
+  `surrogate/` is unknown.
+- **Records:** `inputs.layer` keeps the first file's layer, so old and
+  new records compare. A new `inputs.layers` maps each path to its
+  layer.
+- **Fingerprint:** it hashes the map's header template and the rule
+  blocks sent, never the paths, so it stays templates-only. Single-layer
+  requests keep their fingerprints.
+- **Sizes:** the note grows by 260 to 940 characters on the four changed
+  requests (the bridge by 340, inside its ~3,500 characters of
+  headroom).
+
+### Measurement
+
+**Only the four changed requests are sampled.** The other four are
+byte-identical, which a test pins, so their archived numbers stand.
+- **Samples at v16, judge j8:** `poll_override` 20 runs,
+  `init_noops` 10, `trusted_count` 10, bridge 20 (original proposal).
+  About 60 runs, 2.5 to 3 hours.
+- **Labels** written before scoring, as in the nineteenth and twentieth.
+- **Pilot:** 3 calls first (`poll_override`, `init_noops`, bridge),
+  telemetry and schema only, with the same exit as the nineteenth.
+
+**Baselines (j8, archived v11.1 runs):**
+- `poll_override`, 9 runs: 1.33 FPs per review (invariant-elsewhere 10,
+  thread 1, other 1); `poll_ignored` 0.11, `poll_needs_filter_at_parse`
+  0.11.
+- `trusted_count`, 10 runs: 0.00 FPs per review; `count_under_error`
+  0.30, `static_batch_replay` 0.20.
+- `init_noops`, 9 runs: 0.00 FPs per review.
+- Bridge, 28 samples: 0.179 FPs per review, race 0.786, gate 0.286.
+
+**Rule (non-inferiority: the change corrects the input, so it ships
+unless it costs):** v16 ships if all three hold:
+1. the mean of the three corpus fixtures' FPs per review rises by at
+   most 0.15 (from 0.444);
+2. the mean recall of their four known bugs falls by at most 0.10 (from
+   0.180);
+3. bridge FPs per review rise by at most 0.10, with race and gate found
+   each dropping by at most 0.15.
+
+`poll_override`'s invariant-elsewhere rate is reported as the
+hypothesis test, not decided on.
+
+**Predictions:**
+
+| metric | prediction |
+|---|---|
+| `poll_override` FPs per review | 1.0–1.9 (no fall) |
+| `poll_override` invariant-elsewhere per run | 0.9–1.6 |
+| `init_noops` FPs per review | 0.0–0.4 (the core block may invite C ABI claims) |
+| `trusted_count` FPs per review | 0.0–0.2 |
+| mean recall of the four bugs | 0.10–0.30 |
+| bridge FPs per review / race / gate | 0.10–0.40 / 0.60–0.90 / 0.15–0.45 |
+
+**Expected by the rule:** conditions 1 and 2 hold; condition 3 is the
+risk, because the twentieth's bridge rate (0.60 with a nearly empty
+section) leaves it unclear whether the archived bridge baseline (v9 to
+v11 prompts, 2026-10-23) is today's rate.
+
+### Open choices
+
+1. **Unknown files among known ones** (`trusted_count`'s
+   `surrogate/`): send the unknown block ("apply all rules
+   conservatively") like any other layer (recommended: one rule for
+   every layer, as v10.2 chose for pathless input), or list the file as
+   unknown without a block.
+2. **Single-layer diffs:** keep today's note byte for byte (recommended:
+   four fixtures need no samples, and every single-file debate is
+   unchanged), or always send the map.
+3. **A concurrent bridge control:** 20 bridge runs at v11.1, sampled
+   before the code changes, as condition 3's baseline in place of the
+   archived 28 (recommended: about an hour, and it also settles the
+   twentieth's open reading, heading priming or a stale baseline).
+   Optionally the same for `poll_override` (20 runs, another hour).
+4. **Bars and run counts** as drafted, or changed.
+
+### Choice 3 and the bridge control (2026-10-26, before any sample)
+
+**Choice 3 decided: a concurrent bridge control.** 20 bridge round-1
+samples at v11.1 (fingerprint `8e76794ac4946aab`, the tree at
+`eb10006`), with the original proposal and judge j8, sampled before any
+code change and labeled before scoring by the same rules. They replace
+the archived 28 as condition 3's baseline: v16's bridge FPs per review
+may rise by at most 0.10 over the control's, and race and gate found may
+each drop by at most 0.15 from the control's. The archived baseline is
+reported as context. No `poll_override` control.
+
+**Prediction for the control:** FPs per review 0.10–0.40, race
+0.60–0.90, gate 0.15–0.45.
+
+**What the control also reads.** The twentieth's bridge rate (0.60 with
+a one-declaration section) had two readings: the section heading
+primes member-level claims, or the archived baseline understates
+today's rate. A control near 0.18 favors the first; one near 0.60
+favors the second. That reading is recorded with the control's
+results; it changes nothing about the twentieth, which stays not
+shipped.
+
+**Choices 1, 2 and 4 decided (2026-10-26, before any v16 code):** a
+file in no known layer sends the unknown block like any other layer;
+single-layer diffs keep today's note byte for byte; bars and run counts
+as drafted. The draft is signed off as amended.
+
+### Control results (scored 2026-10-26, before any v16 sample)
+
+20 records, `measurement_round1_20261026_191304_72dbd8` to
+`..._195825_962e76` (UTC), all stamped v11.1 with fingerprint
+`8e76794ac4946aab` and judge j8. One, `e9c923`, ran to the output cap
+on all three attempts and failed closed (`AGENT_FAILURE`): the first
+bridge record on file whose retries never recovered. It is excluded,
+leaving 19 runs. Every item was labeled before scoring (`labels.json`,
+set `control21`).
+
+| | archived (28) | control (19) | prediction | |
+|---|---|---|---|---|
+| FPs per review | 0.179 | 0.105 | 0.10–0.40 | HIT |
+| race found | 0.786 | 0.526 | 0.60–0.90 | MISSED LOW |
+| gate found | 0.286 | 0.421 | 0.15–0.45 | HIT |
+
+Of 32 kept blockers, 30 are valid (18 race, 12 gate); the two false
+positives are the dangling-copy claims (`228951`). Condition 3's bars
+are now: v16 bridge FPs per review at most 0.205, race found at least
+0.376, gate found at least 0.271.
+
+**Reading:**
+- **The twentieth's bridge rise came with its section, not from a stale
+  baseline.** Today's v11.1 rate (0.11) is as low as the archived one
+  (0.18), against v15's 0.60.
+- **The archived race rate overstates today's.** Race found 0.53 here,
+  0.79 in the archive. Against this control the nineteenth's bridge race
+  (0.556) would not have read as a drop. That does not change the
+  nineteenth's verdict, which failed on recall as well, but bridge race
+  comparisons against the archived 28 should be read with this in mind.
+  Gate moved the other way (0.29 → 0.42), so attention between the two
+  shifts from sample to sample.
+
+### Implementation (2026-10-26, while the control sampled)
+
+- **`file_metadata.layer_note_for(paths)`** returns the note and its
+  template (the note without its paths). `LAYER_ORDER` and
+  `LAYER_MAP_HEADER` are new. `debate._prepare` passes every path from
+  `diff_paths`, or the one path from a `//` comment line when there is
+  no diff. `_Setup` gains `layers` and `layer_template`; records gain
+  `inputs.layers`; the fingerprint hashes `layer_template` in place of
+  the note.
+- **Versions:** PROMPT_VERSION `v16-per-file-layers`. Fingerprints:
+  bridge `dbb1ed45156230be` (was `8e76794ac4946aab`), `poll_override`
+  `a4f16eec8e5e6729`, `init_noops` `ffc5acdd20a814dd`, `trusted_count`
+  `3b8cd7fc10523092`. The four single-layer fixtures keep theirs.
+- **Byte check:** the reviewer system prompt and static transcript
+  section of all eight fixtures were compared with a worktree at
+  `eb10006`: the four single-layer fixtures are identical, the four
+  multi-layer ones changed, as planned.
+- **Input check** at v16: `trusted_count` 3,111, `poll_override` 3,905,
+  `init_noops` 5,798 and the bridge 11,193 estimated tokens, all under
+  12,288.
+- **Tests:** 207. Sending only the first file's note again fails two of
+  them.
+
+The edits did not reach the running control: its process had loaded
+the v11.1 modules before they were made, and its records carry v11.1's
+version and fingerprint (checked when it finishes).
+
+### Pilot (2026-10-26): passes
+
+Three records, excluded from scoring:
+`measurement_round1_20261026_200203_679fc3` (`poll_override`),
+`..._200452_f6d34e` (`init_noops`) and `..._200527_ce8a35` (bridge). Each
+carries v16's fingerprint for its fixture and the expected
+`inputs.layers`. All three first attempts were accepted (`done_reason`
+stop): 8,629, 1,293 and 1,415 output tokens, in 169 s, 34 s and 34 s. None
+ran away, so the exit is not met. Only telemetry, stamps and schema
+status were read. The batch runs as registered.
+
+### Results (scored 2026-10-26): not shipped
+
+60 records, `measurement_round1_20261026_200617_180332` to
+`..._220806_b94a4e` (UTC): 20 `poll_override`, 10 `init_noops`, 10
+`trusted_count`, then 20 bridge samples, every one stamped
+`v16-per-file-layers` with its fixture's expected fingerprint. Four first
+attempts ran to the 12,288-token output cap (`1f7900` on
+`poll_override`, `78f09a` on `init_noops`, `8f74e3` and `9747cc` on the
+bridge). Three recovered on retry and are excluded. `9747cc` ran to the
+cap on all three attempts and failed closed, as the control's `e9c923`
+did. That leaves 38 corpus runs (19 `poll_override`, 9 `init_noops`, 10
+`trusted_count`) and 18 bridge runs. Every item was labeled before
+anything was scored (`corpus_labels.json`, sample `v16`; `labels.json`,
+set `twentyfirst`). A test pins the corpus counts (38 runs, 31 stored, 6
+valid). Both arms are judged by j8, and the stored split reproduces
+exactly.
+
+| | baseline | v16 | change | bar |
+|---|---|---|---|---|
+| 1. mean FPs per review, three fixtures | 0.444 | 0.478 | +0.034 | ≤ +0.15 |
+| 2. mean recall, four bugs | 0.181 | 0.126 | −0.054 | ≥ −0.10 |
+| 3. bridge FPs per review (control) | 0.105 | 0.333 | +0.228 | ≤ 0.205 |
+| 3. bridge race found (control) | 0.526 | 0.556 | +0.029 | ≥ 0.376 |
+| 3. bridge gate found (control) | 0.421 | 0.500 | +0.079 | ≥ 0.271 |
+| recall counting demoted items | 0.533 | 0.503 | | context |
+| bridge valid share | 94% | 82% | | context |
+
+The corpus baseline is the archived v11.1 runs under j8 (the registered
+0.180 is 0.1806 rounded); the bridge baseline is the control.
+
+**By the rule: v16 does not ship.** Conditions 1 and 2 hold. Condition 3
+fails on bridge false positives: 6 in 18 runs against the control's 2 in
+19. Race and gate both clear their bars.
+
+**Per fixture:**
+
+| fixture | runs | FPs per review | recall (stored) | classes |
+|---|---|---|---|---|
+| `poll_override` | 9 → 19 | 1.33 → 1.21 | `poll_ignored` 0.11 → 0.05, `poll_needs_filter_at_parse` 0.11 → 0.05 | invariant-elsewhere 10 → 20, thread 1 → 2, other 1 → 1 |
+| `init_noops` | 9 → 9 | 0.00 → 0.22 | — | other 0 → 2 (one run) |
+| `trusted_count` | 10 → 10 | 0.00 → 0.00 | `count_under_error` 0.30 → 0.10, `static_batch_replay` 0.20 → 0.30 | — |
+| bridge | 19 → 18 | 0.11 → 0.33 | race 0.53 → 0.56, gate 0.42 → 0.50 | other 2 → 1, removal-objection 0 → 4, deletion 0 → 1 |
+
+**Reported apart:**
+- **The hypothesis test: invariant-elsewhere on `poll_override`** went
+  from 1.11 to 1.05 stored claims per run (1.67 to 1.26 counting
+  demoted items). The core block reached every `poll_override` request,
+  and the missing-channel and `chans[0]` claims are unchanged in form.
+- **The bridge's false positives are concentrated.** 4 of the 6 come
+  from one run (`559651`). It listed the removed LiveView members
+  (the batching timer, `signalBatchCount`, `signalModel`) as blockers,
+  each quoting a post-change header line, so the evidence check kept
+  them. The other 17 runs have 2 (`fd1e6b` #4 on `m_droppedFrames`,
+  `aed765` #1, which says `Main.qml` still uses `signalModel`). The rule
+  counts runs; the bar stands as registered.
+- **Where the bridge's false claims moved.** Counting stored and demoted
+  items, false claims are about as many as in the control (16 against
+  15), but their classes shifted. Removal objections rose from 2 to 9
+  and deletion claims fell from 11 to 5, and items that name QML or the
+  bridge's QML-facing API rose from 1 to 7 (in 5 runs). The v16 bridge
+  request names `app/qml/Main.qml` and adds the app block ("Focus on UI
+  patterns, lifecycle, performance").
+- **`count_under_error`** fell in stored recall (3 runs to 1) while
+  claims about it, counting demoted items, held at 9 of 10 runs: its
+  claims still quote the removed call.
+- **Runaways:** 4 of 60 first attempts (7%), against about 5% on record.
+  The bridge's two failed-closed records (`e9c923`, `9747cc`) are the
+  first on file, both today, one under each prompt (9,703 and 9,800
+  prompt tokens), so they are not v16's doing.
+
+| prediction | predicted | observed | |
+|---|---|---|---|
+| `poll_override` FPs per review | 1.0–1.9 | 1.21 | HIT |
+| `poll_override` invariant-elsewhere per run | 0.9–1.6 | 1.05 | HIT |
+| `init_noops` FPs per review | 0.0–0.4 | 0.22 | HIT |
+| `trusted_count` FPs per review | 0.0–0.2 | 0.00 | HIT |
+| mean recall of the four bugs | 0.10–0.30 | 0.126 | HIT |
+| bridge FPs per review / race / gate | 0.10–0.40 / 0.60–0.90 / 0.15–0.45 | 0.33 / 0.56 / 0.50 | HIT / MISSED LOW / MISSED HIGH |
+| conditions 1 and 2 hold, 3 is the risk | — | 1 and 2 hold, 3 fails | HIT |
+
+**Reading:**
+- **The layer note is not what drives invariant-elsewhere.** With the
+  core rules on the core file, the class held its rate. Both candidate
+  causes the twentieth named, missing facts and the wrong layer note,
+  are now tested, and neither moves it. What is left is the model's own
+  reading of a dropped check as a defect.
+- **Naming a file directs attention to it.** The map and the app block
+  are the only changes in the bridge request. The bridge claims shifted
+  toward the removed UI feature, and some of those quote post-change
+  lines that the evidence check accepts. One run carries most of the
+  rise, so the size is uncertain; its direction matches the class
+  shift across the other runs.
+- **Recall moved within its margin** and mostly through the quote rule
+  (`count_under_error` is still claimed, but its claims are demoted).
+
+**Conclusion:** the correct per-file note costs bridge precision beyond
+the registered margin and does not change the target class. Backlog #8
+stays open as a known limitation. No successor is registered.

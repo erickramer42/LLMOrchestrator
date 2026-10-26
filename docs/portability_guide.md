@@ -1,108 +1,59 @@
-# Portability Guide: Using This Tribunal on Other Codebases
+# Adapting the Tribunal to Another Codebase
 
-This document explains how to repurpose the tribunal for a different domain or codebase. The core patterns are universal; only domain expertise needs customization.
+The judging machinery is codebase-independent: derived verdicts, schema
+validation, evidence-quoted blockers, the hedge check and fail-closed
+handling work on any diff. What is specific to QtTune is the domain
+knowledge: the engineer's priorities, the layer rules, the indexer's
+harvest and the fixtures. This guide lists each piece and where it
+lives. Moving these behind configuration is backlog #10.
 
-## Quick Start
+## What to change
 
-Clone this repo and update these three places:
+| Piece | Where | What to do |
+|---|---|---|
+| Models | `MODELS` in [config.py](../config.py) | Set `code_reviewer` and `auto_engineer` to models you have pulled. Keep `NUM_CTX` large enough for the prompt plus the reviewer's thinking (see below). |
+| The engineer's domain | `AUTO_ENGINEER_PROMPT` in [reviewer_prompt.py](../reviewer_prompt.py) | Replace the automotive and J2534 priorities with your domain's: its risks, roadmap and compliance concerns. Keep the output schema (blockers, concerns, questions). |
+| The reviewer's standards | `REVIEWER_SYSTEM`, `IMPL_SCOPE_CLAUSE` and `HEADER_SCOPE_CLAUSE` in `reviewer_prompt.py` | Adjust the rules a reviewer applies to implementations and to interface-only files. Keep the `{claim, file, quote}` blocker schema: the evidence check depends on it. |
+| Layer rules | `identify_layer` and `get_layer_constraints` in [file_metadata.py](../file_metadata.py) | Map your directory layout to layers and write each layer's rules. A layer whose rules differ (for example, a library that must stay framework-free) is where this pays off. |
+| The repo index | [indexer.py](../indexer.py) | It harvests C and C++ typedefs, constants and Qt queued-connection call sites. For another language, adapt the harvest, or run without an index: retrieval is optional and never fatal. |
+| Fixtures | [review_fixtures.py](../review_fixtures.py) and `CASES` in [eval_harness/bakeoff.py](../eval_harness/bakeoff.py) | Replace the snippets with your codebase's known failure modes and clean reference code. |
+| A corpus | `docs/fixtures/corpus.json` and [eval_harness/corpus.py](../eval_harness/corpus.py) | Reverse a few of your own bug-fix commits: each reverse diff reintroduces a known bug, which gives recall. Add one or two clean forward diffs for a false-positive rate. |
 
-### Step 1: Update Models
+Every change to a prompt, a layer note or the pack format bumps
+`PROMPT_VERSION`, so records stay comparable.
 
-Edit MODELS in config.py:
+## What to keep
 
-MODELS = {
-    "code_reviewer": "your-reviewer-model",
-    "auto_engineer": "your-domain-model",
-}
+These are the parts that make the output trustworthy; the reasons are
+in [design.md](design.md).
 
-The second key is the domain engineer's seat; its prompt is AUTO_ENGINEER_PROMPT.
+- **Derived verdicts:** never use a model's self-reported verdict.
+- **Evidence-quoted blockers,** checked against the diff.
+- **Hedged blockers become questions.**
+- **Fail closed:** an unusable reply or input ends in manual review.
+- **Versioned prompts and judge rules,** stamped into every record.
+- **Multi-sample measurement:** single runs are anecdotes.
 
-### Step 2: Configure Domain Expert Prompt
+## Validating a new setup
 
-Edit AUTO_ENGINEER_PROMPT in reviewer_prompt.py. Replace domain-specific criteria with your domain's concerns:
-
-DOMAIN_SPECIFIC_CRITERIA = """
-1. Alignment with project goals and roadmap priorities
-2. Domain-specific risks unique to your field
-3. Extensibility considerations for future evolution
-4. Regulatory/compliance/safety considerations requiring documentation
-"""
-
-The blockers, concerns, questions, and reasoning fields remain unchanged.
-
-### Step 3: Adapt Eval Harness Fixtures
-
-The probe and bake-off live in eval_harness/ (probe.py, bakeoff.py and their shared raw_call.py). Replace the bake-off's test cases, and the shared snippets in review_fixtures.py that the golden suite also uses:
-
-CASES = [
-    ("your_failure_mode_1", True, "code snippet with bug", False),
-    ("your_clean_pattern", False, "clean reference code", True),
-]
-
-### Step 4: Verify with Multi-Run Probes
-
-Run the probe against a clean artifact from your codebase:
-
-python -m eval_harness.probe --model your-reviewer-model --fixture path/to/clean/file.h
-
-Target thresholds: blocker-FP rate < 5%, timeout rate < 20%.
-
-## Universal Patterns (Don't Change These)
-
-- Derived verdicts — Never trust model self-reported labels; derive from content
-- Evidence-quoted blockers — A blocker quotes the code that shows it, and the quote is checked against the diff
-- Prompt versioning — Stamp PROMPT_VERSION in every decision record
-- Multi-run probes — Single runs are anecdotes; aggregates are data
-- Parse failures fail closed — Unusable reviews block rather than slip through
-- Artifact-type scoping — Different standards for interfaces vs. implementations
-
-The reasoning behind each is in [design.md](design.md).
-
-## Domain-Specific Customization (Only These Need Changes)
-
-Element | Customize For Your Domain
---------|--------------------------
-DOMAIN_SPECIFIC_CRITERIA | Your domain's risks and priorities
-CASES in bakeoff.py | Your codebase's failure modes
-Fixture files | Your codebase's clean reference patterns
-Model selections | Models appropriate for your compute budget
-
-## Example: Adapting for Web Application Review
-
-Domain expert prompt changes:
-
-DOMAIN_SPECIFIC_CRITERIA = """
-1. Security vulnerabilities (SQL injection, XSS, CSRF, auth bypass)
-2. Performance anti-patterns (N+1 queries, unindexed lookups, sync blocking)
-3. API contract violations (breaking changes, undocumented deprecations)
-4. Accessibility and WCAG compliance concerns
-"""
-
-Bakeoff fixture changes:
-
-CASES = [
-    ("sql_injection", True, "SELECT * FROM users WHERE id = '" + user_input + "'", False),
-    ("clean_api_route", False, "@app.route('/users', methods=['GET'])\ndef get_users():\n    return jsonify(User.query.all())", True),
-]
-
-## Timeline Expectation
-
-For a new domain adaptation:
-- Day 1: Update prompts, run initial probes, adjust scope clauses
-- Day 2: Bake-off against 5–10 custom fixtures, iterate prompt tweaks
-- Day 3: First production debate on real code, validate decision quality
-
-Total: 3 days from clone to working tribunal in new domain.
+1. Run the regression suite: `python -m unittest discover -s tests`.
+   It needs no model and must stay green.
+2. Probe a clean file from your codebase to see the false-positive
+   floor:
+   `python -m eval_harness.probe --model <reviewer> --fixture path/to/clean_file`.
+3. Run the bake-off on your fixtures:
+   `python -m eval_harness.bakeoff <reviewer> <engineer>`.
+4. Sample round-1 reviews on a real diff and label them by hand:
+   `python -m eval_harness.round1 run --proposal "..." --diff your.diff --runs 10`.
+   Clean fixtures are not enough: this project scored 100% on synthetic
+   fixtures and 17% on its first real diff.
 
 ## Troubleshooting
 
-Problem | Likely Cause | Fix
---------|--------------|-----
-High blocker-FP rate on clean code | Domain expert prompt too aggressive | Add "Do not flag missing implementation as blocker" clause
-Timeout rate > 20% | Context window too large for GPU | Reduce NUM_CTX (24576 in config.py), but keep room for the prompt plus thinking output; see ADR-0001
-Parse failures frequent | Thinking tokens exhausting budget | Check the decision record's telemetry first. If output fills NUM_PREDICT, the model is looping and the retry usually recovers; raise NUM_CTX only if finished replies don't fit (ADR-0001)
-Detection rate < 80% | Model too small for task | Upgrade to frontier model or increase context
-
-## Questions?
-
-The eval harness is designed to catch these issues automatically. If your first probe run shows problems, iterate using the troubleshooter table above — you're measuring your way to a working configuration, not starting with one.
+| Symptom | Likely cause | What to do |
+|---|---|---|
+| Many false blockers on clean code | Rules too aggressive for the code under review | Check the layer mapping first; rules for the wrong layer were the first false-positive class here. |
+| Replies cut off, parse failures | Thinking fills the output budget | Read the record's `telemetry`. If an attempt hit `NUM_PREDICT`, the model was looping and the retry usually recovers; raise `NUM_CTX` only if finished replies do not fit (ADR-0001). |
+| Timeouts | Model too large for the GPU, or too long a context | Use a smaller model or a smaller `NUM_CTX`, keeping room for the prompt plus thinking. |
+| Valid blockers demoted to questions | Quotes from removed lines | Expected for bugs that delete code; see [results.md](results.md). |
+| Many bugs missed | Model too small for the task | Compare models on your corpus before tuning prompts. |

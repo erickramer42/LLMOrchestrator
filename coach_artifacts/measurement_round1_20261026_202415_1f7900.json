@@ -1,0 +1,140 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261026_202415_1f7900",
+    "created_utc": "2026-10-26T20:33:41.277746+00:00",
+    "prompt_version": "v16-per-file-layers",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 11923,
+      "estimated_tokens": 3975,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 836,
+      "sections": {
+        "modified_files": 2,
+        "types": 2,
+        "constants": 0,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 0
+      },
+      "entries": 4,
+      "index_version": "idx_20261024_014115",
+      "index_commit": "90020bd3fbd85fa70b2cf902c67f544272cd4e2e",
+      "format_version": "f3-diff-authoritative",
+      "error": null,
+      "base_check": {
+        "checked": 2,
+        "mismatched": []
+      },
+      "shown": {
+        "modified_files": 2,
+        "types": 2,
+        "constants": 0,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 0
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\poll_override_90020bd\\repo_context.json",
+      "sha256": "a7ec3ecadb5ba6a2714373bb41685c9ed6d9237f853f90caf3e8fe403f2ef505",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qml/SettingsPage.qml] (app): File/layer: app/qml/SettingsPage.qml | Qt6 Quick, UI layer\n[core/src/j2534_transport.cpp] (core): File/layer: core/src/j2534_transport.cpp | C++17, Qt-free, Win32-guarded\n\n--- KNOWN TYPES ---\nqttune_session_t (opaque): typedef struct qttune_session qttune_session_t;  // Forward-declared opaque handle types\nqttune_status_t (enum): typedef enum { QT_OK = 0, QT_ERR_NULL_ARGUMENT = 1, QT_ERR_NOT_IMPLEMENTED = 2, QT_ERR_NO_TRANSPORT = 3, QT_ERR_OUT_OF_MEMORY = 4, QT_ERR_SESSION_CLOSED = 5, QT_ERR_ALREADY_REGISTERED = 6, QT_ERR_LOAD_FAILED = 7, QT_ERR_VEHICLE_TIMEOUT = 8, QT_ERR_TRANSPORT_HARD_FAILURE = 9, } qttune_status_t;  // Status codes - append-only evolution for ABI stability"
+    },
+    "prompt_fingerprint": "a4f16eec8e5e6729"
+  },
+  "inputs": {
+    "proposal": "J2534 request modes: the set scheduler owns requests whenever the profile has mux defs, ?poll= is rejected at parse time unless ?filter= gives it a channel, and the single-PID poll request is built on the first channel.",
+    "original_proposal": "J2534 request modes: the set scheduler owns requests whenever the profile has mux defs, ?poll= is rejected at parse time unless ?filter= gives it a channel, and the single-PID poll request is built on the first channel.",
+    "header_artifact": false,
+    "file_path": "app/qml/SettingsPage.qml",
+    "layer": "app",
+    "layers": {
+      "app/qml/SettingsPage.qml": "app",
+      "core/src/j2534_transport.cpp": "core"
+    },
+    "diff_sha256": "c3337f1e7432e16043222073e7fb887b908ced89f377c5a3014e3b065803ad36",
+    "diff_chars": 6734,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "conditional",
+          "blockers": [],
+          "questions": [
+            "Does parse_query's rejection of poll without filter (rx_id == 0) guarantee that chan_count > 0? Need to verify resolve_channels logic to confirm filter presence ensures channel setup.",
+            "Is it always correct to use chans[0] for poll requests? What if the poll PID requires a different channel than the first one?",
+            "The sched_mode logic change removes the poll_pid == 0 check. When sched.count > 0 and poll_pid != 0, does the code correctly handle both scheduler and poll modes, or does poll override scheduler as the comment suggests?"
+          ],
+          "nits": [
+            "Comment in j2534_worker still references old logic: 'false when sched.count == 0 (passive receive)' but doesn't mention poll_pid behavior",
+            "Consider adding assertion or validation that chans[0] is valid before accessing it in the poll request path"
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 0
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 11923,
+              "prompt_eval_count": 3479,
+              "eval_count": 12288,
+              "thinking_chars": 47095,
+              "content_chars": 0,
+              "done_reason": "length",
+              "wall_s": 274.71,
+              "outcome": "reply was not valid JSON (done_reason=length: output truncated after 3479 prompt + 12288 output tokens; NUM_PREDICT=12288, check NUM_CTX=24576)",
+              "thinking_tail": "on, but I'm concerned about the channel lookup removal.\n\nLet me also check for other potential issues.\n\nActually, I just realized that I should look at the full diff to understand the context better.\n\nLet me re-read the diff one more time.\n\nOK so the key changes are:\n1. sched_mode calculation: removed poll_pid check\n2. Channel lookup for poll: removed, using channel 0\n3. Validation: moved earlier,",
+              "content_tail": ""
+            },
+            {
+              "attempt": 1,
+              "temperature": 0.05,
+              "prompt_chars": 11964,
+              "prompt_eval_count": 3494,
+              "eval_count": 9589,
+              "thinking_chars": 34916,
+              "content_chars": 896,
+              "done_reason": "stop",
+              "wall_s": 291.01,
+              "outcome": "ok",
+              "reply": "{\n  \"verdict\": \"conditional\",\n  \"blockers\": [],\n  \"questions\": [\n    \"Does parse_query's rejection of poll without filter (rx_id == 0) guarantee that chan_count > 0? Need to verify resolve_channels logic to confirm filter presence ensures channel setup.\",\n    \"Is it always correct to use chans[0] for poll requests? What if the poll PID requires a different channel than the first one?\",\n    \"The sched_mode logic change removes the poll_pid == 0 check. When sched.count > 0 and poll_pid != 0, does the code correctly handle both scheduler and poll modes, or does poll override scheduler as the comment suggests?\"\n  ],\n  \"nits\": [\n    \"Comment in j2534_worker still references old logic: 'false when sched.count == 0 (passive receive)' but doesn't mention poll_pid behavior\",\n    \"Consider adding assertion or validation that chans[0] is valid before accessing it in the poll request path\"\n  ]\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-26T20:33:41.272761+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

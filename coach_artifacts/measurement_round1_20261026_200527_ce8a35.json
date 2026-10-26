@@ -1,0 +1,137 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261026_200527_ce8a35",
+    "created_utc": "2026-10-26T20:06:02.068123+00:00",
+    "prompt_version": "v16-per-file-layers",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 33635,
+      "estimated_tokens": 11212,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 2562,
+      "sections": {
+        "modified_files": 5,
+        "types": 5,
+        "constants": 1,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "entries": 11,
+      "index_version": "idx_20261023_160454",
+      "index_commit": "e0c4c314a8e86b04c563a12232a345549fe9fb4c",
+      "format_version": "f3-diff-authoritative",
+      "error": null,
+      "base_check": {
+        "checked": 6,
+        "mismatched": []
+      },
+      "shown": {
+        "modified_files": 5,
+        "types": 5,
+        "constants": 1,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\repo_context.json",
+      "sha256": "dfac132eb891a42b83149964772734d5fa3143075c63277425283b5c9c297862",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qml/Main.qml] (app): Main.qml defines the primary ApplicationWindow for the QtTune application, establishing the main layout structure including a ToolBar header, a navigation sidebar, and a StackLayout to manage\u2026\n[app/qttunebridge.cpp] (bridge): This file implements the `FrameListModel` for managing a collection of CAN frames, the `FrameSortProxy` for sorting those frames by timestamp, and the `SignalListModel` for managing signal data.  [only on the diff's removed lines: SignalListModel]\n[app/qttunebridge.h] (bridge): This file defines the `QtTuneBridge` class and associated models (`FrameListModel`, `FrameSortProxy`, `SignalListModel`) to bridge core data with the Qt GUI by providing models for frame and signal\u2026  [only on the diff's removed lines: SignalListModel]\n[tests/test_bridge.cpp] (bridge): This file contains unit tests for the `QtTuneBridge` class, which are executed by the Google Test framework to verify connection lifecycle, thread-safe frame marshalling from worker threads to the\u2026\nAlso modified (build/docs/CI, no summary): app/CMakeLists.txt\n\n--- KNOWN TYPES ---\nqttune_session_t (opaque): typedef struct qttune_session qttune_session_t;  // Forward-declared opaque handle types\nqttune_frame_t (struct): typedef struct { uint64_t timestamp_us; uint32_t channel_id; uint8_t data[64]; uint8_t data_length; uint8_t is_extended; uint8_t rsvd[3]; } qttune_frame_t;  // Frame structure - POD only, no pointers except length\nqttune_status_t (enum): typedef enum { QT_OK = 0, QT_ERR_NULL_ARGUMENT = 1, QT_ERR_NOT_IMPLEMENTED = 2, QT_ERR_NO_TRANSPORT = 3, QT_ERR_OUT_OF_MEMORY = 4, QT_ERR_SESSION_CLOSED = 5, QT_ERR_ALREADY_REGISTERED = 6 } qttune_status_t;  // Status codes - append-only evolution for ABI stability\nQttuneSignalDef (struct): typedef struct { uint16_t id; char name[32]; QttuneSignalType type; uint8_t start_byte; uint8_t num_bytes; uint8_t bit_offset; uint8_t bit_length; float scale; float offset; char unit[16]; uint8_t decimal_places; uint32_t flags; uint32_t reserved[3]; } QttuneSignalDef;\nQttuneSignalSet (struct): typedef struct { uint32_t version; uint32_t count; const QttuneSignalDef* defs; } QttuneSignalSet;  // Single canonical definition \u2014 no duplicates\n\n--- CONSTANTS ---\nMaxFrames = 10000 (const)\n\n--- OMITTED (indexed entries this diff removes or rewrites) ---\nMaxInFlightFrames (constant, app/qttunebridge.h)\nqueued call site in app/qttunebridge.cpp using fetch_sub, m_inFlightFrames"
+    },
+    "prompt_fingerprint": "dbb1ed45156230be"
+  },
+  "inputs": {
+    "proposal": "Review: coalesced signal updates with LiveView Page v0.3.0 phase 2",
+    "original_proposal": "Review: coalesced signal updates with LiveView Page v0.3.0 phase 2",
+    "header_artifact": false,
+    "file_path": "app/CMakeLists.txt",
+    "layer": "bridge",
+    "layers": {
+      "app/CMakeLists.txt": "bridge",
+      "app/qml/Main.qml": "app",
+      "app/qttunebridge.cpp": "bridge",
+      "app/qttunebridge.h": "bridge",
+      "tests/test_bridge.cpp": "bridge"
+    },
+    "diff_sha256": "f031d33ab6406e94a530898e6bb84959f5629637e0bac4050b368cda8fac6129",
+    "diff_chars": 26695,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "claim: Qt header leakage in core module: qttunebridge.h includes <QAbstractListModel>, <QSortFilterProxyModel>, <QVariantMap> which are Qt types in a bridge file that should maintain C ABI compatibility; file: app/qttunebridge.h; quote: #include <QAbstractListModel>\n#include <QSortFilterProxyModel>\n#include <QVariantMap>",
+            "claim: Unsafe frame lifetime: frame pointer is stack-owned by mock worker but is dereferenced in a queued lambda without ensuring the frame data remains valid; file: app/qttunebridge.cpp; quote: const qttune_frame_t copy = *frame;   // frame is stack-owned by mock_worker\n\n    QMetaObject::invokeMethod(self, [self, copy]() {\n        self->handleFrameInternal(&copy);\n    }, Qt::QueuedConnection);",
+            "claim: Removed back-pressure mechanism: the m_inFlightFrames atomic counter and MaxInFlightFrames limit were deleted without replacement, removing queue backlog protection; file: app/qttunebridge.cpp; quote: void QtTuneBridge::handleFrameInternal(const qttune_frame_t* frame)\n{\n    if (!m_connected.load(std::memory_order_acquire)) {\n        return;\n    }\n\n    QVariantMap vm;"
+          ],
+          "questions": [
+            "What is the intended lifetime model for the signal set reference passed to SignalListModel::setSignalSet?",
+            "How should signal decoding be handled now that the SignalListModel and batching timer were removed?",
+            "Is the TODO comment about coalescing referring to a future implementation or indicating incomplete code?",
+            "What thread owns the qttune_mock_signal_set() and when might it become invalid?",
+            "claim: Dangling pointer risk: signal set pointer is obtained once but may become invalid if session disconnects while queued signal decoding is pending in GUI thread; file: app/qttunebridge.cpp; quote: // Decode signals into staging buffer\n    const QttuneSignalSet* set = qttune_mock_signal_set();\n    m_stagingBuffer.clear();"
+          ],
+          "nits": [
+            "Add explicit comment about why qttune_frame_t copy is safe (value type, no pointers)",
+            "Consider using std::atomic_load_ex for the m_connected check with memory_order_acquire",
+            "The comment about 'frame is stack-owned by mock_worker' should be verified as accurate",
+            "Consider adding a safeguard to ensure signal set validity before decoding"
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 1
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 33635,
+              "prompt_eval_count": 9800,
+              "eval_count": 1415,
+              "thinking_chars": 4048,
+              "content_chars": 2624,
+              "done_reason": "stop",
+              "wall_s": 34.15,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n        {\n            \"claim\": \"Qt header leakage in core module: qttunebridge.h includes <QAbstractListModel>, <QSortFilterProxyModel>, <QVariantMap> which are Qt types in a bridge file that should maintain C ABI compatibility\",\n            \"file\": \"app/qttunebridge.h\",\n            \"quote\": \"#include <QAbstractListModel>\\n#include <QSortFilterProxyModel>\\n#include <QVariantMap>\"\n        },\n        {\n            \"claim\": \"Unsafe frame lifetime: frame pointer is stack-owned by mock worker but is dereferenced in a queued lambda without ensuring the frame data remains valid\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"const qttune_frame_t copy = *frame;   // frame is stack-owned by mock_worker\\n\\n    QMetaObject::invokeMethod(self, [self, copy]() {\\n        self->handleFrameInternal(&copy);\\n    }, Qt::QueuedConnection);\"\n        },\n        {\n            \"claim\": \"Dangling pointer risk: signal set pointer is obtained once but may become invalid if session disconnects while queued signal decoding is pending in GUI thread\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"// Decode signals into staging buffer\\n    const QttuneSignalSet* set = qttune_mock_signal_set();\\n    m_stagingBuffer.clear();\"\n        },\n        {\n            \"claim\": \"Removed back-pressure mechanism: the m_inFlightFrames atomic counter and MaxInFlightFrames limit were deleted without replacement, removing queue backlog protection\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"void QtTuneBridge::handleFrameInternal(const qttune_frame_t* frame)\\n{\\n    if (!m_connected.load(std::memory_order_acquire)) {\\n        return;\\n    }\\n\\n    QVariantMap vm;\"\n        }\n    ],\n    \"questions\": [\n        \"What is the intended lifetime model for the signal set reference passed to SignalListModel::setSignalSet?\",\n        \"How should signal decoding be handled now that the SignalListModel and batching timer were removed?\",\n        \"Is the TODO comment about coalescing referring to a future implementation or indicating incomplete code?\",\n        \"What thread owns the qttune_mock_signal_set() and when might it become invalid?\"\n    ],\n    \"nits\": [\n        \"Add explicit comment about why qttune_frame_t copy is safe (value type, no pointers)\",\n        \"Consider using std::atomic_load_ex for the m_connected check with memory_order_acquire\",\n        \"The comment about 'frame is stack-owned by mock_worker' should be verified as accurate\",\n        \"Consider adding a safeguard to ensure signal set validity before decoding\"\n    ]\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-26T20:06:02.068017+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

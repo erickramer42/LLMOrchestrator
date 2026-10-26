@@ -58,8 +58,10 @@ The two agents have different jobs:
 | `file_metadata.py` | File path → layer (core / bridge / app) |
 | `golden_tests.py` | Golden suite: live-model fixtures and deterministic guardrail units |
 | `review_fixtures.py` | Code snippets the golden suite and the bake-off share |
-| `eval_harness/` | FP-rate probe, model bake-off, and runners and scorers for round-1 and round-2 measurements |
+| `eval_harness/` | Measurement runners and scorers: round-1 and round-2 samples, the corpus, offline replay of judge variants, the probe and the model bake-off |
 | `tests/` | Deterministic regression tests, with Ollama faked at the HTTP layer |
+
+Every file, the evaluation harness and the committed evidence included, is in [file-map.md](file-map.md).
 
 The dependency direction is acyclic:
 - prompts, layer maps and the diff reader are leaves;
@@ -135,7 +137,10 @@ without any model.
 7. **Layer-aware review context.** File paths map to QtTune's layers
    (core / bridge / app), and each layer's rules are injected into the
    transcript. So core-module rules (no Qt headers, C ABI purity) don't
-   fire on bridge code, where Qt is legitimate.
+   fire on bridge code, where Qt is legitimate. A diff spanning several
+   layers gets its first file's rules only. Sending each file's rules
+   was measured and cost precision on the bridge fixture (ADR-0002,
+   twenty-first measurement), so it did not ship.
 
 8. **Prompts are scoped by artifact type.** Header-only C ABI stubs and
    implementation code get different expectations
@@ -162,9 +167,37 @@ without any model.
     So a record can be matched to its fixture and re-run.
 
 11. **Multi-run measurements over single runs.** Variance is
-    information. Measurements take 10 samples of the reviewer's first
-    round. Predictions are written into the ADR before each run, and
-    the results go next to them, misses included.
+    information. Measurements take 10 to 20 samples of the reviewer's
+    first round. Predictions are written into the ADR before each run,
+    and the results go next to them, misses included.
+
+## Testing and evaluation
+
+The system is built so that most of it can be checked without a model.
+
+- **Regression tests with a fake model.** `tests/` replaces Ollama at
+  the HTTP layer, so the real client, retries, judge, transcript
+  builder and decision records run in CI in seconds. Tests pin the
+  prompt fingerprints, so an unintended prompt change fails a test.
+- **A measurement mode that is the real call.** `run_round1_review`
+  makes exactly the request a debate's first round makes (pinned by a
+  test) and saves it as a measurement record.
+- **A corpus of real diffs with known bugs.** Seven QtTune diffs, five
+  of them the reverse of a bug-fix commit, each with an index built
+  from its own base commit, so retrieval never shows the model code
+  from the wrong version.
+- **Hand labels as data.** Every scored blocker has a label in
+  `eval_harness/labels.json` or `corpus_labels.json`, written before
+  scoring, and tests pin the label counts so a lost record or a relabel
+  shows up.
+- **Offline replay.** Archived replies are re-judged under candidate
+  judge rules with no model call. Judge changes are tried there first,
+  and the current judge must reproduce every stored result.
+- **Ceiling checks and pilots.** Before a batch, a no-model check asks
+  whether a lever could reach its bar at all, and a three-call pilot
+  with a registered exit catches wiring problems early.
+
+The results of all of this are in [results.md](results.md).
 
 ## Transferable patterns
 
@@ -186,6 +219,10 @@ These carry over to any codebase:
 - **Forensic re-adjudication of eval ground truth:** when the code state
   behind your triage was wrong, your false-positive labels are wrong
   too.
+- **Pre-registered measurement:** write the prediction and the ship
+  rule before the run, so a result cannot quietly move the goalposts.
+- **Ceiling checks before GPU time:** compute the best case a lever
+  could reach with no model, and drop it if the best case misses.
 
 To adapt the tribunal to another codebase, see
 [portability_guide.md](portability_guide.md).

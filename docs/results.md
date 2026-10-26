@@ -1,146 +1,176 @@
-# Measured Results
+# Results
 
-How the tribunal performed on real code, what went wrong, and what each
-fix changed. The full record, with every prediction written before its
-run, is [ADR-0002](decisions/0002-adjudication-and-fp-remediation.md).
-Model selection is [ADR-0001](decisions/0001-model-selection.md).
+What the tribunal achieved on real code, what each change did, and what
+did not work. Every number here comes from committed records and hand
+labels; the full log, with each prediction written before its run, is
+[ADR-0002](decisions/0002-adjudication-and-fp-remediation.md). Model
+selection is [ADR-0001](decisions/0001-model-selection.md).
 
-## Synthetic fixtures were not enough
+**In short:**
+- On its first real diff, 2 of 12 blockers were correct (17%). After
+  fixes made one failure class at a time, 94% of the reviewer's stored
+  blockers are valid on that diff.
+- From that diff alone, the reviewer found two real bugs that had
+  shipped in QtTune and were fixed later.
+- On a corpus of seven other real diffs, precision is lower: 64% of
+  stored blockers are valid, with a mean recall of 0.41 per known bug.
+  That gap is the current frontier, and six measured attempts to close
+  it are published below, failures included.
 
-On synthetic fixtures, the reviewer scored 100%: 3 of 3 golden fixtures
-passed, and the probe found no false positives in 5 runs on a clean
-header. On its first real workload, a 300-line refactor of QtTune's
-Qt bridge, **2 of 12 blockers were correct (17%)**.
+## How the measurements work
 
-Fixture-pass, production-fail is a known trap. This repo measures both.
+- **One call, many samples.** A measurement samples the reviewer's
+  round-1 reply 10 to 20 times per input. Round 1 is the only call
+  free of the other agent's influence, and single debates proved too
+  noisy to compare.
+- **Hand labels against the right code.** Each blocker is labeled valid
+  or false against the code as the diff leaves it, by failure class.
+  Labels are written before any score is computed.
+- **Pre-registration.** Each change's prediction and ship rule go into
+  ADR-0002 before the first sample. Changes made after seeing data are
+  dated amendments, and a missed prediction stays in the record.
+- **Cheap checks first.** Judge changes are first replayed offline over
+  archived replies (no model). New levers get a no-model ceiling check
+  ("could this reach the bar at all?") and a three-call pilot with a
+  registered exit before any batch.
+- **Controls when the baseline is in doubt.** The twenty-first
+  measurement sampled the shipped prompt alongside the candidate.
 
-## Fixing it class by class
+## The bridge fixture: from 17% to 94%
 
-The false positives were sorted into failure classes, each class was
-fixed, and the result was re-measured. The input is the same diff every
-time, [docs/fixtures/qttune_bridge_refactor.diff](fixtures/qttune_bridge_refactor.diff).
+The first real workload was a 300-line refactor of QtTune's Qt bridge,
+[qttune_bridge_refactor.diff](fixtures/qttune_bridge_refactor.diff). On
+synthetic fixtures the reviewer had scored 100%; here 2 of 12 blockers
+were correct. The false positives were sorted into classes, each class
+was fixed, and the result was re-measured on the same diff.
 
-The early runs were labelled again on 2026-10-23, against the code as
-the diff leaves it. The first labels had relied on the current QtTune
-tree, and they were wrong in both directions (below).
-
-| Blockers | First run | After v1 | After context pack (N=3) |
+| Blockers | First run | After v1 guardrails | With the context pack (N=3) |
 |---|---|---|---|
 | Counted | 12 (3 rounds) | 6 (3 rounds) | 10 (round 1) |
 | **Valid:** the data race | 2 | 4 | 1 |
 | **Valid:** the removed backpressure gate | 0 | 0 | 2 |
-| Layer-rule misapplication (Qt includes in bridge code) | 3 | 0 | 0 |
+| Layer rules misapplied (Qt includes in bridge code) | 3 | 0 | 0 |
 | A defect in code the diff removes, read as current | 2 | 1 | 0 |
-| Deletion hallucination (claims that removed code survives) | 1 | 0 | 6 |
+| Claims that removed code survives | 1 | 0 | 6 |
 | Other false positives | 4 | 1 | 1 |
 | **Precision** | **2 of 12 (17%)** | **4 of 6 (67%)** | **3 of 10 (30%)** |
 
-- **Layer metadata** in the transcript removed the layer-rule false
-  positives. **Taxonomy discipline and the hedge guardrail** keep
-  speculation out of blockers.
-- **The repo-context pack did not remove a false-positive class.** Its
-  target, confident thread-safety claims, turned out to be the real
-  race. With the pack, the race was found in 1 of 3 runs. The first
-  gate blockers and the deletion hallucinations appeared with it.
-- **Deletion hallucinations** fell from 0.5 per run to 0.1 with
-  evidence-quoted blockers (10 samples each).
-- **Single debates are noisy.** The first two columns are one debate
-  each. "4 of 6" is the same race, stated four times.
-
-### Later measurements
-
-The later measurements took 10 round-1 samples each.
+Then 10 round-1 samples per change:
 
 | Change | Valid share of stored blockers | Notes |
 |---|---|---|
-| Diff made authoritative over the context pack | 42% (11 of 26) | Deletion hallucinations persisted at 0.5 per run, so they did not come from the pack. |
-| Removing the ban on hedged blockers (not shipped) | 58% (15 of 26) | The reviewer did not hedge more. Its wrong blockers are confident misreadings. |
-| Quotes accepted from either side of the diff (not shipped) | 60% | The hallucinations moved to quoting removed lines. |
-| **Quotes must be post-change code (shipped)** | **94% (17 of 18)** | 0.1 deletion hallucinations per run; 2 valid blockers lost to the check. |
-| **Input fenced as data (shipped)** | **80% (20 of 25)** | The data race was found in 10 of 10 runs; 4 other false positives, against 0 before. A replication gave 94% (17 of 18) and 1 other false positive. |
-| Separate critiques section in round 2 (not shipped) | 93% in both arms | It dropped a real blocker and ran away more often. |
-| **Critiques section revised: a checked blocker stands (shipped, current)** | 94% in both arms | Round 2 only. Each arm moved the gate blocker to a question once; runaways 2 against 1. |
+| Diff made authoritative over the context pack | 42% (11 of 26) | Claims of surviving removed code held at 0.5 per run, so they did not come from the pack. |
+| Removing the ban on hedged blockers (not shipped) | 58% (15 of 26) | The reviewer did not hedge more; its wrong blockers are confident misreadings. |
+| Quotes accepted from either side of the diff (not shipped) | 60% | The false claims moved to quoting removed lines. |
+| **Blockers must quote post-change code (shipped)** | **94% (17 of 18)** | Claims of surviving removed code fell to 0.1 per run; 2 valid blockers lost to the check. |
+| **Reviewed code fenced as data (shipped)** | **80% (20 of 25)** | The data race in 10 of 10 runs. A replication gave 94% (17 of 18). |
+| **Previous round's critiques in their own section (shipped)** | 94% in both arms | Round 2, paired against the old format; no metric worse. |
+| **Claim–quote linkage, judge j8 (shipped)** | 94% (control, 19 runs) | 0.11 false positives per review; the race in 53% of runs, the gate in 42%. |
 
-"Valid" means the blocker was judged correct in a hand review against
-the diff's post-state. ADR-0002 lists every blocker with its label.
+"Valid" means correct in a hand review against the diff's post-state.
+ADR-0002 lists every blocker with its label.
 
 ## Two real bugs, found from a diff alone
 
-The fixture diff is the reverse patch of a real merged QtTune commit, so
-the code it leaves is a state of QtTune that actually shipped. That code
-has two known bugs, both later fixed in QtTune's history:
+The fixture is the reverse patch of a merged QtTune commit, so the code
+it leaves is a state of QtTune that actually shipped. That code has two
+bugs, both fixed later in QtTune's history:
 - a worker-thread read of the GUI-owned `m_currentFrameCount`, a data
   race;
-- a backpressure gate on the cumulative frame count. It does not bound
-  the queue, and it freezes frame processing past 10,000 frames.
+- a backpressure check on the cumulative frame count, which does not
+  bound the queue and freezes frame processing past 10,000 frames.
 
-The reviewer found both from the diff alone. It flagged the race from
-the first run on, but the early triage labelled those blockers false
-positives, from the current QtTune tree. Forensics on the fixture
-flagged them on 2026-10-13, and the 2026-10-23 re-triage corrected them.
-The gate was first a blocker with the context pack, and a later sample
-stated the freeze itself.
+The reviewer found both from the diff alone. The early triage had
+labeled the race blockers false positives, because it checked them
+against the current QtTune tree instead of the diff's post-state. A
+re-triage on 2026-10-23 corrected that in both directions: the race
+blockers became true positives, and the first run's only "true
+positive", a hardcoded 8-byte decode, turned out to be in code the diff
+removes. The lesson carried into every later measurement: label against
+the code the diff leaves.
 
-The re-triage also corrected the other way. The first run's only
-"true positive", a hardcoded 8-byte decode buffer, is a real QtTune bug
-in code that this diff removes. As a blocker on this diff, it is
-wrong.
+## The corpus: does it generalize?
 
-No exhaustive triage of the fixture has been done, so these two are the
-known bugs, not necessarily all of them. ADR-0002, "Re-Triage of the
-Early Runs", has every blocker's old and new label.
+A corpus of seven real QtTune diffs tests whether the fixes transfer.
+Five reverse a bug-fix commit, so each reintroduces known bugs (eleven
+in all); two are clean forward changes, for a false-positive rate. Each
+diff gets an index of its own base commit.
+
+| Measurement | Runs | Valid share | False positives per review | Mean recall per bug |
+|---|---|---|---|---|
+| Baseline (fourteenth) | 33 | 57% | 0.55 | 0.46 |
+| With claim–quote linkage, j8 (both samples) | 66 | 64% | 0.41 | 0.41 |
+
+What the corpus showed:
+- **The quote rule costs recall where bugs are removals.** 14 of the 17
+  items the evidence check demoted in the baseline were valid: the bugs
+  are deleted safety checks, and the reviewer quotes the deleted lines,
+  which a blocker may not do.
+- **A new false-positive class:** a removed check whose invariant
+  another function enforces. It accounts for about half the stored
+  false positives, all on one diff.
+- **Voting across samples does not transfer.** It cut bridge false
+  positives, but on the corpus the false claims recur across samples,
+  and voting raised false positives from 0.55 to 0.98 per review
+  (offline replay, fifteenth measurement).
+- **Claim–quote linkage does.** A blocker whose claim names code that
+  its quote's hunk does not contain becomes a question. On a fresh
+  sample, labeled before replay, it cut false positives from 0.39 to
+  0.30 per review with recall unchanged, and shipped as judge j8.
+
+## Levers that did not ship
+
+Each was registered with a prediction and a ship rule, and each failed
+its rule. They are kept because the reasons are informative.
+
+| Measurement | Idea | Result | Why |
+|---|---|---|---|
+| Seventeenth | A second reviewer call that offers back blockers demoted for their quotes, asking only for a new quote | Recall +0.009 against a +0.10 bar | 19 of 33 calls ran to the output cap and 6 answered as a fresh review: the request kept the reviewer's role. |
+| Eighteenth | A dedicated repair prompt (two pilots) | Closed at the pilot | A no-model ceiling showed the bar reachable only if the model declined almost every false claim; in the pilot it declined its valid ones too. |
+| Nineteenth | A round-1 prompt rule: quote the line a removal leaves unprotected | Recall +0.05 against +0.10 | Most valid claims still quoted removed lines; where they did not, the quoted code sat in another hunk, which linkage refuses. |
+| Nineteenth, amendment | Linkage across hunks for such claims | Closed without a run | Replaying with no linkage at all bounds any variant at +0.02 recall. |
+| Twentieth | Show the model the unchanged function that enforces a removed check | Target false positives rose, 1.33 → 1.67 per review | Every request carried the refuting code and no claim used it; the new section also tripled the bridge's false positives, which a control run confirmed. |
+| Twenty-first | Give each file of a multi-file diff its own layer rules, not only the first file's | Bridge false positives 0.11 → 0.33 per review, against a bar of 0.21 | The target class did not move (1.11 → 1.05 per run). On the bridge, naming the QML file drew claims toward the removed UI feature, and some quoted lines the evidence check accepts. |
+
+**What these taught:**
+- Facts placed in front of a small model are not facts it uses; the
+  invariant-elsewhere claims did not change when the refuting function
+  was in the prompt.
+- A request that keeps an agent's role gets that role's behavior, not
+  the new task.
+- What a request names, the model looks at: listing a UI file with UI
+  rules turned bridge claims toward the UI change, even though the
+  rules were correct.
+- A ceiling check without a model is worth running first: twice it
+  showed whether a lever could reach its bar before any GPU time.
 
 ## What it cost
 
-- **False-positive volume did not fall at first. It moved.** With the
-  context pack, the reviewer started inventing surviving references to
-  code the diff removes (6 in one run of three, none in the others).
-  Evidence-quoted blockers later removed most of it.
-- **One run ran out of context** in round 2. Telemetry later showed that
-  thinking output, not the prompt, fills the window. Output is now
-  capped, and oversized input is refused.
-- **The hedge guardrail demoted a hedged true claim.** This is by
-  design: a hedged claim is a question, and it stays visible in the
-  verdict.
-- **The precision did not travel whole to other diffs.** On a corpus of
-  seven real QtTune diffs (five reverse a bug fix, two are clean), 24 of
-  42 stored blockers were valid (57%), and mean recall per known bug was
-  0.46. Half the false positives were one new class in one diff: a
-  removed check whose invariant another function enforces. The quote
-  rule, the bridge fixture's main false-positive fix, cost recall here:
-  14 of the 17 blockers it demoted were valid, because these bugs are
-  removed safety checks and the reviewer quoted the removed lines
-  (ADR-0002, fourteenth measurement).
+- **False positives moved before they fell.** With the context pack,
+  the reviewer began inventing surviving references to removed code.
+  Evidence-quoted blockers later removed most of them.
+- **Thinking can run to the output cap.** About 5% of first attempts;
+  the retry usually recovers but costs minutes. Output is capped, and
+  oversized input is refused before any model call.
+- **The hedge guardrail demotes hedged true claims**, by design. They
+  stay visible as open questions.
+- **Recall on removal-caused bugs** is the price of the quote rule, and
+  the levers above did not buy it back.
 
-## Evidence
+## Evidence and reproduction
 
-The records are committed alongside their inputs.
-- **Decision records:**
-  - baseline: `coach_artifacts/decision_debate_20261007_203917.json`;
-  - re-measurement: `coach_artifacts/decision_debate_20261009_014257.json`;
-  - live-loop control: `decision_debate_20261013_170208_71915a.json`;
-  - context-pack pilot: `decision_debate_20261013_201540_ff958c.json`;
-  - three scored context-pack runs: `20261013_203802`,
-    `20261013_204845` and `20261013_210548`.
-- **Measurement records:** `coach_artifacts/measurement_round1_*.json`
-  and `measurement_round2_*.json`, 10 samples per arm.
-- **Probe logs:** [probe_logs/](../probe_logs/).
-- **Input fixture:** [docs/fixtures/](fixtures/).
+- **Records:** `coach_artifacts/` holds every debate and measurement
+  record, each stamped with its prompt version, judge version and
+  prompt fingerprint, so a rerun can be matched to the original.
+  [file-map.md](file-map.md) and [history.md](history.md) say which
+  records belong to which measurement.
+- **Labels:** `eval_harness/labels.json` (bridge fixture) and
+  `eval_harness/corpus_labels.json` (corpus); tests pin each sample's
+  label counts.
+- **Inputs:** [docs/fixtures/](fixtures/), with the corpus manifest
+  and each fixture's index.
+- **Commands:** [usage.md](usage.md). The offline replay re-scores
+  archived records with no model.
 
-## Reproducing the results
-
-Every number in `docs/decisions/` comes from committed records and can
-be re-run with the eval harness; [usage.md](usage.md) has the commands.
-- **The context-pack measurement** (ADR-0002, fourth measurement): run
-  the debate command three times against the committed fixture and
-  index.
-- **The fifth to eleventh measurements:** `eval_harness.round1` and
-  `eval_harness.round2` against the same fixture. Each record names its
-  prompt version, judge version and prompt fingerprint, so a rerun can
-  be matched to the original.
-- **Probe and bake-off:** their scoring was corrected on 2026-10-10, so
-  that parse failures and timeouts count against a model. ADR-0001's
-  timeout row predates a working timeout counter.
-
-Live runs are nondeterministic. The regression suite in `tests/` needs
-no model and is the pass/fail signal.
+Live runs are nondeterministic; the regression suite in `tests/` is the
+pass/fail signal.

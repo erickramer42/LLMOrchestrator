@@ -65,7 +65,12 @@ Any edit to a prompt here must be reflected by bumping PROMPT_VERSION."""
 # poll_override FPs per review rose 1.33 -> 1.67 and the bridge's 0.18 ->
 # 0.60, so pack f3 and the earlier indexes are back. The f4 code is in
 # commit d4beb83.
-PROMPT_VERSION = "v11.1-critiques-feedback"
+# v16 (2026-10-26, ADR-0002 twenty-first measurement): the v11.1 text;
+# a diff whose files fall in several layers gets each file's layer and
+# each layer's rules (file_metadata.layer_note_for), not only the first
+# file's note. Single-layer requests are unchanged. Measured; ships only
+# by the twenty-first's rule.
+PROMPT_VERSION = "v16-per-file-layers"
 
 AUTO_ENGINEER_PROMPT = """You are a senior automotive engineer advocating for QtTune's v0.2.0 goals:
 shipping velocity, J2534/ECU domain correctness, and safety.

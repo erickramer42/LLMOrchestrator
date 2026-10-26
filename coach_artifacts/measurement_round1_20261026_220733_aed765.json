@@ -1,0 +1,136 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261026_220733_aed765",
+    "created_utc": "2026-10-26T22:08:06.902137+00:00",
+    "prompt_version": "v16-per-file-layers",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 33635,
+      "estimated_tokens": 11212,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 2562,
+      "sections": {
+        "modified_files": 5,
+        "types": 5,
+        "constants": 1,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "entries": 11,
+      "index_version": "idx_20261023_160454",
+      "index_commit": "e0c4c314a8e86b04c563a12232a345549fe9fb4c",
+      "format_version": "f3-diff-authoritative",
+      "error": null,
+      "base_check": {
+        "checked": 6,
+        "mismatched": []
+      },
+      "shown": {
+        "modified_files": 5,
+        "types": 5,
+        "constants": 1,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\repo_context.json",
+      "sha256": "dfac132eb891a42b83149964772734d5fa3143075c63277425283b5c9c297862",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qml/Main.qml] (app): Main.qml defines the primary ApplicationWindow for the QtTune application, establishing the main layout structure including a ToolBar header, a navigation sidebar, and a StackLayout to manage\u2026\n[app/qttunebridge.cpp] (bridge): This file implements the `FrameListModel` for managing a collection of CAN frames, the `FrameSortProxy` for sorting those frames by timestamp, and the `SignalListModel` for managing signal data.  [only on the diff's removed lines: SignalListModel]\n[app/qttunebridge.h] (bridge): This file defines the `QtTuneBridge` class and associated models (`FrameListModel`, `FrameSortProxy`, `SignalListModel`) to bridge core data with the Qt GUI by providing models for frame and signal\u2026  [only on the diff's removed lines: SignalListModel]\n[tests/test_bridge.cpp] (bridge): This file contains unit tests for the `QtTuneBridge` class, which are executed by the Google Test framework to verify connection lifecycle, thread-safe frame marshalling from worker threads to the\u2026\nAlso modified (build/docs/CI, no summary): app/CMakeLists.txt\n\n--- KNOWN TYPES ---\nqttune_session_t (opaque): typedef struct qttune_session qttune_session_t;  // Forward-declared opaque handle types\nqttune_frame_t (struct): typedef struct { uint64_t timestamp_us; uint32_t channel_id; uint8_t data[64]; uint8_t data_length; uint8_t is_extended; uint8_t rsvd[3]; } qttune_frame_t;  // Frame structure - POD only, no pointers except length\nqttune_status_t (enum): typedef enum { QT_OK = 0, QT_ERR_NULL_ARGUMENT = 1, QT_ERR_NOT_IMPLEMENTED = 2, QT_ERR_NO_TRANSPORT = 3, QT_ERR_OUT_OF_MEMORY = 4, QT_ERR_SESSION_CLOSED = 5, QT_ERR_ALREADY_REGISTERED = 6 } qttune_status_t;  // Status codes - append-only evolution for ABI stability\nQttuneSignalDef (struct): typedef struct { uint16_t id; char name[32]; QttuneSignalType type; uint8_t start_byte; uint8_t num_bytes; uint8_t bit_offset; uint8_t bit_length; float scale; float offset; char unit[16]; uint8_t decimal_places; uint32_t flags; uint32_t reserved[3]; } QttuneSignalDef;\nQttuneSignalSet (struct): typedef struct { uint32_t version; uint32_t count; const QttuneSignalDef* defs; } QttuneSignalSet;  // Single canonical definition \u2014 no duplicates\n\n--- CONSTANTS ---\nMaxFrames = 10000 (const)\n\n--- OMITTED (indexed entries this diff removes or rewrites) ---\nMaxInFlightFrames (constant, app/qttunebridge.h)\nqueued call site in app/qttunebridge.cpp using fetch_sub, m_inFlightFrames"
+    },
+    "prompt_fingerprint": "dbb1ed45156230be"
+  },
+  "inputs": {
+    "proposal": "Review: coalesced signal updates with LiveView Page v0.3.0 phase 2",
+    "original_proposal": "Review: coalesced signal updates with LiveView Page v0.3.0 phase 2",
+    "header_artifact": false,
+    "file_path": "app/CMakeLists.txt",
+    "layer": "bridge",
+    "layers": {
+      "app/CMakeLists.txt": "bridge",
+      "app/qml/Main.qml": "app",
+      "app/qttunebridge.cpp": "bridge",
+      "app/qttunebridge.h": "bridge",
+      "tests/test_bridge.cpp": "bridge"
+    },
+    "diff_sha256": "f031d33ab6406e94a530898e6bb84959f5629637e0bac4050b368cda8fac6129",
+    "diff_chars": 26695,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "claim: API contract violation: The header removes SignalListModel and its associated properties (signalModel, signalBatchCount) but the QML file was deleted that depended on these. The remaining QML/Main.qml references QtTune.signalModel which will no longer exist after this change, creating a broken API.; file: app/qml/Main.qml; quote: text: qsTr(\"frames:%1 notify:%2 drop:%3\")\n                .arg(QtTune.frameCount)\n                .arg(QtTune.guiNotifyCount)\n                .arg(QtTune.droppedFrames)"
+          ],
+          "questions": [
+            "What is the intended purpose of removing SignalListModel and signal decoding? The LiveViewPage QML is deleted, but the signal model properties are removed from the bridge without clear replacement.",
+            "How should the QML layer access signal data now that SignalListModel is removed? The LiveViewPage that used QtTune.signalModel is deleted, but no alternative is provided.",
+            "Is the backpressure mechanism truly intended to be removed? The original code had careful comments about bounding the queued backlog.",
+            "What replaces the signal batching/coalescing functionality? The commit title mentions 'coalesced signal updates' but the implementation removes the batching mechanism.",
+            "claim: C ABI integrity violation: The file includes 'qttune/signals.h' which provides signal decoding functions, but the code no longer includes this header after the removal of signal decoding logic. The remaining code still references qttune_decode_signal if it were to be used, and the signal-related types like QttuneSignalSet are still needed for the core functionality.; file: app/qttunebridge.cpp; quote: #include \"qttune/signals.h\"",
+            "claim: Memory safety issue: The code removes the signal staging buffer (m_stagingBuffer) and coalescing timer that were used to batch signal updates. This eliminates the coalesced signal updates that the commit title mentions. Without these, signal updates happen immediately on every frame without batching, defeating the purpose of the change.; file: app/qttunebridge.cpp; quote: // Decode signals into staging buffer\n    const QttuneSignalSet* set = qttune_mock_signal_set();\n    m_stagingBuffer.clear();",
+            "claim: Thread safety violation: The code removes the in-flight frame counting mechanism (m_inFlightFrames and MaxInFlightFrames) that was used for backpressure to prevent queue overflow. The comment in the original code explicitly mentions 'Backpressure: bound the QUEUED backlog'. Without this protection, frames could queue indefinitely in the Qt event loop.; file: app/qttunebridge.cpp; quote: self->m_droppedFrames.fetch_add(1, std::memory_order_relaxed);"
+          ],
+          "nits": [
+            "The code formatting has some inconsistencies (extra spaces in comments, alignment issues)",
+            "Consider adding documentation about the new backpressure strategy if m_currentFrameCount check is sufficient",
+            "The forceFrameCountForTesting method was removed but is used in tests - need to verify test compatibility"
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 2
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 1
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 33635,
+              "prompt_eval_count": 9800,
+              "eval_count": 1658,
+              "thinking_chars": 4572,
+              "content_chars": 3350,
+              "done_reason": "stop",
+              "wall_s": 33.24,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n        {\n            \"claim\": \"C ABI integrity violation: The file includes 'qttune/signals.h' which provides signal decoding functions, but the code no longer includes this header after the removal of signal decoding logic. The remaining code still references qttune_decode_signal if it were to be used, and the signal-related types like QttuneSignalSet are still needed for the core functionality.\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"#include \\\"qttune/signals.h\\\"\"\n        },\n        {\n            \"claim\": \"Thread safety violation: The code removes the in-flight frame counting mechanism (m_inFlightFrames and MaxInFlightFrames) that was used for backpressure to prevent queue overflow. The comment in the original code explicitly mentions 'Backpressure: bound the QUEUED backlog'. Without this protection, frames could queue indefinitely in the Qt event loop.\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"self->m_droppedFrames.fetch_add(1, std::memory_order_relaxed);\"\n        },\n        {\n            \"claim\": \"Memory safety issue: The code removes the signal staging buffer (m_stagingBuffer) and coalescing timer that were used to batch signal updates. This eliminates the coalesced signal updates that the commit title mentions. Without these, signal updates happen immediately on every frame without batching, defeating the purpose of the change.\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"// Decode signals into staging buffer\\n    const QttuneSignalSet* set = qttune_mock_signal_set();\\n    m_stagingBuffer.clear();\"\n        },\n        {\n            \"claim\": \"API contract violation: The header removes SignalListModel and its associated properties (signalModel, signalBatchCount) but the QML file was deleted that depended on these. The remaining QML/Main.qml references QtTune.signalModel which will no longer exist after this change, creating a broken API.\",\n            \"file\": \"app/qml/Main.qml\",\n            \"quote\": \"text: qsTr(\\\"frames:%1 notify:%2 drop:%3\\\")\\n                .arg(QtTune.frameCount)\\n                .arg(QtTune.guiNotifyCount)\\n                .arg(QtTune.droppedFrames)\"\n        }\n    ],\n    \"questions\": [\n        \"What is the intended purpose of removing SignalListModel and signal decoding? The LiveViewPage QML is deleted, but the signal model properties are removed from the bridge without clear replacement.\",\n        \"How should the QML layer access signal data now that SignalListModel is removed? The LiveViewPage that used QtTune.signalModel is deleted, but no alternative is provided.\",\n        \"Is the backpressure mechanism truly intended to be removed? The original code had careful comments about bounding the queued backlog.\",\n        \"What replaces the signal batching/coalescing functionality? The commit title mentions 'coalesced signal updates' but the implementation removes the batching mechanism.\"\n    ],\n    \"nits\": [\n        \"The code formatting has some inconsistencies (extra spaces in comments, alignment issues)\",\n        \"Consider adding documentation about the new backpressure strategy if m_currentFrameCount check is sufficient\",\n        \"The forceFrameCountForTesting method was removed but is used in tests - need to verify test compatibility\"\n    ]\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-26T22:08:06.902041+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

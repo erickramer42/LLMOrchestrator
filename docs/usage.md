@@ -139,7 +139,13 @@ python -m eval_harness.replay --diff docs/fixtures/qttune_bridge_refactor.diff -
 ```
 
 It first checks that the current judge reproduces every record's stored
-split. Records without labels are listed and left out.
+split. Records without labels are listed and left out. With `--corpus`
+it does the same for corpus records, each judged against its own
+fixture's diff and scored with `eval_harness/corpus_labels.json`:
+
+```sh
+python -m eval_harness.replay --corpus "coach_artifacts/measurement_round1_20261024_0*.json"
+```
 
 **The corpus** (backlog #7): seven real QtTune diffs in
 `docs/fixtures/corpus/`, described by `docs/fixtures/corpus.json`. Five
@@ -160,7 +166,19 @@ python -m eval_harness.corpus score "coach_artifacts/measurement_round1_*.json"
 (runs with a stored blocker whose claim names one of its symbols), bugs
 found only among demoted blockers, and the blockers matching no known
 bug, which are false-positive candidates to triage by hand. A symbol
-match is a pointer, not a verdict: read the claim.
+match is a pointer, not a verdict: read the claim. With the hand labels
+in `corpus_labels.json` it also prints the labeled summary; `--labels
+none` prints the items alone, for labeling a new sample before scoring
+it.
+
+**The repair pass** (seventeenth and eighteenth measurements, not
+shipped) can be re-run paired on archived replies:
+
+```sh
+python -m eval_harness.repair run --set corpus --dry    # what would be offered, no model call
+python -m eval_harness.repair score --set corpus
+python -m eval_harness.repair ceiling --set corpus      # the best any repair could do, no model
+```
 
 Any review can use another index: `python orchestrator.py --index REPO
 --no-llm --index-out PATH` writes one without touching

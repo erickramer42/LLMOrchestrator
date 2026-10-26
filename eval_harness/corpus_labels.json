@@ -18,7 +18,8 @@
     "fresh_rule": "A claim that states a known bug's defect is credited to it even when a side detail is wrong (68d66c #e1 calls the internal header an ABI; 68d66c #e3 says the helper checked BUFFER_OVERFLOW; 0390ed #3 calls the inlined code orphaned). A claim whose asserted consequence is false is not credited even when it points at the buggy line (c1e188 #3 says scheduler and poll both run; the worker's branches are exclusive).",
     "decode_length_b47687c_fresh": "7a3f78 #1 and 2964be #3 claim a data race on m_stagingBuffer; handleFrameInternal is queued to the GUI thread, where the coalescing timer also runs. 2964be #4: m_lastReportedDropped is updated in the post-state. 2964be #e1: the post-state (b975457) builds without the signals.h include in the header.",
     "v14_nineteenth": "Sample 'v14' (records 20261026_014403 to 20261026_040210; the retried fcda47 and the pilot's 011519 and 011610 are not labeled), labeled before scoring by the same rules. 06248d #1 says the inlined code uses <= and changes the result at the cap: false, other-fp. 896c70 #2: err is used after the join. 5e7ae7 #1: on failure connectCoreOnly destroys the session (as 2e95fa #e1). e6c961 #1: m_session is set in applyConnectedState. daaeb5 #4: the only Qt::QueuedConnection removed went with the drop-notify call; the frame invokeMethod is unchanged. b53474 #e1: updateValues reads values. A claim that the payloadHex clamp was removed is payload_length_unclamped whatever line it quotes.",
-    "v15_twentieth": "Sample 'v15' (records 20261026_152132 to 20261026_174138; the retried 9116d9, 7a11c9, c247d4, 187a73, e7d68a, 67e86a and the pilot's 151439 and 151617 are not labeled), labeled before scoring by the same rules. poll_override: req[6] is exactly what build_mode01_request writes (a 4-byte id, mode, PID), so every claim that it is too small is other-fp; 20a19c #3 says poll now forces non-scheduler mode, a false consequence, other-fp; ceac6d #h1 (resource waste) and 182913 #h2 (error code) are other-fp. connect_start: 9bbf58 #e3 is false, connectSession calls applyConnectedState. decode_length: the removed clamp (len) served payloadHex and the decode alike, so 38a5a0 #1 to #3 are payload_length_unclamped; e99c5a #4, the emit the fix added to forceFrameCountForTesting, is unlisted. ecu_support: df0d13 #3, pid_bitmap[(pid - 1) / 8] with pid <= 0xFF indexes at most 31 of 32, bounds-fixed-array; 8b68e1 #1, disconnectSession takes m_session on the GUI thread, thread-confusion."
+    "v15_twentieth": "Sample 'v15' (records 20261026_152132 to 20261026_174138; the retried 9116d9, 7a11c9, c247d4, 187a73, e7d68a, 67e86a and the pilot's 151439 and 151617 are not labeled), labeled before scoring by the same rules. poll_override: req[6] is exactly what build_mode01_request writes (a 4-byte id, mode, PID), so every claim that it is too small is other-fp; 20a19c #3 says poll now forces non-scheduler mode, a false consequence, other-fp; ceac6d #h1 (resource waste) and 182913 #h2 (error code) are other-fp. connect_start: 9bbf58 #e3 is false, connectSession calls applyConnectedState. decode_length: the removed clamp (len) served payloadHex and the decode alike, so 38a5a0 #1 to #3 are payload_length_unclamped; e99c5a #4, the emit the fix added to forceFrameCountForTesting, is unlisted. ecu_support: df0d13 #3, pid_bitmap[(pid - 1) / 8] with pid <= 0xFF indexes at most 31 of 32, bounds-fixed-array; 8b68e1 #1, disconnectSession takes m_session on the GUI thread, thread-confusion.",
+    "v16_twenty_first": "Sample 'v16' (records 20261026_200617 to 20261026_211854; the retried 1f7900 and 78f09a and the pilot's 200203 and 200452 are not labeled), labeled before scoring by the same rules. poll_override: a claim that the worker picks the wrong channel for the poll PID is invariant-elsewhere, as a missing-channel claim is; 712a1f #e1 (the worker's and attach's sched_mode disagree, undefined behavior) names no poll consequence and is other-fp; 9f52fe #2 (an ABI boundary on channel ordering) is other-fp. trusted_count: a claim that the removed helper missed ERR_BUFFER_OVERFLOW is count_under_error, as in v15 (a0ed9f)."
   },
   "records": {
     "round1_20261024_015410_fa2343": {
@@ -2452,6 +2453,405 @@
           "thread-confusion"
         ]
       }
+    },
+    "round1_20261026_200617_180332": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_200647_210dee": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_200713_0d8f32": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_200823_8b66c2": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {}
+    },
+    "round1_20261026_201002_20c408": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#e1": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_201216_4fb9c8": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_201555_9f52fe": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "other-fp"
+        ],
+        "#h1": [
+          "thread-confusion"
+        ]
+      }
+    },
+    "round1_20261026_201628_d5ba02": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ],
+        "#e1": [
+          "poll_ignored"
+        ]
+      }
+    },
+    "round1_20261026_201804_a5cb82": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#e1": [
+          "invariant-elsewhere"
+        ],
+        "#h1": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_201909_4a3e15": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_202123_ed1a9b": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#e1": [
+          "poll_ignored"
+        ],
+        "#e2": [
+          "poll_ignored"
+        ]
+      }
+    },
+    "round1_20261026_202209_9480ab": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "poll_ignored"
+        ]
+      }
+    },
+    "round1_20261026_203341_f62ca3": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_203506_737ff6": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "thread-confusion"
+        ],
+        "#2": [
+          "thread-confusion"
+        ]
+      }
+    },
+    "round1_20261026_203535_712a1f": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "poll_needs_filter_at_parse"
+        ],
+        "#e1": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261026_203730_aa6333": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#e1": [
+          "thread-confusion"
+        ],
+        "#h1": [
+          "thread-confusion"
+        ],
+        "#h2": [
+          "thread-confusion"
+        ]
+      }
+    },
+    "round1_20261026_203827_c6ce4a": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#e1": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_204048_da97ea": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {}
+    },
+    "round1_20261026_204431_0cbf4b": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v16",
+      "labels": {}
+    },
+    "round1_20261026_204537_40fcce": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "other-fp"
+        ],
+        "#2": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261026_204610_4bd2be": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v16",
+      "labels": {}
+    },
+    "round1_20261026_204813_0d9ac3": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v16",
+      "labels": {}
+    },
+    "round1_20261026_205118_45e0ca": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v16",
+      "labels": {}
+    },
+    "round1_20261026_205317_2f249c": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v16",
+      "labels": {}
+    },
+    "round1_20261026_210016_678b85": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v16",
+      "labels": {}
+    },
+    "round1_20261026_210137_6d955b": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v16",
+      "labels": {}
+    },
+    "round1_20261026_210239_f0663c": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v16",
+      "labels": {}
+    },
+    "round1_20261026_210349_301f1a": {
+      "fixture": "init_noops_cf03331",
+      "sample": "v16",
+      "labels": {}
+    },
+    "round1_20261026_210534_09f172": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "static_batch_replay"
+        ],
+        "#e1": [
+          "count_under_error"
+        ],
+        "#e2": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261026_210609_53794a": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v16",
+      "labels": {
+        "#e1": [
+          "static_batch_replay"
+        ],
+        "#e2": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261026_210806_3ba3e6": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v16",
+      "labels": {
+        "#e1": [
+          "count_under_error"
+        ],
+        "#e2": [
+          "count_under_error",
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261026_210930_8a50ae": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v16",
+      "labels": {
+        "#e1": [
+          "count_under_error",
+          "static_batch_replay"
+        ],
+        "#e2": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261026_210958_238923": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "static_batch_replay"
+        ],
+        "#e1": [
+          "count_under_error"
+        ],
+        "#e2": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261026_211211_9ece24": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v16",
+      "labels": {
+        "#1": [
+          "static_batch_replay"
+        ],
+        "#2": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261026_211525_fe2024": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v16",
+      "labels": {
+        "#e1": [
+          "count_under_error"
+        ],
+        "#e2": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261026_211543_36a9e2": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v16",
+      "labels": {
+        "#e1": [
+          "count_under_error",
+          "static_batch_replay"
+        ],
+        "#e2": [
+          "static_batch_replay"
+        ],
+        "#e3": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261026_211807_dba04a": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v16",
+      "labels": {
+        "#e1": [
+          "static_batch_replay"
+        ],
+        "#e2": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261026_211854_f04026": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "v16",
+      "labels": {}
     }
   }
 }
