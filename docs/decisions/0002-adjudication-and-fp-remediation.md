@@ -4302,3 +4302,526 @@ often refuses it, because that code is in another hunk. Linkage scope
 for such claims is a judge question (the eighteenth's Step 0 showed
 linkage is also what keeps false claims out), and it is not registered.
 Debates are unchanged: v11.1, j8.
+
+### Amendment (2026-10-26): cross-hunk linkage, closed by its ceiling
+
+The Results' third reading point suggests a judge variant: linkage that
+looks beyond the quote's hunk, for claims about removed code. It was
+checked offline, without a live run, and closed.
+
+**Method.** Any cross-hunk linkage sits between j8 and no linkage at
+all. No linkage is the replay's existing `j7` variant: the same quote
+check, then the hedge check, without linkage. So `j7` is the ceiling,
+and `flinked` reproduces j8. Both come from the committed replay, scored
+with the committed labels:
+- **Corpus, v11.1 (66 runs):** `python -m eval_harness.replay --corpus
+  "coach_artifacts/measurement_round1_20261024_0*.json"`, the
+  fourteenth and sixteenth samples.
+- **Corpus, v14 (69 runs):** the same command over
+  `measurement_round1_20261026_01[45]*.json` and
+  `measurement_round1_20261026_0[234]*.json`. These are this
+  measurement's corpus runs; `--corpus` leaves out the bridge record
+  among them.
+- **Bridge:** `python -m eval_harness.replay --diff
+  docs/fixtures/qttune_bridge_refactor.diff` over this measurement's 10
+  bridge records and the 28 archived ones
+  (`measurement_round1_20261023_01*`, `measurement_round2_20261023_*`).
+
+The replay prints two decimals; the figures below are the same
+functions' unrounded output.
+
+| arm | judge | mean recall | FPs per review |
+|---|---|---|---|
+| corpus, v11.1 | j8 | 0.413 | 0.409 |
+| corpus, v11.1 | no linkage (`j7`) | 0.413 (+0.000) | 0.470 (+0.061) |
+| corpus, v14 | j8 | 0.464 | 0.348 |
+| corpus, v14 | no linkage (`j7`) | 0.482 (+0.018) | 0.377 (+0.029) |
+
+On the bridge, race found is the same under `j7` and `flinked` in every
+set (v14: 0.556 under both).
+
+The two arms differ as they should:
+- **v11.1 gains nothing.** Its 66 runs have no valid linkage demotion,
+  as the sixteenth found: there, linkage demoted invariant-elsewhere
+  claims and no valid ones.
+- **v14 gains little.** Of its 5 valid linkage demotions, 2 (`fa3031`
+  #e1, `e6c961` #e1) are hedged and would be demoted anyway. One
+  (`e530e8` #e1) restates a bug its run already stored. Only 2
+  (`5e7ae7` #e1, `90e7f3` #e1) add a bug to their run.
+
+**Closure.** No cross-hunk linkage variant can pass the bar:
+- On the shipped prompt it adds false positives and no recall.
+- On v14 it reaches +0.069 corpus recall over the v11.1 baseline,
+  against +0.10, even with linkage removed entirely.
+- The bridge race was lost because the claim was never made. That is on
+  the prompt side, and no judge can recover it.
+- The v14 items that suggested the idea are 5 cases: 2 are hedged, 1
+  repeats a stored bug, and 2 add a bug each.
+
+An earlier rescore in this session put the v14 ceiling at +0.027 and
++0.058. It counted linkage-demoted items as kept and skipped the hedge
+check that would have demoted them. The `j7` numbers above are correct.
+
+## Twentieth Measurement — Field Writers in the Context Pack (not shipped)
+
+**Status (2026-10-26): drafted before any code change or model call,
+reviewed, and signed off with the amendments at the end. Implemented as
+PROMPT_VERSION `v15-field-writers`; Step 0 recorded with three
+amendments (below). Measured and not shipped: `poll_override` false
+positives rose, and so did the bridge's (Results).**
+
+**Why.** Invariant-elsewhere is the largest stored false-positive class:
+25 of the 51 stored false positives across the corpus's three samples
+(135 runs, judged by j8). Every one is on `poll_override_90020bd`. The
+claims say the worker reads `t->chans[0]` in poll mode without checking
+`chan_count`, or that the attach backstop no longer covers poll mode.
+Two facts in the post-state (`5ec331c`) refute them, and the reviewer
+sees neither:
+- `resolve_channels` builds exactly one channel whenever `?filter=` is
+  set (`t->chans[0]`, `t->chan_count = 1`). `parse_query` now rejects
+  `?poll=` without `?filter=`, and that rejection is in the diff. So in
+  poll mode `chans[0]` is always the poll's channel.
+- `chans` is declared `j2534_channel chans[QTTUNE_MAX_CHANNELS] = {}`:
+  a fixed, zero-initialized array, so `chans[0]` is never out of bounds.
+
+`resolve_channels` is unchanged by the diff, and the struct member
+declaration lies outside every hunk. The fixture's pack holds two file
+summaries and two typedefs, 836 characters, because the indexer
+harvests C typedefs, constants and queued-connection call sites, not
+C++ structs or function bodies.
+
+**Why the pack and not the prompt.** An invariant-elsewhere claim has
+the same shape as the valid removal-caused claims the last three
+measurements tried to raise: "a check is gone, so this access is
+unsafe". A prompt that made the reviewer doubt missing-check claims
+would cut both. Only the facts tell them apart, and facts belong in the
+pack.
+
+### Design
+
+**Change** (PACK_FORMAT_VERSION f4, PROMPT_VERSION `v15-field-writers`;
+the reviewer prompt and the transcript templates are unchanged): a new
+pack section, FIELD DEFINITIONS AND WRITERS, built from the index for
+the members that the diff's post-change lines use:
+- **Definitions:** the declaration line of each such member, from a
+  `struct` or `class` defined in a modified file. This is new indexer
+  work: the indexer harvests C typedefs only.
+- **Writers:** each function in a modified file that assigns such a
+  member and that no hunk touches. It is shown comment-free and clipped
+  to a line cap. Assignments count through a pointer or object
+  (`x->m =`, `x.m =`, `x->m[i] =`) and bare, inside a class's own
+  methods (`m_count = 0;`, `this->m =`), each with `++`/`--` and
+  compound assignment. The bare form is included so that a C++ class
+  such as the bridge's is not left untreated by pattern omission.
+  Coverage need not be complete.
+- **Diff-authoritative, as since v6:** a function any hunk overlaps is
+  never shown, because its indexed body is the pre-change version. The
+  diff shows the change, and an unchanged function reads the same before
+  and after it. Members only removed lines use are not looked up.
+- **Caps:** the section gets its own budget of 1,800 characters inside
+  `PACK_BUDGET` (6,000), with at most 3 writers of 25 lines each, and
+  writers of the most-used members first. The bridge request has about
+  3,500 characters of headroom (11,098 of 12,288 tokens), so the cap
+  keeps every fixture under the input check.
+
+For `poll_override` the section would show the `chans` and `chan_count`
+declarations and the `resolve_channels` body. Which members and writers
+each fixture gets is fixed by Step 0, below, before any model call.
+
+**Index rebuilds:** the 7 corpus indexes are rebuilt with `--no-llm`
+from throwaway clones at each `base_rev`, as before. The bridge index
+(`repo_context.json`, with LLM purposes) is rebuilt from a clone at
+`e0c4c31` with the summary cache, and with zero model calls. Apart from
+the new harvest and `index_version`, every index must come out
+identical (checked by diff).
+
+### Step 0 (no model): render the packs
+
+Once the code is in, every fixture's pack is rendered without a model:
+the 7 corpus fixtures and the bridge. This audit is recorded here before
+any sample:
+- **Per fixture:** whether the section is non-empty, which decides
+  whether the fixture is treated or a control; its characters; the
+  whole pack's characters; and the round-1 input-check estimate.
+- **Per member looked up:** the declaration found, or none.
+- **Per writer-pattern hit:** the function, the member, the pattern
+  form (pointer, object or bare) and the line.
+- **Everything dropped, and why:** a function a hunk overlaps; the
+  writer cap; the line cap; the section budget. So any truncation is
+  visible before the batch.
+- **A reading:** which recorded false-positive claims each section's
+  content would refute, and any claim it might invite.
+
+If the section is empty on `poll_override` or lacks `resolve_channels`,
+or if any request fails the input check, the design goes back for
+revision. **Any change made after seeing Step 0 is recorded here as a
+dated amendment before the pilot.** Step 0 sees no model output, but its
+record must show what the design was when sampling began.
+
+### Measurement
+
+**Samples:** fresh round-1 samples at v15, judge j8, the same
+fixtures, proposals and fresh indexes:
+- **Corpus:** `python -m eval_harness.corpus run --fixture all --runs
+  10`, then `--fixture poll_override_90020bd --runs 10`: 80 runs, 20 of
+  them on `poll_override` (decision 2).
+- **Bridge:** 20 samples with the original proposal (decision 3).
+- **Labels:** written before scoring, as in the nineteenth.
+- **Pilot:** 3 calls first (`poll_override`, `connect_start`, bridge),
+  telemetry and schema only, with the same exit as the nineteenth.
+
+**Baselines (j8, archived v11.1 runs):**
+- **`poll_override`, 9 runs:** 12 stored false positives, 1.33 per
+  review, 10 of them invariant-elsewhere.
+- **The other six fixtures, 57 runs:** 15 stored false positives. The
+  mean of the six fixtures' rates is 0.274 (pooled: 0.263).
+- **Corpus, 66 runs:** mean recall 0.413, 0.409 FPs per review.
+- **Bridge, 28 samples:** 0.179 FPs per review, race 0.786, gate 0.286.
+
+**Rule:** v15 ships if all four hold:
+1. `poll_override` FPs per review fall by at least 0.5 (from 1.33 to
+   0.83 or below);
+2. corpus mean recall falls by at most 0.05;
+3. the mean of the other six fixtures' FPs per review rises by at most
+   0.05 (from 0.274);
+4. bridge FPs per review rise by at most 0.05, with race and gate found
+   each dropping by at most 0.15.
+
+**How each figure is computed:**
+- **Mean recall** is the mean over the 11 known bugs of each bug's
+  share of its own fixture's runs. Run counts don't change it, so the
+  20 `poll_override` runs weigh as the 10 did.
+- **Condition 1** is `poll_override`'s own rate.
+- **Condition 3** is the mean of the six fixtures' rates, so uneven run
+  counts (9 or 10 per fixture in the baseline) don't weight it. It is
+  one guard, not six: a bar for each 10-run fixture would fail by
+  chance on most runs.
+- **Pooled corpus FPs per review and valid share** are reported as
+  context, not decided on. The extra `poll_override` runs weight them
+  differently from the baseline.
+
+**The bridge limit is −0.15, not the nineteenth's −0.1.** The section
+probably treats the bridge too, so its race and gate rates are outcomes
+here. Against the 28-run baseline, 20 runs leave a standard error of
+about 0.12 on the race difference and 0.13 on the gate difference. With
+no real effect, a −0.1 limit fails by chance 20% (race) and 22% (gate)
+of the time; −0.15 fails 11% and 13%. Taken together, condition 4 still
+fails by chance about one time in four, and a failure is read with that
+in mind.
+
+Condition 1 is the target. The other three are guards: more code in the
+pack is more code to object to, and a writer body could make a valid
+removal claim look covered.
+
+**Reported apart:** invariant-elsewhere and bounds claims per fixture;
+the sizes of the new sections; any claim that quotes or cites a writer
+body; runaways.
+
+**Predictions:**
+
+| metric | prediction |
+|---|---|
+| Step 0: section on `poll_override` | `chans` and `chan_count` declarations plus `resolve_channels` |
+| Step 0: fixtures with a non-empty section | 4–7 of 8 |
+| `poll_override` FPs per review | 1.33 → 0.4–1.0 |
+| `poll_override` recall (`poll_ignored`, `poll_needs_filter_at_parse`) | unchanged within 0.2 |
+| corpus mean recall | 0.36–0.46 |
+| other six fixtures' FPs per review (mean of fixture rates) | 0.15–0.35 |
+| bridge FPs per review / race / gate | 0.10–0.30 / 0.60–0.90 / 0.15–0.45 |
+
+**Expected by the rule:** condition 1 is a coin flip. The model has to
+connect two facts, `parse_query`'s rejection in the diff and
+`resolve_channels` in the pack, and the fixed array answers only the
+out-of-bounds half of the claims. The guards should hold, since most
+fixtures' sections will be small.
+
+**What this cannot show:**
+- **Generality.** The lever is shaped by one fixture's false positives,
+  and no other corpus fixture has the class. Passing shows the lever
+  removes this class here without costing anything elsewhere, not that
+  it transfers. A held-out test needs a fixture where a removed or
+  missing check is enforced in an unchanged function. The unused fix
+  commits in the corpus notes (`ebfa918`, `1f2570b`, `b3b1487`,
+  `7e9bd5e`, `839b176`) have not been checked for one.
+- **The layer note.** `poll_override`'s first file is a QML comment
+  change, so the reviewer gets the app layer note for a core change
+  (backlog #8). That stays constant across both arms here, but it is a
+  separate candidate cause of this fixture's false positives.
+
+### Choices and review amendments (2026-10-26, before any code)
+
+A review of the draft settled these:
+- **Decision 2: 20 `poll_override` runs.** Condition 1 rests on this one
+  fixture, and 10 runs against a baseline of 9 is thin.
+- **Decision 3: 20 bridge runs, with the limit widened to −0.15**
+  (Rule). The bridge is probably a second treated arm, not a control.
+- **Aggregation is named** (Rule): condition 3 is a mean of fixture
+  rates, and pooled figures are context only.
+- **Writers include bare member assignments in class methods** (Design).
+- **Step 0 records an audit** of sections, pattern hits and drops, and
+  any later design change is an amendment (Step 0).
+
+- **Decision 1: definitions and writers** (signed off 2026-10-26). The
+  fixed array answers the out-of-bounds claims directly, and
+  `bounds-fixed-array` claims on `ecu_support` have the same shape.
+
+Every choice is now made; the draft is signed off as amended.
+
+### Implementation and Step 0 (2026-10-26, before the pilot)
+
+**As implemented:**
+- **The indexer** (`indexer.harvest_definitions`) records two new
+  things. Index keys `fields`: each struct, class and union data member,
+  with its owner, comment-free declaration and line. Index key
+  `functions`: each function definition that assigns a member, with its
+  owner class, line span, the members it writes and the form of each
+  write (pointer, object, bare, atomic), and its comment-free lines.
+  A bare write is kept only in a method of the member's own class.
+- **`diff_reader.old_hunk_ranges`** gives each hunk's pre-change line
+  range. `read_diff` is unchanged, so the judge sees the same lines.
+- **`retrieval._field_section`** builds the section under the signed-off
+  caps: 8 declarations, 3 writers, 1,800 characters.
+  - A writer longer than 25 lines shows its first 18 lines, an ellipsis
+    line and its last 6. This rendering was chosen before Step 0, but
+    with `resolve_channels` known to be 41 lines: its last line,
+    `t->chan_count = n;`, carries the fact.
+  - The report keeps the section's audit under `field_audit`.
+- **`python -m eval_harness.corpus fields [--text]`** prints the audit
+  below for every corpus fixture and the bridge, without a model.
+- **Versions:** PACK_FORMAT_VERSION `f4-field-writers`, PROMPT_VERSION
+  `v15-field-writers`, bridge debate fingerprint `d0a576d5de90cb90`
+  (pinned).
+- **Indexes:** all 8 were rebuilt from throwaway clones at their bases,
+  the bridge's with the summary cache and model calls disabled. Apart
+  from the two new keys and `index_version`, each is identical to the
+  index it replaces. Storing function lines makes them 4–5 times larger,
+  60 to 450 KB each.
+- **Tests:** 218. Two mutations fail them: a writer the diff changes
+  kept in the section, and the removed-code check counting every
+  removed-only name.
+
+**Step 0 audit** (`python -m eval_harness.corpus fields`):
+
+| fixture | section | section chars | pack chars | input estimate | shown |
+|---|---|---|---|---|---|
+| `backoff_clamp` | empty | 0 | 518 | 2,865 | — |
+| `trusted_count` | empty | 0 | 1,757 | 3,092 | — |
+| `poll_override` | treated | 1,571 | 2,532 | 4,413 | 8 declarations; `resolve_channels` (24 of 41 lines) |
+| `connect_start` | treated | 1,762 | 3,829 | 5,324 | 5 declarations; `applyConnectedState` (18 of 18), `SignalListModel::setSignalSet` (25 of 25) |
+| `decode_length` | treated | 1,143 | 2,775 | 6,067 | 7 declarations; `toggleSubscribed` (9 of 9), `~QtTuneBridge` (10 of 10) |
+| `init_noops` | treated | 1,670 | 4,415 | 6,134 | 8 declarations; `applyConnectedState` (24 of 26) |
+| `ecu_support` | treated | 1,666 | 4,777 | 5,518 | 3 declarations; `disconnectSession` (24 of 33), `destroySessionLocked` (7 of 7), `setRecording` (10 of 10) |
+| bridge | effectively a control | 81 | 2,768 | 11,167 | 1 declaration (`FrameSortProxy::m_newestFirst`) |
+
+- **Every request passes the input check**, and no pack is truncated.
+- **Across the 8 fixtures, 72 declarations were looked up:** 32 shown,
+  36 left out because a hunk covers them, and 4 at the declaration cap
+  (all on `poll_override`: the `rx_id`, `set` and `tx_id` duplicates).
+- **Writer-pattern hits of the shown writers:**
+  - `resolve_channels`: `chan_count` and `chans` through a pointer;
+    `rx_id` and `tx_id` through an object (`t->chans[0].rx_id`).
+  - `applyConnectedState` (`connect_start`): `m_session`,
+    `m_linkErrorCode`, `m_errorEpisodes`, all bare.
+  - `setSignalSet`: `id` and `subscribed` through an object.
+  - `toggleSubscribed`: `m_subscribedCount` bare, `subscribed` through
+    an object.
+  - `~QtTuneBridge`: `m_session` bare.
+  - `applyConnectedState` (`init_noops`): `m_connected` and
+    `m_droppedFrames` atomic; `m_currentFrameCount`, `m_currentUri` and
+    `m_session` bare.
+  - `disconnectSession`: `m_connected` atomic; `m_errorEpisodes` and
+    `m_linkErrorCode` bare.
+  - `destroySessionLocked`: `m_session` bare.
+  - `setRecording`: `m_recording` bare.
+- **45 writers were found; 9 are shown.** Of the rest, 25 were dropped
+  because the diff changes them (all 9 of the bridge's among them), and
+  11 for the section budget. After the fix below, none is dropped for
+  naming removed code.
+
+**Treated and control fixtures.** `backoff_clamp` and `trusted_count` are
+controls: their diffs use no member of a struct or class defined in a
+modified file.
+
+**The bridge is effectively a control, too.** The review that set its 20
+runs and the −0.15 limit expected it to be a second treated fixture. It
+is not: its diff changes every function that writes a member it uses, so
+the section holds one declaration unrelated to the race or the gate. The
+registration is unchanged. The 20 runs now check that the pack change
+does not move the bridge's numbers, which is still condition 4.
+
+**Amendments (2026-10-26, after seeing Step 0, before the pilot).** Three
+implementation faults, each now pinned by a test:
+1. **A default argument's braces were read as a function body.**
+   `int rowCount(const QModelIndex& parent = {}) const override;` yielded
+   a function `rowCount` and a data member named `override`, which then
+   counted as a member use wherever `override` appears. A function head
+   must now have balanced parentheses, and keywords are never member
+   names.
+2. **Only the first of several declarators with initializers was kept**
+   (`int a = 0, b = 1;`). This was found by a unit test, not by Step 0;
+   no QtTune member was affected.
+3. **The removed-code check dropped `resolve_channels`**, the one writer
+   the design names, because its body uses `static_cast`, which the
+   diff's removed lines also use. The check now counts only names the
+   index defines: types, constants, members and functions. The section
+   design is otherwise unchanged.
+
+**A reading of the sections:**
+- **`poll_override`:** the section holds both refuting facts. `chans` is
+  a fixed, zero-initialized array, and `resolve_channels` sets
+  `chans[0]` and `n = 1` when `?filter=` is given, ending with
+  `t->chan_count = n;`. Every recorded invariant-elsewhere claim rests
+  on one of the two. The section says nothing about `poll_ignored`.
+- **`connect_start`:** `applyConnectedState` shows the GUI thread taking
+  the session (`m_session = session;`). That bears on recorded false
+  positives that say `m_session` is never set (`e6c961` #1) or that
+  `applyConnectedState` is missing (`2e95fa` #e2, `896c70` #e1), though
+  not on where it is called. It may invite claims about the members it
+  writes.
+- **`decode_length` and `init_noops`:** neither section touches the
+  recorded false positives, which concern the staging buffer, the
+  removed include, the `void*` parameter and the removed
+  `g_initialized`.
+- **`ecu_support`:** the section adds writers of `m_session` without
+  saying which thread runs them. The fixture's recorded false positives
+  are thread-confusion claims, so it may invite more. That is condition
+  3's risk.
+
+### Pilot (2026-10-26): passes
+
+Three records, excluded from scoring:
+`measurement_round1_20261026_151439_49a62e` (`poll_override`),
+`..._151617_11b8fe` (`connect_start`) and `..._151811_37d684` (bridge).
+All three first attempts were accepted (`done_reason` stop): 3,422, 5,455
+and 8,704 output tokens, in 99 s, 113 s and 182 s. None ran away, so the
+exit (2 or more bad first attempts) is not met. Only telemetry and schema
+status were read; the runner's log, which prints stored-blocker counts,
+was not. The batch runs as registered.
+
+### Results (scored 2026-10-26): not shipped
+
+100 records, `measurement_round1_20261026_152132_e4c0d2` to
+`..._181132_3d98e7` (UTC): 70 corpus samples, 10 more on
+`poll_override`, then 20 bridge samples. Six corpus first attempts were
+retried and are excluded:
+- four `poll_override` first attempts that ran to the 12,288-token
+  output cap (`c247d4`, `187a73`, `e7d68a`, `67e86a`; 42,700 to 45,500
+  thinking characters);
+- one `poll_override` request that failed with a CUDA out-of-memory
+  error (`7a11c9`);
+- one `trusted_count` reply without `questions` (`9116d9`).
+
+That leaves 74 corpus runs (15 on `poll_override`, 9 on
+`trusted_count`) and 20 bridge runs. Every item was labeled before
+anything was scored (`corpus_labels.json`, sample `v15`; `labels.json`,
+set `twentieth`). A test pins the corpus counts (74 runs, 103 stored, 61
+valid). Both arms are judged by j8, and the v15 stored split reproduces
+exactly.
+
+| | baseline (j8, archived v11.1) | v15 | change | bar |
+|---|---|---|---|---|
+| 1. `poll_override` FPs per review | 1.333 (9 runs) | 1.667 (15 runs) | +0.333 | ≤ 0.83 |
+| 2. corpus mean recall, stored | 0.413 | 0.430 | +0.017 | ≥ −0.05 |
+| 3. other six fixtures, mean FPs per review | 0.274 | 0.283 | +0.009 | ≤ +0.05 |
+| 4. bridge FPs per review | 0.179 | 0.600 | +0.421 | ≤ +0.05 |
+| 4. bridge race found | 0.786 | 0.650 | −0.136 | ≥ −0.15 |
+| 4. bridge gate found | 0.286 | 0.300 | +0.014 | ≥ −0.15 |
+| corpus FPs per review, pooled | 0.409 | 0.568 | | context |
+| corpus valid share | 64% | 59% | | context |
+| recall counting demoted items | 0.588 | 0.628 | | context |
+| corpus FPs per clean review | 0.389 | 0.700 | | context |
+
+**By the rule: v15 does not ship.** Condition 1, the target, fails in
+the wrong direction. Condition 4 fails on bridge false positives by
+eight times its margin. Conditions 2 and 3 hold, and race and gate stay
+inside the widened limit.
+
+**Stored false positives per fixture:**
+
+| fixture | runs | FPs per review | baseline classes | v15 classes |
+|---|---|---|---|---|
+| `backoff_clamp` | 10 → 10 | 0.00 → 0.00 | — | — |
+| `trusted_count` | 10 → 9 | 0.00 → 0.00 | — | — |
+| `poll_override` | 9 → 15 | 1.33 → 1.67 | invariant-elsewhere 10, thread 1, other 1 | invariant-elsewhere 21, thread 1, other 3 |
+| `connect_start` | 10 → 10 | 0.20 → 0.00 | thread 1, deletion 1 | — |
+| `decode_length` | 9 → 10 | 0.67 → 0.30 | other 4, thread 2 | thread 2, other 1 |
+| `init_noops` | 9 → 10 | 0.00 → 0.10 | — | other 1 |
+| `ecu_support` | 9 → 10 | 0.78 → 1.30 | thread 4, bounds 3 | thread 11, bounds 2 |
+| bridge | 28 → 20 | 0.18 → 0.60 | other 5 | other 11, deletion 1 |
+
+**Reported apart:**
+- **Invariant-elsewhere** occurs only on `poll_override`: 10 claims in 9
+  runs (1.11 per run), now 21 in 15 (1.40). **Bounds claims** on
+  `ecu_support` went from 3 to 2 (0.33 to 0.20 per run). On
+  `poll_override`, out-of-bounds claims on `chans[0]` still appear
+  (`42884a` #1, `964798` #1), with the `chans[...] = {}` declaration in
+  the same request.
+- **A new `poll_override` shape:** `req[6]` is too small for the Mode 01
+  request (2 stored, 2 hedged). `build_mode01_request` writes exactly 6
+  bytes. `req` is a local, so it is not in the section.
+- **Claims that cite a writer:** no `poll_override` item names
+  `resolve_channels` or uses its body. Two `connect_start` items name
+  `applyConnectedState`, both demoted. `9bbf58` #e2 says the call is
+  missing, which is false: the section showed its body, and the
+  completion lambda calls it in the post-state. `71fd74` #e2 quotes the comment that names it.
+- **Sections:** as Step 0 rendered them. The `poll_override` packs hold
+  the 8 declarations and `resolve_channels` (record `964798` read); the
+  bridge packs hold `FrameSortProxy::m_newestFirst` alone.
+- **Runaways:** 4 of 80 corpus first attempts ran to the cap, all on
+  `poll_override` (4 of 20). The baseline also had 4 of 70, but spread
+  across fixtures: 1 of 10 on `poll_override`. No bridge first attempt
+  ran away.
+- **Labels:** the bridge's `c1b3fd` #4 (`payloadHex` reads
+  `data_length` unclamped) is true at `8ffbf19` but predates the diff.
+  It is other-fp, as the same claim (`61e3c6` #2) was in the baseline.
+  Counted as valid, the bridge rate would still be 0.55.
+
+| prediction | predicted | observed | |
+|---|---|---|---|
+| Step 0: section on `poll_override` | `chans`, `chan_count`, `resolve_channels` | as predicted | HIT |
+| Step 0: fixtures with a non-empty section | 4–7 of 8 | 6 (5 treated, plus the bridge's 81 characters) | HIT |
+| `poll_override` FPs per review | 0.4–1.0 | 1.67 | MISSED HIGH |
+| `poll_override` recall unchanged within 0.2 | — | `poll_ignored` 0.11 → 0.07; `poll_needs_filter_at_parse` 0.11 → 0.33 | MISSED (one bug) |
+| corpus mean recall | 0.36–0.46 | 0.430 | HIT |
+| other six fixtures' FPs per review | 0.15–0.35 | 0.283 | HIT |
+| bridge FPs per review / race / gate | 0.10–0.30 / 0.60–0.90 / 0.15–0.45 | 0.60 / 0.65 / 0.30 | MISSED HIGH / HIT / HIT |
+| the guards hold | — | condition 4 fails | MISSED |
+
+**Reading:**
+- **The facts reached the reviewer and did not change the claim.**
+  Every `poll_override` request carried both refuting facts, and
+  invariant-elsewhere claims became more frequent, not less. None cites
+  `resolve_channels`. The reviewer reads a check missing from the diff
+  as a defect whether or not an unchanged function in the same request
+  enforces the invariant. The draft called condition 1 a coin flip
+  because the model has to connect two facts; it connected neither.
+  Whether naming `chans` and `chan_count` in a section made them more
+  salient cannot be told from this data.
+- **Thread-confusion rose where Step 0 said it might.** On
+  `ecu_support` the section shows the writes of `disconnectSession`,
+  whose thread start falls in the clipped middle. Claims now say
+  `applyConnectedState` is "likely called from worker thread", or that
+  `m_channelCount` is written from the connection thread (4 claims
+  before, 11 now). Condition 3 held only because `decode_length` and
+  `connect_start` fell. Step 0 found that `decode_length`'s section
+  touches none of its recorded false positives, so that fall is best
+  read as noise.
+- **The bridge's false positives rose with an 81-character section.**
+  Its section holds one unrelated declaration, so the section's content
+  cannot explain 0.18 → 0.60. Of the 12 false positives, 5 are
+  thread-safety claims on members other than the race's
+  (`m_guiNotifyCount` twice, `m_lastReportedDropped`, `m_connected`,
+  `m_droppedFrames`), and 4 are lifetime claims about `self` or the
+  frame copy. Two readings, which this data cannot separate: the
+  section heading ("members the changed code uses") primes member-level
+  claims, or the archived baseline (v9 to v11 prompts) understates
+  today's rate. The nineteenth's 9 bridge runs (v14, f3 pack) had 0.11,
+  which leans toward the first. The −0.15 widening was about chance
+  failures of race and gate; this failure is not one.
+
+**Conclusion:** putting the refuting facts in the pack does not remove
+invariant-elsewhere claims, and the section costs precision elsewhere.
+The reviewer does not use an unchanged function to discharge a check
+the diff appears to drop. The pack route for this class closes at this
+design. The other candidate cause the draft named, `poll_override`'s
+app layer note (backlog #8), is untested. No successor is registered.

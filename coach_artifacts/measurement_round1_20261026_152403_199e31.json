@@ -1,0 +1,132 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261026_152403_199e31",
+    "created_utc": "2026-10-26T15:24:27.487594+00:00",
+    "prompt_version": "v15-field-writers",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 8593,
+      "estimated_tokens": 2865,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 518,
+      "sections": {
+        "modified_files": 1,
+        "types": 0,
+        "constants": 6,
+        "fields": 0,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 0
+      },
+      "entries": 7,
+      "index_version": "idx_20261026_151145",
+      "index_commit": "d1c20c0e58c25c0cd83582b5b2fe01d69310d155",
+      "format_version": "f4-field-writers",
+      "error": null,
+      "base_check": {
+        "checked": 2,
+        "mismatched": []
+      },
+      "field_audit": {
+        "uses": {},
+        "decls": [],
+        "writers": [],
+        "chars": 0
+      },
+      "shown": {
+        "modified_files": 1,
+        "types": 0,
+        "constants": 6,
+        "fields": 0,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 0
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\backoff_clamp_d1c20c0\\repo_context.json",
+      "sha256": "4f906ff88e1c11162e56be03ff7fc1d9a515c6351a0144f81480261c11f1650e",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[core/src/j2534_transport.cpp] (core): File/layer: core/src/j2534_transport.cpp | C++17, Qt-free, Win32-guarded  [only on the diff's removed lines: j2534_transport]\n\n--- CONSTANTS ---\nJ2534_BACKOFF_BASE_MS = 100 (const)\nJ2534_BACKOFF_CAP_MS = 5000 (const)\nJ2534_POLL_INTERVAL_MS = 20 (const)\nJ2534_REQUEST_CYCLE_MS = 100 (const)\nJ2534_DRAIN_BUDGET = 10 (const)\nJ2534_DRAIN_READ_TIMEOUT_MS = 20 (const)"
+    },
+    "prompt_fingerprint": "d56a004056bb7bb4"
+  },
+  "inputs": {
+    "proposal": "Inline the failure backoff step in the J2534 worker: drop j2534_backoff.h and double backoff_ms in place in all three worker modes, capped at J2534_BACKOFF_CAP_MS.",
+    "original_proposal": "Inline the failure backoff step in the J2534 worker: drop j2534_backoff.h and double backoff_ms in place in all three worker modes, capped at J2534_BACKOFF_CAP_MS.",
+    "header_artifact": false,
+    "file_path": "core/src/j2534_transport.cpp",
+    "layer": "core",
+    "diff_sha256": "4a9b37825c5501635d88365726d0fa9905e368745146c3a1e8e378561b28c627",
+    "diff_chars": 4043,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "claim: The inlined backoff logic violates the documented behavior that 'no wait exceeds the cap'. The condition changed from 'ms >= CAP/2' to 'ms < CAP', allowing backoff_ms to exceed J2534_BACKOFF_CAP_MS.; file: core/src/j2534_transport.cpp; quote: backoff_ms = (backoff_ms < J2534_BACKOFF_CAP_MS)\n                          ? backoff_ms * 2 : J2534_BACKOFF_CAP_MS;"
+          ],
+          "questions": [
+            "Is j2534_backoff.h part of the public ABI or truly internal? The comment says 'internal, not ABI-exported' but we need to verify.",
+            "Why inline a simple constexpr function instead of keeping it in the header? The original had test coverage (UNIT test_j2534_stream).",
+            "What is the thread safety model for the j2534_worker function? Does it share state with other threads that could affect the backoff logic?"
+          ],
+          "nits": [
+            "The ternary expression could be simplified to match the original logic: backoff_ms = (backoff_ms >= J2534_BACKOFF_CAP_MS / 2) ? J2534_BACKOFF_CAP_MS : backoff_ms * 2;",
+            "Consider adding a static assertion or comment documenting the backoff growth pattern: 100 \u2192 200 \u2192 400 \u2192 800 \u2192 1600 \u2192 3200 \u2192 5000 (cap)"
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 0
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 8593,
+              "prompt_eval_count": 2736,
+              "eval_count": 1221,
+              "thinking_chars": 2871,
+              "content_chars": 1291,
+              "done_reason": "stop",
+              "wall_s": 23.78,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n        {\n            \"claim\": \"The inlined backoff logic violates the documented behavior that 'no wait exceeds the cap'. The condition changed from 'ms >= CAP/2' to 'ms < CAP', allowing backoff_ms to exceed J2534_BACKOFF_CAP_MS.\",\n            \"file\": \"core/src/j2534_transport.cpp\",\n            \"quote\": \"backoff_ms = (backoff_ms < J2534_BACKOFF_CAP_MS)\\n                          ? backoff_ms * 2 : J2534_BACKOFF_CAP_MS;\"\n        }\n    ],\n    \"questions\": [\n        \"Is j2534_backoff.h part of the public ABI or truly internal? The comment says 'internal, not ABI-exported' but we need to verify.\",\n        \"Why inline a simple constexpr function instead of keeping it in the header? The original had test coverage (UNIT test_j2534_stream).\",\n        \"What is the thread safety model for the j2534_worker function? Does it share state with other threads that could affect the backoff logic?\"\n    ],\n    \"nits\": [\n        \"The ternary expression could be simplified to match the original logic: backoff_ms = (backoff_ms >= J2534_BACKOFF_CAP_MS / 2) ? J2534_BACKOFF_CAP_MS : backoff_ms * 2;\",\n        \"Consider adding a static assertion or comment documenting the backoff growth pattern: 100 \u2192 200 \u2192 400 \u2192 800 \u2192 1600 \u2192 3200 \u2192 5000 (cap)\"\n    ]\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-26T15:24:27.487538+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

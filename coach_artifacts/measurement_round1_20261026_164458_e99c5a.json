@@ -1,0 +1,493 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261026_164458_e99c5a",
+    "created_utc": "2026-10-26T16:48:18.030845+00:00",
+    "prompt_version": "v15-field-writers",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 18199,
+      "estimated_tokens": 6067,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 2775,
+      "sections": {
+        "modified_files": 2,
+        "types": 4,
+        "constants": 2,
+        "fields": 9,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "entries": 17,
+      "index_version": "idx_20261026_151151",
+      "index_commit": "b47687c6c6d81dc85a539dcd0e17d662e2b3d42f",
+      "format_version": "f4-field-writers",
+      "error": null,
+      "base_check": {
+        "checked": 2,
+        "mismatched": []
+      },
+      "field_audit": {
+        "uses": {
+          "m_entries": 2,
+          "m_subscribedCount": 3,
+          "id": 3,
+          "name": 3,
+          "unit": 3,
+          "subscribed": 1,
+          "m_initialized": 2,
+          "m_sortProxy": 2,
+          "m_sourceModel": 3,
+          "m_coalesceTimer": 4,
+          "m_stagingBuffer": 5,
+          "m_signalModel": 3,
+          "m_connected": 4,
+          "m_currentFrameCount": 4,
+          "m_droppedFrames": 4,
+          "m_session": 3,
+          "m_inFlightFrames": 4,
+          "MaxInFlightFrames": 2,
+          "m_guiNotifyCount": 3,
+          "m_lastReportedDropped": 3,
+          "m_signalBatchCount": 2
+        },
+        "decls": [
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_stagingBuffer",
+            "file": "app/qttunebridge.h",
+            "line": 175,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_coalesceTimer",
+            "file": "app/qttunebridge.h",
+            "line": 173,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_connected",
+            "file": "app/qttunebridge.h",
+            "line": 165,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_currentFrameCount",
+            "file": "app/qttunebridge.h",
+            "line": 167,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_droppedFrames",
+            "file": "app/qttunebridge.h",
+            "line": 166,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_inFlightFrames",
+            "file": "app/qttunebridge.h",
+            "line": 181,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "Entry",
+            "name": "id",
+            "file": "app/qttunebridge.h",
+            "line": 98,
+            "dropped": null
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_guiNotifyCount",
+            "file": "app/qttunebridge.h",
+            "line": 179,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_lastReportedDropped",
+            "file": "app/qttunebridge.h",
+            "line": 168,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_session",
+            "file": "app/qttunebridge.h",
+            "line": 162,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_signalModel",
+            "file": "app/qttunebridge.h",
+            "line": 178,
+            "dropped": null
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_sourceModel",
+            "file": "app/qttunebridge.h",
+            "line": 170,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "SignalListModel",
+            "name": "m_subscribedCount",
+            "file": "app/qttunebridge.h",
+            "line": 106,
+            "dropped": null
+          },
+          {
+            "owner": "Entry",
+            "name": "name",
+            "file": "app/qttunebridge.h",
+            "line": 99,
+            "dropped": null
+          },
+          {
+            "owner": "Entry",
+            "name": "unit",
+            "file": "app/qttunebridge.h",
+            "line": 100,
+            "dropped": null
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "MaxInFlightFrames",
+            "file": "app/qttunebridge.h",
+            "line": 183,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "SignalListModel",
+            "name": "m_entries",
+            "file": "app/qttunebridge.h",
+            "line": 105,
+            "dropped": null
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_initialized",
+            "file": "app/qttunebridge.h",
+            "line": 161,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_signalBatchCount",
+            "file": "app/qttunebridge.h",
+            "line": 176,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_sortProxy",
+            "file": "app/qttunebridge.h",
+            "line": 171,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "Entry",
+            "name": "subscribed",
+            "file": "app/qttunebridge.h",
+            "line": 102,
+            "dropped": null
+          }
+        ],
+        "writers": [
+          {
+            "function": "QtTuneBridge::connectSession",
+            "file": "app/qttunebridge.cpp",
+            "line": 237,
+            "end_line": 274,
+            "writes": {
+              "m_connected": [
+                "atomic"
+              ],
+              "m_currentFrameCount": [
+                "bare"
+              ],
+              "m_droppedFrames": [
+                "atomic"
+              ],
+              "m_lastReportedDropped": [
+                "bare"
+              ],
+              "m_session": [
+                "bare"
+              ]
+            },
+            "lines": 34,
+            "shown_lines": 0,
+            "dropped": "changed by the diff"
+          },
+          {
+            "function": "QtTuneBridge::onFrame",
+            "file": "app/qttunebridge.cpp",
+            "line": 296,
+            "end_line": 335,
+            "writes": {
+              "m_droppedFrames": [
+                "atomic"
+              ],
+              "m_inFlightFrames": [
+                "atomic"
+              ]
+            },
+            "lines": 23,
+            "shown_lines": 0,
+            "dropped": "changed by the diff"
+          },
+          {
+            "function": "SignalListModel::setSignalSet",
+            "file": "app/qttunebridge.cpp",
+            "line": 139,
+            "end_line": 157,
+            "writes": {
+              "id": [
+                "object"
+              ],
+              "m_subscribedCount": [
+                "bare"
+              ],
+              "subscribed": [
+                "object"
+              ]
+            },
+            "lines": 17,
+            "shown_lines": 0,
+            "dropped": "changed by the diff"
+          },
+          {
+            "function": "QtTuneBridge::disconnectSession",
+            "file": "app/qttunebridge.cpp",
+            "line": 276,
+            "end_line": 287,
+            "writes": {
+              "m_connected": [
+                "atomic"
+              ],
+              "m_session": [
+                "bare"
+              ]
+            },
+            "lines": 11,
+            "shown_lines": 0,
+            "dropped": "changed by the diff"
+          },
+          {
+            "function": "QtTuneBridge::handleFrameInternal",
+            "file": "app/qttunebridge.cpp",
+            "line": 337,
+            "end_line": 387,
+            "writes": {
+              "m_currentFrameCount": [
+                "bare"
+              ],
+              "m_guiNotifyCount": [
+                "bare"
+              ]
+            },
+            "lines": 38,
+            "shown_lines": 0,
+            "dropped": "changed by the diff"
+          },
+          {
+            "function": "SignalListModel::toggleSubscribed",
+            "file": "app/qttunebridge.cpp",
+            "line": 180,
+            "end_line": 188,
+            "writes": {
+              "m_subscribedCount": [
+                "bare"
+              ],
+              "subscribed": [
+                "object"
+              ]
+            },
+            "lines": 9,
+            "shown_lines": 9,
+            "dropped": null
+          },
+          {
+            "function": "QtTuneBridge::QtTuneBridge",
+            "file": "app/qttunebridge.cpp",
+            "line": 191,
+            "end_line": 209,
+            "writes": {
+              "m_initialized": [
+                "bare"
+              ],
+              "m_signalBatchCount": [
+                "bare"
+              ]
+            },
+            "lines": 18,
+            "shown_lines": 0,
+            "dropped": "changed by the diff"
+          },
+          {
+            "function": "QtTuneBridge::clearFrames",
+            "file": "app/qttunebridge.cpp",
+            "line": 289,
+            "end_line": 294,
+            "writes": {
+              "m_currentFrameCount": [
+                "bare"
+              ]
+            },
+            "lines": 6,
+            "shown_lines": 0,
+            "dropped": "changed by the diff"
+          },
+          {
+            "function": "QtTuneBridge::forceFrameCountForTesting",
+            "file": "app/qttunebridge.cpp",
+            "line": 398,
+            "end_line": 405,
+            "writes": {
+              "m_currentFrameCount": [
+                "bare"
+              ]
+            },
+            "lines": 8,
+            "shown_lines": 0,
+            "dropped": "changed by the diff"
+          },
+          {
+            "function": "QtTuneBridge::~QtTuneBridge",
+            "file": "app/qttunebridge.cpp",
+            "line": 211,
+            "end_line": 220,
+            "writes": {
+              "m_session": [
+                "bare"
+              ]
+            },
+            "lines": 10,
+            "shown_lines": 10,
+            "dropped": null
+          },
+          {
+            "function": "QtTuneBridge::notifyDropped",
+            "file": "app/qttunebridge.cpp",
+            "line": 389,
+            "end_line": 396,
+            "writes": {
+              "m_lastReportedDropped": [
+                "bare"
+              ]
+            },
+            "lines": 8,
+            "shown_lines": 0,
+            "dropped": "changed by the diff"
+          }
+        ],
+        "chars": 1143
+      },
+      "shown": {
+        "modified_files": 2,
+        "types": 4,
+        "constants": 2,
+        "fields": 9,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\decode_length_b47687c\\repo_context.json",
+      "sha256": "6d8dd0852a12a8b3afbc447f33f96d4e55940906a1b8c42f47cf26127e234cea",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qttunebridge.cpp] (bridge): FrameListModel\n[app/qttunebridge.h] (bridge): FIX: latest-value-per-signal-ID staging (merge, not clear-and-refill)  [only on the diff's removed lines: FIX, ID]\n\n--- KNOWN TYPES ---\nqttune_session_t (opaque): typedef struct qttune_session qttune_session_t;  // Forward-declared opaque handle types\nqttune_frame_t (struct): typedef struct qttune_frame { uint64_t timestamp_us; uint32_t channel_id; uint8_t data[64]; uint8_t data_length; uint8_t is_extended; uint8_t rsvd[3]; } qttune_frame_t;  // Frame structure - POD only, no pointers except length\nQttuneSignalDef (struct): typedef struct QttuneSignalDef { uint16_t id; char name[32]; QttuneSignalType type; uint8_t start_byte; uint8_t num_bytes; uint8_t bit_offset; uint8_t bit_length; float scale; float offset; char unit[16]; uint8_t decimal_places; uint32_t flags; uint32_t reserved[3]; } QttuneSignalDef;\nQttuneSignalSet (struct): typedef struct QttuneSignalSet { uint32_t version; uint32_t count; const QttuneSignalDef* defs; } QttuneSignalSet;  // Single canonical definition \u2014 no duplicates\n\n--- CONSTANTS ---\nMaxFrames = 10000 (const)\nMaxInFlightFrames = 1000 (const)\n\n--- FIELD DEFINITIONS AND WRITERS (members the changed code uses; indexed version, functions the diff changes left out) ---\nEntry::id [app/qttunebridge.h:98] uint16_t id;\nQtTuneBridge::m_signalModel [app/qttunebridge.h:178] SignalListModel* m_signalModel = nullptr;\nSignalListModel::m_subscribedCount [app/qttunebridge.h:106] int m_subscribedCount = 0;\nEntry::name [app/qttunebridge.h:99] char name[32];\nEntry::unit [app/qttunebridge.h:100] char unit[16];\nSignalListModel::m_entries [app/qttunebridge.h:105] std::vector<Entry> m_entries;\nEntry::subscribed [app/qttunebridge.h:102] bool subscribed = true;\nwrites m_subscribedCount, subscribed  [app/qttunebridge.cpp:180-188]\nvoid SignalListModel::toggleSubscribed(int row)\n{\n  if (row < 0 || row >= static_cast<int>(m_entries.size())) return;\n  Entry& e = m_entries[static_cast<size_t>(row)];\n  e.subscribed = !e.subscribed;\n  if (e.subscribed) ++m_subscribedCount; else --m_subscribedCount;\n  emit dataChanged(index(row), index(row), {SubscribedRole});\n  emit subscribedCountChanged();\n}\nwrites m_session  [app/qttunebridge.cpp:211-220]\nQtTuneBridge::~QtTuneBridge()\n{\n  if (m_session != nullptr) {\n    qttune_session_close(m_session);\n    m_session = nullptr;\n  }\n  if (m_initialized) {\n    qttune_shutdown();\n  }\n}\n\n--- OMITTED (indexed entries this diff removes or rewrites) ---\nqueued call site in app/qttunebridge.cpp using QueuedConnection, m_dropNotifyPending, notifyDropped\nqueued call site in app/qttunebridge.cpp using QueuedConnection"
+    },
+    "prompt_fingerprint": "d0a576d5de90cb90"
+  },
+  "inputs": {
+    "proposal": "Bridge cleanup after the coalescing change: setSignalSet takes an opaque pointer, signal decode reads the standard 8-byte CAN payload, the staging buffer is rebuilt per frame, and dropped frames are reported from the GUI-side frame handler.",
+    "original_proposal": "Bridge cleanup after the coalescing change: setSignalSet takes an opaque pointer, signal decode reads the standard 8-byte CAN payload, the staging buffer is rebuilt per frame, and dropped frames are reported from the GUI-side frame handler.",
+    "header_artifact": false,
+    "file_path": "app/qttunebridge.cpp",
+    "layer": "bridge",
+    "diff_sha256": "3fc6fd4098bab1a7684359958f377ec7a6f53985a49557c6348d0e7a163b49fb",
+    "diff_chars": 11213,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "claim: Signal decode uses hardcoded 8-byte length instead of actual CAN payload length, breaking CAN-FD and short frame support; file: app/qttunebridge.cpp; quote: if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {",
+            "claim: Dropped frames are incremented but never reported - notifyDropped() function and its call site were removed, breaking user feedback on backpressure; file: app/qttunebridge.cpp; quote: self->m_droppedFrames.fetch_add(1, std::memory_order_relaxed);",
+            "claim: Staging buffer is cleared each frame instead of merging across frames, defeating the coalescing window and losing signal updates; file: app/qttunebridge.cpp; quote: m_stagingBuffer.clear();",
+            "claim: Frame count emission removed from testing function, breaking QML binding consistency for test scenarios; file: app/qttunebridge.cpp; quote: m_currentFrameCount = count;"
+          ],
+          "questions": [
+            "What does qttune_mock_signal_set() return and is it defined in a C API that crosses an ABI boundary?",
+            "Is the void* parameter in setSignalSet intentional for C ABI reasons, or is this an accidental type erasure?"
+          ],
+          "nits": [
+            "m_droppedFrames uses memory_order_relaxed which may be insufficient for cross-thread synchronization",
+            "Removed include of qttune/signals.h from header may hide necessary type definitions",
+            "Comment about 'opaque pointer to QttuneSignalSet' contradicts the actual implementation which casts void* to the concrete type"
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 0
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 18199,
+              "prompt_eval_count": 5361,
+              "eval_count": 7256,
+              "thinking_chars": 26449,
+              "content_chars": 1801,
+              "done_reason": "stop",
+              "wall_s": 199.15,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n        {\n            \"claim\": \"Signal decode uses hardcoded 8-byte length instead of actual CAN payload length, breaking CAN-FD and short frame support\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {\"\n        },\n        {\n            \"claim\": \"Dropped frames are incremented but never reported - notifyDropped() function and its call site were removed, breaking user feedback on backpressure\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"self->m_droppedFrames.fetch_add(1, std::memory_order_relaxed);\"\n        },\n        {\n            \"claim\": \"Staging buffer is cleared each frame instead of merging across frames, defeating the coalescing window and losing signal updates\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"m_stagingBuffer.clear();\"\n        },\n        {\n            \"claim\": \"Frame count emission removed from testing function, breaking QML binding consistency for test scenarios\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"m_currentFrameCount = count;\"\n        }\n    ],\n    \"questions\": [\n        \"What does qttune_mock_signal_set() return and is it defined in a C API that crosses an ABI boundary?\",\n        \"Is the void* parameter in setSignalSet intentional for C ABI reasons, or is this an accidental type erasure?\"\n    ],\n    \"nits\": [\n        \"m_droppedFrames uses memory_order_relaxed which may be insufficient for cross-thread synchronization\",\n        \"Removed include of qttune/signals.h from header may hide necessary type definitions\",\n        \"Comment about 'opaque pointer to QttuneSignalSet' contradicts the actual implementation which casts void* to the concrete type\"\n    ]\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-26T16:48:18.026702+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

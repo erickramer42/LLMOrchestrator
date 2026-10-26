@@ -1,6 +1,7 @@
 """Deterministic tests for retrieval (build_context_pack) and the
 indexer's queued-connection call-site harvester. No network, no Ollama."""
 
+import json
 import unittest
 
 import debate
@@ -420,6 +421,200 @@ diff --git a/app/qttunebridge.cpp b/app/qttunebridge.cpp
         self.assertIn("the code diff is authoritative", wording)
         self.assertIn("machine-written", wording)
         self.assertEqual(report["index_commit"], self.INDEX["source_commit"])
+
+
+def json_copy(obj):
+    return json.loads(json.dumps(obj))
+
+
+class HarvestDefinitions(unittest.TestCase):
+    """Data members and the functions that assign them (pack f4; ADR-0002,
+    twentieth measurement)."""
+
+    SRC = """
+struct transport {
+    /* resolved channels */
+    channel chans[MAX_CHANNELS] = {};
+    uint32_t chan_count = 0;
+    std::atomic<bool> stop{false};
+};
+
+class Bridge : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(int count READ count NOTIFY countChanged)
+public:
+    int rowCount(const QModelIndex& parent = {}) const override;
+    int count() const { return m_count; }
+private:
+    int m_count = 0, m_other = 1;
+    QTimer* m_timer = nullptr;
+};
+
+void resolve(transport* t, int n)
+{
+    if (n > 0) {
+        t->chans[0].rx_id = 7;
+    } else if (n < 0) {
+        return;
+    }
+    t->chan_count = n;
+}
+
+void Bridge::reset()
+{
+    int local = 0;
+    m_count = 0;
+    ++m_other;
+    if (m_count == local) {}
+}
+
+void Bridge::stop(transport* t)
+{
+    t->stop.store(true);
+}
+"""
+
+    def setUp(self):
+        self.members, self.functions = indexer.harvest_definitions(self.SRC)
+        self.by_name = {f["name"]: f for f in self.functions}
+
+    def test_members_of_structs_and_classes(self):
+        got = {(m["owner"], m["name"]) for m in self.members}
+        self.assertEqual(got, {("transport", "chans"), ("transport", "chan_count"),
+                               ("transport", "stop"), ("Bridge", "m_count"),
+                               ("Bridge", "m_other"), ("Bridge", "m_timer")})
+        chans = next(m for m in self.members if m["name"] == "chans")
+        self.assertEqual(chans["decl"], "channel chans[MAX_CHANNELS] = {};")
+        self.assertEqual(chans["line"], 4)
+
+    def test_a_default_argument_brace_is_not_a_body(self):
+        # 'rowCount(... = {}) const override;' once yielded a member
+        # named 'override' and a function rowCount (Step 0)
+        self.assertNotIn("override", {m["name"] for m in self.members})
+        self.assertNotIn("rowCount", self.by_name)
+
+    def test_functions_with_owner_and_span(self):
+        self.assertIsNone(self.by_name["resolve"]["owner"])
+        self.assertEqual(self.by_name["Bridge::reset"]["owner"], "Bridge")
+        self.assertEqual(self.by_name["count"]["owner"], "Bridge")  # inline method
+        self.assertEqual((self.by_name["resolve"]["line"],
+                          self.by_name["resolve"]["end_line"]), (20, 28))
+        self.assertNotIn("if", self.by_name)
+
+    def test_writes_by_form(self):
+        w = self.by_name["resolve"]["writes"]
+        self.assertEqual(w["chans"], ["pointer"])   # through a chain
+        self.assertEqual(w["rx_id"], ["object"])
+        self.assertEqual(w["chan_count"], ["pointer"])
+        reset = self.by_name["Bridge::reset"]["writes"]
+        self.assertEqual(reset["m_count"], ["bare"])
+        self.assertEqual(reset["m_other"], ["bare"])  # prefix ++
+        self.assertEqual(self.by_name["Bridge::stop"]["writes"]["stop"], ["atomic"])
+
+    def test_comparisons_are_not_writes(self):
+        self.assertNotIn("n", self.by_name["resolve"]["writes"])  # n > 0, n < 0
+
+    def test_function_lines_are_comment_free_and_dedented(self):
+        lines = self.by_name["resolve"]["lines"]
+        self.assertEqual(lines[0], "void resolve(transport* t, int n)")
+        self.assertEqual(lines[-1], "}")
+        self.assertIn("  t->chan_count = n;", lines)
+
+
+class FieldSection(unittest.TestCase):
+    """The FIELD DEFINITIONS AND WRITERS pack section."""
+
+    INDEX = {
+        "files": [{"path": "core/t.cpp", "purpose": "transport", "layer": "core"}],
+        "types": [], "constants": [], "callsites": [],
+        "fields": [
+            {"owner": "transport", "name": "chans", "file": "core/t.cpp",
+             "line": 4, "decl": "channel chans[MAX] = {};"},
+            {"owner": "transport", "name": "chan_count", "file": "core/t.cpp",
+             "line": 5, "decl": "uint32_t chan_count = 0;"},
+        ],
+        "functions": [
+            {"name": "resolve", "owner": None, "file": "core/t.cpp", "line": 20,
+             "end_line": 24, "writes": {"chans": ["pointer"], "chan_count": ["pointer"]},
+             "lines": ["void resolve(transport* t)", "{", " t->chan_count = 1;", "}"]},
+            {"name": "worker", "owner": None, "file": "core/t.cpp", "line": 40,
+             "end_line": 60, "writes": {"chan_count": ["pointer"]},
+             "lines": ["void worker(transport* t)", "{", " t->chan_count = 0;", "}"]},
+        ],
+    }
+    DIFF = (
+        "--- a/core/t.cpp\n+++ b/core/t.cpp\n"
+        "@@ -45,3 +45,3 @@ void worker(transport* t)\n"
+        "     int x = 0;\n"
+        "-    send(t->chans[ci].tx_id);\n"
+        "+    send(t->chans[0].tx_id);\n"
+        "     if (t->chan_count == 0) return;\n")
+
+    def test_declarations_and_unchanged_writers_are_shown(self):
+        text, report = rc.build_context_pack(self.DIFF, self.INDEX)
+        self.assertIn("--- FIELD DEFINITIONS AND WRITERS", text)
+        self.assertIn("transport::chans [core/t.cpp:4] channel chans[MAX] = {};", text)
+        self.assertIn("writes chan_count, chans  [core/t.cpp:20-24]", text)
+        self.assertIn(" t->chan_count = 1;", text)
+        self.assertEqual(report["sections"]["fields"], 3)
+
+    def test_a_function_the_diff_changes_is_left_out(self):
+        _, report = rc.build_context_pack(self.DIFF, self.INDEX)
+        rows = {w["function"]: w["dropped"] for w in report["field_audit"]["writers"]}
+        self.assertEqual(rows, {"resolve": None, "worker": "changed by the diff"})
+
+    def test_a_declaration_inside_a_hunk_is_left_out(self):
+        diff = self.DIFF.replace("@@ -45,3 +45,3 @@", "@@ -3,3 +3,3 @@")
+        _, report = rc.build_context_pack(diff, self.INDEX)
+        dropped = {d["name"]: d["dropped"] for d in report["field_audit"]["decls"]}
+        self.assertEqual(dropped["chans"], "in a hunk")
+
+    def test_calls_are_not_member_uses(self):
+        diff = self.DIFF.replace("t->chan_count == 0", "t->chan_count() == 0")
+        _, report = rc.build_context_pack(diff, self.INDEX)
+        self.assertNotIn("chan_count", report["field_audit"]["uses"])
+
+    def test_a_writer_naming_removed_project_code_is_omitted(self):
+        index = json_copy(self.INDEX)
+        index["functions"][0]["lines"].insert(2, " helper_ci(t);")
+        index["functions"].append({"name": "helper_ci", "owner": None,
+                                   "file": "core/x.cpp", "line": 1, "end_line": 2,
+                                   "writes": {}, "lines": []})
+        diff = self.DIFF.replace("send(t->chans[ci].tx_id);",
+                                 "send(t->chans[helper_ci(t)].tx_id);")
+        text, report = rc.build_context_pack(diff, index)
+        rows = {w["function"]: w["dropped"] for w in report["field_audit"]["writers"]}
+        self.assertEqual(rows["resolve"], "names removed code: helper_ci")
+        self.assertIn("writer resolve (core/t.cpp) using helper_ci", text)
+
+    def test_removed_keywords_do_not_omit_a_writer(self):
+        # 'static_cast' on a removed line is not project code (Step 0)
+        index = json_copy(self.INDEX)
+        index["functions"][0]["lines"].insert(2, " int n = static_cast<int>(1);")
+        diff = self.DIFF.replace("send(t->chans[ci].tx_id);",
+                                 "send(static_cast<int>(t->chans[ci].tx_id));")
+        _, report = rc.build_context_pack(diff, index)
+        rows = {w["function"]: w["dropped"] for w in report["field_audit"]["writers"]}
+        self.assertIsNone(rows["resolve"])
+
+    def test_long_writer_keeps_head_and_tail(self):
+        index = json_copy(self.INDEX)
+        index["functions"][0]["lines"] = (["void resolve(transport* t)", "{"]
+                                          + [f" step{i}();" for i in range(40)]
+                                          + [" t->chan_count = n;", "}"])
+        text, report = rc.build_context_pack(self.DIFF, index)
+        self.assertIn(" t->chan_count = n;", text)
+        self.assertIn("\n…\n", text)
+        self.assertNotIn("step20();", text)
+        row = report["field_audit"]["writers"][0]
+        self.assertEqual((row["shown_lines"], row["lines"]),
+                         (rc.WRITER_LINES - 1, 44))
+
+    def test_index_without_fields_has_no_section(self):
+        index = {k: v for k, v in self.INDEX.items() if k not in ("fields", "functions")}
+        text, report = rc.build_context_pack(self.DIFF, index)
+        self.assertNotIn("FIELD DEFINITIONS", text)
+        self.assertEqual(report["sections"]["fields"], 0)
 
 
 if __name__ == "__main__":

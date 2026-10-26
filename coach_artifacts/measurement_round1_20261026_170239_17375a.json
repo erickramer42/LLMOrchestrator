@@ -1,0 +1,332 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261026_170239_17375a",
+    "created_utc": "2026-10-26T17:03:31.085943+00:00",
+    "prompt_version": "v15-field-writers",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 18401,
+      "estimated_tokens": 6134,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 4415,
+      "sections": {
+        "modified_files": 10,
+        "types": 2,
+        "constants": 0,
+        "fields": 9,
+        "call_sites": 4,
+        "related_call_sites": 0,
+        "omitted": 0
+      },
+      "entries": 25,
+      "index_version": "idx_20261026_151155",
+      "index_commit": "76189e749d4f71f0224803bdb98b49ef36526db6",
+      "format_version": "f4-field-writers",
+      "error": null,
+      "base_check": {
+        "checked": 10,
+        "mismatched": []
+      },
+      "field_audit": {
+        "uses": {
+          "m_coalesceTimer": 2,
+          "m_signalModel": 1,
+          "m_sortProxy": 1,
+          "m_sourceModel": 1,
+          "m_recorder": 2,
+          "m_connected": 1,
+          "m_currentFrameCount": 1,
+          "m_droppedFrames": 1,
+          "m_session": 1,
+          "m_currentUri": 1
+        },
+        "decls": [
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_coalesceTimer",
+            "file": "app/qttunebridge.h",
+            "line": 315,
+            "dropped": null
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_recorder",
+            "file": "app/qttunebridge.h",
+            "line": 351,
+            "dropped": null
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_connected",
+            "file": "app/qttunebridge.h",
+            "line": 306,
+            "dropped": null
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_currentFrameCount",
+            "file": "app/qttunebridge.h",
+            "line": 308,
+            "dropped": null
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_currentUri",
+            "file": "app/qttunebridge.h",
+            "line": 304,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_droppedFrames",
+            "file": "app/qttunebridge.h",
+            "line": 307,
+            "dropped": null
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_session",
+            "file": "app/qttunebridge.h",
+            "line": 303,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_signalModel",
+            "file": "app/qttunebridge.h",
+            "line": 320,
+            "dropped": null
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_sortProxy",
+            "file": "app/qttunebridge.h",
+            "line": 313,
+            "dropped": null
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_sourceModel",
+            "file": "app/qttunebridge.h",
+            "line": 312,
+            "dropped": null
+          }
+        ],
+        "writers": [
+          {
+            "function": "QtTuneBridge::applyConnectedState",
+            "file": "app/qttunebridge.cpp",
+            "line": 495,
+            "end_line": 525,
+            "writes": {
+              "m_connected": [
+                "atomic"
+              ],
+              "m_currentFrameCount": [
+                "bare"
+              ],
+              "m_currentUri": [
+                "bare"
+              ],
+              "m_droppedFrames": [
+                "atomic"
+              ],
+              "m_session": [
+                "bare"
+              ]
+            },
+            "lines": 26,
+            "shown_lines": 24,
+            "dropped": null
+          },
+          {
+            "function": "QtTuneBridge::destroySessionLocked",
+            "file": "app/qttunebridge.cpp",
+            "line": 397,
+            "end_line": 404,
+            "writes": {
+              "m_session": [
+                "bare"
+              ]
+            },
+            "lines": 7,
+            "shown_lines": 0,
+            "dropped": "changed by the diff"
+          },
+          {
+            "function": "QtTuneBridge::disconnectSession",
+            "file": "app/qttunebridge.cpp",
+            "line": 598,
+            "end_line": 646,
+            "writes": {
+              "m_connected": [
+                "atomic"
+              ]
+            },
+            "lines": 33,
+            "shown_lines": 0,
+            "dropped": "section budget"
+          },
+          {
+            "function": "QtTuneBridge::clearFrames",
+            "file": "app/qttunebridge.cpp",
+            "line": 769,
+            "end_line": 774,
+            "writes": {
+              "m_currentFrameCount": [
+                "bare"
+              ]
+            },
+            "lines": 6,
+            "shown_lines": 0,
+            "dropped": "section budget"
+          },
+          {
+            "function": "QtTuneBridge::onFrame",
+            "file": "app/qttunebridge.cpp",
+            "line": 776,
+            "end_line": 817,
+            "writes": {
+              "m_droppedFrames": [
+                "atomic"
+              ]
+            },
+            "lines": 24,
+            "shown_lines": 0,
+            "dropped": "section budget"
+          },
+          {
+            "function": "QtTuneBridge::handleFrameInternal",
+            "file": "app/qttunebridge.cpp",
+            "line": 819,
+            "end_line": 880,
+            "writes": {
+              "m_currentFrameCount": [
+                "bare"
+              ]
+            },
+            "lines": 48,
+            "shown_lines": 0,
+            "dropped": "section budget"
+          },
+          {
+            "function": "QtTuneBridge::forceFrameCountForTesting",
+            "file": "app/qttunebridge.cpp",
+            "line": 891,
+            "end_line": 898,
+            "writes": {
+              "m_currentFrameCount": [
+                "bare"
+              ]
+            },
+            "lines": 8,
+            "shown_lines": 0,
+            "dropped": "section budget"
+          }
+        ],
+        "chars": 1670
+      },
+      "shown": {
+        "modified_files": 10,
+        "types": 2,
+        "constants": 0,
+        "fields": 9,
+        "call_sites": 4,
+        "related_call_sites": 0,
+        "omitted": 0
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\init_noops_cf03331\\repo_context.json",
+      "sha256": "de6bb83bf0455c9e315238d51a47b73d8892868da8766f0db254d74e007f80cd",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qml/HomePage.qml] (app): File/layer: app/qml/HomePage.qml | Qt6 Quick, UI layer\n[app/qml/LiveViewPage.qml] (app): File/layer: app/qml/LiveViewPage.qml | Qt6 Quick, UI layer\n[app/qml/Main.qml] (app): File/layer: app/qml/Main.qml | Qt6 Quick, UI layer\n[app/qml/SettingsPage.qml] (app): File/layer: app/qml/SettingsPage.qml | Qt6 Quick, UI layer\n[app/qttunebridge.cpp] (bridge): File/layer: app/qttunebridge.cpp | Qt6 Core, app layer, C++17\n[app/qttunebridge.h] (bridge): File/layer: app/qttunebridge.h | Qt6 Core, app layer, C++17\n[core/include/ecuio/core.h] (core): File/layer: core/include/ecuio/core.h | C ABI, public interface\n[core/include/ecuio/profile.h] (core): File/layer: core/include/ecuio/profile.h | C ABI, public\n[core/src/core.cpp] (core): File/layer: core/src/core.cpp | C++17, Qt-free, CI-validated headless build\n[core/src/profile_registry.cpp] (core): File/layer: core/src/profile_registry.cpp | C++17, Qt-free\n\n--- KNOWN TYPES ---\necuio_session_t (opaque): typedef struct ecuio_session ecuio_session_t;  // Forward-declared opaque handle types\necuio_status_t (enum): typedef enum { ECUIO_OK = 0, ECUIO_ERR_NULL_ARGUMENT = 1, ECUIO_ERR_NOT_IMPLEMENTED = 2, ECUIO_ERR_NO_TRANSPORT = 3, ECUIO_ERR_OUT_OF_MEMORY = 4, ECUIO_ERR_SESSION_CLOSED = 5, ECUIO_ERR_ALREADY_REGISTERED = 6, ECUIO_ERR_LOAD_FAILED = 7, ECUIO_ERR_VEHICLE_TIMEOUT = 8, ECUIO_ERR_TRANSPORT_HARD_FAILURE = 9, ECUIO_ERR_REQUEST_FAILED = 10, ECUIO_ERR_INVALID_ARGUMENT = 11,  // Status codes - append-only evolution for ABI stability\n\n--- FIELD DEFINITIONS AND WRITERS (members the changed code uses; indexed version, functions the diff changes left out) ---\nQtTuneBridge::m_coalesceTimer [app/qttunebridge.h:315] QTimer* m_coalesceTimer = nullptr;\nQtTuneBridge::m_recorder [app/qttunebridge.h:351] SessionRecorder m_recorder;\nQtTuneBridge::m_connected [app/qttunebridge.h:306] std::atomic<bool> m_connected{false};\nQtTuneBridge::m_currentFrameCount [app/qttunebridge.h:308] int m_currentFrameCount = 0;\nQtTuneBridge::m_droppedFrames [app/qttunebridge.h:307] std::atomic<int> m_droppedFrames{0};\nQtTuneBridge::m_signalModel [app/qttunebridge.h:320] SignalListModel* m_signalModel = nullptr;\nQtTuneBridge::m_sortProxy [app/qttunebridge.h:313] FrameSortProxy* m_sortProxy = nullptr;\nQtTuneBridge::m_sourceModel [app/qttunebridge.h:312] FrameListModel* m_sourceModel = nullptr;\nwrites m_connected, m_currentFrameCount, m_currentUri, m_droppedFrames, m_session  [app/qttunebridge.cpp:495-525]\nvoid QtTuneBridge::applyConnectedState(ecuio_session_t* session, const QString& uri)\n{\n  startRecording(uri, ecuio_session_signal_set(session));\n  m_session = session;\n  m_currentUri = uri;\n  emit currentUriChanged();\n  m_connected.store(true, std::memory_order_release);\n  m_sourceModel->clear();\n  m_currentFrameCount = 0;\n  m_droppedFrames.store(0, std::memory_order_relaxed);\n  m_lastReportedDropped = 0;\n  m_signalModel->setSignalSet(ecuio_session_signal_set(session));\n  m_stagingBuffer.clear();\n  m_linkErrorCode = ECUIO_OK;\n  m_errorEpisodes = 0;\n  emit linkStateChanged();\n  setLogPaused(false);\n  m_coalesceTimer->start(100);\n\u2026\n  emit logMessage(QStringLiteral(\"Connected: %1\").arg(uri));\n  ecuio_session_info_t info{};\n  if (ecuio_session_get_info(session, &info) == ECUIO_OK) {\n    emit logMessage(sessionInfoText(info));\n  }\n}\n\n--- QUEUED CONNECTION CALL SITES (indexed line numbers) ---\n[app/qttunebridge.cpp:570] QMetaObject::invokeMethod(this, [this, uri, core_err]() { calls: m_connectThread.joinable, m_connectThread.join, m_pendingSession.exchange, err.isEmpty, startSession, connectingChanged }, Qt::QueuedConnection);\n[app/qttunebridge.cpp:632] QMetaObject::invokeMethod(this, [this, uri]() { calls: m_disconnectThread.joinable, m_disconnectThread.join, disconnectingChanged, logMessage, QStringLiteral, arg }, Qt::QueuedConnection);\n[app/qttunebridge.cpp:790] QMetaObject::invokeMethod(self, [self]() { calls: m_dropNotifyPending.store, notifyDropped }, Qt::QueuedConnection);\n[app/qttunebridge.cpp:813] QMetaObject::invokeMethod(self, [self, copy, arrived]() { calls: m_inFlightFrames.fetch_sub, handleFrameInternal }, Qt::QueuedConnection);  // Lifetime contract: invoking with `self` as context object means the queued lambda is dropped if the bridge is destroyed before it runs. DO NOT change to a\u2026"
+    },
+    "prompt_fingerprint": "1b5f3ac595ba545e"
+  },
+  "inputs": {
+    "proposal": "Core needs no global setup: ecuio_init and ecuio_shutdown become optional no-ops, init always returns ECUIO_OK, and the bridge and QML drop the coreInitialized gate.",
+    "original_proposal": "Core needs no global setup: ecuio_init and ecuio_shutdown become optional no-ops, init always returns ECUIO_OK, and the bridge and QML drop the coreInitialized gate.",
+    "header_artifact": false,
+    "file_path": "app/qml/HomePage.qml",
+    "layer": "app",
+    "diff_sha256": "c7f100e43777336ffe89556909ad413c5e2f9c4ebe38847b8877678cfc57450e",
+    "diff_chars": 10067,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "claim: C ABI integrity violation: The core.h header exposes ecuio_init and ecuio_shutdown as public API functions, but the comment in the header reveals they are optional and do nothing. This violates the principle that C API functions should have clear, documented purposes. Callers cannot know whether to call them or what guarantees they provide without reading implementation details.; file: core/include/ecuio/core.h; quote: /* Lifecycle. Core needs no global setup: sessions, the profile registry\n * (profile.h) and discovery (j2534.h) work without ecuio_init. Both\n * calls are optional and do nothing; init always returns ECUIO_OK. A\n * caller may pair them, call either any number of times, or never call\n * them, and shutdown leaves open sessions working. */\n ecuio_status_t ecuio_init(void);\n void ecuio_shutdown(void);"
+          ],
+          "questions": [
+            "What is the actual purpose of ecuio_init/ecuio_shutdown if they do nothing? Should they be removed entirely or renamed to indicate they are deprecated/buffer functions?",
+            "How can callers know which parts of the API require initialization vs which work without it? The documentation comment is insufficient.",
+            "Is there any thread-safety analysis confirming that removing g_initialized is safe? The original atomic suggests there was a concurrency concern.",
+            "The QtTuneBridge.cpp calls ecuio_init() but ignores the return value with (void). Should this be removed entirely since it does nothing?",
+            "Are there any hidden global state or one-time initialization requirements in the core that this change might break?",
+            "claim: Qt leakage in core module: The core.h header comment references 'core.h' in a comment about the profile registry, creating a circular dependency narrative. The core module should be Qt-free and have self-contained documentation.; file: core/include/ecuio/profile.h; quote: /* Built-ins are always present (initialized on first registry access;\n * core needs no ecuio_init, core.h) and can't be replaced or removed. */",
+            "claim: Thread safety concern: The removal of g_initialized atomic flag in core.cpp eliminates the previous thread-safe initialization guard. While the new implementation is simpler, the original atomic was there for a reason - to prevent race conditions during initialization. The comment claims 'core holds no global state that needs them' but this must be verified against all code paths.; file: core/src/core.cpp; quote: ecuio_status_t ecuio_init(void)\n {\n-    bool expected = false;\n-    g_initialized.compare_exchange_strong(expected, true);\n     return ECUIO_OK;\n }\n\n void ecuio_shutdown(void)\n {\n-    g_initialized.store(false);\n }",
+            "claim: C ABI integrity violation: ecuio_init and ecuio_shutdown are declared in core.h but are made no-ops that do nothing, breaking the contract that these lifecycle functions provide initialization/shutdown. The header comment says 'core needs no global setup' but doesn't explain what the functions actually do or guarantee, making them misleading API functions that could hide real initialization requirements.; file: core/include/ecuio/core.h; quote: ecuio_status_t ecuio_init(void);\n void ecuio_shutdown(void);\n const char* ecuio_version_string(void);"
+          ],
+          "nits": [
+            "Consider removing ecuio_init and ecuio_shutdown entirely from the public API if they are truly no-ops, rather than keeping them as confusing placeholder functions.",
+            "The comment in core.h should be updated to clearly state the purpose: 'These functions are deprecated placeholders for API compatibility'",
+            "The QtTuneBridge destructor should remove the ecuio_shutdown() call since it does nothing.",
+            "Consider adding a static assertion or compile-time check to verify the core module has no Qt dependencies."
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 2
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 1
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 18401,
+              "prompt_eval_count": 5547,
+              "eval_count": 2709,
+              "thinking_chars": 10107,
+              "content_chars": 4147,
+              "done_reason": "stop",
+              "wall_s": 51.58,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n        {\n            \"claim\": \"C ABI integrity violation: ecuio_init and ecuio_shutdown are declared in core.h but are made no-ops that do nothing, breaking the contract that these lifecycle functions provide initialization/shutdown. The header comment says 'core needs no global setup' but doesn't explain what the functions actually do or guarantee, making them misleading API functions that could hide real initialization requirements.\",\n            \"file\": \"core/include/ecuio/core.h\",\n            \"quote\": \"ecuio_status_t ecuio_init(void);\\n void ecuio_shutdown(void);\\n const char* ecuio_version_string(void);\"\n        },\n        {\n            \"claim\": \"C ABI integrity violation: The core.h header exposes ecuio_init and ecuio_shutdown as public API functions, but the comment in the header reveals they are optional and do nothing. This violates the principle that C API functions should have clear, documented purposes. Callers cannot know whether to call them or what guarantees they provide without reading implementation details.\",\n            \"file\": \"core/include/ecuio/core.h\",\n            \"quote\": \"/* Lifecycle. Core needs no global setup: sessions, the profile registry\\n * (profile.h) and discovery (j2534.h) work without ecuio_init. Both\\n * calls are optional and do nothing; init always returns ECUIO_OK. A\\n * caller may pair them, call either any number of times, or never call\\n * them, and shutdown leaves open sessions working. */\\n ecuio_status_t ecuio_init(void);\\n void ecuio_shutdown(void);\"\n        },\n        {\n            \"claim\": \"Qt leakage in core module: The core.h header comment references 'core.h' in a comment about the profile registry, creating a circular dependency narrative. The core module should be Qt-free and have self-contained documentation.\",\n            \"file\": \"core/include/ecuio/profile.h\",\n            \"quote\": \"/* Built-ins are always present (initialized on first registry access;\\n * core needs no ecuio_init, core.h) and can't be replaced or removed. */\"\n        },\n        {\n            \"claim\": \"Thread safety concern: The removal of g_initialized atomic flag in core.cpp eliminates the previous thread-safe initialization guard. While the new implementation is simpler, the original atomic was there for a reason - to prevent race conditions during initialization. The comment claims 'core holds no global state that needs them' but this must be verified against all code paths.\",\n            \"file\": \"core/src/core.cpp\",\n            \"quote\": \"ecuio_status_t ecuio_init(void)\\n {\\n-    bool expected = false;\\n-    g_initialized.compare_exchange_strong(expected, true);\\n     return ECUIO_OK;\\n }\\n\\n void ecuio_shutdown(void)\\n {\\n-    g_initialized.store(false);\\n }\"\n        }\n    ],\n    \"questions\": [\n        \"What is the actual purpose of ecuio_init/ecuio_shutdown if they do nothing? Should they be removed entirely or renamed to indicate they are deprecated/buffer functions?\",\n        \"How can callers know which parts of the API require initialization vs which work without it? The documentation comment is insufficient.\",\n        \"Is there any thread-safety analysis confirming that removing g_initialized is safe? The original atomic suggests there was a concurrency concern.\",\n        \"The QtTuneBridge.cpp calls ecuio_init() but ignores the return value with (void). Should this be removed entirely since it does nothing?\",\n        \"Are there any hidden global state or one-time initialization requirements in the core that this change might break?\"\n    ],\n    \"nits\": [\n        \"Consider removing ecuio_init and ecuio_shutdown entirely from the public API if they are truly no-ops, rather than keeping them as confusing placeholder functions.\",\n        \"The comment in core.h should be updated to clearly state the purpose: 'These functions are deprecated placeholders for API compatibility'\",\n        \"The QtTuneBridge destructor should remove the ecuio_shutdown() call since it does nothing.\",\n        \"Consider adding a static assertion or compile-time check to verify the core module has no Qt dependencies.\"\n    ]\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-26T17:03:31.085892+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

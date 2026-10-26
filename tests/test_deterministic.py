@@ -1647,11 +1647,12 @@ class RepairSwitchTests(unittest.TestCase):
     def test_the_repair_pass_is_off_by_default(self):
         # ADR-0002, seventeenth measurement: measured, not shipped
         self.assertFalse(debate.REPAIR_PASS)
-        self.assertEqual(debate.PROMPT_VERSION, "v11.1-critiques-feedback")
+        self.assertEqual(debate.PROMPT_VERSION, "v15-field-writers")
 
-    def test_debates_keep_the_v11_1_fingerprint(self):
+    def test_debates_keep_the_v15_fingerprint(self):
         # A part added to the hash, even an empty one, changes it: the
-        # bridge fixture's debates must still group with v11.1's records.
+        # repair templates stay out while the pass is off. v11.1 was
+        # 8e76794ac4946aab; v15 adds pack format f4 (ADR-0002, twentieth).
         # v14 (0e64900137072695) was measured and not shipped (ADR-0002,
         # nineteenth measurement).
         diff = (REPO_ROOT / "docs/fixtures/qttune_bridge_refactor.diff").read_text(
@@ -1659,7 +1660,7 @@ class RepairSwitchTests(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()):
             setup = debate._prepare(diff, "", False)
         self.assertEqual(debate._run_settings(setup, "debate", 3, {})["prompt_fingerprint"],
-                         "8e76794ac4946aab")
+                         "d0a576d5de90cb90")
 
     def test_the_ceiling_check_on_the_archived_offers(self):
         # ADR-0002, eighteenth measurement, Step 0: what any one-line repair
@@ -2302,6 +2303,18 @@ class CorpusTests(NoSleep):
             self.assertEqual(s["unlabelled"], [])
             self.assertEqual(s["pooled"]["runs"], 69)
             self.assertEqual((s["pooled"]["stored"], s["pooled"]["valid"]), (80, 56))
+        # the twentieth measurement's v15 sample, labeled before scoring; the
+        # globs leave out its pilot (151439, 151617) and the bridge records
+        # (not a corpus diff) are dropped by score_records
+        v15 = sorted(p for g in ("measurement_round1_20261026_15[2-9]*.json",
+                                 "measurement_round1_20261026_1[67]*.json")
+                     for p in Path(REPO_ROOT, "coach_artifacts").glob(g))
+        if v15:
+            s = corpus.labelled_summary(corpus.score_records(
+                common.load_records([str(p) for p in v15]), self.manifest), labels)
+            self.assertEqual(s["unlabelled"], [])
+            self.assertEqual(s["pooled"]["runs"], 74)
+            self.assertEqual((s["pooled"]["stored"], s["pooled"]["valid"]), (103, 61))
 
     def test_fingerprint_warning_is_per_fixture(self):
         fixtures = corpus.select(self.manifest, ["all"])[:2]

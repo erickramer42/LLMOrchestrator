@@ -1,0 +1,353 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261026_161956_e5031c",
+    "created_utc": "2026-10-26T16:21:38.951633+00:00",
+    "prompt_version": "v15-field-writers",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 15970,
+      "estimated_tokens": 5324,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 3829,
+      "sections": {
+        "modified_files": 2,
+        "types": 3,
+        "constants": 1,
+        "fields": 7,
+        "call_sites": 2,
+        "related_call_sites": 0,
+        "omitted": 1
+      },
+      "entries": 15,
+      "index_version": "idx_20261026_151151",
+      "index_commit": "4a86231a682f4017acd0b8303150dbb8341c42f9",
+      "format_version": "f4-field-writers",
+      "error": null,
+      "base_check": {
+        "checked": 2,
+        "mismatched": []
+      },
+      "field_audit": {
+        "uses": {
+          "m_entries": 2,
+          "id": 1,
+          "subscribed": 1,
+          "value": 1,
+          "m_connectThread": 6,
+          "m_session": 1,
+          "m_connecting": 3,
+          "MaxInFlightFrames": 1,
+          "m_linkErrorCode": 1,
+          "m_errorEpisodes": 1
+        },
+        "decls": [
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_connectThread",
+            "file": "app/qttunebridge.h",
+            "line": 284,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_connecting",
+            "file": "app/qttunebridge.h",
+            "line": 285,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "SignalListModel",
+            "name": "m_entries",
+            "file": "app/qttunebridge.h",
+            "line": 164,
+            "dropped": null
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "MaxInFlightFrames",
+            "file": "app/qttunebridge.h",
+            "line": 276,
+            "dropped": null
+          },
+          {
+            "owner": "Entry",
+            "name": "id",
+            "file": "app/qttunebridge.h",
+            "line": 148,
+            "dropped": null
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_errorEpisodes",
+            "file": "app/qttunebridge.h",
+            "line": 294,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_linkErrorCode",
+            "file": "app/qttunebridge.h",
+            "line": 293,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "QtTuneBridge",
+            "name": "m_session",
+            "file": "app/qttunebridge.h",
+            "line": 255,
+            "dropped": null
+          },
+          {
+            "owner": "Entry",
+            "name": "subscribed",
+            "file": "app/qttunebridge.h",
+            "line": 155,
+            "dropped": "in a hunk"
+          },
+          {
+            "owner": "Sample",
+            "name": "value",
+            "file": "app/qttunebridge.h",
+            "line": 144,
+            "dropped": null
+          },
+          {
+            "owner": "Entry",
+            "name": "value",
+            "file": "app/qttunebridge.h",
+            "line": 151,
+            "dropped": "in a hunk"
+          }
+        ],
+        "writers": [
+          {
+            "function": "QtTuneBridge::connectSessionAsync",
+            "file": "app/qttunebridge.cpp",
+            "line": 476,
+            "end_line": 520,
+            "writes": {
+              "m_connectThread": [
+                "bare"
+              ],
+              "m_connecting": [
+                "bare"
+              ]
+            },
+            "lines": 35,
+            "shown_lines": 0,
+            "dropped": "changed by the diff"
+          },
+          {
+            "function": "QtTuneBridge::applyConnectedState",
+            "file": "app/qttunebridge.cpp",
+            "line": 436,
+            "end_line": 454,
+            "writes": {
+              "m_errorEpisodes": [
+                "bare"
+              ],
+              "m_linkErrorCode": [
+                "bare"
+              ],
+              "m_session": [
+                "bare"
+              ]
+            },
+            "lines": 18,
+            "shown_lines": 18,
+            "dropped": null
+          },
+          {
+            "function": "SignalListModel::setSignalSet",
+            "file": "app/qttunebridge.cpp",
+            "line": 159,
+            "end_line": 188,
+            "writes": {
+              "id": [
+                "object"
+              ],
+              "subscribed": [
+                "object"
+              ]
+            },
+            "lines": 25,
+            "shown_lines": 25,
+            "dropped": null
+          },
+          {
+            "function": "QtTuneBridge::disconnectSession",
+            "file": "app/qttunebridge.cpp",
+            "line": 522,
+            "end_line": 540,
+            "writes": {
+              "m_errorEpisodes": [
+                "bare"
+              ],
+              "m_linkErrorCode": [
+                "bare"
+              ]
+            },
+            "lines": 17,
+            "shown_lines": 0,
+            "dropped": "section budget"
+          },
+          {
+            "function": "QtTuneBridge::pollLinkHealth",
+            "file": "app/qttunebridge.cpp",
+            "line": 667,
+            "end_line": 698,
+            "writes": {
+              "m_errorEpisodes": [
+                "bare"
+              ],
+              "m_linkErrorCode": [
+                "bare"
+              ]
+            },
+            "lines": 27,
+            "shown_lines": 0,
+            "dropped": "section budget"
+          },
+          {
+            "function": "SignalListModel::updateValues",
+            "file": "app/qttunebridge.cpp",
+            "line": 198,
+            "end_line": 241,
+            "writes": {
+              "value": [
+                "object"
+              ]
+            },
+            "lines": 29,
+            "shown_lines": 0,
+            "dropped": "changed by the diff"
+          },
+          {
+            "function": "SignalListModel::toggleSubscribed",
+            "file": "app/qttunebridge.cpp",
+            "line": 274,
+            "end_line": 282,
+            "writes": {
+              "subscribed": [
+                "object"
+              ]
+            },
+            "lines": 9,
+            "shown_lines": 0,
+            "dropped": "section budget"
+          },
+          {
+            "function": "QtTuneBridge::destroySessionLocked",
+            "file": "app/qttunebridge.cpp",
+            "line": 340,
+            "end_line": 347,
+            "writes": {
+              "m_session": [
+                "bare"
+              ]
+            },
+            "lines": 7,
+            "shown_lines": 0,
+            "dropped": "section budget"
+          }
+        ],
+        "chars": 1762
+      },
+      "shown": {
+        "modified_files": 2,
+        "types": 3,
+        "constants": 1,
+        "fields": 7,
+        "call_sites": 2,
+        "related_call_sites": 0,
+        "omitted": 1
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\connect_start_4a86231\\repo_context.json",
+      "sha256": "e69d46636442204ce7cb1a015ecd9aee56dfcf6e316b33874a449a62c2164e84",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qttunebridge.cpp] (bridge): File/layer: app/qttunebridge.cpp | Qt6 Core, app layer, C++17\n[app/qttunebridge.h] (bridge): File/layer: app/qttunebridge.h | Qt6 Core, app layer, C++17\n\n--- KNOWN TYPES ---\nqttune_session_t (opaque): typedef struct qttune_session qttune_session_t;  // Forward-declared opaque handle types\nqttune_frame_t (struct): typedef struct qttune_frame { uint64_t timestamp_us; uint32_t arbitration_id; uint16_t channel_id; uint16_t data_length; uint8_t data[64]; uint32_t flags; uint32_t reserved; } qttune_frame_t;  // Frame structure \u2014 POD only, no pointers. Layout is pinned by the assertions below: 88 bytes, no hidden padding on any supported platform (ADR-0006).\nqttune_status_t (enum): typedef enum { QT_OK = 0, QT_ERR_NULL_ARGUMENT = 1, QT_ERR_NOT_IMPLEMENTED = 2, QT_ERR_NO_TRANSPORT = 3, QT_ERR_OUT_OF_MEMORY = 4, QT_ERR_SESSION_CLOSED = 5, QT_ERR_ALREADY_REGISTERED = 6, QT_ERR_LOAD_FAILED = 7, QT_ERR_VEHICLE_TIMEOUT = 8, QT_ERR_TRANSPORT_HARD_FAILURE = 9, QT_ERR_REQUEST_FAILED = 10, } qttune_status_t;  // Status codes - append-only evolution for ABI stability\n\n--- CONSTANTS ---\nMaxInFlightFrames = 1000 (const)\n\n--- FIELD DEFINITIONS AND WRITERS (members the changed code uses; indexed version, functions the diff changes left out) ---\nSignalListModel::m_entries [app/qttunebridge.h:164] std::vector<Entry> m_entries;\nQtTuneBridge::MaxInFlightFrames [app/qttunebridge.h:276] static constexpr int MaxInFlightFrames = 1000;\nEntry::id [app/qttunebridge.h:148] uint16_t id;\nQtTuneBridge::m_session [app/qttunebridge.h:255] qttune_session_t* m_session = nullptr;\nSample::value [app/qttunebridge.h:144] float value;\nwrites m_errorEpisodes, m_linkErrorCode, m_session  [app/qttunebridge.cpp:436-454]\nvoid QtTuneBridge::applyConnectedState(qttune_session_t* session, const QString& uri)\n{\n  m_session = session;\n  m_currentUri = uri;\n  emit currentUriChanged();\n  m_connected.store(true, std::memory_order_release);\n  m_currentFrameCount = 0;\n  m_droppedFrames.store(0, std::memory_order_relaxed);\n  m_lastReportedDropped = 0;\n  m_signalModel->setSignalSet(qttune_session_signal_set(session));\n  m_stagingBuffer.clear();\n  m_linkErrorCode = QT_OK;\n  m_errorEpisodes = 0;\n  emit linkStateChanged();\n  m_coalesceTimer->start(100);\n  emit connectedChanged(true);\n  emit framesReset();\n}\nwrites id, subscribed  [app/qttunebridge.cpp:159-188]\nvoid SignalListModel::setSignalSet(const QttuneSignalSet* set)\n{\n  if (set == nullptr || set->defs == nullptr || set->count == 0) {\n    beginResetModel();\n    m_entries.clear();\n    m_subscribedCount = 0;\n    endResetModel();\n    m_clock.restart();\n    return;\n  }\n  beginResetModel();\n  m_entries.clear();\n  m_subscribedCount = 0;\n  for (uint32_t i = 0; i < set->count; ++i) {\n    Entry e = {};\n    e.id = set->defs[i].id;\n    strncpy(e.name, set->defs[i].name, sizeof(e.name) - 1);\n    strncpy(e.unit, set->defs[i].unit, sizeof(e.unit) - 1);\n    e.subscribed = true;\n    ++m_subscribedCount;\n    m_entries.push_back(e);\n  }\n  endResetModel();\n  m_clock.restart();\n}\n\n--- QUEUED CONNECTION CALL SITES (indexed line numbers) ---\n[app/qttunebridge.cpp:563] QMetaObject::invokeMethod(self, [self]() { calls: m_dropNotifyPending.store, notifyDropped }, Qt::QueuedConnection);\n[app/qttunebridge.cpp:583] QMetaObject::invokeMethod(self, [self, copy]() { calls: m_inFlightFrames.fetch_sub, handleFrameInternal }, Qt::QueuedConnection);  // Lifetime contract: invoking with `self` as context object means the queued lambda is dropped if the bridge is destroyed before it runs. DO NOT change to a\u2026\n\n--- OMITTED (indexed entries this diff removes or rewrites) ---\nqueued call site in app/qttunebridge.cpp using core_err, m_pendingSession, startSession"
+    },
+    "prompt_fingerprint": "d0a576d5de90cb90"
+  },
+  "inputs": {
+    "proposal": "Bridge connect: connectCoreOnly creates, registers and starts the session on the connect thread and hands it to the queued GUI completion through the lambda capture; drop the pending-session member and startSession. The signal model updates only subscribed rows, so the Live checkbox gates both the plot and the value.",
+    "original_proposal": "Bridge connect: connectCoreOnly creates, registers and starts the session on the connect thread and hands it to the queued GUI completion through the lambda capture; drop the pending-session member and startSession. The signal model updates only subscribed rows, so the Live checkbox gates both the plot and the value.",
+    "header_artifact": false,
+    "file_path": "app/qttunebridge.cpp",
+    "layer": "bridge",
+    "diff_sha256": "f942c8200795e7c911cd7d5349c92d5f6979cce3a0b3e8b13c0dfc7b40cadd69",
+    "diff_chars": 7852,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "claim: Critical thread safety and memory lifetime violation: session is started on worker thread and callback can fire before GUI thread takes ownership, creating potential use-after-free; file: app/qttunebridge.cpp; quote: const QString err = connectCoreOnly(uri, &session);\n\n        QMetaObject::invokeMethod(this, [this, uri, err, session]() {"
+          ],
+          "questions": [
+            "What synchronization mechanism protects the session callback from firing after the bridge is destroyed?",
+            "How does the core library prevent onFrame callbacks when the bridge object is destroyed?",
+            "Is there an unregister_frame_callback call that should happen in the destructor for sessions started on worker threads?",
+            "claim: Session leak and potential use-after-free: destructor no longer cleans up session that was started on worker thread but whose completion lambda was dropped; file: app/qttunebridge.cpp; quote: // A connect whose queued completion never ran (it was dropped with\n    // `this`) left its session pending. It was never started, so no\n    // worker is calling onFrame; destroy it like any other.\n    if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\n        qttune_session_destroy(pending);\n    }"
+          ],
+          "nits": [
+            "Comment in connectCoreOnly header says 'Creates, registers, starts' but should also clarify the session is started on the worker thread and may invoke callbacks before the lambda runs",
+            "Removed comment about 'subscribed' field purpose is lost - need to verify the updateValues change is intentional"
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 1
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 15970,
+              "prompt_eval_count": 4549,
+              "eval_count": 4347,
+              "thinking_chars": 15648,
+              "content_chars": 1731,
+              "done_reason": "stop",
+              "wall_s": 102.66,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n      {\n        \"claim\": \"Critical thread safety and memory lifetime violation: session is started on worker thread and callback can fire before GUI thread takes ownership, creating potential use-after-free\",\n        \"file\": \"app/qttunebridge.cpp\",\n        \"quote\": \"const QString err = connectCoreOnly(uri, &session);\\n\\n        QMetaObject::invokeMethod(this, [this, uri, err, session]() {\"\n      },\n      {\n        \"claim\": \"Session leak and potential use-after-free: destructor no longer cleans up session that was started on worker thread but whose completion lambda was dropped\",\n        \"file\": \"app/qttunebridge.cpp\",\n        \"quote\": \"// A connect whose queued completion never ran (it was dropped with\\n    // `this`) left its session pending. It was never started, so no\\n    // worker is calling onFrame; destroy it like any other.\\n    if (qttune_session_t* pending = m_pendingSession.exchange(nullptr)) {\\n        qttune_session_destroy(pending);\\n    }\"\n      }\n    ],\n    \"questions\": [\n      \"What synchronization mechanism protects the session callback from firing after the bridge is destroyed?\",\n      \"How does the core library prevent onFrame callbacks when the bridge object is destroyed?\",\n      \"Is there an unregister_frame_callback call that should happen in the destructor for sessions started on worker threads?\"\n    ],\n    \"nits\": [\n      \"Comment in connectCoreOnly header says 'Creates, registers, starts' but should also clarify the session is started on the worker thread and may invoke callbacks before the lambda runs\",\n      \"Removed comment about 'subscribed' field purpose is lost - need to verify the updateValues change is intentional\"\n    ]\n  }"
+            }
+          ]
+        },
+        "timestamp": "2026-10-26T16:21:38.951573+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

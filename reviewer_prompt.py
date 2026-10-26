@@ -59,7 +59,12 @@ Any edit to a prompt here must be reflected by bumping PROMPT_VERSION."""
 # removed code, with one example. Corpus recall rose 0.05 against the
 # 0.10 bar and bridge race recall fell 0.23, so the v11.1 text is back.
 # The v14 text is in the ADR.
-PROMPT_VERSION = "v11.1-critiques-feedback"
+# v15 (2026-10-26, ADR-0002 twentieth measurement): the v11.1 prompt
+# text, with pack format f4. The pack gains FIELD DEFINITIONS AND
+# WRITERS: the declarations of the struct and class members the changed
+# code uses, and the unchanged functions that assign them. Measured;
+# ships only by the twentieth's rule.
+PROMPT_VERSION = "v15-field-writers"
 
 AUTO_ENGINEER_PROMPT = """You are a senior automotive engineer advocating for QtTune's v0.2.0 goals:
 shipping velocity, J2534/ECU domain correctness, and safety.
