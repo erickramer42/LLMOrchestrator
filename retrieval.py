@@ -14,8 +14,7 @@ import re
 from pathlib import Path
 from typing import List, Tuple
 
-from diff_reader import (IDENT, base_blobs, code_like, diff_paths,
-                         old_hunk_ranges, read_diff)
+from diff_reader import IDENT, base_blobs, code_like, diff_paths, read_diff
 
 CONTEXT_FILE = "repo_context.json"
 # Module-relative, so --index writes and debates read the same file
@@ -33,27 +32,19 @@ QUEUED_CONN_RE = re.compile(r"\bQt::(?:Blocking)?QueuedConnection\b")
 # limits below are part of the prompt. Bump PACK_FORMAT_VERSION (it feeds
 # debate.py's prompt_fingerprint) and PROMPT_VERSION together whenever any
 # of them changes what agents see.
-PACK_FORMAT_VERSION = "f4-field-writers"
+PACK_FORMAT_VERSION = "f3-diff-authoritative"
 
 # Presentation limits for model-facing pack lines.
 SNIPPET_LIMIT = 300      # one rendered call site
 TYPE_DECL_LIMIT = 400    # one compact typedef declaration
 PURPOSE_LIMIT = 200      # one file purpose
 DOC_LIMIT = 160          # one doc comment
-FIELD_DECL_LIMIT = 200   # one member declaration line
-WRITER_LINES = 25        # one writer function, its ellipsis line included
-WRITER_TAIL_LINES = 6    # of those, the function's last lines
-FIELD_BUDGET = 1800      # the field section, inside PACK_BUDGET
 # Entries per pack section.
 MAX_FILES = 20
 MAX_TYPES = 10
 MAX_CONSTANTS = 10
-MAX_FIELD_DECLS = 8
-MAX_WRITERS = 3
 MAX_CALL_SITES = 15
 MAX_RELATED_CALL_SITES = 10
-
-_MEMBER_USE = re.compile(r"(?:->|\.)\s*([A-Za-z_]\w*)\b(?!\s*\()")
 
 # IDENT and code_like live in diff_reader (the judge uses them too) and
 # are re-exported from here.
@@ -165,128 +156,6 @@ def _callsite_line(cs: dict) -> str:
             + (f"  // {clip(doc, DOC_LIMIT)}" if doc else ""))
 
 
-def _member_uses(code_diff: str, index: dict, changed: List[str]) -> dict:
-    """How often the diff's post-change lines (context and added) use
-    each data member of a struct or class defined in a modified file:
-    after '->' or '.', or bare for a class whose methods the index holds.
-    A call ('x.store(') is not a use."""
-    names = {f["name"] for f in index.get("fields", []) if f["file"] in changed}
-    classes = {fn["owner"] for fn in index.get("functions", []) if fn.get("owner")}
-    bare = {f["name"] for f in index.get("fields", [])
-            if f["file"] in changed and f["owner"] in classes}
-    uses: dict = {}
-    for tag, text in read_diff(code_diff):
-        if tag not in (" ", "+"):
-            continue
-        accessed = set()
-        for m in _MEMBER_USE.finditer(text):
-            if m.group(1) in names:
-                uses[m.group(1)] = uses.get(m.group(1), 0) + 1
-                accessed.add(m.start(1))
-        for m in IDENT.finditer(text):
-            if m.start() not in accessed and m.group(0) in bare:
-                uses[m.group(0)] = uses.get(m.group(0), 0) + 1
-    return uses
-
-
-def _overlaps(first: int, last: int, ranges: List[Tuple[int, int]]) -> bool:
-    return any(first <= hi and lo <= last for lo, hi in ranges)
-
-
-def _writer_text(fn: dict, writes: List[str]) -> Tuple[str, int]:
-    """A writer's pack entry and how many of its lines it shows: a
-    header naming the members it writes, then the function, its middle
-    cut to WRITER_LINES with an ellipsis line when it is longer."""
-    lines = fn.get("lines") or []
-    shown = lines
-    if len(lines) > WRITER_LINES:
-        head = WRITER_LINES - WRITER_TAIL_LINES - 1
-        shown = lines[:head] + ["…"] + lines[-WRITER_TAIL_LINES:]
-    header = (f"writes {', '.join(writes)}  "
-              f"[{fn['file']}:{fn['line']}-{fn['end_line']}]")
-    return "\n".join([header, *shown]), len(shown) - (len(shown) != len(lines))
-
-
-def _field_section(code_diff: str, index: dict, changed: List[str],
-                   removed_in) -> Tuple[List[str], dict, List[str]]:
-    """The FIELD DEFINITIONS AND WRITERS entries for a diff, its audit
-    (members used, each declaration and writer with why it was shown or
-    dropped) and the entries to name under OMITTED.
-
-    Declarations come first, most-used member first; then the functions
-    that assign those members, the ones writing the most-used first. The
-    diff wins: a declaration or function a hunk overlaps is left out (its
-    indexed text is the version before the change), and so is a writer
-    whose body names an identifier only the diff's removed lines use and
-    the index defines (a type, constant, member or function: 'static_cast'
-    on a removed line says nothing about a writer)."""
-    uses = _member_uses(code_diff, index, changed)
-    project = ({t["name"] for t in index.get("types", [])}
-               | {c["name"] for c in index.get("constants", [])}
-               | {f["name"] for f in index.get("fields", [])}
-               | {fn["name"].split("::")[-1] for fn in index.get("functions", [])})
-    ranges = old_hunk_ranges(code_diff)
-    order = sorted(uses, key=lambda n: (-uses[n], n))
-    audit = {"uses": uses, "decls": [], "writers": [], "chars": 0}
-    entries: List[str] = []
-    omitted: List[str] = []
-    budget = FIELD_BUDGET
-
-    decls = [f for name in order for f in index.get("fields", [])
-             if f["name"] == name and f["file"] in changed]
-    for f in decls:
-        row = {"owner": f["owner"], "name": f["name"], "file": f["file"],
-               "line": f["line"], "dropped": None}
-        line = clip(f"{f['owner']}::{f['name']}  [{f['file']}:{f['line']}]  "
-                    f"{f['decl']}", FIELD_DECL_LIMIT)
-        if _overlaps(f["line"], f["line"], ranges.get(f["file"], [])):
-            row["dropped"] = "in a hunk"
-        elif len(entries) >= MAX_FIELD_DECLS:
-            row["dropped"] = "declaration cap"
-        elif len(line) + 1 > budget:
-            row["dropped"] = "section budget"
-        else:
-            entries.append(line)
-            budget -= len(line) + 1
-        audit["decls"].append(row)
-
-    candidates = []
-    for fn in index.get("functions", []):
-        if fn["file"] not in changed:
-            continue
-        writes = [n for n in order if n in fn.get("writes", {})]
-        if writes:
-            candidates.append((-sum(uses[n] for n in writes), fn["file"],
-                               fn["line"], fn, writes))
-    shown_writers = 0
-    for _, _, _, fn, writes in sorted(candidates, key=lambda c: c[:3]):
-        row = {"function": fn["name"], "file": fn["file"], "line": fn["line"],
-               "end_line": fn["end_line"],
-               "writes": {n: fn["writes"][n] for n in writes},
-               "lines": len(fn.get("lines") or []), "shown_lines": 0,
-               "dropped": None}
-        text, shown_lines = _writer_text(fn, writes)
-        gone = [name for name in removed_in(text) if name in project]
-        if _overlaps(fn["line"], fn["end_line"], ranges.get(fn["file"], [])):
-            row["dropped"] = "changed by the diff"
-        elif gone:
-            row["dropped"] = "names removed code: " + ", ".join(gone)
-            omitted.append(f"writer {fn['name']} ({fn['file']}) using "
-                           + ", ".join(gone))
-        elif shown_writers >= MAX_WRITERS:
-            row["dropped"] = "writer cap"
-        elif len(text) + 1 > budget:
-            row["dropped"] = "section budget"
-        else:
-            entries.append(text)
-            budget -= len(text) + 1
-            shown_writers += 1
-            row["shown_lines"] = shown_lines
-        audit["writers"].append(row)
-    audit["chars"] = FIELD_BUDGET - budget
-    return entries, audit, omitted
-
-
 def _base_check(code_diff: str, index: dict) -> dict:
     """Whether the index describes the diff's base: for each changed file
     whose blob id both the diff and the index record, does the index hold
@@ -322,9 +191,7 @@ def build_context_pack(code_diff: str, index: dict,
     Sections in priority order (truncation cuts from the end); a section
     with no entries is left out entirely:
     1. Files directly modified (from +++ b/ headers)
-    2. Types, then constants, referenced by identifier in the diff, then
-       the declarations and writers of the members the changed code uses
-       (_field_section, within FIELD_BUDGET)
+    2. Types, then constants, referenced by identifier in the diff
     3. Queued-connection call sites in the modified files
     4. Queued-connection call sites in files that define a referenced type
     5. Omitted entries
@@ -402,16 +269,6 @@ def build_context_pack(code_diff: str, index: dict,
                 [f"{c['name']} = {c['value']} ({c['kind']})"
                  for c in const_hits[:MAX_CONSTANTS]])
 
-    # Section 2b: the members the changed code uses, and the unchanged
-    # functions that assign them
-    field_lines, field_audit, field_omitted = _field_section(
-        code_diff, index, changed, removed_in)
-    omitted += field_omitted
-    add_section("fields", "FIELD DEFINITIONS AND WRITERS (members the changed "
-                "code uses; indexed version, functions the diff changes left "
-                "out)", field_lines)
-    report["field_audit"] = field_audit
-
     # Section 3: Queued-connection call sites in the modified files
     all_sites = index.get("callsites", [])
     call_sites = []
@@ -466,7 +323,6 @@ def build_context_pack(code_diff: str, index: dict,
         "modified_files": len(mod_files),
         "types": len(type_hits),
         "constants": len(const_hits),
-        "fields": len(field_lines),
         "call_sites": len(call_sites),
         "related_call_sites": len(related_sites),
     }

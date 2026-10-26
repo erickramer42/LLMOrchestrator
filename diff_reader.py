@@ -7,7 +7,7 @@ from typing import Dict, Iterator, List, Tuple
 
 DEV_NULL = "/dev/null"
 
-_HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+\d+(?:,(\d+))? @@(.*)")
+_HUNK = re.compile(r"^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@(.*)")
 # The path ends at a tab: git adds one after a path with spaces, diff -u
 # a timestamp.
 _FILE_HEADER = re.compile(r"^(?:---|\+\+\+) (?:[ab]/)?([^\t]*[^\t\s])")
@@ -40,13 +40,6 @@ def read_diff(code_diff: str) -> Iterator[Tuple[str, str]]:
     line that starts with '--' is not taken for a file header. Outside one
     (a hand-written diff without hunk headers, or past a miscounted hunk),
     a line is read by its first character."""
-    for tag, text, _ in _walk(code_diff):
-        yield tag, text
-
-
-def _walk(code_diff: str) -> Iterator[Tuple[str, str, Tuple[int, int]]]:
-    """read_diff's lines, each with its hunk's pre-change span (first
-    line, length) on '@@' lines and (0, 0) on the others."""
     old_left = new_left = 0
     for line in code_diff.split("\n"):
         tag = line[:1]
@@ -58,36 +51,20 @@ def _walk(code_diff: str) -> Iterator[Tuple[str, str, Tuple[int, int]]]:
                     old_left -= 1
                 if tag != "-":
                     new_left -= 1
-                yield tag or " ", line[1:], (0, 0)
+                yield tag or " ", line[1:]
                 continue
             old_left = new_left = 0  # malformed hunk: read the line as a header
         hunk = _HUNK.match(line)
         if hunk:
-            old_left = int(hunk.group(2) or 1)
-            new_left = int(hunk.group(3) or 1)
-            yield "@@", hunk.group(4), (int(hunk.group(1)), old_left)
+            old_left = int(hunk.group(1) or 1)
+            new_left = int(hunk.group(2) or 1)
+            yield "@@", hunk.group(3)
             continue
         header = _FILE_HEADER.match(line)
         if header:
-            yield line[:3], header.group(1), (0, 0)
+            yield line[:3], header.group(1)
         elif tag in (" ", "-", "+"):
-            yield tag, line[1:], (0, 0)
-
-
-def old_hunk_ranges(code_diff: str) -> Dict[str, List[Tuple[int, int]]]:
-    """Each changed file's hunks as pre-change line ranges (first, last),
-    keyed by its path before the change. A hunk that only adds lines
-    spans the line it follows and the next, so a function it lands in
-    still overlaps it. A file the diff adds has none."""
-    ranges: Dict[str, List[Tuple[int, int]]] = {}
-    path = None
-    for tag, text, (start, length) in _walk(code_diff):
-        if tag == "---":
-            path = None if text == DEV_NULL else text
-        elif tag == "@@" and path is not None:
-            last = start + length - 1 if length else start + 1
-            ranges.setdefault(path, []).append((start, last))
-    return ranges
+            yield tag, line[1:]
 
 
 def diff_paths(code_diff: str) -> List[str]:

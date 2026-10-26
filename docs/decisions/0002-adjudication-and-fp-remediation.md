@@ -4368,7 +4368,8 @@ check that would have demoted them. The `j7` numbers above are correct.
 reviewed, and signed off with the amendments at the end. Implemented as
 PROMPT_VERSION `v15-field-writers`; Step 0 recorded with three
 amendments (below). Measured and not shipped: `poll_override` false
-positives rose, and so did the bridge's (Results).**
+positives rose, and so did the bridge's (Results). Rolled back; the f4
+code is in commit `d4beb83`.**
 
 **Why.** Invariant-elsewhere is the largest stored false-positive class:
 25 of the 51 stored false positives across the corpus's three samples
@@ -4825,3 +4826,13 @@ The reviewer does not use an unchanged function to discharge a check
 the diff appears to drop. The pack route for this class closes at this
 design. The other candidate cause the draft named, `poll_override`'s
 app layer note (backlog #8), is untested. No successor is registered.
+
+**Rollback (2026-10-26).** v15 was committed as measured (`d4beb83`), so
+the code behind the records stays in history, and then rolled back:
+`reviewer_prompt.py` (PROMPT_VERSION `v11.1-critiques-feedback`, with a
+history comment), `retrieval.py` (pack f3), `indexer.py`,
+`diff_reader.py`, `eval_harness/corpus.py` (no `fields` audit) and all 8
+indexes are as they were at `d2a7dc8`. The bridge debate fingerprint is
+`8e76794ac4946aab` again (pinned), so debates send the requests the
+live golden suite passed with, and the suite was not rerun. The v15
+label counts stay pinned.

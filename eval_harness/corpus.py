@@ -4,7 +4,6 @@ repo context index of its own base, and score the records against each
 fixture's known bugs.
 
     python -m eval_harness.corpus list
-    python -m eval_harness.corpus fields [--text]
     python -m eval_harness.corpus run --fixture backoff_clamp_d1c20c0 --runs 5
     python -m eval_harness.corpus run --fixture all --runs 5
     python -m eval_harness.corpus score "coach_artifacts/measurement_round1_*.json"
@@ -95,49 +94,6 @@ def describe(fixture: dict) -> dict:
         "refused": check["verdict"],
         "known_bugs": len(fixture.get("known_bugs", [])),
     }
-
-
-# The bridge fixture is not in the manifest; `fields` audits it too, with
-# the committed index and the proposal its records use.
-BRIDGE = {"id": "bridge", "kind": "bug",
-          "diff_path": REPO_ROOT / "docs" / "fixtures" / "qttune_bridge_refactor.diff",
-          "index_path": REPO_ROOT / "repo_context.json",
-          "proposal": "Review: coalesced signal updates with LiveView Page v0.3.0 phase 2"}
-
-
-def print_field_audit(fixture: dict, text: bool = False) -> None:
-    """The pack's FIELD DEFINITIONS AND WRITERS section for one fixture,
-    without a model (ADR-0002, twentieth measurement, Step 0): whether it
-    is empty, its size, the pack's size, the input check, each member
-    use, and each declaration and writer with why it was shown or
-    dropped; with text, the section as the model sees it."""
-    diff = read_input(str(fixture["diff_path"]))
-    setup = debate._prepare(diff, "", False, str(fixture["index_path"]))
-    check = debate._input_check(setup, fixture["proposal"], diff, "")
-    report = setup.pack_report
-    audit = report.get("field_audit") or {"uses": {}, "decls": [], "writers": [], "chars": 0}
-    shown = report.get("sections", {}).get("fields", 0)
-    print(f"\n=== {fixture['id']}: section {'non-empty' if shown else 'empty'}, "
-          f"{audit['chars']} chars; pack {report.get('used', 0)} chars"
-          f"{', truncated' if report.get('truncated') else ''}; "
-          f"input check {check['estimated_tokens']}/{check['token_limit']}"
-          f"{' REFUSED' if check['verdict'] else ''}")
-    uses = sorted(audit["uses"].items(), key=lambda kv: (-kv[1], kv[0]))
-    print("   member uses: " + (", ".join(f"{n} {c}" for n, c in uses) or "none"))
-    for d in audit["decls"]:
-        print(f"   decl   {d['owner']}::{d['name']} [{d['file']}:{d['line']}] "
-              f"{d['dropped'] or 'shown'}")
-    for w in audit["writers"]:
-        hits = "; ".join(f"{n} {'/'.join(f)}" for n, f in w["writes"].items())
-        state = (f"shown, {w['shown_lines']} of {w['lines']} lines" if not w["dropped"]
-                 else w["dropped"])
-        print(f"   writer {w['function']} [{w['file']}:{w['line']}-{w['end_line']}] "
-              f"writes {hits}: {state}")
-    if text:
-        start = setup.pack_text.find("--- FIELD DEFINITIONS")
-        if start != -1:
-            end = setup.pack_text.find("\n--- ", start + 4)
-            print(setup.pack_text[start:end if end != -1 else None])
 
 
 def print_listing(rows: List[dict]) -> None:
@@ -348,10 +304,6 @@ def main(argv: Optional[List[str]] = None) -> None:
                     "samples, score records against the known bugs")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("list", help="Each fixture's size, layer, pack and input check")
-    fields_p = sub.add_parser("fields", help="Each fixture's field section and its "
-                                             "audit, the bridge fixture included")
-    fields_p.add_argument("--text", action="store_true",
-                          help="Also print each section as the model sees it")
     run_p = sub.add_parser("run", help="Collect round-1 reviewer samples")
     run_p.add_argument("--fixture", action="append", required=True,
                        help="A fixture id, repeatable, or 'all'")
@@ -367,11 +319,6 @@ def main(argv: Optional[List[str]] = None) -> None:
     manifest = load_manifest()
     if args.command == "list":
         print_listing([describe(f) for f in manifest["fixtures"]])
-        return
-    if args.command == "fields":
-        sys.stdout.reconfigure(encoding="utf-8")
-        for fixture in manifest["fixtures"] + [BRIDGE]:
-            print_field_audit(fixture, args.text)
         return
     if args.command == "run":
         if args.runs < 1:

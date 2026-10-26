@@ -1647,20 +1647,20 @@ class RepairSwitchTests(unittest.TestCase):
     def test_the_repair_pass_is_off_by_default(self):
         # ADR-0002, seventeenth measurement: measured, not shipped
         self.assertFalse(debate.REPAIR_PASS)
-        self.assertEqual(debate.PROMPT_VERSION, "v15-field-writers")
+        self.assertEqual(debate.PROMPT_VERSION, "v11.1-critiques-feedback")
 
-    def test_debates_keep_the_v15_fingerprint(self):
+    def test_debates_keep_the_v11_1_fingerprint(self):
         # A part added to the hash, even an empty one, changes it: the
-        # repair templates stay out while the pass is off. v11.1 was
-        # 8e76794ac4946aab; v15 adds pack format f4 (ADR-0002, twentieth).
-        # v14 (0e64900137072695) was measured and not shipped (ADR-0002,
-        # nineteenth measurement).
+        # bridge fixture's debates must still group with v11.1's records.
+        # v14 (0e64900137072695) and v15 (d0a576d5de90cb90, pack f4) were
+        # measured and not shipped (ADR-0002, nineteenth and twentieth
+        # measurements).
         diff = (REPO_ROOT / "docs/fixtures/qttune_bridge_refactor.diff").read_text(
             encoding="utf-8")
         with contextlib.redirect_stderr(io.StringIO()):
             setup = debate._prepare(diff, "", False)
         self.assertEqual(debate._run_settings(setup, "debate", 3, {})["prompt_fingerprint"],
-                         "d0a576d5de90cb90")
+                         "8e76794ac4946aab")
 
     def test_the_ceiling_check_on_the_archived_offers(self):
         # ADR-0002, eighteenth measurement, Step 0: what any one-line repair

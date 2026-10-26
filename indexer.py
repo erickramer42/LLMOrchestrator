@@ -419,202 +419,6 @@ def harvest_callsites(text: str, file_path: str) -> List[Dict]:
     return out
 
 
-# ============ FIELDS AND THEIR WRITERS ============
-
-_AGGREGATE_DEF = re.compile(
-    r"^(?:template\s*<[^{};]*>\s*)?(?:typedef\s+)?(class|struct|union)\b\s*"
-    r"(?:alignas\s*\([^)]*\)\s*)?(\w+)?\s*(?:final\b\s*)?(?::[^{;]*)?$")
-_TRANSPARENT_DEF = re.compile(r'^(?:namespace\b[\w\s:]*|extern\s+"C(?:\+\+)?")$')
-_ACCESS_LABEL = re.compile(r"\b(?:(?:public|private|protected)(?:\s+(?:slots|Q_SLOTS))?"
-                           r"|signals|Q_SIGNALS)\s*:(?!:)")
-_MACRO_LINE = re.compile(r"^\s*[A-Z][A-Z0-9_]*\s*(?:\(.*\))?\s*$")
-_NOT_MEMBERS = ("using ", "typedef ", "friend ", "static_assert", "template",
-                "enum ", "class ", "struct ", "union ", "return ", "goto ")
-_NOT_FUNCTIONS = _NOT_CALLS | {"else", "do", "try", "operator"}
-_DECL_KEYWORDS = {"const", "static", "mutable", "volatile", "override", "final",
-                  "noexcept", "default", "delete", "constexpr", "inline"}
-_FUNC_NAME = re.compile(r"([A-Za-z_~][\w:~]*)\s*$")
-_ASSIGN_OP = re.compile(r"(?<![=!<>])(?:<<|>>|[-+*/%&|^])?=(?!=)")
-_INC_DEC = re.compile(r"\+\+|--")
-_LVALUE_END = re.compile(
-    r"([A-Za-z_]\w*(?:\s*(?:->|\.)\s*[A-Za-z_]\w*|\s*\[[^\[\]]*\])*)\s*$")
-_LVALUE_START = re.compile(
-    r"^\s*([A-Za-z_]\w*(?:\s*(?:->|\.)\s*[A-Za-z_]\w*|\s*\[[^\[\]]*\])*)")
-_ATOMIC_WRITE = re.compile(
-    r"(->|\.)?\s*\b([A-Za-z_]\w*)\s*\.\s*(?:store|exchange|fetch_add|fetch_sub|"
-    r"fetch_or|fetch_and|fetch_xor|compare_exchange_weak|compare_exchange_strong)\s*\(")
-_CHAIN = re.compile(r"(->|\.)\s*([A-Za-z_]\w*)")
-
-
-def _clean_head(head: str) -> str:
-    """A statement head without preprocessor lines, macro-only lines
-    (Q_OBJECT, Q_PROPERTY(...)) and access labels, on one line."""
-    lines = [ln for ln in head.split("\n")
-             if not ln.lstrip().startswith("#") and not _MACRO_LINE.match(ln)]
-    return " ".join(_ACCESS_LABEL.sub(" ", "\n".join(lines)).split())
-
-
-def _member_decls(statement: str) -> List[str]:
-    """The data member names a class-body statement declares: none for a
-    method declaration, a type, a using or friend line."""
-    if not statement or statement.startswith(_NOT_MEMBERS):
-        return []
-    names = []
-    for part in _split_top_level(statement, ",", "{(<[", "})>]"):
-        cut = min((i for i in (part.find("="), part.find("{")) if i != -1),
-                  default=len(part))
-        declarator = part[:cut]
-        if "(" in declarator:  # a method declaration
-            return []
-        m = _DECL_NAME.search(declarator.strip())
-        if m and m.group(1) not in _DECL_KEYWORDS:
-            names.append(m.group(1))
-    return names
-
-
-def _function_lines(text: str, start: int, end: int) -> List[str]:
-    """A function's comment-free source from start to end, without blank
-    lines or trailing space, dedented, with each indent halved and runs
-    of inner spaces collapsed."""
-    lines = [ln.rstrip() for ln in blank_comments(text)[start:end].split("\n")]
-    lines = [ln for ln in lines if ln.strip()]
-    if not lines:
-        return []
-    base = min(len(ln) - len(ln.lstrip()) for ln in lines)
-    out = []
-    for ln in lines:
-        body = ln[base:]
-        indent = len(body) - len(body.lstrip())
-        out.append(" " * (indent // 2) + " ".join(body.split()))
-    return out
-
-
-def _writes(body: str) -> List[Tuple[str, str]]:
-    """(name, form) for each member a function body assigns: through a
-    pointer or object ('pointer', 'object': every member of the assigned
-    chain, so 't->chans[0].rx_id = x' writes chans and rx_id), an atomic
-    operation ('atomic'), or a bare name ('bare', kept only if it is a
-    member of the method's class; see build_index). Prefix and postfix
-    ++/--, = and compound assignment count; comparisons do not."""
-    found = []
-
-    def chain(expr: str) -> None:
-        root = re.match(r"\s*([A-Za-z_]\w*)", expr)
-        if not root:
-            return
-        links = _CHAIN.findall(expr[root.end():])
-        if root.group(1) == "this" and links:
-            found.append((links[0][1], "pointer"))
-            links = links[1:]
-        else:  # a local, a parameter or a member of the method's class
-            found.append((root.group(1), "bare"))
-        for op, name in links:
-            found.append((name, "pointer" if op == "->" else "object"))
-
-    for m in _ASSIGN_OP.finditer(body):
-        lv = _LVALUE_END.search(body[:m.start()])
-        if lv:
-            chain(lv.group(1))
-    for m in _INC_DEC.finditer(body):
-        before = _LVALUE_END.search(body[:m.start()])  # postfix: x++
-        if before:
-            chain(before.group(1))
-        after = _LVALUE_START.match(body[m.end():])  # prefix: ++x
-        if after:
-            chain(after.group(1))
-    for m in _ATOMIC_WRITE.finditer(body):
-        found.append((m.group(2), "atomic"))
-    return found
-
-
-def harvest_definitions(text: str) -> Tuple[List[Dict], List[Dict]]:
-    """The data members of every struct, class and union in a C or C++
-    source file, and every function definition with the members it
-    assigns. Commented-out code is ignored.
-
-    A member entry: owner (the aggregate's name), name, decl (its
-    declaration, comment-free, on one line) and line. A function entry:
-    name, owner (the class of a method, from 'A::f' or the class body it
-    is defined in; None for a free function), line and end_line, writes
-    ({name: [forms]}, bare names unfiltered) and lines (the comment-free
-    source, see _function_lines)."""
-    blanked = blank_comments(text)
-    members: List[Dict] = []
-    functions: List[Dict] = []
-    line_of = lambda i: blanked.count("\n", 0, i) + 1
-
-    def scan(start: int, end: int, owner: Optional[str]) -> None:
-        stmt = start
-        i = start
-        while i < end:
-            c = blanked[i]
-            if c == ";":
-                if owner is not None:
-                    raw = blanked[stmt:i]
-                    statement = _clean_head(raw)
-                    names = _member_decls(statement)
-                    if names:
-                        offset = stmt + len(raw) - len(raw.lstrip())
-                        for name in names:
-                            members.append({"owner": owner, "name": name,
-                                            "decl": statement + ";",
-                                            "line": line_of(offset)})
-                stmt = i + 1
-            elif c == "}":
-                stmt = i + 1
-            elif c == "{":
-                close = _match_brace(blanked, i)
-                if close == -1 or close > end:
-                    return
-                raw = blanked[stmt:i]
-                head = _clean_head(raw)
-                aggregate = _AGGREGATE_DEF.match(head)
-                if aggregate:
-                    name = aggregate.group(2)
-                    if name is None:  # typedef struct { ... } name;
-                        tail = re.match(r"\s*\**\s*(\w+)", blanked[close + 1:end])
-                        name = tail.group(1) if tail else None
-                    if name:
-                        scan(i + 1, close, name)
-                    stmt = close + 1  # 'struct S { ... } s;' declares s
-                    i = close + 1
-                    continue
-                if _TRANSPARENT_DEF.match(head):
-                    scan(i + 1, close, owner)
-                    stmt = close + 1
-                    i = close + 1
-                    continue
-                paren = head.find("(")
-                pre = head[:paren] if paren != -1 else ""
-                # 'f(int a = {})': a default argument, not a body
-                balanced = head.count("(") == head.count(")")
-                fname = (_FUNC_NAME.search(pre)
-                         if paren != -1 and "=" not in pre and balanced else None)
-                if fname and fname.group(1).split("::")[-1] not in _NOT_FUNCTIONS:
-                    qualified = fname.group(1)
-                    parts = qualified.split("::")
-                    first = stmt + len(raw) - len(raw.lstrip())
-                    writes: Dict[str, List[str]] = {}
-                    for name, form in _writes(blanked[i + 1:close]):
-                        if form not in writes.setdefault(name, []):
-                            writes[name].append(form)
-                    functions.append({
-                        "name": qualified,
-                        "owner": parts[-2] if len(parts) > 1 else owner,
-                        "line": line_of(first), "end_line": line_of(close),
-                        "writes": writes,
-                        "lines": _function_lines(text, first, close + 1)})
-                    stmt = close + 1
-                # anything else (an initializer, an enum body) belongs to
-                # the statement it is in, which goes on to its ';'
-                i = close + 1
-                continue
-            i += 1
-
-    scan(0, len(blanked), None)
-    return members, functions
-
-
 # ============ LLM PURPOSE SUMMARIES ============
 
 def _validate_purpose(raw) -> Tuple[Optional[dict], Optional[str]]:
@@ -689,9 +493,7 @@ def _git_blobs(root: Path, rels: List[str]) -> Dict[str, str]:
 def build_index(target_root: str, use_llm: bool = True) -> dict:
     """Walk the target repo and harvest its context index: per file the
     purpose, layer and git blob id; C typedefs; numeric constants; queued
-    connection call sites; struct and class data members, and the
-    functions that assign them (harvest_definitions); and the commit and
-    dirty flag of the tree.
+    connection call sites; and the commit and dirty flag of the tree.
     Purposes come from the summary model (cached) or, with
     use_llm=False, from each file's first prose comment. Build, docs and
     CI files get a path-derived hint and layer 'meta'. Not saved; see
@@ -713,8 +515,6 @@ def build_index(target_root: str, use_llm: bool = True) -> dict:
         "types": [],
         "constants": [],
         "callsites": [],  # queued-connection call sites
-        "fields": [],     # struct/class data members
-        "functions": [],  # function definitions that assign members
     }
 
     src_exts = {".c", ".cpp", ".h", ".hpp", ".qml"}
@@ -771,29 +571,9 @@ def build_index(target_root: str, use_llm: bool = True) -> dict:
                 seen_consts[key] = c
         for cs in harvest_callsites(text, rel):
             index["callsites"].append(cs)
-        if path.suffix != ".qml":
-            members, functions = harvest_definitions(text)
-            index["fields"] += [dict(m, file=rel) for m in members]
-            index["functions"] += [dict(f, file=rel) for f in functions]
 
     index["types"] = list(seen_types.values())
     index["constants"] = list(seen_consts.values())
-
-    # A bare assignment writes a member only in a method of the member's
-    # class (a header can declare the class its .cpp defines methods of);
-    # keep only the functions that write some member.
-    owned: Dict[str, set] = {}
-    for m in index["fields"]:
-        owned.setdefault(m["owner"], set()).add(m["name"])
-    writers = []
-    for f in index["functions"]:
-        mine = owned.get(f["owner"], set())
-        f["writes"] = {name: forms for name, forms in
-                       ((n, [x for x in fs if x != "bare" or n in mine])
-                        for n, fs in f["writes"].items()) if forms}
-        if f["writes"]:
-            writers.append(f)
-    index["functions"] = writers
 
     # Blob ids let retrieval check that a diff's base is this tree.
     blobs = (_git_blobs(root, [f["path"] for f in index["files"]])
