@@ -162,6 +162,23 @@ found in the code as it reads after the change):
 Respond with JSON only, using the "repairs" key.
 """
 
+
+class RepairVariant(NamedTuple):
+    """What one repair version sends. v12 has no code_template: it sends
+    the round's transcript under the reviewer's own system prompt."""
+    system: Optional[str]
+    code_template: Optional[str]
+    layer_note: bool
+
+
+# Read with a plain lookup, so an unknown version raises KeyError instead
+# of sending another version's request (code review finding 20).
+REPAIR_VARIANTS = {
+    REPAIR_VERSION: RepairVariant(None, None, False),
+    REPAIR_V13_VERSION: RepairVariant(REPAIR_SYSTEM_PROMPT, STATIC_TEMPLATE, True),
+    REPAIR_V13_1_VERSION: RepairVariant(REPAIR_SYSTEM_PROMPT, REPAIR_STATIC_TEMPLATE, False),
+}
+
 # Retrieved repo context. The pack is a snapshot of the indexed tree, which
 # need not match the code before or after the diff, so the diff wins
 # (code review 2026-10-21, finding 1; v6).
@@ -613,10 +630,14 @@ def repair_request_v13(setup: _Setup, code_diff: str, offered: List[dict],
     """The v13 repair call's user message: the fenced diff, the layer
     note and the findings, with nothing else from the transcript. As
     v13.1: the repair's own fence preamble and no layer note."""
+    variant = REPAIR_VARIANTS[version]
+    if variant.code_template is None:
+        raise ValueError(f"{version} sends the transcript, not the diff")
     items = REPAIR_V13_TEMPLATE.format(items=_repair_items(offered))
-    if version == REPAIR_V13_1_VERSION:
-        return _code_section(code_diff, "", REPAIR_STATIC_TEMPLATE) + items
-    return f"{_code_section(code_diff, '')}\n{setup.layer_note}\n" + items
+    code = _code_section(code_diff, "", variant.code_template)
+    if variant.layer_note:
+        return f"{code}\n{setup.layer_note}\n" + items
+    return code + items
 
 
 def _repair_items(offered: List[dict]) -> str:
@@ -627,18 +648,22 @@ def _repair_items(offered: List[dict]) -> str:
 
 
 def repair_call(setup: _Setup, transcript: str, offered: List[dict],
-                telemetry: List[dict], code_diff: Optional[str] = None,
-                version: str = REPAIR_V13_VERSION
+                telemetry: List[dict], version: str,
+                code_diff: Optional[str] = None
                 ) -> Tuple[Optional[List[dict]], Optional[str]]:
     """The repair call: (repairs, None), or (None, why) when the request
     is estimated over the input limit or every attempt fails. Shared by
-    debates and the paired measurement (eval_harness.repair). With
-    code_diff it is the v13 call instead (version names v13 or v13.1):
-    REPAIR_SYSTEM_PROMPT and repair_request_v13, the transcript unused."""
-    if code_diff is None:
+    debates and the paired measurement (eval_harness.repair). The version
+    alone picks the request (REPAIR_VARIANTS): v12 sends the transcript,
+    v13 and v13.1 their own system prompt and code_diff, which they
+    require (code review finding 23)."""
+    variant = REPAIR_VARIANTS[version]
+    if variant.code_template is None:
         system, user = setup.reviewer_prompt, repair_request(setup, transcript, offered)
     else:
-        system = REPAIR_SYSTEM_PROMPT
+        if code_diff is None:
+            raise ValueError(f"{version} needs code_diff")
+        system = variant.system
         user = repair_request_v13(setup, code_diff, offered, version)
     estimated = math.ceil((len(system) + len(user)) / CHARS_PER_TOKEN_FLOOR)
     if estimated > NUM_CTX - NUM_PREDICT:
@@ -689,7 +714,8 @@ def _repair(setup: _Setup, transcript: str, reviewer: dict, demoted: List[dict],
                   "questions": list(reviewer.get("questions", []) or [])}}
     if not offered:
         return reviewer, record, 0
-    repairs, record["skipped"] = repair_call(setup, transcript, offered, telemetry)
+    repairs, record["skipped"] = repair_call(setup, transcript, offered, telemetry,
+                                             REPAIR_VERSION)
     if repairs is None:
         return reviewer, record, 0
     outcomes = apply_repairs(setup, offered, repairs)

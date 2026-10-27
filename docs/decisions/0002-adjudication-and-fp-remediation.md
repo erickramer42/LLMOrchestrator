@@ -44,7 +44,7 @@ results; changes made after seeing data are dated amendments.
 | [Nineteenth Measurement: Removal-Caused Defects Quoted in Round 1](#nineteenth-measurement--removal-caused-defects-quoted-in-round-1) | 2026-10-25 | A round-1 quote rule for removals | Not shipped: recall +0.05 of +0.10; cross-hunk linkage closed by its ceiling |
 | [Twentieth Measurement: Field Writers in the Context Pack](#twentieth-measurement--field-writers-in-the-context-pack) | 2026-10-26 | Field definitions and writers in the pack | Not shipped: target false positives rose |
 | [Twenty-First Measurement: Per-File Layer Notes](#twenty-first-measurement--per-file-layer-notes) | 2026-10-26 | Per-file layer notes | Not shipped: bridge false positives rose |
-| [Runaway Diagnostic: Do Runaways Repeat?](#runaway-diagnostic--do-runaways-repeat) | 2026-10-26 | Whole thinking of runaways and long replies (backlog #19) | Closed: no repetition threshold separates runaways from long replies |
+| [Runaway Diagnostic: Do Runaways Repeat?](#runaway-diagnostic--do-runaways-repeat) | 2026-10-26 | Whole thinking of runaways and long replies (backlog #19) | Closed: no repetition threshold separates runaways from long replies; an early retry cuts valid findings |
 
 ## Context
 
@@ -5328,3 +5328,36 @@ registered: the cost side, for example a first attempt whose
 wall-clock or token budget below the cap triggers an early retry, which
 would have to be weighed against the 10.7% of accepted replies that run
 past 8,192 tokens.
+
+### Amendment (2026-10-26): the cost side, offline
+
+Not registered in advance: a descriptive check of the early retry #19
+named as its open option, from telemetry already on record, with no
+model call. Population: the 398 round-1 measurement records whose
+reviewer telemetry has token counts. 18 first attempts (4.5%) ran to the
+cap; 18 retries followed them (16 accepted, median 14 s; 2 ran away
+again), and 2 calls failed every attempt. Attempts at the cap took
+1.74 h of the 12.6 h of reviewer time (13.8%), the most any abort could
+save.
+
+The policy: cut a first attempt at T tokens and retry. Time at T is
+estimated as the attempt's wall time scaled by T over its token count;
+a cut accepted reply costs a retry at the median accepted retry's 14 s
+(at the mean of all retries, 70 s, no budget saves more than 0.4%).
+Lost findings are counted on the hand-labeled corpus first attempts
+(178 valid and 143 false stored blockers):
+
+| T (tokens) | time saved | accepted replies cut | valid blockers lost | false blockers lost |
+|---|---|---|---|---|
+| 6,144 | 13.1% | 108 (28.5%) | 59 of 178 | 42 of 143 |
+| 8,192 | 6.1% | 47 (12.4%) | 25 of 178 | 15 of 143 |
+| 10,240 | 2.2% | 18 (4.7%) | 9 of 178 | 6 of 143 |
+| 11,264 | 0.9% | 9 (2.4%) | 7 of 178 | 2 of 143 |
+
+Long replies are not worse: labeled replies of 8,192–10,240 tokens carry
+1.00 valid blockers each, against 0.65–0.67 below 8,192. Every budget
+that saves real time cuts more valid findings than false ones, and the
+replies that replace them are retries, the short mode the scorers
+exclude. **An early retry on a token or time budget is not worth
+building.** What remains of #19 is the failed-closed call (2 of 398),
+where the retries run away too.

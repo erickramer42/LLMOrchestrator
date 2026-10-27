@@ -19,7 +19,8 @@
     "decode_length_b47687c_fresh": "7a3f78 #1 and 2964be #3 claim a data race on m_stagingBuffer; handleFrameInternal is queued to the GUI thread, where the coalescing timer also runs. 2964be #4: m_lastReportedDropped is updated in the post-state. 2964be #e1: the post-state (b975457) builds without the signals.h include in the header.",
     "v14_nineteenth": "Sample 'v14' (records 20261026_014403 to 20261026_040210; the retried fcda47 and the pilot's 011519 and 011610 are not labeled), labeled before scoring by the same rules. 06248d #1 says the inlined code uses <= and changes the result at the cap: false, other-fp. 896c70 #2: err is used after the join. 5e7ae7 #1: on failure connectCoreOnly destroys the session (as 2e95fa #e1). e6c961 #1: m_session is set in applyConnectedState. daaeb5 #4: the only Qt::QueuedConnection removed went with the drop-notify call; the frame invokeMethod is unchanged. b53474 #e1: updateValues reads values. A claim that the payloadHex clamp was removed is payload_length_unclamped whatever line it quotes.",
     "v15_twentieth": "Sample 'v15' (records 20261026_152132 to 20261026_174138; the retried 9116d9, 7a11c9, c247d4, 187a73, e7d68a, 67e86a and the pilot's 151439 and 151617 are not labeled), labeled before scoring by the same rules. poll_override: req[6] is exactly what build_mode01_request writes (a 4-byte id, mode, PID), so every claim that it is too small is other-fp; 20a19c #3 says poll now forces non-scheduler mode, a false consequence, other-fp; ceac6d #h1 (resource waste) and 182913 #h2 (error code) are other-fp. connect_start: 9bbf58 #e3 is false, connectSession calls applyConnectedState. decode_length: the removed clamp (len) served payloadHex and the decode alike, so 38a5a0 #1 to #3 are payload_length_unclamped; e99c5a #4, the emit the fix added to forceFrameCountForTesting, is unlisted. ecu_support: df0d13 #3, pid_bitmap[(pid - 1) / 8] with pid <= 0xFF indexes at most 31 of 32, bounds-fixed-array; 8b68e1 #1, disconnectSession takes m_session on the GUI thread, thread-confusion.",
-    "v16_twenty_first": "Sample 'v16' (records 20261026_200617 to 20261026_211854; the retried 1f7900 and 78f09a and the pilot's 200203 and 200452 are not labeled), labeled before scoring by the same rules. poll_override: a claim that the worker picks the wrong channel for the poll PID is invariant-elsewhere, as a missing-channel claim is; 712a1f #e1 (the worker's and attach's sched_mode disagree, undefined behavior) names no poll consequence and is other-fp; 9f52fe #2 (an ABI boundary on channel ordering) is other-fp. trusted_count: a claim that the removed helper missed ERR_BUFFER_OVERFLOW is count_under_error, as in v15 (a0ed9f)."
+    "v16_twenty_first": "Sample 'v16' (records 20261026_200617 to 20261026_211854; the retried 1f7900 and 78f09a and the pilot's 200203 and 200452 are not labeled), labeled before scoring by the same rules. poll_override: a claim that the worker picks the wrong channel for the poll PID is invariant-elsewhere, as a missing-channel claim is; 712a1f #e1 (the worker's and attach's sched_mode disagree, undefined behavior) names no poll consequence and is other-fp; 9f52fe #2 (an ABI boundary on channel ordering) is other-fp. trusted_count: a claim that the removed helper missed ERR_BUFFER_OVERFLOW is count_under_error, as in v15 (a0ed9f).",
+    "v11.1_poll_runaway_diagnostic": "Sample 'v11.1_poll' (records 20261026_225640 to 20261026_234601, v11.1, poll_override only; collected for backlog #19's runaway diagnostic, which scored no blockers; the retried 17a355 and 6cb4e4 are not labeled), labeled by the same rules. A claim that the sched_mode change lets the scheduler run or changes which mode is used when poll is set is poll_ignored (619e0c #2, 'poll handling not updated - inconsistent behavior', names no false consequence and is credited). 6ee07d #2 says parse_query's rx_id check is insufficient: false, invariant-elsewhere. b9eaaf #e1 says ?txid= can supply a channel, a wrong side detail; it states the parse-time rejection and is credited. d92498 #1 (req[6] too small for CAN-FD) is other-fp, as in v15."
   },
   "records": {
     "round1_20261024_015410_fa2343": {
@@ -2851,6 +2852,222 @@
     "round1_20261026_211854_f04026": {
       "fixture": "trusted_count_6420f09",
       "sample": "v16",
+      "labels": {}
+    },
+    "round1_20261026_225640_6ee07d": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_225821_619e0c": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "poll_ignored"
+        ],
+        "#3": [
+          "invariant-elsewhere"
+        ],
+        "#e1": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_225855_05ec14": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_230101_242fb1": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {
+        "#1": [
+          "poll_needs_filter_at_parse"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_230440_cb07f4": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#e1": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_231002_f4711d": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {}
+    },
+    "round1_20261026_231320_2bf401": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {}
+    },
+    "round1_20261026_231816_b7b24a": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_231914_ceb334": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ],
+        "#h1": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_232221_7157ce": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "poll_needs_filter_at_parse"
+        ]
+      }
+    },
+    "round1_20261026_232418_d92498": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {
+        "#1": [
+          "other-fp"
+        ],
+        "#2": [
+          "poll_ignored"
+        ],
+        "#3": [
+          "invariant-elsewhere"
+        ],
+        "#h1": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_232701_87a885": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#e1": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_232841_b9eaaf": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {
+        "#1": [
+          "poll_needs_filter_at_parse"
+        ],
+        "#e1": [
+          "poll_needs_filter_at_parse"
+        ]
+      }
+    },
+    "round1_20261026_233127_cc4913": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {
+        "#h1": [
+          "invariant-elsewhere"
+        ],
+        "#h2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_233456_4a5bae": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ],
+        "#e1": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261026_233702_dbb036": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "poll_ignored"
+        ]
+      }
+    },
+    "round1_20261026_234141_660eaa": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ],
+        "#3": [
+          "poll_needs_filter_at_parse"
+        ]
+      }
+    },
+    "round1_20261026_234601_0e61c1": {
+      "fixture": "poll_override_90020bd",
+      "sample": "v11.1_poll",
       "labels": {}
     }
   }

@@ -2,7 +2,7 @@
 (ADR-0002, seventeenth measurement).
 
     python -m eval_harness.repair run --set corpus|bridge
-    python -m eval_harness.repair score --set corpus|bridge
+    python -m eval_harness.repair score --set corpus|bridge [--variant v13|v13.1]
     python -m eval_harness.repair ceiling --set corpus|bridge [--batch]
     python -m eval_harness.repair run --variant v13|v13.1 --pilot
     python -m eval_harness.repair pilot [--variant v13.1]
@@ -84,14 +84,14 @@ ARITHMETIC_RATE = 0.59
 
 
 def repair_fingerprint(variant: str = "v12") -> str:
+    """The hash of a variant's templates, read from debate.REPAIR_VARIANTS
+    like its request, so an unknown variant raises KeyError."""
+    v = debate.REPAIR_VARIANTS[VERSIONS[variant]]
     items = debate.REPAIR_ITEM_TEMPLATE + "".join(debate.REPAIR_REASONS.values())
-    if variant == "v13":
-        return debate.text_sha256(debate.REPAIR_SYSTEM_PROMPT + debate.REPAIR_V13_TEMPLATE
-                                  + items + debate.STATIC_TEMPLATE)[:16]
-    if variant == "v13.1":
-        return debate.text_sha256(debate.REPAIR_SYSTEM_PROMPT + debate.REPAIR_V13_TEMPLATE
-                                  + items + debate.REPAIR_STATIC_TEMPLATE)[:16]
-    return debate.text_sha256(debate.REPAIR_TEMPLATE + items)[:16]
+    if v.code_template is None:
+        return debate.text_sha256(debate.REPAIR_TEMPLATE + items)[:16]
+    return debate.text_sha256(v.system + debate.REPAIR_V13_TEMPLATE
+                              + items + v.code_template)[:16]
 
 
 def out_path(source: str, variant: str = "v12") -> Path:
@@ -200,8 +200,7 @@ def run(set_name: str, dry: bool = False, variant: str = "v12",
         telemetry: List[dict] = []
         started = time.monotonic()
         repairs, skipped = debate.repair_call(setup, transcript, offered, telemetry,
-                                              code_diff=code_diff,
-                                              version=VERSIONS[variant])
+                                              VERSIONS[variant], code_diff=code_diff)
         outcomes = debate.apply_repairs(setup, offered, repairs or [])
         record = {
             "metadata": {
@@ -327,9 +326,9 @@ def _bridge_class(label) -> str:
     return str(label)
 
 
-def score(set_name: str) -> dict:
-    """Arms A (j8) and B (after repair) on the same replies, and the
-    offered items by class, quote group and result."""
+def score(set_name: str, variant: str = "v12") -> dict:
+    """Arms A (j8) and B (after repair by the given variant) on the same
+    replies, and the offered items by class, quote group and result."""
     corpus_labels = json.loads(replay.CORPUS_LABELS_PATH.read_text(encoding="utf-8"))
     valid_classes = set(corpus_labels.get("valid", []))
     arms: Dict[str, Dict[str, list]] = {"A": {}, "B": {}}
@@ -339,7 +338,7 @@ def score(set_name: str) -> dict:
         rdiff = replay.load_diff(code_diff, _symbols(sample["index_path"]))
         items = judged_items(sample, rdiff)
         kept = [i for i, reason in items if reason is None]
-        path = OUT_DIR / f"measurement_repair_{sample['id']}.json"
+        path = out_path(sample["id"], variant)
         restored_keys = set()
         if path.exists():
             rep = json.loads(path.read_text(encoding="utf-8"))
@@ -553,9 +552,10 @@ def main(argv: Optional[List[str]] = None) -> None:
     parser.add_argument("--set", choices=tuple(SETS))
     parser.add_argument("--dry", action="store_true",
                         help="With run: list the offers, call nothing")
-    parser.add_argument("--variant", choices=VARIANTS, default="v12",
-                        help="With run and pilot: the repair request (v13, v13.1: "
-                             "its own prompt)")
+    parser.add_argument("--variant", choices=VARIANTS,
+                        help="With run and score: the repair request (default v12; "
+                             "v13, v13.1: its own prompt). With pilot: v13 (default) "
+                             "or v13.1; v12 had no pilot")
     parser.add_argument("--pilot", action="store_true",
                         help="With run: the pilot set only, corpus and bridge")
     parser.add_argument("--batch", action="store_true",
@@ -563,16 +563,20 @@ def main(argv: Optional[List[str]] = None) -> None:
     args = parser.parse_args(argv)
     if args.command != "pilot" and not args.pilot and args.set is None:
         parser.error("--set is required")
+    if args.command == "pilot" and args.variant == "v12":
+        parser.error("v12 had no pilot: use --variant v13 or v13.1")
+    if args.command == "ceiling" and args.variant:
+        parser.error("ceiling calls no model and takes no --variant")
     sys.stdout.reconfigure(encoding="utf-8")
     if args.command == "run":
         for set_name in (("corpus", "bridge") if args.pilot else (args.set,)):
-            run(set_name, args.dry, args.variant, PILOT if args.pilot else None)
+            run(set_name, args.dry, args.variant or "v12", PILOT if args.pilot else None)
     elif args.command == "pilot":
-        print_pilot(pilot("v13" if args.variant == "v12" else args.variant))
+        print_pilot(pilot(args.variant or "v13"))
     elif args.command == "ceiling":
         print_ceiling(ceiling(args.set, args.batch))
     else:
-        print_score(score(args.set))
+        print_score(score(args.set, args.variant or "v12"))
 
 
 if __name__ == "__main__":

@@ -139,6 +139,11 @@ changed.
   Of three runaways with whole thinking, one (a retry at 0.05) looped
   and two reopened their conclusion on new questions; long accepted
   replies repeat as much, so an abort on repetition was not built.
+- the cost side of #19 checked offline: an early retry at a token budget
+  cuts more valid findings than false ones for any real time saving;
+  code review findings 20–23 (the repair runner's version handling)
+  fixed; 18 v11.1 `poll_override` runs labeled, putting that fixture's
+  baseline at 27 runs (1.22 false positives per review under j8).
 
 ## Features and measurements, in detail
 

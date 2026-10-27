@@ -16,7 +16,7 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 | Judge | `j8-claim-quote-linkage` |
 | Context-pack format | `f3-diff-authoritative` |
 | Models | reviewer `laguna-xs-2.1`, engineer `gemma4:12b`, on Ollama; `NUM_CTX` 24576, `NUM_PREDICT` 12288 |
-| Tests | 210 regression tests, no model needed; CI on Python 3.11 and 3.13 |
+| Tests | 213 regression tests, no model needed; CI on Python 3.11 and 3.13 |
 | Golden suite | 10/10 live (3 model fixtures, 7 hedge units) |
 
 **Headline numbers (judge j8, round-1 samples, hand-labeled):**
@@ -44,7 +44,7 @@ and each is in ADR-0002 in full.
 | 19th, amendment | Cross-hunk claim–quote linkage | Closed without a run: its ceiling is below the bar |
 | 20th | Field definitions and writer functions in the context pack | Not shipped: target false positives rose (1.33 → 1.67 per review), and the bridge's tripled |
 | 21st | Per-file layer notes for multi-file diffs (#8) | Not shipped: bridge false positives rose (0.11 → 0.33 per review, against a bar of 0.21); invariant-elsewhere unchanged |
-| Runaway diagnostic | Abort a reply whose thinking repeats (#19) | Closed: of 3 runaways with whole thinking, 1 looped and 2 kept reopening their conclusion; no repetition threshold separates them from long accepted replies |
+| Runaway diagnostic | Abort a reply whose thinking repeats (#19) | Closed: of 3 runaways with whole thinking, 1 looped and 2 kept reopening their conclusion; no repetition threshold separates them from long accepted replies, and an early retry at a token budget cuts more valid findings than false ones |
 
 ## Known limitations
 
@@ -68,7 +68,7 @@ and each is in ADR-0002 in full.
   removed side, so the objection becomes a question.
 - **Hedged true claims are demoted, by design.** A hedged claim is a
   question; it stays visible in the verdict.
-- **The reviewer sometimes thinks until the output cap.** About 5% of
+- **The reviewer sometimes thinks until the output cap.** About 6% of
   first attempts; the retry usually recovers but costs 3–5 minutes, and
   on 2026-10-26 two bridge samples failed all three attempts (#19).
 - **Retried replies are a different mode** (short, little thinking); the
@@ -89,9 +89,10 @@ Numbers are stable (code comments and the ADRs cite them) and never
 reused. Done items are removed; their history is in
 [history.md](docs/history.md).
 
-**Suggested order:** the call-site caveat (code review finding 9) → #14 structured outputs → #19
-runaway cost → a local-model bake-off on the corpus → #18 early
-reject → the rest.
+**Suggested order:** a local-model bake-off on the corpus (with #13) →
+#14 structured outputs → #18 early reject → the rest. The call-site
+caveat (code review finding 9) rides on the next pack change rather
+than being measured alone.
 
 - **#2 Judge granularity.** Split a finding's severity from whether it
   is resolved. The minimal form shipped as judge j2: a round with no
@@ -126,9 +127,12 @@ reject → the rest.
   closed (ADR-0002, "Runaway Diagnostic"): most runaways reopen their
   conclusion on a new question rather than repeat, and long accepted
   replies repeat as much. A lower cap is no abort either, since 10.7% of
-  accepted replies run past 8,192 tokens. Open: the cost side, such as
-  an early retry on a time or token budget. Records keep the whole
-  thinking of long attempts for it.
+  accepted replies run past 8,192 tokens. An early retry on a token
+  budget was checked offline and is not worth it: attempts at the cap
+  are 14% of reviewer time, and every budget that saves real time cuts
+  more valid findings than false ones (ADR-0002, the diagnostic's
+  amendment). Open: only the call whose retries run away too (2 of 398
+  round-1 calls).
 - **#20 Engineer prompt conflict.** Both engineer runaways on record
   alternated between "argue for shipping" and "a violation is a
   blocker". Say what the engineer does with a correctness violation.

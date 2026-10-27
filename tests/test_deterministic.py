@@ -1718,6 +1718,7 @@ class RepairV13Tests(NoSleep):
         with fake_ollama({"repairs": [{"id": 1, "file": "app/x.cpp",
                                        "quote": "m_dropped.fetch_add(1);"}]}) as post:
             repairs, skipped = debate.repair_call(setup, transcript, offered, [],
+                                                  debate.REPAIR_V13_VERSION,
                                                   code_diff=REPAIR_DIFF)
         messages = post.call_args.kwargs["json"]["messages"]
         self.assertEqual(messages[0]["content"], debate.REPAIR_SYSTEM_PROMPT)
@@ -1735,8 +1736,8 @@ class RepairV13Tests(NoSleep):
     def test_the_v13_1_request_drops_the_review_context(self):
         setup, offered = self.offer()
         with fake_ollama(REPAIR_NONE) as post:
-            debate.repair_call(setup, "", offered, [], code_diff=REPAIR_DIFF,
-                               version=debate.REPAIR_V13_1_VERSION)
+            debate.repair_call(setup, "", offered, [], debate.REPAIR_V13_1_VERSION,
+                               code_diff=REPAIR_DIFF)
         messages = post.call_args.kwargs["json"]["messages"]
         self.assertEqual(messages[0]["content"], debate.REPAIR_SYSTEM_PROMPT)
         user = messages[1]["content"]
@@ -1754,7 +1755,7 @@ class RepairV13Tests(NoSleep):
         setup, offered = self.offer()
         transcript = debate._render_transcript("p", setup.static_section, 1)
         with fake_ollama(REPAIR_NONE) as post:
-            debate.repair_call(setup, transcript, offered, [])
+            debate.repair_call(setup, transcript, offered, [], debate.REPAIR_VERSION)
         messages = post.call_args.kwargs["json"]["messages"]
         self.assertEqual(messages[0]["content"], setup.reviewer_prompt)
         self.assertEqual(messages[1]["content"],
@@ -1803,6 +1804,54 @@ class RepairV13Tests(NoSleep):
                                  "reason": "quote"}], 1, 0, [])
         self.assertEqual(post.call_args.kwargs["json"]["messages"][0]["content"],
                          setup.reviewer_prompt)
+
+    def test_an_unknown_repair_version_raises_before_any_call(self):
+        # code review finding 20: an unknown version fell through to v13's
+        # request and v12's fingerprint
+        setup, offered = self.offer()
+        with fake_ollama(REPAIR_NONE) as post:
+            with self.assertRaises(KeyError):
+                debate.repair_call(setup, "", offered, [], "v13.2-unknown",
+                                   code_diff=REPAIR_DIFF)
+        post.assert_not_called()
+        with self.assertRaises(KeyError):
+            debate.repair_request_v13(setup, REPAIR_DIFF, offered, "v13.2-unknown")
+        with mock.patch.dict(repair.VERSIONS, {"v13.2": "v13.2-unknown"}):
+            with self.assertRaises(KeyError):
+                repair.repair_fingerprint("v13.2")
+
+    def test_a_version_gets_the_input_it_needs_or_raises(self):
+        # code review finding 23: without a diff, any version sent v12's request
+        setup, offered = self.offer()
+        with fake_ollama(REPAIR_NONE) as post:
+            with self.assertRaises(ValueError):
+                debate.repair_call(setup, "", offered, [], debate.REPAIR_V13_1_VERSION)
+        post.assert_not_called()
+        with self.assertRaises(ValueError):
+            debate.repair_request_v13(setup, REPAIR_DIFF, offered, debate.REPAIR_VERSION)
+
+    def test_the_runner_reads_the_variant_it_is_given(self):
+        # code review findings 21 and 22
+        for argv in (["pilot", "--variant", "v12"],
+                     ["ceiling", "--set", "corpus", "--variant", "v13"]):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                repair.main(argv)
+        if not list(Path(REPO_ROOT, "coach_artifacts").glob(
+                "measurement_round1_20261023_01*.json")):
+            self.skipTest("bridge records not present")
+        cwd = os.getcwd()
+        os.chdir(REPO_ROOT)
+        self.addCleanup(os.chdir, cwd)
+        first = repair.samples("bridge")[:1]
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(repair, "OUT_DIR", Path(tmp)), \
+                mock.patch.object(repair, "samples", lambda _: first):
+            repair.out_path(first[0]["id"], "v13.1").write_text(json.dumps(
+                {"skipped": None, "telemetry": [], "offered": [], "outcomes": []}),
+                encoding="utf-8")
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(repair.score("bridge", "v13.1")["calls"].get("calls"), 1)
+                self.assertIsNone(repair.score("bridge")["calls"].get("calls"))
 
 
 class RepairPassTests(NoSleep):
@@ -2412,6 +2461,17 @@ class CorpusTests(NoSleep):
             self.assertEqual(s["unlabelled"], [])
             self.assertEqual(s["pooled"]["runs"], 38)
             self.assertEqual((s["pooled"]["stored"], s["pooled"]["valid"]), (31, 6))
+        # v11.1 poll_override runs from the runaway diagnostic (#19); the
+        # retried 17a355 and 6cb4e4 are excluded by score_records
+        poll = sorted(p for g in ("measurement_round1_20261026_22[5-9]*.json",
+                                  "measurement_round1_20261026_23*.json")
+                      for p in Path(REPO_ROOT, "coach_artifacts").glob(g))
+        if poll:
+            s = corpus.labelled_summary(corpus.score_records(
+                common.load_records([str(p) for p in poll]), self.manifest), labels)
+            self.assertEqual(s["unlabelled"], [])
+            self.assertEqual(s["pooled"]["runs"], 18)
+            self.assertEqual((s["pooled"]["stored"], s["pooled"]["valid"]), (28, 7))
 
     def test_fingerprint_warning_is_per_fixture(self):
         fixtures = corpus.select(self.manifest, ["all"])[:2]
