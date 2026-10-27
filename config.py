@@ -1,7 +1,8 @@
 """Central configuration — models, runtime parameters, prompt composition.
 Single place to swap models or tune knobs for debates, the measurements,
-the golden suite and the indexer. eval_harness/probe.py and bakeoff.py
-still hardcode their own (code review finding 9)."""
+the golden suite and the indexer. The probe and the bake-off keep the
+settings they were measured with, in eval_harness/raw_call.py, so their
+numbers stay comparable with ADR-0001's."""
 
 from reviewer_prompt import (REVIEWER_SYSTEM, IMPL_SCOPE_CLAUSE,
                              HEADER_SCOPE_CLAUSE)

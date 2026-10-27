@@ -42,7 +42,17 @@ python orchestrator.py --proposal "Describe the header" --context path/to/header
 ```
 
 `--proposal` needs `--diff` or `--context`. Each run prints a JSON summary
-and writes a decision record to `coach_artifacts/`. Run ad-hoc reviews
+and writes a decision record to `coach_artifacts/`. The exit status
+follows the verdict, so a CI job or a hook can gate on it:
+
+| Status | Meaning |
+|---|---|
+| 0 | Approved, with or without open questions |
+| 1 | Blockers still stand after the last round |
+| 2 | Usage error |
+| 3 | No decision: an agent failed or the input was refused; a person must review it |
+
+`--golden` exits 1 when any test fails. Run ad-hoc reviews
 from a scratch directory if you don't intend to commit the record;
 retrieval still works, since the index is read from next to
 `retrieval.py`.

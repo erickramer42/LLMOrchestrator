@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """bakeoff.py — reviewer slot bake-off. One model at a time, isolated calls."""
 
-import time, argparse
+import argparse
+import time
 
 from eval_harness.raw_call import review
 from review_fixtures import ABI_TYPE_LEAK, CANFD_BUFFER_OVERFLOW, CLEAN_ABI_HEADER
@@ -104,4 +105,3 @@ if __name__ == "__main__":
 
     for m in args.models:
         run(m)
-        

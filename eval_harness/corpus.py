@@ -59,6 +59,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = REPO_ROOT / "docs" / "fixtures" / "corpus.json"
 # Forward diffs of the bug-introducing commits (ADR-0002, "Corpus v2").
 MANIFEST_V2 = REPO_ROOT / "docs" / "fixtures" / "corpus_v2.json"
+# Every corpus, for looking a record's fixture up by its diff. The two
+# share their clean fixtures (same id, same files).
+MANIFESTS = (MANIFEST, MANIFEST_V2)
 LABELS_PATH = Path(__file__).with_name("corpus_labels.json")
 ENGINEER_LABELS_PATH = Path(__file__).with_name("engineer_labels.json")
 # The round entry's key for each role, and its key in config.MODELS.
@@ -76,6 +79,16 @@ def load_manifest(path: Path = MANIFEST) -> dict:
         fixture["diff_path"] = REPO_ROOT / fixture["diff"]
         fixture["index_path"] = REPO_ROOT / fixture["index"]
     return manifest
+
+
+def fixture_by_hash(diff_sha256: Optional[str]) -> Optional[dict]:
+    """The fixture of any corpus (MANIFESTS) whose diff hashes to
+    diff_sha256, as a record's inputs store it; None when there is none."""
+    for path in MANIFESTS:
+        for fixture in load_manifest(path)["fixtures"]:
+            if text_sha256(read_input(str(fixture["diff_path"]))) == diff_sha256:
+                return fixture
+    return None
 
 
 def select(manifest: dict, ids: List[str]) -> List[dict]:
@@ -211,7 +224,10 @@ def labelled_summary(scores: dict, labels: dict) -> dict:
     and among all items, stored or demoted (or, for the engineer, its
     concerns and questions, which need a label only when they state a
     known bug). Mean recall averages the per-bug rates over the bugs of
-    the scored fixtures; blocked runs are runs with any stored blocker."""
+    the scored fixtures; blocked runs are runs with any stored blocker.
+    Runs count labeled records only: a record without labels is listed
+    as unlabeled and left out of every rate, never counted as a run that
+    found nothing."""
     valid_classes = set(labels.get("valid", []))
     out, unlabelled = {}, []
     pooled = {"runs": 0, "stored": 0, "valid": 0, "fp": {}, "evidence": 0,
@@ -222,7 +238,7 @@ def labelled_summary(scores: dict, labels: dict) -> dict:
         if not rows:
             continue
         bug_ids = [b["id"] for b in entry["fixture"].get("known_bugs", [])]
-        f = {"runs": len(rows), "stored": 0, "valid": 0, "fp": {}, "evidence": 0,
+        f = {"runs": 0, "stored": 0, "valid": 0, "fp": {}, "evidence": 0,
              "hedge": 0, "valid_demoted": 0, "blocked_runs": 0,
              "kind": entry["fixture"]["kind"],
              "recall": {b: {"stored": 0, "any": 0} for b in bug_ids}}
@@ -231,6 +247,7 @@ def labelled_summary(scores: dict, labels: dict) -> dict:
             if rec_labels is None:
                 unlabelled.append((row["id"], "record"))
                 continue
+            f["runs"] += 1
             found_stored, found_any = set(), set()
             f["blocked_runs"] += bool(row["blockers"])
             for key, kind in _items(row):
@@ -268,13 +285,19 @@ def labelled_summary(scores: dict, labels: dict) -> dict:
             pooled["fp"][t] = pooled["fp"].get(t, 0) + n
         for r in f["recall"].values():
             for k in rates:
-                rates[k].append(r[k] / f["runs"])
+                if f["runs"]:
+                    rates[k].append(r[k] / f["runs"])
     pooled["mean_recall"] = {k: sum(v) / len(v) if v else None for k, v in rates.items()}
+    pooled["recall_bugs"] = len(rates["stored"])
     return {"fixtures": out, "pooled": pooled, "unlabelled": unlabelled}
 
 
 def print_labelled(summary: dict) -> None:
     print("\n==== hand labels ====")
+    records = sum(1 for _, key in summary["unlabelled"] if key == "record")
+    if summary["unlabelled"]:
+        print(f"WARNING: {records} unlabeled record(s), left out of every rate, and "
+              f"{len(summary['unlabelled']) - records} unlabeled item(s); listed below")
     print(f"{'fixture':<26} {'runs':>4} {'stored':>6} {'valid':>5} {'FP':>4} "
           f"{'#e':>3} {'#h':>3} {'valid demoted':>13}")
     for fixture_id, f in summary["fixtures"].items():
@@ -293,7 +316,7 @@ def print_labelled(summary: dict) -> None:
               f"runs with a blocker {p['blocked_runs']}/{p['runs']}, on clean fixtures "
               f"{sum(f['blocked_runs'] for f in clean)}/{sum(f['runs'] for f in clean)}")
     if p["mean_recall"]["stored"] is not None:
-        print(f"mean recall over {sum(len(f['recall']) for f in summary['fixtures'].values())} "
+        print(f"mean recall over {p['recall_bugs']} "
               f"known bugs: stored {p['mean_recall']['stored']:.3f}, "
               f"any item {p['mean_recall']['any']:.3f}")
     if p["fp"]:
@@ -442,7 +465,7 @@ def main(argv: Optional[List[str]] = None) -> None:
             try:
                 labels = json.loads(Path(path).read_text(encoding="utf-8"))
             except (OSError, ValueError) as exc:
-                raise SystemExit(f"ERROR: cannot read labels {path}: {exc}")
+                raise SystemExit(f"ERROR: cannot read labels {path}: {exc}") from exc
             print_labelled(labelled_summary(scores, labels))
 
 

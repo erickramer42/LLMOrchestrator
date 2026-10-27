@@ -11,14 +11,40 @@ Usage:
                            [--index-file path]
     python orchestrator.py --index <repo-path> [--no-llm] [--index-out path]
 
+Exit status, so a CI job or a hook can gate on a review:
+    0  approved, with or without open questions
+    1  blockers still stand after the last round; --golden: a test failed
+    2  usage error (argparse's own)
+    3  no decision: an agent failed or the input was refused, so a person
+       must review it
 """
 
+import argparse
 import json
-import os
+import sys
 from pathlib import Path
+from typing import List, Optional
 
+from adjudication import (APPROVED_FOR_MERGE, APPROVED_WITH_OPEN_QUESTIONS,
+                          MAX_ROUNDS_VERDICT)
 from debate import run_debate
 from golden_tests import print_summary, run_golden_tests
+
+EXIT_APPROVED = 0
+EXIT_BLOCKED = 1
+EXIT_NO_DECISION = 3
+
+
+def exit_status(final_verdict: str) -> int:
+    """The exit status of a review with this final verdict. Anything but
+    an approval or blockers at the round limit is no decision, including
+    a verdict this function does not know (fail closed)."""
+    if final_verdict in (APPROVED_FOR_MERGE, APPROVED_WITH_OPEN_QUESTIONS):
+        return EXIT_APPROVED
+    if final_verdict == MAX_ROUNDS_VERDICT:
+        return EXIT_BLOCKED
+    return EXIT_NO_DECISION
+
 
 def run_index(target: str, use_llm: bool, out_path: str = None) -> None:
     """Build and save the repo context pack, to out_path or the default
@@ -32,9 +58,16 @@ def run_index(target: str, use_llm: bool, out_path: str = None) -> None:
           f"{len(index['types'])} types, "
           f"{len(index['constants'])} constants")
 
-if __name__ == "__main__":
-    import argparse
 
+def read_input(path: str) -> str:
+    # Explicit UTF-8: the Windows default (cp1252) silently garbles
+    # non-ASCII characters in diffs before the models see them.
+    return Path(path).read_text(encoding="utf-8", errors="replace")
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    """Parse the command line, run the chosen mode and return the exit
+    status (see the module docstring)."""
     parser = argparse.ArgumentParser(
         description="QtTune Agent Tribunal — Multi-agent code review orchestration")
     mode = parser.add_mutually_exclusive_group()
@@ -61,7 +94,7 @@ if __name__ == "__main__":
                         help="Retrieve from the index at PATH instead of "
                              "repo_context.json (with --proposal)")
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if not args.proposal and (args.diff or args.context or args.header):
         parser.error("--diff, --context and --header require --proposal")
@@ -74,29 +107,28 @@ if __name__ == "__main__":
         parser.error("--index-out applies only to --index")
     if args.index_file and not args.proposal:
         parser.error("--index-file applies only to --proposal")
-
-    def read_input(path: str) -> str:
-        # Explicit UTF-8: the Windows default (cp1252) silently garbles
-        # non-ASCII characters in diffs before the models see them.
-        return Path(path).read_text(encoding="utf-8", errors="replace")
+    for flag, path in (("--diff", args.diff), ("--context", args.context)):
+        if path and not Path(path).is_file():
+            parser.error(f"{flag} path not found: {path}")
 
     if args.index:
         run_index(args.index, use_llm=not args.no_llm, out_path=args.index_out)
-    elif args.golden:
-        print_summary(run_golden_tests())
-    elif args.proposal:
-        if args.diff and not os.path.exists(args.diff):
-            raise SystemExit(f"ERROR: --diff path not found: {args.diff}\n"
-                             "Provide a valid diff file path.")
-        if args.context and not os.path.exists(args.context):
-            raise SystemExit(f"ERROR: --context path not found: {args.context}\n"
-                             "Provide a valid context file path.")
+        return 0
+    if args.golden:
+        summary = run_golden_tests()
+        print_summary(summary)
+        return 1 if summary["failed"] else 0
+    if args.proposal:
         code_diff = read_input(args.diff) if args.diff else ""
         code_context = read_input(args.context) if args.context else ""
         result = run_debate(args.proposal, code_diff, code_context,
                             header_artifact=args.header,
                             index_path=args.index_file)
         print(json.dumps(result, indent=2))
-    else:
-        print(__doc__)
-        
+        return exit_status(result["final_verdict"])
+    print(__doc__)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

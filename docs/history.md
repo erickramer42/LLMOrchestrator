@@ -177,6 +177,13 @@ changed.
 - the twenty-fourth scored: `gpt-oss:20b` as the reviewer failed
   condition 1 (mean recall 0.31 against laguna's 0.44, false positives
   0.73 times laguna's). laguna stays the reviewer.
+- a full code review, and its first fixes: the review CLI's exit status
+  follows the verdict (0 approved, 1 blockers at the round limit, 2
+  usage error, 3 no decision) and `--golden` exits 1 on a failed test;
+  `corpus score` counts labeled records only in its rates; records of
+  either corpus resolve to their fixture (`runaway repro`, the judge
+  cases); replay names the judge it reproduces with; lint and stale
+  docstrings. No recorded number changed. Tests 220 → 226.
 
 ## Features and measurements, in detail
 

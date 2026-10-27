@@ -4,7 +4,8 @@ verdict-aware metrics. Outputs a timestamped JSON record with PROMPT_VERSION.
 example usage:
     python -m eval_harness.probe --model laguna-xs-2.1 --fixture ../<your_project_path>/<filename_to_review>"""
 
-import json, argparse
+import argparse
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 

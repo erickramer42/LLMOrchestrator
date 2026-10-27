@@ -126,17 +126,17 @@ def corrections(calls: List[dict], attempt: int) -> List[str]:
 
 def fixture_for(record: dict) -> Tuple[str, Optional[str]]:
     """(diff, index path) of a round-1 record's input: the bridge fixture
-    with the committed index, or the corpus fixture whose diff it hashed."""
+    with the committed index, or the fixture of either corpus whose diff
+    it hashed."""
     from eval_harness import corpus
     want = record["inputs"].get("diff_sha256")
     bridge = read_input(str(BRIDGE_DIFF))
     if debate.text_sha256(bridge) == want:
         return bridge, None
-    for fixture in corpus.load_manifest()["fixtures"]:
-        diff = read_input(str(fixture["diff_path"]))
-        if debate.text_sha256(diff) == want:
-            return diff, str(fixture["index_path"])
-    raise SystemExit("ERROR: the record's diff is no committed fixture")
+    fixture = corpus.fixture_by_hash(want)
+    if fixture is None:
+        raise SystemExit("ERROR: the record's diff is no committed fixture")
+    return read_input(str(fixture["diff_path"])), str(fixture["index_path"])
 
 
 def rebuild(record: dict, attempt: int) -> Tuple[List[dict], float, str]:

@@ -2122,7 +2122,7 @@ class LinkageTests(unittest.TestCase):
             unlinked = {**REVIEWER_CLEAN, "blockers": [
                 {"claim": "m_lastReported races", "file": "app/x.cpp", "quote": GATE_LINE}]}
             with mock.patch.object(agent_client.time, "sleep"), \
-                    fake_ollama(unlinked) as post:
+                    fake_ollama(unlinked):
                 result = debate.run_round1_review("p", REPLAY_DIFF, "")
             rec = json.loads(Path(result["record_path"]).read_text(encoding="utf-8"))
         finally:
@@ -2193,7 +2193,8 @@ class JudgeCaseTests(unittest.TestCase):
         # and its label is the committed hand label.
         corpus_labels = json.loads(corpus.LABELS_PATH.read_text(encoding="utf-8"))
         bridge_labels = json.loads(replay.LABELS_PATH.read_text(encoding="utf-8"))
-        known_bugs = {b["id"] for f in corpus.load_manifest()["fixtures"]
+        known_bugs = {b["id"] for m in corpus.MANIFESTS
+                      for f in corpus.load_manifest(m)["fixtures"]
                       for b in f.get("known_bugs", [])}
         for case in self.cases:
             path = Path(REPO_ROOT, "coach_artifacts", f"measurement_{case['record']}.json")
@@ -2514,6 +2515,46 @@ class CorpusTests(NoSleep):
         self.assertIn(("r2", "record"), s["unlabelled"])
         self.assertIn(("r1", "#h9 (labelled, no such item)"), s["unlabelled"])
 
+    def test_an_unlabeled_record_is_not_a_run(self):
+        # code review 2026-10-27, finding 26: an unlabeled record counted
+        # in every denominator, so one labeled run that found the bug
+        # read as recall 0.5 beside an unlabeled one
+        fixture = corpus.select(self.manifest, ["backoff_clamp_d1c20c0"])[0]
+        row = {"id": "r1", "fingerprint": "f",
+               "blockers": [{"text": "a", "bugs": ["backoff_overshoot"]}],
+               "unquoted": [], "hedged": []}
+        scores = {"fixtures": {fixture["id"]: {"fixture": fixture,
+                                               "rows": [row, {**row, "id": "r2"}]}}}
+        labels = {"valid": [], "records": {"r1": {"labels": {"#1": ["backoff_overshoot"]}}}}
+        s = corpus.labelled_summary(scores, labels)
+        f = s["fixtures"][fixture["id"]]
+        self.assertEqual((f["runs"], s["pooled"]["runs"]), (1, 1))
+        self.assertEqual(f["recall"]["backoff_overshoot"], {"stored": 1, "any": 1})
+        bugs = len(fixture["known_bugs"])
+        self.assertAlmostEqual(s["pooled"]["mean_recall"]["stored"], 1 / bugs)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            corpus.print_labelled(s)
+        self.assertIn("WARNING: 1 unlabeled record(s), left out of every rate",
+                      out.getvalue())
+        # a fixture with no labeled run adds no recall rate
+        scores["fixtures"][fixture["id"]]["rows"] = [{**row, "id": "r2"}]
+        s = corpus.labelled_summary(scores, labels)
+        self.assertEqual((s["pooled"]["mean_recall"]["stored"], s["pooled"]["recall_bugs"]),
+                         (None, 0))
+
+    def test_records_of_either_corpus_resolve_to_their_fixture(self):
+        # code review 2026-10-27, finding 27: lookups read corpus v1 only
+        for manifest in self.manifests:
+            fixture = manifest["fixtures"][0]
+            want = debate.text_sha256(common.read_input(str(fixture["diff_path"])))
+            self.assertEqual(corpus.fixture_by_hash(want)["id"], fixture["id"])
+            diff, index = runaway.fixture_for({"inputs": {"diff_sha256": want}})
+            self.assertEqual((debate.text_sha256(diff), index),
+                             (want, str(fixture["index_path"])))
+            self.assertIn(fixture["id"], golden_tests.judge_fixtures())
+        self.assertIsNone(corpus.fixture_by_hash("0" * 64))
+
     def test_the_engineer_scorer_reads_the_engineer_entry_and_its_own_labels(self):
         # the twenty-third measurement: blockers and hedge demotions need a
         # label, concerns and questions only when they state a known bug
@@ -2688,8 +2729,9 @@ class CorpusTests(NoSleep):
 
     def test_fingerprint_warning_is_per_fixture(self):
         fixtures = corpus.select(self.manifest, ["all"])[:2]
-        row = lambda i, fp: {"id": i, "fingerprint": fp, "blockers": [],
-                             "unquoted": [], "hedged": []}
+        def row(i, fp):
+            return {"id": i, "fingerprint": fp, "blockers": [],
+                    "unquoted": [], "hedged": []}
         scores = {"excluded": [], "fixtures": {
             fixtures[0]["id"]: {"fixture": fixtures[0], "rows": [row("a", "x")]},
             fixtures[1]["id"]: {"fixture": fixtures[1], "rows": [row("b", "y")]}}}
@@ -2777,6 +2819,49 @@ class CliTests(unittest.TestCase):
             self.assertIn(str(out), r.stdout)
             self.assertIn("files", json.loads(out.read_text(encoding="utf-8")))
         self.assertEqual(retrieval.CONTEXT_PATH.read_bytes(), before)
+
+    def test_exit_status_follows_the_verdict(self):
+        # code review 2026-10-27, finding 28: every review exited 0
+        import orchestrator
+        cases = {adjudication.APPROVED_FOR_MERGE: 0,
+                 adjudication.APPROVED_WITH_OPEN_QUESTIONS: 0,
+                 adjudication.MAX_ROUNDS_VERDICT: 1,
+                 adjudication.AGENT_FAILURE_VERDICT: 3,
+                 adjudication.NO_INPUT_VERDICT: 3,
+                 adjudication.INPUT_TOO_LARGE_VERDICT: 3,
+                 "SOMETHING_NEW": 3}  # an unknown verdict is no decision
+        for verdict, status in cases.items():
+            self.assertEqual(orchestrator.exit_status(verdict), status, verdict)
+            with mock.patch.object(orchestrator, "run_debate",
+                                   return_value={"final_verdict": verdict}), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(orchestrator.main(
+                    ["--proposal", "x", "--diff", str(REPO_ROOT / "README.md")]), status)
+
+    def test_golden_exits_1_when_a_test_fails(self):
+        import orchestrator
+        for failed, status in ((0, 0), (1, 1)):
+            with mock.patch.object(orchestrator, "run_golden_tests",
+                                   return_value={"failed": failed}), \
+                    mock.patch.object(orchestrator, "print_summary"):
+                self.assertEqual(orchestrator.main(["--golden"]), status)
+
+    def test_refused_input_exits_3_from_the_command_line(self):
+        # end to end, with no model: an empty diff is refused (judge j7)
+        with tempfile.TemporaryDirectory() as tmp:
+            empty = Path(tmp) / "empty.diff"
+            empty.write_text("", encoding="utf-8")
+            r = subprocess.run([sys.executable, str(REPO_ROOT / "orchestrator.py"),
+                                "--proposal", "x", "--diff", str(empty)],
+                               cwd=tmp, capture_output=True, text=True, timeout=60)
+        self.assertEqual(r.returncode, 3, r.stderr)
+        self.assertEqual(json.loads(r.stdout)["final_verdict"],
+                         adjudication.NO_INPUT_VERDICT)
+
+    def test_a_missing_input_file_is_a_usage_error(self):
+        r = self.run_cli("--proposal", "x", "--diff", "no/such.diff")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("--diff path not found", r.stderr)
 
     def test_score_needs_repo_and_rev_together(self):
         for module in ("eval_harness.round1", "eval_harness.round2"):

@@ -16,7 +16,9 @@ which are valid, so precision and recall are counted without a model
 call. First attempts only, as in the scorers.
 
 Variants, on top of the current judge's evidence and hedge checks:
-- j7: the current judge. It must reproduce each record's stored split.
+- j7: the judge before j8 (evidence and hedge checks, no linkage). Each
+  record's stored split must be reproduced by the judge it records:
+  flinked for j8, j7 for earlier ones (current_judge).
 - gapped: a quote's lines may skip post-change lines, in order, within
   one hunk.
 - linked: a blocker whose claim names code identifiers, none of which
@@ -55,7 +57,7 @@ import sys
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
-from adjudication import (_ANY_FILE_SOURCES, _HUNK_BREAK, ACRONYM, HEDGE_PATTERNS,
+from adjudication import (_ANY_FILE_SOURCES, _HUNK_BREAK, HEDGE_PATTERNS,
                           MIN_QUOTE_CHARS, UNFILED_SOURCE, _match_file,
                           _quote_fragments, _squash, evidence_sources,
                           hunk_identifiers)
@@ -64,7 +66,6 @@ from debate import text_sha256
 from diff_reader import DEV_NULL, read_diff
 from eval_harness.common import (demoted_tail, load_records, parse_blocker,
                                  read_input, reviewer_status)
-from retrieval import IDENT, code_like
 
 LABELS_PATH = Path(__file__).with_name("labels.json")
 CORPUS_LABELS_PATH = Path(__file__).with_name("corpus_labels.json")
@@ -506,10 +507,10 @@ def print_corpus_report(out: dict) -> None:
         print(f"excluded {sample}: {why}")
     for sample, key in out["unlabelled"]:
         print(f"UNLABELLED {sample} {key}")
-    print(f"\nj7 reproduces the stored split: "
+    print(f"\nthe recorded judge reproduces the stored split: "
           f"{'yes' if not out['mismatches'] else 'NO'}")
     for sample, key, stored, now in out["mismatches"]:
-        print(f"  {sample} {key}: stored {stored or 'kept'}, j7 {now or 'kept'}")
+        print(f"  {sample} {key}: stored {stored or 'kept'}, replayed {now or 'kept'}")
 
     print("\n== pooled")
     print(f"{'variant':<28} {'reviews':>7} {'valid%':>7} {'FP/rev':>7} "
@@ -547,10 +548,10 @@ def print_report(out: dict) -> None:
         print(f"excluded {sample}: {why}")
     for sample, key in out["unlabelled"]:
         print(f"UNLABELLED {sample} {key}")
-    print(f"\nj7 reproduces the stored split: "
+    print(f"\nthe recorded judge reproduces the stored split: "
           f"{'yes' if not out['mismatches'] else 'NO'}")
     for sample, key, stored, now in out["mismatches"]:
-        print(f"  {sample} {key}: stored {stored or 'kept'}, j7 {now or 'kept'}")
+        print(f"  {sample} {key}: stored {stored or 'kept'}, replayed {now or 'kept'}")
 
     sets = list(out["samples"]) + ["pooled"]
     for s in sets:

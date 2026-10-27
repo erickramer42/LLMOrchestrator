@@ -1,7 +1,8 @@
-"""common.py — what the round-1 and round-2 measurement scripts share:
-the command line, collecting samples, reading inputs and records, and
-the scoring helpers (attempt status, demoted blockers, M1, M2
-candidates)."""
+"""common.py — what the measurement scripts share: the round-1 and
+round-2 command line, collecting samples, reading inputs and records,
+per-role model selection, and the scoring helpers (attempt status, call
+costs, demoted blockers, M1, M2 candidates). The corpus, replay, repair
+and runaway scripts use the record and scoring parts."""
 
 import argparse
 import contextlib
@@ -15,7 +16,7 @@ import time
 from pathlib import Path
 from typing import Callable, Iterator, List, Optional, Tuple
 
-from retrieval import IDENT, code_like
+from diff_reader import IDENT, code_like
 
 
 # ============ inputs and records ============
@@ -25,7 +26,7 @@ def read_input(path: str) -> str:
     try:
         return Path(path).read_text(encoding="utf-8", errors="replace")
     except OSError as exc:
-        raise SystemExit(f"ERROR: cannot read {path}: {exc}")
+        raise SystemExit(f"ERROR: cannot read {path}: {exc}") from exc
 
 
 def load_records(patterns: List[str]) -> List[tuple]:
@@ -42,7 +43,7 @@ def load_records(patterns: List[str]) -> List[tuple]:
         try:
             records.append((p, json.loads(Path(p).read_text(encoding="utf-8"))))
         except (OSError, ValueError) as exc:
-            raise SystemExit(f"ERROR: cannot read record {p}: {exc}")
+            raise SystemExit(f"ERROR: cannot read record {p}: {exc}") from exc
     return records
 
 

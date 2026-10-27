@@ -39,6 +39,12 @@ Any edit to a prompt here must be reflected by bumping PROMPT_VERSION."""
 # and a removal-caused defect is quoted from the code left unprotected.
 # Only the pair measurement's candidate arm sent it, as the twelfth
 # measurement's samples.
+# v11.1 (2026-10-23, ADR-0002 twelfth measurement): v11 measured as not
+# worse than v9's feedback and shipped. From round 2 on a debate sends
+# the previous round's replies in the CRITIQUES section, the last round
+# only, engineer blockers included, and the proposal stays the author's
+# text. Round 1 is unchanged. The pair measurement's V9_ARM keeps the
+# old format for comparison.
 # v12 (2026-10-24, ADR-0002 seventeenth measurement; NOT SHIPPED): the
 # repair pass. In round 1, a reviewer blocker demoted because its quote
 # was not found is offered back in one repair call (debate.REPAIR_TEMPLATE);
@@ -46,12 +52,6 @@ Any edit to a prompt here must be reflected by bumping PROMPT_VERSION."""
 # archived replies, it recovered 2 of 31 valid items: most calls ran away
 # or re-reviewed. It is off in debates (debate.REPAIR_PASS), which stay
 # v11.1; its records carry debate.REPAIR_VERSION.
-# v11.1 (2026-10-23, ADR-0002 twelfth measurement): v11 measured as not
-# worse than v9's feedback and shipped. From round 2 on a debate sends
-# the previous round's replies in the CRITIQUES section, the last round
-# only, engineer blockers included, and the proposal stays the author's
-# text. Round 1 is unchanged. The pair measurement's V9_ARM keeps the
-# old format for comparison.
 # v14 (2026-10-25, ADR-0002 nineteenth measurement; NOT SHIPPED): the
 # quote rule. The schema no longer asked for "the code that shows it"; a
 # quote was post-change lines only, never a removed line or an ellipsis,
@@ -161,4 +161,3 @@ ARTIFACT TYPE: implementation code. Apply full production standards.
 - Thread safety and runtime validation expectations are active.
 - Failure modes (null checks, allocation failure, malformed input) should be
   handled where the code claims to handle input."""
-  

@@ -10,7 +10,7 @@ differs (GOLDEN_TEMPERATURE)."""
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List
+from typing import Dict, List, Tuple
 
 from adjudication import (JUDGE_VERSION, demote_hedged_blockers, demote_unverified_blockers,
                           evidence_sources, hunk_identifiers, normalize_agent_output)
@@ -23,7 +23,10 @@ REPO_ROOT = Path(__file__).resolve().parent
 # Verbatim reviewer blockers from labeled records, with the judge outcome
 # each must get (see the file's 'about').
 JUDGE_CASES_PATH = REPO_ROOT / "docs" / "fixtures" / "judge_cases.json"
-CORPUS_MANIFEST = REPO_ROOT / "docs" / "fixtures" / "corpus.json"
+# Both corpora (ADR-0002, "Corpus v2"); their shared clean fixtures have
+# the same id and files in each.
+CORPUS_MANIFESTS = (REPO_ROOT / "docs" / "fixtures" / "corpus.json",
+                    REPO_ROOT / "docs" / "fixtures" / "corpus_v2.json")
 BRIDGE_DIFF = REPO_ROOT / "docs" / "fixtures" / "qttune_bridge_refactor.diff"
 BRIDGE_INDEX = REPO_ROOT / "repo_context.json"
 
@@ -113,14 +116,22 @@ def judge_outcome(blocker: dict, code_diff: str, index: dict) -> str:
     return "hedge" if hedged else "kept"
 
 
+def judge_fixtures() -> Dict[str, Tuple[Path, Path]]:
+    """(diff, index) of every fixture a judge case may name: the bridge
+    fixture and each fixture of both corpora, by id."""
+    fixtures = {f["id"]: (REPO_ROOT / f["diff"], REPO_ROOT / f["index"])
+                for manifest in CORPUS_MANIFESTS
+                for f in json.loads(manifest.read_text(encoding="utf-8"))["fixtures"]}
+    fixtures["bridge"] = (BRIDGE_DIFF, BRIDGE_INDEX)
+    return fixtures
+
+
 def run_judge_unit_tests() -> List[dict]:
     """Deterministic judge regression tests: no LLM involved. Each case
     in docs/fixtures/judge_cases.json is a blocker a model wrote, judged
     against the diff and index it was written for."""
     doc = json.loads(JUDGE_CASES_PATH.read_text(encoding="utf-8"))
-    fixtures = {f["id"]: (REPO_ROOT / f["diff"], REPO_ROOT / f["index"])
-                for f in json.loads(CORPUS_MANIFEST.read_text(encoding="utf-8"))["fixtures"]}
-    fixtures["bridge"] = (BRIDGE_DIFF, BRIDGE_INDEX)
+    fixtures = judge_fixtures()
     results = []
     for case in doc["cases"]:
         diff_path, index_path = fixtures[case["fixture"]]
@@ -137,8 +148,8 @@ def run_judge_unit_tests() -> List[dict]:
 
 
 def run_golden_tests() -> dict:
-    """Run the hedge units and the live-model fixtures, write the summary
-    to gold_tests/run_<utc>.json and return it. A fixture's snippet is its
+    """Run the hedge units, the judge cases and the live-model fixtures,
+    write the summary to gold_tests/run_<utc>.json and return it. A fixture's snippet is its
     CODE CONTEXT, so the reviewer may quote it under any file name."""
     TEST_CASES = [
         {

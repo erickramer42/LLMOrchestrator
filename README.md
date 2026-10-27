@@ -27,11 +27,11 @@ down before its run, and the failures are published next to the fixes.
   QtTune. From the diff alone, the reviewer found two bugs that had
   shipped there and were fixed later: a data race on a frame counter,
   and a frame freeze past 10,000 frames.
-- **Measured like an experiment.** Twenty-one measurements so far.
+- **Measured like an experiment.** Twenty-five measurements so far.
   From the first re-measurement on, each change's prediction and ship
   rule were written before its first sample; hand labels come before
   scoring, and no-model ceiling checks and pilots come before GPU time.
-  Eight candidate changes failed their rules and are published with the
+  Eleven candidate changes failed their rules and are published with the
   reasons.
 - **Built to be trusted.** Over 200 regression tests run with no model
   by faking Ollama at the HTTP layer, in CI on Python 3.11 and 3.13.

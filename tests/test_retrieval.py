@@ -424,4 +424,3 @@ diff --git a/app/qttunebridge.cpp b/app/qttunebridge.cpp
 
 if __name__ == "__main__":
     unittest.main()
-    

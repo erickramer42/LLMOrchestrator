@@ -56,9 +56,9 @@ from typing import Dict, List, Optional, Tuple
 import debate
 from adjudication import _HUNK_BREAK, JUDGE_VERSION, claim_identifiers
 from config import MODELS
+from diff_reader import IDENT
 from eval_harness import replay
 from eval_harness.common import load_records, read_input, reviewer_status
-from retrieval import IDENT
 
 BRIDGE_DIFF = "docs/fixtures/qttune_bridge_refactor.diff"
 SETS = {

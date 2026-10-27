@@ -35,9 +35,10 @@ import textwrap
 from typing import Callable, List, Optional
 
 from debate import CRITIQUES_ARM, V9_ARM, run_round2_pair, text_sha256
+from diff_reader import IDENT, code_like
 from eval_harness.common import (claim_text, demoted_tail, m1_hits,
                                  m2_candidates, main, reviewer_status)
-from retrieval import IDENT, code_like, removed_identifiers
+from retrieval import removed_identifiers
 
 ARMS = (CRITIQUES_ARM, V9_ARM)
 ORIGINS = ("carried", "from-question", "echo?", "new")
