@@ -1,0 +1,125 @@
+{
+  "metadata": {
+    "debate_id": "engineer_20261027_151720_76af23",
+    "created_utc": "2026-10-27T15:18:03.755852+00:00",
+    "prompt_version": "v11.1-critiques-feedback",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gpt-oss:20b"
+    },
+    "mode": "round1_engineer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 16931,
+      "estimated_tokens": 5644,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 1507,
+      "sections": {
+        "modified_files": 2,
+        "types": 4,
+        "constants": 2,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "entries": 8,
+      "index_version": "idx_20261024_014115",
+      "index_commit": "b47687c6c6d81dc85a539dcd0e17d662e2b3d42f",
+      "format_version": "f3-diff-authoritative",
+      "error": null,
+      "base_check": {
+        "checked": 2,
+        "mismatched": []
+      },
+      "shown": {
+        "modified_files": 2,
+        "types": 4,
+        "constants": 2,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\decode_length_b47687c\\repo_context.json",
+      "sha256": "157c98bba4a928fedebe2a6833fdbe6314746197115e3f555690bf8d8f1cbdc0",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qttunebridge.cpp] (bridge): FrameListModel\n[app/qttunebridge.h] (bridge): FIX: latest-value-per-signal-ID staging (merge, not clear-and-refill)  [only on the diff's removed lines: FIX, ID]\n\n--- KNOWN TYPES ---\nqttune_session_t (opaque): typedef struct qttune_session qttune_session_t;  // Forward-declared opaque handle types\nqttune_frame_t (struct): typedef struct qttune_frame { uint64_t timestamp_us; uint32_t channel_id; uint8_t data[64]; uint8_t data_length; uint8_t is_extended; uint8_t rsvd[3]; } qttune_frame_t;  // Frame structure - POD only, no pointers except length\nQttuneSignalDef (struct): typedef struct QttuneSignalDef { uint16_t id; char name[32]; QttuneSignalType type; uint8_t start_byte; uint8_t num_bytes; uint8_t bit_offset; uint8_t bit_length; float scale; float offset; char unit[16]; uint8_t decimal_places; uint32_t flags; uint32_t reserved[3]; } QttuneSignalDef;\nQttuneSignalSet (struct): typedef struct QttuneSignalSet { uint32_t version; uint32_t count; const QttuneSignalDef* defs; } QttuneSignalSet;  // Single canonical definition \u2014 no duplicates\n\n--- CONSTANTS ---\nMaxFrames = 10000 (const)\nMaxInFlightFrames = 1000 (const)\n\n--- OMITTED (indexed entries this diff removes or rewrites) ---\nqueued call site in app/qttunebridge.cpp using QueuedConnection, m_dropNotifyPending, notifyDropped\nqueued call site in app/qttunebridge.cpp using QueuedConnection"
+    },
+    "prompt_fingerprint": "8e76794ac4946aab"
+  },
+  "inputs": {
+    "proposal": "Bridge cleanup after the coalescing change: setSignalSet takes an opaque pointer, signal decode reads the standard 8-byte CAN payload, the staging buffer is rebuilt per frame, and dropped frames are reported from the GUI-side frame handler.",
+    "original_proposal": "Bridge cleanup after the coalescing change: setSignalSet takes an opaque pointer, signal decode reads the standard 8-byte CAN payload, the staging buffer is rebuilt per frame, and dropped frames are reported from the GUI-side frame handler.",
+    "header_artifact": false,
+    "file_path": "app/qttunebridge.cpp",
+    "layer": "bridge",
+    "diff_sha256": "3fc6fd4098bab1a7684359958f377ec7a6f53985a49557c6348d0e7a163b49fb",
+    "diff_chars": 11213,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "auto_engineer": {
+          "verdict": "reject",
+          "blockers": [
+            "Missing defensive clamp on frame->data_length: code no longer checks that data_length <= sizeof(frame->data), risking out-of-bounds reads if a transport misbehaves.",
+            "Signal decoding uses a hard-coded length of 8 bytes instead of the actual frame data length, breaking correct decoding for CAN\u2011FD frames and causing incorrect signal values.",
+            "Dropped frames are no longer reported to the GUI: the queued drop\u2011notification logic and notifyDropped() call have been removed, so the user cannot be informed of lost frames."
+          ],
+          "concerns": [
+            "The staging buffer is cleared on every frame, eliminating the intended 100\u202fms coalescing window and preventing latest\u2011value\u2011per\u2011signal aggregation.",
+            "The function signature change to void* for setSignalSet removes static type safety at the boundary, though the cast is performed internally.",
+            "Removal of drop\u2011notification flag and logic may affect thread\u2011safety guarantees for back\u2011pressure reporting.",
+            "strncpy usage for signal name and unit may not null\u2011terminate the destination buffers if the source strings exceed the fixed size, potentially leading to dangling or garbage strings in the UI."
+          ],
+          "questions": [
+            "Does qttune_core.h include the definitions for QttuneSignalSet and QttuneSignalDef, or is the removal of \"qttune/signals.h\" a compile\u2011time oversight?",
+            "Is the hard\u2011coded 8\u2011byte decode intended for all frames, or was this a placeholder that should have used frame->data_length or def.num_bytes?"
+          ],
+          "reasoning": "The diff introduces several demonstrable safety and domain correctness violations that conflict with J2534/ECU expectations and the v0.2.0 roadmap."
+        },
+        "hedge_demotions": {
+          "engineer_demoted": 1
+        },
+        "telemetry": {
+          "auto_engineer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 15385,
+              "prompt_eval_count": 4161,
+              "eval_count": 1811,
+              "thinking_chars": 6403,
+              "content_chars": 1767,
+              "done_reason": "stop",
+              "wall_s": 42.92,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n        \"Missing defensive clamp on frame->data_length: code no longer checks that data_length <= sizeof(frame->data), risking out-of-bounds reads if a transport misbehaves.\",\n        \"Signal decoding uses a hard-coded length of 8 bytes instead of the actual frame data length, breaking correct decoding for CAN\u2011FD frames and causing incorrect signal values.\",\n        \"Dropped frames are no longer reported to the GUI: the queued drop\u2011notification logic and notifyDropped() call have been removed, so the user cannot be informed of lost frames.\",\n        \"strncpy usage for signal name and unit may not null\u2011terminate the destination buffers if the source strings exceed the fixed size, potentially leading to dangling or garbage strings in the UI.\"\n    ],\n    \"concerns\": [\n        \"The staging buffer is cleared on every frame, eliminating the intended 100\u202fms coalescing window and preventing latest\u2011value\u2011per\u2011signal aggregation.\",\n        \"The function signature change to void* for setSignalSet removes static type safety at the boundary, though the cast is performed internally.\",\n        \"Removal of drop\u2011notification flag and logic may affect thread\u2011safety guarantees for back\u2011pressure reporting.\"\n    ],\n    \"questions\": [\n        \"Does qttune_core.h include the definitions for QttuneSignalSet and QttuneSignalDef, or is the removal of \\\"qttune/signals.h\\\" a compile\u2011time oversight?\",\n        \"Is the hard\u2011coded 8\u2011byte decode intended for all frames, or was this a placeholder that should have used frame->data_length or def.num_bytes?\"\n    ],\n    \"reasoning\": \"The diff introduces several demonstrable safety and domain correctness violations that conflict with J2534/ECU expectations and the v0.2.0 roadmap.\"\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-27T15:18:03.755787+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.corpus"
+  }
+}

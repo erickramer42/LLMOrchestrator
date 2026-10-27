@@ -1,0 +1,126 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261027_132426_5cd231",
+    "created_utc": "2026-10-27T13:24:57.464491+00:00",
+    "prompt_version": "v11.1-critiques-feedback",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 11543,
+      "estimated_tokens": 3848,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 836,
+      "sections": {
+        "modified_files": 2,
+        "types": 2,
+        "constants": 0,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 0
+      },
+      "entries": 4,
+      "index_version": "idx_20261024_014115",
+      "index_commit": "90020bd3fbd85fa70b2cf902c67f544272cd4e2e",
+      "format_version": "f3-diff-authoritative",
+      "error": null,
+      "base_check": {
+        "checked": 2,
+        "mismatched": []
+      },
+      "shown": {
+        "modified_files": 2,
+        "types": 2,
+        "constants": 0,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 0
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\poll_override_90020bd\\repo_context.json",
+      "sha256": "a7ec3ecadb5ba6a2714373bb41685c9ed6d9237f853f90caf3e8fe403f2ef505",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qml/SettingsPage.qml] (app): File/layer: app/qml/SettingsPage.qml | Qt6 Quick, UI layer\n[core/src/j2534_transport.cpp] (core): File/layer: core/src/j2534_transport.cpp | C++17, Qt-free, Win32-guarded\n\n--- KNOWN TYPES ---\nqttune_session_t (opaque): typedef struct qttune_session qttune_session_t;  // Forward-declared opaque handle types\nqttune_status_t (enum): typedef enum { QT_OK = 0, QT_ERR_NULL_ARGUMENT = 1, QT_ERR_NOT_IMPLEMENTED = 2, QT_ERR_NO_TRANSPORT = 3, QT_ERR_OUT_OF_MEMORY = 4, QT_ERR_SESSION_CLOSED = 5, QT_ERR_ALREADY_REGISTERED = 6, QT_ERR_LOAD_FAILED = 7, QT_ERR_VEHICLE_TIMEOUT = 8, QT_ERR_TRANSPORT_HARD_FAILURE = 9, } qttune_status_t;  // Status codes - append-only evolution for ABI stability"
+    },
+    "prompt_fingerprint": "45cc2b200fa76e7a"
+  },
+  "inputs": {
+    "proposal": "J2534 request modes: the set scheduler owns requests whenever the profile has mux defs, ?poll= is rejected at parse time unless ?filter= gives it a channel, and the single-PID poll request is built on the first channel.",
+    "original_proposal": "J2534 request modes: the set scheduler owns requests whenever the profile has mux defs, ?poll= is rejected at parse time unless ?filter= gives it a channel, and the single-PID poll request is built on the first channel.",
+    "header_artifact": false,
+    "file_path": "app/qml/SettingsPage.qml",
+    "layer": "app",
+    "diff_sha256": "c3337f1e7432e16043222073e7fb887b908ced89f377c5a3014e3b065803ad36",
+    "diff_chars": 6734,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "claim: Hardcoded channel 0 in build_mode01_request breaks C ABI channel selection - the core module must not assume channel 0 exists or is appropriate for all PIDs; file: core/src/j2534_transport.cpp; quote: build_mode01_request(req, t->chans[0].tx_id, t->poll_pid);",
+            "claim: Missing channel index lookup for poll PID creates potential buffer overflow - rx_for_pid result used to index chans array was removed without replacement; file: core/src/j2534_transport.cpp; quote: build_mode01_request(req, t->chans[0].tx_id, t->poll_pid);",
+            "claim: sched_mode logic incorrectly ignores poll_pid, causing scheduler to activate even during single-PID polling which violates the documented request mode semantics; file: core/src/j2534_transport.cpp; quote: const bool sched_mode = (t->sched.count > 0);"
+          ],
+          "questions": [
+            "What is the lifetime guarantee for t->chans array when t->chan_count is 0 but code still accesses t->chans[0]?",
+            "How does the removed channel_index_for_rx lookup handle the case where rx_for_pid returns an invalid channel index?",
+            "Why is poll_pid validation moved from parse_query to j2534_attach creating potential for late failure after thread start?"
+          ],
+          "nits": [
+            "Comment in SettingsPage.qml still references 'pair it with ?profile=raw' but documentation link points to docs/j2534.md which may need updating",
+            "Removed backstop check for poll_pid mode with zero channels could allow invalid state to proceed to hardware operations"
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 0
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 11543,
+              "prompt_eval_count": 3370,
+              "eval_count": 1328,
+              "thinking_chars": 4460,
+              "content_chars": 1760,
+              "done_reason": "stop",
+              "wall_s": 30.85,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n        {\n            \"claim\": \"Hardcoded channel 0 in build_mode01_request breaks C ABI channel selection - the core module must not assume channel 0 exists or is appropriate for all PIDs\",\n            \"file\": \"core/src/j2534_transport.cpp\",\n            \"quote\": \"build_mode01_request(req, t->chans[0].tx_id, t->poll_pid);\"\n        },\n        {\n            \"claim\": \"Missing channel index lookup for poll PID creates potential buffer overflow - rx_for_pid result used to index chans array was removed without replacement\",\n            \"file\": \"core/src/j2534_transport.cpp\",\n            \"quote\": \"build_mode01_request(req, t->chans[0].tx_id, t->poll_pid);\"\n        },\n        {\n            \"claim\": \"sched_mode logic incorrectly ignores poll_pid, causing scheduler to activate even during single-PID polling which violates the documented request mode semantics\",\n            \"file\": \"core/src/j2534_transport.cpp\",\n            \"quote\": \"const bool sched_mode = (t->sched.count > 0);\"\n        }\n    ],\n    \"questions\": [\n        \"What is the lifetime guarantee for t->chans array when t->chan_count is 0 but code still accesses t->chans[0]?\",\n        \"How does the removed channel_index_for_rx lookup handle the case where rx_for_pid returns an invalid channel index?\",\n        \"Why is poll_pid validation moved from parse_query to j2534_attach creating potential for late failure after thread start?\"\n    ],\n    \"nits\": [\n        \"Comment in SettingsPage.qml still references 'pair it with ?profile=raw' but documentation link points to docs/j2534.md which may need updating\",\n        \"Removed backstop check for poll_pid mode with zero channels could allow invalid state to proceed to hardware operations\"\n    ]\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-27T13:24:57.464439+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

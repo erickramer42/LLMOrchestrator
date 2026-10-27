@@ -1,0 +1,118 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261027_132026_aee3a7",
+    "created_utc": "2026-10-27T13:21:17.222807+00:00",
+    "prompt_version": "v11.1-critiques-feedback",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "laguna-xs-2.1",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 9275,
+      "estimated_tokens": 3092,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 1757,
+      "sections": {
+        "modified_files": 3,
+        "types": 3,
+        "constants": 3,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 1
+      },
+      "entries": 9,
+      "index_version": "idx_20261024_014117",
+      "index_commit": "6420f09f8a62531a9c4923e5fee1eef08f21bca8",
+      "format_version": "f3-diff-authoritative",
+      "error": null,
+      "base_check": {
+        "checked": 3,
+        "mismatched": []
+      },
+      "shown": {
+        "modified_files": 3,
+        "types": 3,
+        "constants": 3,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 1
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\trusted_count_6420f09\\repo_context.json",
+      "sha256": "f0ae87d5863046768436d086a7fe98e9af53258ad04ba26bc2cd948c70734c84",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[core/include/qttune/j2534_ptypes.h] (core): File/layer: core/include/qttune/j2534_ptypes.h | INTERNAL shared types\n[core/src/j2534_loader.cpp] (core): File/layer: core/src/j2534_loader.cpp | C++17, Qt-free, CI-validated headless\n[surrogate/surrogate_main.cpp] (unknown): File/layer: surrogate/surrogate_main.cpp | Win32, x86, Qt-free; rebuild build-win32\n\n--- KNOWN TYPES ---\nqttune_status_t (enum): typedef enum { QT_OK = 0, QT_ERR_NULL_ARGUMENT = 1, QT_ERR_NOT_IMPLEMENTED = 2, QT_ERR_NO_TRANSPORT = 3, QT_ERR_OUT_OF_MEMORY = 4, QT_ERR_SESSION_CLOSED = 5, QT_ERR_ALREADY_REGISTERED = 6, QT_ERR_LOAD_FAILED = 7, QT_ERR_VEHICLE_TIMEOUT = 8, QT_ERR_TRANSPORT_HARD_FAILURE = 9, } qttune_status_t;  // Status codes - append-only evolution for ABI stability\nqttune_j2534_handle_t (opaque): typedef struct qttune_j2534_handle qttune_j2534_handle_t;  // Opaque handle to an opened vendor function-library connection\nPASSTHRU_MSG (struct): typedef struct qttune_pt_passthru_msg { unsigned long ProtocolID; unsigned long RxStatus; unsigned long TxFlags; unsigned long Timestamp; unsigned long DataSize; unsigned long ExtraDataIndex; unsigned char Data[QTTUNE_PT_MSG_DATA_SIZE]; } PASSTHRU_MSG;  // ---- The message struct (J2534-1 v04.04, VERIFIED) ---- Field order is the spec's (DataSize before ExtraDataIndex). The loader, surrogate and fake all compile\u2026\n\n--- CONSTANTS ---\nQTTUNE_PT_STATUS_TIMEOUT = 0x09L (define)\nQTTUNE_PT_STATUS_BUFFER_EMPTY = 0x10L (define)\nQTTUNE_SUR_MAX_FRAMES_PER_READ = 16 (define)\n\n--- OMITTED (indexed entries this diff removes or rewrites) ---\nQTTUNE_PT_STATUS_NOERROR (constant, core/include/qttune/j2534_ptypes.h)"
+    },
+    "prompt_fingerprint": "b7a37ffc88eed510"
+  },
+  "inputs": {
+    "proposal": "Simplify the J2534 read paths: take the vendor's reported message count as the number of frames delivered in both the in-process loader and the surrogate, and drop the qttune_trusted_count helper from j2534_ptypes.h.",
+    "original_proposal": "Simplify the J2534 read paths: take the vendor's reported message count as the number of frames delivered in both the in-process loader and the surrogate, and drop the qttune_trusted_count helper from j2534_ptypes.h.",
+    "header_artifact": false,
+    "file_path": "core/include/qttune/j2534_ptypes.h",
+    "layer": "core",
+    "diff_sha256": "47ceb3ecb99e79c3a828720b59c0cb7153a59739221309951a0aaf87c4ddb7ec",
+    "diff_chars": 3433,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [],
+          "questions": [
+            "claim: Removing qttune_trusted_count eliminates a critical safety check that prevents processing phantom/stale frames from non-conforming J2534 vendors; file: core/src/j2534_loader.cpp; quote: PASSTHRU_MSG msg = {};\n    unsigned long num = 1;\n    long rc = handle->read_msgs(channel, &msg, &num, timeout_ms);\n-    num = qttune_trusted_count(rc, num);   /* finding 1: dirty count\n-                                               under a hard error is\n-                                               not a delivered frame */",
+            "claim: Removing qttune_trusted_count in surrogate enables replay of stale frames from static buffer due to untrusted count on error; file: surrogate/surrogate_main.cpp; quote: unsigned long num = QTTUNE_SUR_MAX_FRAMES_PER_READ;\n    const long rc = g_read_msgs(g_channel, s_read_batch, &num, timeout_ms);\n\n-    /* Finding 1: trust the count only under the status allowlist. A\n-       vendor may leave pNumMsgs untouched on error (VX observed:\n-       \"status 7, written 1\", bench 2026-10-20). A dirty count is\n-       doubly dangerous here: s_read_batch is static and never\n-       cleared, so it would replay the PREVIOUS read's frames as\n-       phantoms. */\n-    num = qttune_trusted_count(rc, num);"
+          ],
+          "nits": []
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 2
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 9275,
+              "prompt_eval_count": 2772,
+              "eval_count": 2388,
+              "thinking_chars": 7607,
+              "content_chars": 1466,
+              "done_reason": "stop",
+              "wall_s": 50.9,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n        {\n            \"claim\": \"Removing qttune_trusted_count eliminates a critical safety check that prevents processing phantom/stale frames from non-conforming J2534 vendors\",\n            \"file\": \"core/src/j2534_loader.cpp\",\n            \"quote\": \"PASSTHRU_MSG msg = {};\\n    unsigned long num = 1;\\n    long rc = handle->read_msgs(channel, &msg, &num, timeout_ms);\\n-    num = qttune_trusted_count(rc, num);   /* finding 1: dirty count\\n-                                               under a hard error is\\n-                                               not a delivered frame */\"\n        },\n        {\n            \"claim\": \"Removing qttune_trusted_count in surrogate enables replay of stale frames from static buffer due to untrusted count on error\",\n            \"file\": \"surrogate/surrogate_main.cpp\",\n            \"quote\": \"unsigned long num = QTTUNE_SUR_MAX_FRAMES_PER_READ;\\n    const long rc = g_read_msgs(g_channel, s_read_batch, &num, timeout_ms);\\n\\n-    /* Finding 1: trust the count only under the status allowlist. A\\n-       vendor may leave pNumMsgs untouched on error (VX observed:\\n-       \\\"status 7, written 1\\\", bench 2026-10-20). A dirty count is\\n-       doubly dangerous here: s_read_batch is static and never\\n-       cleared, so it would replay the PREVIOUS read's frames as\\n-       phantoms. */\\n-    num = qttune_trusted_count(rc, num);\"\n        }\n    ],\n    \"questions\": [],\n    \"nits\": []\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-27T13:21:17.222764+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

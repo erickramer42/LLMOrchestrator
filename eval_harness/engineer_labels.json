@@ -8,7 +8,714 @@
     "deletion": "false: removed code or a removed comment presented as current",
     "other-fp": "false: any other claim the post-state refutes"
   },
-  "valid": ["unlisted"],
-  "notes": {},
-  "records": {}
+  "valid": [
+    "unlisted"
+  ],
+  "notes": {
+    "b23_twenty_third": "Samples 'b23_gemma' (gemma4:12b, the concurrent control) and 'b23_gptoss' (gpt-oss:20b), records 20261027_143609 to 20261027_152227 (ADR-0002, twenty-third measurement, Stage 1; the retried 8a757b and e6fef5 and Stage 0's poll records are not labeled), labeled before either arm was scored, by corpus_labels.json's rules and notes, including b22_twenty_second. Every blocker and hedge-demoted blocker has a label. A concern or question is labeled when it states a known bug's defect, as a premise too ('why must poll_pid be ignored when sched.count > 0?'); one that states only a consequence ('phantom frames could mislead diagnostics') or asks whether a change was intended is not. trusted_count, with no file named: a statement that the change trusts the count under an error status is count_under_error; one naming the surrogate, its static buffer or a replay of the previous read is static_batch_replay. 3be098 #1 also claims chans[0] ignores the filter (invariant-elsewhere); its poll_ignored half is credited. False against the post-state (9c3ef16, b975457), all other-fp: the async completion does call applyConnectedState and logs the error (e7aa64 #1, #2; 93c7db #h1); connectCoreOnly registers the callback and starts the session (4bda57 #1, 9bbaa1 #1); Entry is zero-initialized and strncpy copies size - 1 (76af23 #h1); the staging buffer is cleared per frame, so it holds no duplicates across frames (d5ae5b #2). notifyDropped and dispatchFrameForTesting were removed from the header too, so 'declared but not defined' (6ad7bf #1, #2) is deletion. 9bbaa1 #2 is credited for its destructor half, though its 'failure or completion' half is false."
+  },
+  "records": {
+    "engineer_20261027_143609_854e7e": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b23_gemma",
+      "labels": {}
+    },
+    "engineer_20261027_143656_2e1b12": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b23_gemma",
+      "labels": {
+        "#c2": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "engineer_20261027_143848_d5eaf6": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b23_gemma",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "engineer_20261027_143921_0e49a8": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b23_gemma",
+      "labels": {
+        "#c1": [
+          "backoff_overshoot"
+        ],
+        "#q2": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "engineer_20261027_144028_f4576a": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b23_gemma",
+      "labels": {}
+    },
+    "engineer_20261027_144048_ec8a34": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b23_gemma",
+      "labels": {
+        "#c1": [
+          "static_batch_replay"
+        ],
+        "#c2": [
+          "static_batch_replay"
+        ],
+        "#q1": [
+          "static_batch_replay"
+        ],
+        "#q2": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "engineer_20261027_144131_f33426": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b23_gemma",
+      "labels": {
+        "#c1": [
+          "static_batch_replay"
+        ],
+        "#c2": [
+          "count_under_error"
+        ],
+        "#q1": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "engineer_20261027_144235_9c8413": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b23_gemma",
+      "labels": {
+        "#c1": [
+          "static_batch_replay"
+        ],
+        "#q1": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "engineer_20261027_144312_fd2b72": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b23_gemma",
+      "labels": {
+        "#c1": [
+          "count_under_error"
+        ],
+        "#c2": [
+          "static_batch_replay"
+        ],
+        "#q2": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "engineer_20261027_144350_60081b": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b23_gemma",
+      "labels": {
+        "#c1": [
+          "static_batch_replay"
+        ],
+        "#c2": [
+          "count_under_error"
+        ],
+        "#q2": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "engineer_20261027_144423_207561": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b23_gemma",
+      "labels": {
+        "#q2": [
+          "poll_ignored"
+        ]
+      }
+    },
+    "engineer_20261027_144505_a59f01": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b23_gemma",
+      "labels": {}
+    },
+    "engineer_20261027_144533_a5315d": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b23_gemma",
+      "labels": {
+        "#c2": [
+          "poll_ignored"
+        ]
+      }
+    },
+    "engineer_20261027_144602_d69c8f": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b23_gemma",
+      "labels": {
+        "#c2": [
+          "poll_needs_filter_at_parse"
+        ]
+      }
+    },
+    "engineer_20261027_144634_2e9a00": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b23_gemma",
+      "labels": {}
+    },
+    "engineer_20261027_144732_d8e149": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b23_gemma",
+      "labels": {
+        "#c1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "engineer_20261027_144803_7cb106": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b23_gemma",
+      "labels": {
+        "#q2": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "engineer_20261027_144834_bd7c00": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b23_gemma",
+      "labels": {
+        "#c1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "engineer_20261027_144929_42066c": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b23_gemma",
+      "labels": {
+        "#c1": [
+          "start_before_gui_owns"
+        ],
+        "#q1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "engineer_20261027_145020_1e3cca": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b23_gemma",
+      "labels": {}
+    },
+    "engineer_20261027_145057_6d9fce": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b23_gemma",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#c1": [
+          "decode_length_8"
+        ],
+        "#c2": [
+          "drops_unreported_when_saturated"
+        ],
+        "#q1": [
+          "decode_length_8"
+        ]
+      }
+    },
+    "engineer_20261027_145137_54d7ad": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b23_gemma",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#c1": [
+          "staging_clear_per_frame"
+        ]
+      }
+    },
+    "engineer_20261027_145252_f4b8bc": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b23_gemma",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#c2": [
+          "drops_unreported_when_saturated"
+        ]
+      }
+    },
+    "engineer_20261027_145321_d5ae5b": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b23_gemma",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "other-fp"
+        ],
+        "#c1": [
+          "payload_length_unclamped"
+        ],
+        "#q1": [
+          "decode_length_8"
+        ]
+      }
+    },
+    "engineer_20261027_145357_a62d63": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b23_gemma",
+      "labels": {
+        "#c1": [
+          "staging_clear_per_frame"
+        ],
+        "#c2": [
+          "decode_length_8"
+        ],
+        "#q1": [
+          "staging_clear_per_frame"
+        ],
+        "#q3": [
+          "decode_length_8"
+        ]
+      }
+    },
+    "engineer_20261027_145451_c3fd47": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b23_gemma",
+      "labels": {}
+    },
+    "engineer_20261027_145521_58bc2d": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b23_gemma",
+      "labels": {}
+    },
+    "engineer_20261027_145548_16c586": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b23_gemma",
+      "labels": {}
+    },
+    "engineer_20261027_145618_92a4ed": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b23_gemma",
+      "labels": {}
+    },
+    "engineer_20261027_145645_cbfae5": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b23_gemma",
+      "labels": {}
+    },
+    "engineer_20261027_145717_633ceb": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b23_gemma",
+      "labels": {}
+    },
+    "engineer_20261027_145744_d0e3b6": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b23_gemma",
+      "labels": {}
+    },
+    "engineer_20261027_145811_117408": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b23_gemma",
+      "labels": {}
+    },
+    "engineer_20261027_145834_2cdf34": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b23_gemma",
+      "labels": {}
+    },
+    "engineer_20261027_145900_902566": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b23_gemma",
+      "labels": {}
+    },
+    "engineer_20261027_145927_6dc077": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ],
+        "#c1": [
+          "backoff_overshoot"
+        ],
+        "#q2": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "engineer_20261027_150007_c25df7": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "engineer_20261027_150044_546c9c": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "engineer_20261027_150108_b0645f": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b23_gptoss",
+      "labels": {}
+    },
+    "engineer_20261027_150122_d4c178": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "engineer_20261027_150151_b23583": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "count_under_error",
+          "static_batch_replay"
+        ]
+      }
+    },
+    "engineer_20261027_150253_95462e": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#h1": [
+          "count_under_error",
+          "static_batch_replay"
+        ]
+      }
+    },
+    "engineer_20261027_150312_ded047": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "count_under_error"
+        ],
+        "#2": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "engineer_20261027_150337_713f3a": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#h1": [
+          "count_under_error",
+          "static_batch_replay"
+        ],
+        "#c1": [
+          "count_under_error"
+        ],
+        "#q2": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "engineer_20261027_150358_65d953": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "poll_ignored"
+        ],
+        "#c1": [
+          "poll_ignored"
+        ]
+      }
+    },
+    "engineer_20261027_150444_c419f3": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b23_gptoss",
+      "labels": {}
+    },
+    "engineer_20261027_150508_4e92f8": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#h1": [
+          "invariant-elsewhere"
+        ],
+        "#c1": [
+          "poll_ignored"
+        ],
+        "#c2": [
+          "poll_needs_filter_at_parse"
+        ]
+      }
+    },
+    "engineer_20261027_150552_7c8c18": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "poll_ignored"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ],
+        "#3": [
+          "poll_ignored"
+        ],
+        "#c1": [
+          "poll_ignored"
+        ],
+        "#c2": [
+          "poll_ignored"
+        ]
+      }
+    },
+    "engineer_20261027_150630_3be098": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "poll_ignored"
+        ]
+      }
+    },
+    "engineer_20261027_150708_93c7db": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#h1": [
+          "other-fp"
+        ],
+        "#c2": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "engineer_20261027_150752_e7aa64": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "other-fp"
+        ],
+        "#2": [
+          "other-fp"
+        ]
+      }
+    },
+    "engineer_20261027_150816_4bda57": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "other-fp"
+        ]
+      }
+    },
+    "engineer_20261027_150943_8fc28c": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#c3": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "engineer_20261027_151034_9bbaa1": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "other-fp"
+        ],
+        "#2": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "engineer_20261027_151105_6ad7bf": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "deletion"
+        ],
+        "#2": [
+          "deletion"
+        ],
+        "#3": [
+          "payload_length_unclamped"
+        ],
+        "#4": [
+          "decode_length_8"
+        ],
+        "#h1": [
+          "payload_length_unclamped"
+        ],
+        "#c1": [
+          "drops_unreported_when_saturated"
+        ],
+        "#c2": [
+          "staging_clear_per_frame"
+        ],
+        "#q1": [
+          "drops_unreported_when_saturated"
+        ],
+        "#q2": [
+          "decode_length_8"
+        ],
+        "#q3": [
+          "payload_length_unclamped"
+        ]
+      }
+    },
+    "engineer_20261027_151646_15bada": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "drops_unreported_when_saturated"
+        ],
+        "#2": [
+          "decode_length_8"
+        ],
+        "#c1": [
+          "staging_clear_per_frame"
+        ],
+        "#c2": [
+          "drops_unreported_when_saturated"
+        ],
+        "#c3": [
+          "decode_length_8"
+        ],
+        "#q2": [
+          "drops_unreported_when_saturated"
+        ]
+      }
+    },
+    "engineer_20261027_151720_76af23": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "payload_length_unclamped"
+        ],
+        "#2": [
+          "decode_length_8"
+        ],
+        "#3": [
+          "drops_unreported_when_saturated"
+        ],
+        "#h1": [
+          "other-fp"
+        ],
+        "#c1": [
+          "staging_clear_per_frame"
+        ],
+        "#q2": [
+          "decode_length_8"
+        ]
+      }
+    },
+    "engineer_20261027_151803_947961": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b23_gptoss",
+      "labels": {
+        "#1": [
+          "payload_length_unclamped"
+        ],
+        "#h1": [
+          "decode_length_8"
+        ],
+        "#c1": [
+          "staging_clear_per_frame"
+        ],
+        "#c2": [
+          "drops_unreported_when_saturated"
+        ],
+        "#c4": [
+          "payload_length_unclamped"
+        ],
+        "#q1": [
+          "drops_unreported_when_saturated"
+        ],
+        "#q2": [
+          "decode_length_8"
+        ]
+      }
+    },
+    "engineer_20261027_151835_ca3b05": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b23_gptoss",
+      "labels": {}
+    },
+    "engineer_20261027_151903_f4993f": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b23_gptoss",
+      "labels": {}
+    },
+    "engineer_20261027_151923_353898": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b23_gptoss",
+      "labels": {}
+    },
+    "engineer_20261027_151953_ab0020": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b23_gptoss",
+      "labels": {}
+    },
+    "engineer_20261027_152013_6fda86": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b23_gptoss",
+      "labels": {}
+    },
+    "engineer_20261027_152028_18fa99": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b23_gptoss",
+      "labels": {}
+    },
+    "engineer_20261027_152051_911c29": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b23_gptoss",
+      "labels": {}
+    },
+    "engineer_20261027_152108_763af5": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b23_gptoss",
+      "labels": {}
+    },
+    "engineer_20261027_152141_a3381a": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b23_gptoss",
+      "labels": {}
+    },
+    "engineer_20261027_152227_1b8282": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b23_gptoss",
+      "labels": {}
+    }
+  }
 }

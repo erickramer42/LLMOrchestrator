@@ -131,6 +131,8 @@ its rule. They are kept because the reasons are informative.
 | Nineteenth, amendment | Linkage across hunks for such claims | Closed without a run | Replaying with no linkage at all bounds any variant at +0.02 recall. |
 | Twentieth | Show the model the unchanged function that enforces a removed check | Target false positives rose, 1.33 → 1.67 per review | Every request carried the refuting code and no claim used it; the new section also tripled the bridge's false positives, which a control run confirmed. |
 | Twenty-first | Give each file of a multi-file diff its own layer rules, not only the first file's | Bridge false positives 0.11 → 0.33 per review, against a bar of 0.21 | The target class did not move (1.11 → 1.05 per run). On the bridge, naming the QML file drew claims toward the removed UI feature, and some quoted lines the evidence check accepts. |
+| Twenty-second | Another local reviewer model of the same size class | `qwen3-coder:30b`: mean recall 0.09 against laguna's 0.42 | It stored blockers in 5 of 35 runs, all for the one bug visible on a single post-change line. `nemotron-3.5-lightning:30b` ran every first attempt to the output cap and was dropped before the corpus. |
+| Twenty-third | `gpt-oss:20b` as the engineer instead of `gemma4:12b` | Recall in any item 0.74 against 0.51, but 0.24 false blockers per review against a bar of 0.10 | Of its 8 false blockers, 3 claimed that code the hunks did not show was missing, and 2 read removed declarations as current. An engineer blocker forces a reject and has no evidence check. |
 
 **What these taught:**
 - Facts placed in front of a small model are not facts it uses; the

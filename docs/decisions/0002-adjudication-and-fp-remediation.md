@@ -45,8 +45,8 @@ results; changes made after seeing data are dated amendments.
 | [Twentieth Measurement: Field Writers in the Context Pack](#twentieth-measurement--field-writers-in-the-context-pack) | 2026-10-26 | Field definitions and writers in the pack | Not shipped: target false positives rose |
 | [Twenty-First Measurement: Per-File Layer Notes](#twenty-first-measurement--per-file-layer-notes) | 2026-10-26 | Per-file layer notes | Not shipped: bridge false positives rose |
 | [Runaway Diagnostic: Do Runaways Repeat?](#runaway-diagnostic--do-runaways-repeat) | 2026-10-26 | Whole thinking of runaways and long replies (backlog #19) | Closed: no repetition threshold separates runaways from long replies; an early retry cuts valid findings |
-| [Twenty-Second Measurement: Reviewer Model Bake-Off](#twenty-second-measurement--reviewer-model-bake-off) | 2026-10-26 | Two local reviewer models against laguna on the corpus | Running: nemotron dropped at Stage 0 (runs to the cap) |
-| [Twenty-Third Measurement: Engineer Model Bake-Off](#twenty-third-measurement--engineer-model-bake-off) | 2026-10-26 | `gpt-oss:20b` against gemma as the engineer | Signed off, running |
+| [Twenty-Second Measurement: Reviewer Model Bake-Off](#twenty-second-measurement--reviewer-model-bake-off) | 2026-10-26 | Two local reviewer models against laguna on the corpus | Closed: `qwen3-coder:30b` mean recall 0.09 against 0.42; nemotron dropped at Stage 0 (runs to the cap); laguna stays |
+| [Twenty-Third Measurement: Engineer Model Bake-Off](#twenty-third-measurement--engineer-model-bake-off) | 2026-10-26 | `gpt-oss:20b` against gemma as the engineer | Not shipped: recall in any item +0.23, but 0.24 false blockers per review (bar 0.10) |
 
 ## Context
 
@@ -5366,9 +5366,10 @@ where the retries run away too.
 
 ## Twenty-Second Measurement — Reviewer Model Bake-Off
 
-**Status (2026-10-26): signed off as drafted, bars and confirmation
-sample kept. Stage 0 done: `qwen3-coder:30b` passes,
-`nemotron-3.5-lightning:30b` dropped (runs to the cap). Stage 1 next.**
+**Status (2026-10-27): closed, no candidate ships.
+`nemotron-3.5-lightning:30b` was dropped at Stage 0 (runs to the cap);
+`qwen3-coder:30b` fails condition 1 in Stage 1 (mean recall 0.091
+against the control's 0.423). `laguna-xs-2.1` stays the reviewer.**
 
 **Why.** Five levers in a row changed what the reviewer is sent or how
 its reply is judged, and none shipped (seventeenth to twenty-first
@@ -5501,10 +5502,92 @@ recorded here because it bears on the corpus prediction for qwen.
 
 Stage 1 is the control and `qwen3-coder:30b`, 35 runs each.
 
+### Amendment (2026-10-27, before Stage 1): the qwen prediction, sharpened by Stage 0
+
+In Stage 0, qwen stored 0 blockers in each of its 3 bridge runs. The
+control stored none in 5 of the twenty-first's 19 control runs (0.26),
+so at the control's rate three empty runs would happen about 2% of the
+time (0.26³ ≈ 0.018). The prediction is now: qwen's corpus mean recall
+falls 0.10 or more below the control's, and qwen fails both branches of
+condition 1. The rule is unchanged. More bridge runs were considered and
+not added: Stage 1 is scored on the corpus, and the bridge enters only
+the confirmation step, which qwen reaches only by passing condition 1.
+
+### Stage 1 results (scored 2026-10-27): `qwen3-coder:30b` fails condition 1
+
+Records `measurement_round1_20261027_131621` to `_142652` (control) and
+`_142922` to `_143555` (qwen), 35 each, sampled back to back. The
+control's `120882` ran to the cap on its first attempt and was accepted
+on a retry, so it is excluded. Every item was labeled in
+`corpus_labels.json` (samples `b22_laguna` and `b22_qwen`) before either
+arm was scored. The labels are not blind; the judgment calls are in the
+note `b22_twenty_second`. Scored with judge j8 (`replay --corpus`
+reproduces the stored split in both arms):
+
+| | `laguna-xs-2.1` (control) | `qwen3-coder:30b` |
+|---|---|---|
+| runs scored | 34 | 35 |
+| stored blockers | 37 | 7 |
+| valid share | 65% | 100% |
+| false positives per review | 0.382 | 0.000 |
+| false positives per clean review | 0.30 | 0.00 |
+| mean recall, stored | 0.423 | 0.091 |
+| mean recall, any item | 0.632 | 0.091 |
+| runs with a stored blocker | 19 of 34 | 5 of 35 |
+| first attempts at the cap | 1 of 35 | 0 of 35 |
+| calls failed closed | 0 | 0 |
+| median first-attempt wall | 67 s | 11 s |
+
+The control matches the archived v11.1 corpus sample (66 runs: recall
+0.413, 0.409 false positives per review, 64% valid), so the window was
+not unusual.
+
+**Rule.** Condition 1 fails on both branches. Recall is 0.332 below
+the control's (the first branch needs +0.10). False positives are well
+under 0.7 times the control's (0.267), but recall falls by more than
+0.05. Condition 2 holds (11 s against a 134 s limit, none failed
+closed) but does not matter. No confirmation sample was run.
+
+**Reading.** qwen is precise and close to silent. Of its 35 runs, 30
+stored nothing, and only one of those raised a demoted item (a false
+bounds claim on `ecu_support_7d297b4`, hedge-demoted). All of its
+stored blockers are on `decode_length_b47687c`: the hardcoded 8-byte
+decode length in 5 of 5 runs, plus the `void*` `setSignalSet`
+(unlisted) twice. That defect is visible on one post-change line. qwen
+found none of the bugs that need the removed lines read against the
+code that remains (the trusted-count helper, the poll override, the
+connect handoff, the dropped drop reports). The control stores most of
+those; the trusted-count pair it finds only as evidence-demoted items.
+
+| prediction | outcome |
+|---|---|
+| `qwen3-coder:30b` Stage 0: passes, median below the control's, no runaways | held |
+| `nemotron-3.5-lightning:30b` Stage 0: passes | missed: dropped |
+| `qwen3-coder:30b` corpus, as amended: recall 0.10 or more below the control's, fails both branches | held: −0.332, fails both |
+| `qwen3-coder:30b` corpus, as first registered: recall below, false positives within ±0.15 per review, fails condition 1 | recall and condition 1 held; false positives missed (−0.382) |
+| `nemotron-3.5-lightning:30b` corpus | not run |
+| any candidate ships | held: none |
+| corroboration: false positives fall 30% or more, mean recall 0.10 or more | held: 0.382 → 0.029 (−92%), 0.423 → 0.136 |
+
+**Corroboration (exploratory).** There are 34 pairs; the retried
+control run drops its pair. Only `decode_length_b47687c` has
+corroborated control blockers: the decode length in 4 of 4 pairs, and
+`staging_clear_per_frame` in 2. Those 2 count only because `clear()`
+shares the decode line's hunk, not because qwen raised it. The union
+of both models' stored blockers equals the control's own numbers (0.382
+and 0.423): qwen found no bug that its paired control run missed. With
+this candidate, corroboration comes down to keeping one fixture's
+blockers, so nothing is registered.
+
+`MODELS["code_reviewer"]` stays `laguna-xs-2.1`; ADR-0001 is not
+amended.
+
 ## Twenty-Third Measurement — Engineer Model Bake-Off
 
-**Status (2026-10-26): signed off as drafted, bars and confirmation
-sample kept. Stage 0 done: `gpt-oss:20b` passes. Stage 1 next.**
+**Status (2026-10-27): not shipped. `gpt-oss:20b` passes condition 1
+(mean recall in any item 0.741 against gemma's 0.509) and fails
+condition 2 (0.242 false engineer blockers per review, bar 0.10).
+`gemma4:12b` stays the engineer.**
 
 **Why.** The engineer (`gemma4:12b`, the "senior automotive engineer"
 prompt) is the debate's domain expert, and its output has never been
@@ -5598,3 +5681,79 @@ Three `poll_override_90020bd` runs, excluded from scoring:
 0 of 3 were unusable, median 39 s (limit 150 s), with no retries, as
 predicted. The runner prints each record's stored blocker count, and
 those lines were seen: 1, 0, 1. The blocker texts were not read.
+
+### Stage 1 results (scored 2026-10-27): not shipped
+
+Records `measurement_engineer_20261027_143609` to `_145900` (gemma)
+and `_145927` to `_152227` (`gpt-oss:20b`), 35 each, sampled after the
+reviewer arms. Two `gpt-oss:20b` first attempts (`8a757b`, `e6fef5`)
+broke the schema and were accepted on a retry, so they are excluded.
+Every blocker and hedge-demoted blocker was labeled in
+`engineer_labels.json` (samples `b23_gemma` and `b23_gptoss`) before
+either arm was scored, along with every concern and question that
+states a known bug's defect. One rule covers both arms; the judgment
+calls are in the note `b23_twenty_third`.
+
+| | `gemma4:12b` (control) | `gpt-oss:20b` |
+|---|---|---|
+| runs scored | 35 | 33 |
+| stored blockers | 6 | 29 |
+| valid share | 83% | 72% |
+| false engineer blockers per review | 0.029 | 0.242 |
+| wrong rejects (clean runs with a blocker) | 0 of 10 | 0 of 10 |
+| hedge-demoted blockers | 0 | 7 |
+| mean recall, blockers | 0.091 | 0.436 |
+| mean recall, any item | 0.509 | 0.741 |
+| first attempts at the cap | 0 | 0 |
+| calls failed closed | 0 | 0 |
+| median first-attempt wall | 33 s | 30 s |
+
+**Rule.** Condition 1 holds: recall in any item is 0.232 above the
+control's. Condition 2 fails: 0.242 false blockers per review against
+a bar of 0.10, though no clean run was wrongly rejected. Condition 3
+holds. The confirmation sample was not run.
+
+**The false blockers** (8). Four are `other-fp`, all on
+`connect_start_4a86231`, and each is false in the post-state. They claim
+that:
+- the async completion skips `applyConnectedState`, or ignores the
+  error;
+- `connectCoreOnly` never registers the frame callback;
+- the session is never started.
+
+Only the last is contradicted inside the diff, which shows
+`qttune_session_start` in `connectCoreOnly`. The other three assert the
+absence of code the model was not shown: the hunks end before the
+completion applies the state and logs the error, and they never show the
+registration.
+
+Two are `invariant-elsewhere`: on `poll_override_90020bd`, `chans[0]`
+called the wrong channel. Two are `deletion`: on
+`decode_length_b47687c`, functions the diff removes from the header
+were called "declared but not defined". The bar fails even if the two
+invariant-elsewhere blockers are counted valid (0.182 per review).
+
+| prediction | outcome |
+|---|---|
+| gemma: no engineer blockers; recall in any item 0.2–0.4 | missed: 6 blockers in 5 runs (backoff 1, decode length 5; 1 false); recall in any item 0.509 |
+| `gpt-oss:20b` Stage 0: passes | held |
+| `gpt-oss:20b` blockers in at least 20% of runs | held: 17 of 33 (52%) |
+| `gpt-oss:20b` recall in any item at least 0.10 above gemma's | held: +0.232 |
+| `gpt-oss:20b` false blockers above 0.10 per review | held: 0.242 |
+| ships | held: no |
+
+gemma's archived replies had no blockers because they were all on the
+bridge fixture. On the corpus it blocks on the two defects visible in a
+single post-change line, the backoff condition and the hardcoded decode
+length.
+
+**An observation, no rule.** In the engineer role, `gpt-oss:20b`
+stored blockers with mean recall 0.436 at 0.242 false positives per
+review. The reviewer control in the twenty-second has 0.423 and 0.382.
+gpt-oss gets there without an evidence check, since only the hedge check
+filters engineer blockers. This compares different roles, prompts and
+judges, so it is not a measurement of `gpt-oss:20b` as the reviewer.
+It does make it a reviewer candidate for a registered arm, with the
+reviewer prompt and the evidence check.
+
+`MODELS["auto_engineer"]` stays `gemma4:12b`.

@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-26.
+Last updated: 2026-10-27.
 
 What works today, what is being measured, what is known to be weak, and
 what comes next. For the system itself see [design.md](docs/design.md);
@@ -16,7 +16,7 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 | Judge | `j8-claim-quote-linkage` |
 | Context-pack format | `f3-diff-authoritative` |
 | Models | reviewer `laguna-xs-2.1`, engineer `gemma4:12b`, on Ollama; `NUM_CTX` 24576, `NUM_PREDICT` 12288 |
-| Tests | 217 regression tests, no model needed; CI on Python 3.11 and 3.13 |
+| Tests | 218 regression tests, no model needed; CI on Python 3.11 and 3.13 |
 | Golden suite | 10/10 live (3 model fixtures, 7 hedge units) |
 
 **Headline numbers (judge j8, round-1 samples, hand-labeled):**
@@ -29,16 +29,8 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 
 ## In progress
 
-**Model bake-offs (twenty-second and twenty-third measurements),
-signed off, running.** Two local reviewer models, `qwen3-coder:30b` and
-`nemotron-3.5-lightning:30b`, against the current reviewer on the
-corpus; and `gpt-oss:20b` against `gemma4:12b` as the engineer, whose
-output is measured for the first time. Predictions and ship rules are
-in ADR-0002, signed off as drafted on 2026-10-26. Stage 0 (a short
-schema and timing check per candidate) is done: `qwen3-coder:30b` and
-`gpt-oss:20b` pass, and `nemotron-3.5-lightning:30b` is dropped because
-every first attempt ran to the output cap. Stage 1 (35 corpus runs per
-arm) is next. The shipped prompt is v11.1.
+Nothing is registered. The model bake-offs closed on 2026-10-27 with
+both current models kept (see below). The shipped prompt is v11.1.
 
 ## Recently closed
 
@@ -52,6 +44,8 @@ and each is in ADR-0002 in full.
 | 19th, amendment | Cross-hunk claim–quote linkage | Closed without a run: its ceiling is below the bar |
 | 20th | Field definitions and writer functions in the context pack | Not shipped: target false positives rose (1.33 → 1.67 per review), and the bridge's tripled |
 | 21st | Per-file layer notes for multi-file diffs (#8) | Not shipped: bridge false positives rose (0.11 → 0.33 per review, against a bar of 0.21); invariant-elsewhere unchanged |
+| 22nd | Another local reviewer model: `qwen3-coder:30b`, `nemotron-3.5-lightning:30b` | Closed: nemotron ran every first attempt to the output cap; qwen stored almost nothing (mean recall 0.09 against laguna's 0.42, no false positives) |
+| 23rd | `gpt-oss:20b` as the engineer instead of `gemma4:12b` (the engineer's first measurement) | Not shipped: it found more known bugs (recall in any item 0.74 against 0.51) but raised 0.24 false blockers per review against a bar of 0.10 |
 | Runaway diagnostic | Abort a reply whose thinking repeats (#19) | Closed: of 3 runaways with whole thinking, 1 looped and 2 kept reopening their conclusion; no repetition threshold separates them from long accepted replies, and an early retry at a token budget cuts more valid findings than false ones |
 
 ## Known limitations
@@ -97,8 +91,10 @@ Numbers are stable (code comments and the ADRs cite them) and never
 reused. Done items are removed; their history is in
 [history.md](docs/history.md).
 
-**Suggested order:** a local-model bake-off on the corpus (with #13) →
-#14 structured outputs → #18 early reject → the rest. The call-site
+**Suggested order:** #14 structured outputs → #18 early reject → the
+rest. Not registered: `gpt-oss:20b` as a reviewer arm. As the engineer
+it stored blockers with recall close to laguna's and fewer false
+positives, with no evidence check (ADR-0002, twenty-third measurement). The call-site
 caveat (code review finding 9) rides on the next pack change rather
 than being measured alone.
 
@@ -118,7 +114,8 @@ than being measured alone.
 - **#10 Codebase abstraction.** Move the QtTune-specific parts (layer
   rules, the engineer's domain, fixtures) behind configuration.
 - **#13 Probe rerun.** Rerun the probe on the committed `core.h` with
-  the fixed scoring; folded into the corpus bake-off.
+  the fixed scoring. The model bake-offs used the corpus instead, so
+  this is still open.
 - **#14 Structured outputs.** Pass the JSON schema as Ollama's `format`.
   This changes how replies are sampled, so it needs a prediction and a
   measurement.

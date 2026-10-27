@@ -1,0 +1,123 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261027_143555_87a5c0",
+    "created_utc": "2026-10-27T14:36:08.795865+00:00",
+    "prompt_version": "v11.1-critiques-feedback",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "qwen3-coder:30b",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 14762,
+      "estimated_tokens": 4921,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 2986,
+      "sections": {
+        "modified_files": 2,
+        "types": 4,
+        "constants": 9,
+        "call_sites": 4,
+        "related_call_sites": 0,
+        "omitted": 0
+      },
+      "entries": 19,
+      "index_version": "idx_20261024_014116",
+      "index_commit": "fdb12e1aaf7b006a5a9b9f1bb8ee64786bd58bab",
+      "format_version": "f3-diff-authoritative",
+      "error": null,
+      "base_check": {
+        "checked": 2,
+        "mismatched": []
+      },
+      "shown": {
+        "modified_files": 2,
+        "types": 4,
+        "constants": 9,
+        "call_sites": 4,
+        "related_call_sites": 0,
+        "omitted": 0
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\ecu_support_7d297b4\\repo_context.json",
+      "sha256": "af89759950d3c6202bf4059e01a096769fbd30b9489fb63c7dcc144b0e549bfd",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qttunebridge.cpp] (bridge): File/layer: app/qttunebridge.cpp | Qt6 Core, app layer, C++17\n[app/qttunebridge.h] (bridge): File/layer: app/qttunebridge.h | Qt6 Core, app layer, C++17\n\n--- KNOWN TYPES ---\necuio_session_t (opaque): typedef struct ecuio_session ecuio_session_t;  // Forward-declared opaque handle types\necuio_session_info_t (struct): typedef struct ecuio_session_info { uint32_t flags; uint32_t backend; uint32_t dll_arch; uint32_t protocol_id; uint32_t baud; uint32_t connect_flags; uint32_t vbatt_mv; uint32_t channel_count; uint32_t rx_ids[ECUIO_SESSION_INFO_MAX_CHANNELS]; uint32_t tx_ids[ECUIO_SESSION_INFO_MAX_CHANNELS]; char firmware_version[ECUIO_SESSION_INFO_TEXT_LEN]; char dll_version[ECUIO_SESSION_INFO_TEXT_LEN]; \u2026  // POD, 432 bytes, no hidden padding on any supported platform; pinned by the assertions below. New fields take the reserved room.\necuio_dropped_request_t (struct): typedef struct ecuio_dropped_request { uint8_t request[3]; uint8_t length; uint8_t reason; uint8_t nrc; uint8_t reserved[2]; } ecuio_dropped_request_t;  // POD, 8 bytes\necuio_channel_support_t (struct): typedef struct ecuio_channel_support { uint32_t flags; uint32_t rx_id; uint32_t generation; uint32_t requests; uint32_t dropped; uint32_t ranges; uint8_t pid_bitmap[32]; ecuio_dropped_request_t dropped_list[ECUIO_SUPPORT_MAX_DROPPED]; uint32_t reserved[8]; } ecuio_channel_support_t;  // POD, 152 bytes, no hidden padding on any supported platform; pinned by the assertions below. New fields take the reserved room.\n\n--- CONSTANTS ---\nMaxFrames = 10000 (const)\nECUIO_SESSION_INFO_MAX_CHANNELS = 4 (define)\nECUIO_SUPPORT_MAX_DROPPED = 8 (define)\nECUIO_SUPPORT_PROBED = 0x00000001u (define)\nECUIO_SUPPORT_COMPLETE = 0x00000002u (define)\nECUIO_DROP_BITMAP = 1u (define)\nECUIO_DROP_NOT_SUPPORTED = 2u (define)\nECUIO_DROP_SERVICE = 3u (define)\nECUIO_DROP_ACCESS = 4u (define)\n\n--- QUEUED CONNECTION CALL SITES (indexed line numbers) ---\n[app/qttunebridge.cpp:563] QMetaObject::invokeMethod(this, [this, uri, core_err]() { calls: m_connectThread.joinable, m_connectThread.join, m_pendingSession.exchange, err.isEmpty, startSession, connectingChanged }, Qt::QueuedConnection);\n[app/qttunebridge.cpp:625] QMetaObject::invokeMethod(this, [this, uri]() { calls: m_disconnectThread.joinable, m_disconnectThread.join, disconnectingChanged, logMessage, QStringLiteral, arg }, Qt::QueuedConnection);\n[app/qttunebridge.cpp:783] QMetaObject::invokeMethod(self, [self]() { calls: m_dropNotifyPending.store, notifyDropped }, Qt::QueuedConnection);\n[app/qttunebridge.cpp:806] QMetaObject::invokeMethod(self, [self, copy, arrived]() { calls: m_inFlightFrames.fetch_sub, handleFrameInternal }, Qt::QueuedConnection);  // Lifetime contract: invoking with `self` as context object means the queued lambda is dropped if the bridge is destroyed before it runs. DO NOT change to a\u2026"
+    },
+    "prompt_fingerprint": "8e76794ac4946aab"
+  },
+  "inputs": {
+    "proposal": "Bridge: log what each channel's ECU said it supports, once per update, from the coalescing tick: the supported-PID count and range, and each request dropped from the rotation with its reason.",
+    "original_proposal": "Bridge: log what each channel's ECU said it supports, once per update, from the coalescing tick: the supported-PID count and range, and each request dropped from the rotation with its reason.",
+    "header_artifact": false,
+    "file_path": "app/qttunebridge.cpp",
+    "layer": "bridge",
+    "diff_sha256": "031b0dcb0ec61ef904940c23d669b4591cc0edcff808703dff3030e490b536dc",
+    "diff_chars": 7614,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "conditional",
+          "blockers": [],
+          "questions": [
+            "Is the assumption that m_channelCount is always <= ECUIO_SESSION_INFO_MAX_CHANNELS valid? What happens if a session reports more channels than the maximum allowed?",
+            "Does the use of QMetaObject::invokeMethod with 'this' as context object in queued connections properly handle the case where QtTuneBridge is destroyed before the queued lambda executes, particularly in relation to m_supportGeneration and other shared state?",
+            "How does the code handle cases where ecuio_session_get_channel_support returns ECUIO_OK but the channel support data is malformed or incomplete?",
+            "claim: The function pollChannelSupport() accesses m_supportGeneration[c] without bounds checking against m_channelCount, which could lead to out-of-bounds memory access when the channel count exceeds ECUIO_SESSION_INFO_MAX_CHANNELS.; file: app/qttunebridge.cpp; quote: void QtTuneBridge::pollChannelSupport()\n{\n    if (!m_connected.load(std::memory_order_acquire) || m_session == nullptr) {\n        return;\n    }\n    for (uint32_t c = 0; c < m_channelCount; ++c) {\n        ecuio_channel_support_t s{};\n        if (ecuio_session_get_channel_support(m_session, c, &s) != ECUIO_OK ||\n            s.generation == m_supportGeneration[c]) {\n            continue;\n        }\n        m_supportGeneration[c] = s.generation;\n        emit logMessage(channelSupportText(s));\n    }\n}"
+          ],
+          "nits": [
+            "Consider adding a static_assert or runtime check to ensure that ECUIO_SESSION_INFO_MAX_CHANNELS is not greater than the size of m_supportGeneration array.",
+            "The use of std::min<uint32_t> in multiple places could be made more readable by using a dedicated constant or macro for clarity."
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 0
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 1
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 14762,
+              "prompt_eval_count": 3979,
+              "eval_count": 428,
+              "thinking_chars": 0,
+              "content_chars": 1860,
+              "done_reason": "stop",
+              "wall_s": 12.88,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"conditional\",\n    \"blockers\": [\n        {\n            \"claim\": \"The function pollChannelSupport() accesses m_supportGeneration[c] without bounds checking against m_channelCount, which could lead to out-of-bounds memory access when the channel count exceeds ECUIO_SESSION_INFO_MAX_CHANNELS.\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"void QtTuneBridge::pollChannelSupport()\\n{\\n    if (!m_connected.load(std::memory_order_acquire) || m_session == nullptr) {\\n        return;\\n    }\\n    for (uint32_t c = 0; c < m_channelCount; ++c) {\\n        ecuio_channel_support_t s{};\\n        if (ecuio_session_get_channel_support(m_session, c, &s) != ECUIO_OK ||\\n            s.generation == m_supportGeneration[c]) {\\n            continue;\\n        }\\n        m_supportGeneration[c] = s.generation;\\n        emit logMessage(channelSupportText(s));\\n    }\\n}\"\n        }\n    ],\n    \"questions\": [\n        \"Is the assumption that m_channelCount is always <= ECUIO_SESSION_INFO_MAX_CHANNELS valid? What happens if a session reports more channels than the maximum allowed?\",\n        \"Does the use of QMetaObject::invokeMethod with 'this' as context object in queued connections properly handle the case where QtTuneBridge is destroyed before the queued lambda executes, particularly in relation to m_supportGeneration and other shared state?\",\n        \"How does the code handle cases where ecuio_session_get_channel_support returns ECUIO_OK but the channel support data is malformed or incomplete?\"\n    ],\n    \"nits\": [\n        \"Consider adding a static_assert or runtime check to ensure that ECUIO_SESSION_INFO_MAX_CHANNELS is not greater than the size of m_supportGeneration array.\",\n        \"The use of std::min<uint32_t> in multiple places could be made more readable by using a dedicated constant or macro for clarity.\"\n    ]\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-27T14:36:08.795812+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

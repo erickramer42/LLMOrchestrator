@@ -2607,6 +2607,36 @@ class CorpusTests(NoSleep):
             self.assertEqual(s["pooled"]["runs"], 18)
             self.assertEqual((s["pooled"]["stored"], s["pooled"]["valid"]), (28, 7))
 
+    def test_committed_labels_cover_the_bake_off_records(self):
+        # Stage 1 of the twenty-second (reviewer) and twenty-third (engineer)
+        # bake-offs, labeled before scoring, one pin per arm; the globs leave
+        # out Stage 0 (03*, 04*), and score_records drops the retried
+        # 120882, 8a757b and e6fef5.
+        arms = [
+            (("measurement_round1_20261027_13*.json",
+              "measurement_round1_20261027_14[01]*.json",
+              "measurement_round1_20261027_142[0-8]*.json"), "reviewer", (34, 37, 24)),
+            (("measurement_round1_20261027_1429*.json",
+              "measurement_round1_20261027_143*.json"), "reviewer", (35, 7, 7)),
+            (("measurement_engineer_20261027_14[34]*.json",
+              "measurement_engineer_20261027_145[0-8]*.json",
+              "measurement_engineer_20261027_14590*.json"), "auto_engineer", (35, 6, 5)),
+            (("measurement_engineer_20261027_14592*.json",
+              "measurement_engineer_20261027_15*.json"), "auto_engineer", (33, 29, 21)),
+        ]
+        for globs, role, expected in arms:
+            records = sorted(p for g in globs
+                             for p in Path(REPO_ROOT, "coach_artifacts").glob(g))
+            if not records:
+                continue
+            path = corpus.LABELS_PATH if role == "reviewer" else corpus.ENGINEER_LABELS_PATH
+            labels = json.loads(path.read_text(encoding="utf-8"))
+            s = corpus.labelled_summary(corpus.score_records(
+                common.load_records([str(p) for p in records]), self.manifest, role), labels)
+            self.assertEqual(s["unlabelled"], [], globs)
+            self.assertEqual((s["pooled"]["runs"], s["pooled"]["stored"], s["pooled"]["valid"]),
+                             expected, globs)
+
     def test_fingerprint_warning_is_per_fixture(self):
         fixtures = corpus.select(self.manifest, ["all"])[:2]
         row = lambda i, fp: {"id": i, "fingerprint": fp, "blockers": [],

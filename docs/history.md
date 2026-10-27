@@ -144,6 +144,24 @@ changed.
   code review findings 20–23 (the repair runner's version handling)
   fixed; 18 v11.1 `poll_override` runs labeled, putting that fixture's
   baseline at 27 runs (1.22 false positives per review under j8).
+- the model bake-offs drafted and signed off: two local reviewer models
+  against laguna on the corpus (twenty-second measurement), and
+  `gpt-oss:20b` against gemma as the engineer (twenty-third, the
+  engineer's first measurement); per-role model selection
+  (`--reviewer-model`, `--engineer`, `--engineer-model`) and an engineer
+  scoring view built; Stage 0 run: `nemotron-3.5-lightning:30b` dropped
+  (every first attempt at the output cap), the other two passed.
+
+### 2026-10-27
+
+- the twenty-second's qwen prediction sharpened before Stage 1, after
+  Stage 0's three empty bridge runs;
+- Stage 1 of both bake-offs, 35 corpus runs per arm, labeled before
+  scoring. `qwen3-coder:30b` failed condition 1 (mean recall 0.09
+  against laguna's 0.42, with no false positives); `gpt-oss:20b` passed
+  condition 1 as the engineer (recall in any item 0.74 against 0.51) and
+  failed condition 2 (0.24 false blockers per review, bar 0.10). Both
+  current models stay.
 
 ## Features and measurements, in detail
 
