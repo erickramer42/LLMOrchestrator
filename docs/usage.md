@@ -162,6 +162,7 @@ python -m eval_harness.corpus run --fixture backoff_clamp_d1c20c0 --runs 5
 python -m eval_harness.corpus run --fixture all --runs 5 --reviewer-model qwen3-coder:30b   # another reviewer
 python -m eval_harness.corpus run --fixture all --runs 5 --engineer [--engineer-model gpt-oss:20b]   # the engineer's round-1 call alone
 python -m eval_harness.corpus score "coach_artifacts/measurement_round1_*.json"
+python -m eval_harness.corpus score "coach_artifacts/measurement_engineer_*.json"
 ```
 
 `score` reports, per fixture, blockers per run, each known bug's recall
@@ -171,7 +172,11 @@ bug, which are false-positive candidates to triage by hand. A symbol
 match is a pointer, not a verdict: read the claim. With the hand labels
 in `corpus_labels.json` it also prints the labeled summary; `--labels
 none` prints the items alone, for labeling a new sample before scoring
-it.
+it. It also prints the calls' cost (median first-attempt wall time,
+attempts at the cap, failed calls) and warns when one fixture's records
+come from several models. Engineer records are scored apart, with
+`engineer_labels.json`: every blocker needs a label, and a concern or
+question only when it states a known bug.
 
 **The repair pass** (seventeenth and eighteenth measurements, not
 shipped) can be re-run paired on archived replies:

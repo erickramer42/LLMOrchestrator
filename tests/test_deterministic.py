@@ -2471,6 +2471,72 @@ class CorpusTests(NoSleep):
         self.assertIn(("r2", "record"), s["unlabelled"])
         self.assertIn(("r1", "#h9 (labelled, no such item)"), s["unlabelled"])
 
+    def test_the_engineer_scorer_reads_the_engineer_entry_and_its_own_labels(self):
+        # the twenty-third measurement: blockers and hedge demotions need a
+        # label, concerns and questions only when they state a known bug
+        bug, clean = (corpus.select(self.manifest, [i])[0]
+                      for i in ("backoff_clamp_d1c20c0", "init_noops_cf03331"))
+        bug_reply = {**ENGINEER_CLEAN,
+                     "blockers": ["Deleting the header breaks consumers",
+                                  "this might overshoot J2534_BACKOFF_CAP_MS"],
+                     "concerns": ["Logging is noisy"],
+                     "questions": ["Does backoff_ms pass the cap?"]}
+        clean_reply = {**ENGINEER_CLEAN, "blockers": ["Removing the no-op breaks init"]}
+        paths = []
+        with common.agent_model("auto_engineer", "eng:20b"):
+            for fixture, reply in ((bug, bug_reply), (clean, clean_reply)):
+                with fake_ollama(reply):
+                    paths.append(debate.run_round1_engineer(
+                        fixture["proposal"], fixture["diff_path"].read_text(encoding="utf-8"),
+                        "", index_path=str(fixture["index_path"]))["record_path"])
+        with fake_ollama(REVIEWER_CLEAN):
+            reviewer = debate.run_round1_review("p", QUOTED_DIFF, "")
+        records = common.load_records(paths)
+        scores = corpus.score_records(records, self.manifest, "auto_engineer")
+        [row] = scores["fixtures"][bug["id"]]["rows"]
+        self.assertEqual(row["model"], "eng:20b")
+        self.assertEqual([[i["bugs"] for i in row[k]]
+                          for k in ("blockers", "hedged", "concerns", "questions")],
+                         [[[]], [["backoff_overshoot"]], [[]], [["backoff_overshoot"]]])
+        self.assertEqual(corpus.score_records(
+            common.load_records([reviewer["record_path"]]), self.manifest,
+            "auto_engineer")["excluded"], [(reviewer["measurement_id"], "not a corpus diff")])
+        labels = {"valid": ["unlisted"], "records": {
+            row["id"]: {"labels": {"#1": ["removal-objection"], "#h1": ["backoff_overshoot"],
+                                   "#q1": ["backoff_overshoot"]}},
+            scores["fixtures"][clean["id"]]["rows"][0]["id"]: {
+                "labels": {"#1": ["removal-objection"]}}}}
+        s = corpus.labelled_summary(scores, labels)
+        self.assertEqual(s["unlabelled"], [])  # #c1 needs no label
+        f, c = s["fixtures"][bug["id"]], s["fixtures"][clean["id"]]
+        self.assertEqual((f["stored"], f["valid"], f["hedge"], f["valid_demoted"]), (1, 0, 1, 1))
+        self.assertEqual(f["recall"]["backoff_overshoot"], {"stored": 0, "any": 1})
+        self.assertEqual((c["blocked_runs"], c["kind"]), (1, "clean"))
+        self.assertEqual(s["pooled"]["mean_recall"], {"stored": 0.0, "any": 1.0})
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            corpus.print_report(scores)
+            corpus.print_labelled(s)
+        self.assertIn("other items only in 1", out.getvalue())
+        self.assertIn("false blockers 1.000 per run; runs with a blocker 2/2, "
+                      "on clean fixtures 1/1", out.getvalue())
+        costs = common.call_costs(records, "auto_engineer")
+        self.assertEqual((costs["accepted_first"], costs["attempts"], costs["at_cap"],
+                          costs["failed"]), (2, 2, 0, 0))
+        # a second engineer model on the same fixture is another arm
+        with fake_ollama(ENGINEER_CLEAN):
+            paths.append(debate.run_round1_engineer(
+                bug["proposal"], bug["diff_path"].read_text(encoding="utf-8"), "",
+                index_path=str(bug["index_path"]))["record_path"])
+        out = io.TextIOWrapper(io.BytesIO(), encoding="utf-8")  # main reconfigures stdout
+        with contextlib.redirect_stdout(out):
+            corpus.main(["score", "--labels", "none", reviewer["record_path"], *paths])
+        out.seek(0)
+        text = out.read()
+        self.assertIn("######## reviewer ########", text)
+        self.assertIn("######## auto_engineer ########", text)
+        self.assertRegex(text, r"records span 2 auto_engineer models \(eng:20b, gemma4:12b\)")
+
     def test_committed_labels_cover_the_committed_baseline_records(self):
         # The fourteenth measurement's labels must match its records item
         # for item, so a relabel or a lost record shows up here.

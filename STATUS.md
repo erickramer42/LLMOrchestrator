@@ -16,7 +16,7 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 | Judge | `j8-claim-quote-linkage` |
 | Context-pack format | `f3-diff-authoritative` |
 | Models | reviewer `laguna-xs-2.1`, engineer `gemma4:12b`, on Ollama; `NUM_CTX` 24576, `NUM_PREDICT` 12288 |
-| Tests | 213 regression tests, no model needed; CI on Python 3.11 and 3.13 |
+| Tests | 217 regression tests, no model needed; CI on Python 3.11 and 3.13 |
 | Golden suite | 10/10 live (3 model fixtures, 7 hedge units) |
 
 **Headline numbers (judge j8, round-1 samples, hand-labeled):**

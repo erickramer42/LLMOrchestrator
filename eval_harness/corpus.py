@@ -8,6 +8,8 @@ fixture's known bugs.
     python -m eval_harness.corpus run --fixture all --runs 5
     python -m eval_harness.corpus score "coach_artifacts/measurement_round1_*.json"
     python -m eval_harness.corpus score --labels none "coach_artifacts/..."
+    python -m eval_harness.corpus run --fixture all --runs 5 --engineer
+    python -m eval_harness.corpus score "coach_artifacts/measurement_engineer_*.json"
 
 The manifest, docs/fixtures/corpus.json, names each fixture's diff, the
 index of its base, its proposal (written in the diff's real direction,
@@ -28,6 +30,14 @@ among stored blockers and among all items (stored or demoted, what the
 reviewer said before the guardrails), and the valid items the guardrails
 demoted. Items the labels do not cover are listed, so a new sample is
 never scored silently.
+
+Engineer records (`run --engineer`, ADR-0002 twenty-third measurement)
+are scored the same way from their own labels
+(eval_harness/engineer_labels.json): blockers #n, hedge-demoted
+blockers #hn (the end of the concerns), concerns #cn and questions #qn.
+Every blocker needs a label; a concern or question is labeled only when
+it states a known bug, so an unlabeled one counts as no bug. Runs with
+any stored blocker are rejects, wrong on a clean fixture.
 """
 
 import argparse
@@ -40,14 +50,19 @@ from typing import Dict, List, Optional, Tuple
 import debate
 from debate import run_round1_engineer, run_round1_review, text_sha256
 from diff_reader import diff_paths
-from eval_harness.common import (agent_model, collect, demoted_tail, load_records,
-                                 m1_hits, parse_blocker, read_input,
+from eval_harness.common import (agent_model, call_costs, collect, demoted_tail,
+                                 load_records, m1_hits, parse_blocker, read_input,
                                  reviewer_status)
 from file_metadata import identify_layer
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = REPO_ROOT / "docs" / "fixtures" / "corpus.json"
 LABELS_PATH = Path(__file__).with_name("corpus_labels.json")
+ENGINEER_LABELS_PATH = Path(__file__).with_name("engineer_labels.json")
+# The round entry's key for each role, and its key in config.MODELS.
+MODEL_KEYS = {"reviewer": "code_reviewer", "auto_engineer": "auto_engineer"}
+# Engineer items labeled only when they state a known bug.
+OPTIONAL_KINDS = ("concern", "question")
 
 
 # ============ manifest ============
@@ -114,11 +129,13 @@ def print_listing(rows: List[dict]) -> None:
 
 # ============ score ============
 
-def score_records(records: List[tuple], manifest: dict) -> dict:
+def score_records(records: List[tuple], manifest: dict, role: str = "reviewer") -> dict:
     """Per fixture: the first-attempt round-1 records on its diff, each
     with its stored and demoted blockers tagged by the known bugs their
-    claim names. Records on no corpus diff, retried or failed records are
-    listed as excluded."""
+    claim names; for role 'auto_engineer', the engineer's blockers,
+    hedge-demoted blockers, concerns and questions. Records on no corpus
+    diff, without the role's entry, retried or failed are listed as
+    excluded."""
     by_hash: Dict[str, dict] = {}
     for fixture in manifest["fixtures"]:
         by_hash[text_sha256(read_input(str(fixture["diff_path"])))] = fixture
@@ -135,10 +152,13 @@ def score_records(records: List[tuple], manifest: dict) -> dict:
         if not rounds:
             excluded.append((record_id, "input refused, no round"))
             continue
-        status = reviewer_status(rounds[0])
+        if role not in rounds[0]:
+            excluded.append((record_id, f"no {role} entry"))
+            continue
+        status = reviewer_status(rounds[0], role)
         if status in ("retry", "failed"):
-            excluded.append((record_id, "reviewer failed" if status == "failed"
-                             else "round-1 reviewer reply came from a retry"))
+            excluded.append((record_id, f"{role} failed" if status == "failed"
+                             else f"round-1 {role} reply came from a retry"))
             continue
         bugs = fixture.get("known_bugs", [])
 
@@ -146,22 +166,39 @@ def score_records(records: List[tuple], manifest: dict) -> dict:
             claim = parse_blocker(text)["hedge_text"]  # claim and file, not the quote
             return {"text": text,
                     "bugs": [b["id"] for b in bugs if m1_hits(claim, b["symbols"])]}
-        unquoted, hedged = demoted_tail(rounds[0])
-        per_fixture[fixture["id"]]["rows"].append({
-            "id": record_id, "path": str(path), "status": status,
-            "fingerprint": rec["metadata"].get("prompt_fingerprint"),
-            "blockers": [tag(str(b)) for b in rounds[0]["reviewer"].get("blockers", []) or []],
-            "unquoted": [tag(q) for q in unquoted],
-            "hedged": [tag(q) for q in hedged]})
-    return {"fixtures": per_fixture, "excluded": excluded}
+        out = rounds[0][role]
+        row = {"id": record_id, "path": str(path), "status": status,
+               "fingerprint": rec["metadata"].get("prompt_fingerprint"),
+               "model": (rec["metadata"].get("models_used") or {}).get(MODEL_KEYS[role]),
+               "blockers": [tag(str(b)) for b in out.get("blockers", []) or []]}
+        if role == "reviewer":
+            unquoted, hedged = demoted_tail(rounds[0])
+            row.update(unquoted=[tag(q) for q in unquoted], hedged=[tag(q) for q in hedged])
+        else:
+            n_hedged = (rounds[0].get("hedge_demotions") or {}).get("engineer_demoted", 0)
+            concerns = [str(c) for c in out.get("concerns", []) or []]
+            cut = len(concerns) - n_hedged
+            row.update(hedged=[tag(c) for c in concerns[cut:]],
+                       concerns=[tag(c) for c in concerns[:cut]],
+                       questions=[tag(str(q)) for q in out.get("questions", []) or []])
+        per_fixture[fixture["id"]]["rows"].append(row)
+    return {"fixtures": per_fixture, "excluded": excluded, "role": role}
+
+
+def _row_items(row: dict) -> List[Tuple[str, str, dict]]:
+    """(key, kind, item) for every item of a scored row, keyed as the
+    report and the labels number them; kind is stored, evidence, hedge,
+    concern or question."""
+    groups = [("", "stored", "blockers"), ("e", "evidence", "unquoted"),
+              ("h", "hedge", "hedged"), ("c", "concern", "concerns"),
+              ("q", "question", "questions")]
+    return [(f"#{prefix}{i}", kind, item)
+            for prefix, kind, field in groups
+            for i, item in enumerate(row.get(field, []), 1)]
 
 
 def _items(row: dict) -> List[Tuple[str, str]]:
-    """(key, kind) for every item of a scored row, keyed as the report
-    and the labels number them; kind is stored, evidence or hedge."""
-    return ([(f"#{i}", "stored") for i in range(1, len(row["blockers"]) + 1)]
-            + [(f"#e{i}", "evidence") for i in range(1, len(row["unquoted"]) + 1)]
-            + [(f"#h{i}", "hedge") for i in range(1, len(row["hedged"]) + 1)])
+    return [(key, kind) for key, kind, _ in _row_items(row)]
 
 
 def labelled_summary(scores: dict, labels: dict) -> dict:
@@ -169,18 +206,23 @@ def labelled_summary(scores: dict, labels: dict) -> dict:
     pooled. A label is a list of known-bug ids and classes; an item is
     valid when any of them is a known bug of its fixture or a class in
     labels['valid']. Recall per bug counts runs: among stored blockers,
-    and among all items, stored or demoted."""
+    and among all items, stored or demoted (or, for the engineer, its
+    concerns and questions, which need a label only when they state a
+    known bug). Mean recall averages the per-bug rates over the bugs of
+    the scored fixtures; blocked runs are runs with any stored blocker."""
     valid_classes = set(labels.get("valid", []))
     out, unlabelled = {}, []
     pooled = {"runs": 0, "stored": 0, "valid": 0, "fp": {}, "evidence": 0,
-              "hedge": 0, "valid_demoted": 0}
+              "hedge": 0, "valid_demoted": 0, "blocked_runs": 0}
+    rates = {"stored": [], "any": []}
     for fixture_id, entry in scores["fixtures"].items():
         rows = entry["rows"]
         if not rows:
             continue
         bug_ids = [b["id"] for b in entry["fixture"].get("known_bugs", [])]
         f = {"runs": len(rows), "stored": 0, "valid": 0, "fp": {}, "evidence": 0,
-             "hedge": 0, "valid_demoted": 0,
+             "hedge": 0, "valid_demoted": 0, "blocked_runs": 0,
+             "kind": entry["fixture"]["kind"],
              "recall": {b: {"stored": 0, "any": 0} for b in bug_ids}}
         for row in rows:
             rec_labels = (labels["records"].get(row["id"]) or {}).get("labels")
@@ -188,8 +230,11 @@ def labelled_summary(scores: dict, labels: dict) -> dict:
                 unlabelled.append((row["id"], "record"))
                 continue
             found_stored, found_any = set(), set()
+            f["blocked_runs"] += bool(row["blockers"])
             for key, kind in _items(row):
                 tags = rec_labels.get(key)
+                if tags is None and kind in OPTIONAL_KINDS:
+                    continue
                 if tags is None:
                     unlabelled.append((row["id"], key))
                     continue
@@ -204,7 +249,7 @@ def labelled_summary(scores: dict, labels: dict) -> dict:
                     else:
                         for t in tags:
                             f["fp"][t] = f["fp"].get(t, 0) + 1
-                else:
+                elif kind not in OPTIONAL_KINDS:
                     f[kind] += 1
                     f["valid_demoted"] += valid
             for b in found_stored:
@@ -214,10 +259,15 @@ def labelled_summary(scores: dict, labels: dict) -> dict:
             extra = set(rec_labels) - {k for k, _ in _items(row)}
             unlabelled += [(row["id"], f"{k} (labelled, no such item)") for k in sorted(extra)]
         out[fixture_id] = f
-        for k in ("runs", "stored", "valid", "evidence", "hedge", "valid_demoted"):
+        for k in ("runs", "stored", "valid", "evidence", "hedge", "valid_demoted",
+                  "blocked_runs"):
             pooled[k] += f[k]
         for t, n in f["fp"].items():
             pooled["fp"][t] = pooled["fp"].get(t, 0) + n
+        for r in f["recall"].values():
+            for k in rates:
+                rates[k].append(r[k] / f["runs"])
+    pooled["mean_recall"] = {k: sum(v) / len(v) if v else None for k, v in rates.items()}
     return {"fixtures": out, "pooled": pooled, "unlabelled": unlabelled}
 
 
@@ -235,10 +285,19 @@ def print_labelled(summary: dict) -> None:
               f"({p['valid'] / p['stored']:.0%}); evidence-demoted "
               f"{p['evidence'] / p['runs']:.2f} per run; {p['valid_demoted']} valid "
               f"items demoted")
+    if p["runs"]:
+        clean = [f for f in summary["fixtures"].values() if f["kind"] == "clean"]
+        print(f"false blockers {(p['stored'] - p['valid']) / p['runs']:.3f} per run; "
+              f"runs with a blocker {p['blocked_runs']}/{p['runs']}, on clean fixtures "
+              f"{sum(f['blocked_runs'] for f in clean)}/{sum(f['runs'] for f in clean)}")
+    if p["mean_recall"]["stored"] is not None:
+        print(f"mean recall over {sum(len(f['recall']) for f in summary['fixtures'].values())} "
+              f"known bugs: stored {p['mean_recall']['stored']:.3f}, "
+              f"any item {p['mean_recall']['any']:.3f}")
     if p["fp"]:
         print("false positives by class: " + ", ".join(
             f"{t} {n}" for t, n in sorted(p["fp"].items(), key=lambda x: -x[1])))
-    print("\nrecall per known bug, runs: stored / stored or demoted")
+    print("\nrecall per known bug, runs: stored / any item")
     for fixture_id, f in summary["fixtures"].items():
         for bug, r in f["recall"].items():
             print(f"   {fixture_id:<26} {bug:<32} {r['stored']}/{f['runs']} "
@@ -248,6 +307,7 @@ def print_labelled(summary: dict) -> None:
 
 
 def print_report(scores: dict) -> None:
+    role = scores.get("role", "reviewer")
     for entry in scores["fixtures"].values():
         fixture, rows = entry["fixture"], entry["rows"]
         if not rows:
@@ -260,6 +320,11 @@ def print_report(scores: dict) -> None:
             print(f"\nWARNING: {fixture['id']}'s records span {len(fingerprints)} "
                   f"prompt fingerprints ({', '.join(fingerprints)}); score each "
                   "arm separately")
+        # The fingerprint hashes templates, not the model (the bake-offs).
+        models = sorted({str(r.get("model")) for r in rows})
+        if len(models) > 1:
+            print(f"\nWARNING: {fixture['id']}'s records span {len(models)} {role} "
+                  f"models ({', '.join(models)}); score each arm separately")
         stored = sum(len(r["blockers"]) for r in rows)
         unmatched = sum(1 for r in rows for b in r["blockers"] if not b["bugs"])
         print(f"\n== {fixture['id']} ({fixture['kind']}): {n} run(s), "
@@ -269,18 +334,17 @@ def print_report(scores: dict) -> None:
                  else ""))
         for bug in fixture.get("known_bugs", []):
             found = sum(1 for r in rows if any(bug["id"] in b["bugs"] for b in r["blockers"]))
-            demoted_only = sum(
+            elsewhere = sum(
                 1 for r in rows
                 if not any(bug["id"] in b["bugs"] for b in r["blockers"])
-                and any(bug["id"] in b["bugs"] for b in r["unquoted"] + r["hedged"]))
+                and any(bug["id"] in b["bugs"]
+                        for _, kind, b in _row_items(r) if kind != "stored"))
             print(f"   {bug['id']:<18} found in {found}/{n} run(s)"
-                  + (f", demoted only in {demoted_only}" if demoted_only else "")
+                  + (f", {'demoted' if role == 'reviewer' else 'other items'} only "
+                     f"in {elsewhere}" if elsewhere else "")
                   + f": {bug['summary']}")
         for r in rows:
-            items = ([(f"#{i}", b) for i, b in enumerate(r["blockers"], 1)]
-                     + [(f"#e{i}", b) for i, b in enumerate(r["unquoted"], 1)]
-                     + [(f"#h{i}", b) for i, b in enumerate(r["hedged"], 1)])
-            for label, b in items:
+            for label, _, b in _row_items(r):
                 tags = f"  [{', '.join(b['bugs'])}]" if b["bugs"] else "  [no known bug]"
                 print(f"\n{r['id']} {label}{tags}")
                 print(textwrap.fill(b["text"], width=96, initial_indent="    ",
@@ -290,6 +354,14 @@ def print_report(scores: dict) -> None:
     print("\nA symbol match credits a bug; read the claim before counting it "
           "found. Blockers matching no known bug are false-positive candidates "
           "until triaged.")
+
+
+def print_costs(costs: dict, role: str) -> None:
+    median = costs["median_wall_s"]
+    print(f"\n{role} calls: median first-attempt wall "
+          + (f"{median:.0f} s" if median is not None else "n/a")
+          + f" over {costs['accepted_first']} accepted; {costs['at_cap']} of "
+          f"{costs['attempts']} attempts at the cap; {costs['failed']} failed closed")
 
 
 # ============ command line ============
@@ -320,9 +392,10 @@ def main(argv: Optional[List[str]] = None) -> None:
     score_p = sub.add_parser("score", help="Score records against the known bugs")
     score_p.add_argument("records", nargs="+", metavar="RECORD",
                          help="Record paths or globs (expanded here)")
-    score_p.add_argument("--labels", default=str(LABELS_PATH),
-                         help="Hand labels to score with, or 'none' "
-                              "(default: eval_harness/corpus_labels.json)")
+    score_p.add_argument("--labels",
+                         help="Hand labels to score with, or 'none' (default: "
+                              "eval_harness/corpus_labels.json, and "
+                              "engineer_labels.json for engineer records)")
     args = parser.parse_args(argv)
 
     manifest = load_manifest()
@@ -347,14 +420,25 @@ def main(argv: Optional[List[str]] = None) -> None:
                         False, args.runs, str(fixture["index_path"]))
         return
     sys.stdout.reconfigure(encoding="utf-8")
-    scores = score_records(load_records(args.records), manifest)
-    print_report(scores)
-    if args.labels != "none":
-        try:
-            labels = json.loads(Path(args.labels).read_text(encoding="utf-8"))
-        except (OSError, ValueError) as exc:
-            raise SystemExit(f"ERROR: cannot read labels {args.labels}: {exc}")
-        print_labelled(labelled_summary(scores, labels))
+    records = load_records(args.records)
+    engineer = [r for r in records if r[1]["metadata"].get("mode") == debate.ENGINEER_MODE]
+    for role, chosen, default in (
+            ("reviewer", [r for r in records if r not in engineer], LABELS_PATH),
+            ("auto_engineer", engineer, ENGINEER_LABELS_PATH)):
+        if not chosen:
+            continue
+        if engineer:
+            print(f"\n######## {role} ########")
+        scores = score_records(chosen, manifest, role)
+        print_report(scores)
+        print_costs(call_costs(chosen, role), role)
+        if args.labels != "none":
+            path = args.labels or str(default)
+            try:
+                labels = json.loads(Path(path).read_text(encoding="utf-8"))
+            except (OSError, ValueError) as exc:
+                raise SystemExit(f"ERROR: cannot read labels {path}: {exc}")
+            print_labelled(labelled_summary(scores, labels))
 
 
 if __name__ == "__main__":

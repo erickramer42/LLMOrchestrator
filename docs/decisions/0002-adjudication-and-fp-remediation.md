@@ -5487,7 +5487,8 @@ its 3 first attempts are unusable, or if its accepted first attempts
 take a median above 150 s (three times gemma's 49 s).
 
 **Stage 1:** 35 runs per arm (`--fixture all --runs 5`), the control
-first. Labels, written before either arm is scored: every engineer
+first. Labels (`eval_harness/engineer_labels.json`, scored by
+`corpus score`), written before either arm is scored: every engineer
 blocker gets a class (a known bug, `unlisted`, or a false class); a
 concern or question is labeled only when it states a known bug's
 defect, by the rules the reviewer labels use.

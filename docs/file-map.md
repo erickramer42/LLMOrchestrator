@@ -44,12 +44,13 @@ together, see [design.md](design.md); for the current versions, see
 | `eval_harness/common.py` | What the measurement scripts share: the `run`/`score` command line, the sample runner, record loading, attempt status, demoted-item recovery. |
 | `eval_harness/round1.py` | Round-1 samples on any diff (`run`) and their scoring (`score`): blockers per run, symbol hits, and candidates for hand review; evidence-demoted items listed as `#e`, hedge-demoted as `#h`. |
 | `eval_harness/round2.py` | The round-2 pair measurement: two round-2 formats on the same round-1 replies, compared on first-attempt pairs, with runaways counted per arm. |
-| `eval_harness/corpus.py` | The real-diff corpus: `list` (sizes, layers, input and base checks; no model), `run` (round-1 samples with each fixture's own index) and `score` (recall per known bug, false-positive candidates, hand-label summary). |
+| `eval_harness/corpus.py` | The real-diff corpus: `list` (sizes, layers, input and base checks; no model), `run` (round-1 samples with each fixture's own index, of the reviewer or, with `--engineer`, the engineer, either with another model) and `score` (recall per known bug, false-positive candidates, hand-label summary, call cost; engineer records apart). |
 | `eval_harness/replay.py` | Offline replay, no model: re-judges archived replies under deterministic judge variants (gapped quotes, linkage, k-of-n voting, removed-line exceptions) and scores them with the hand labels; first checks that the current judge reproduces every stored split. `--corpus` does the same per corpus fixture. |
 | `eval_harness/runaway.py` | Backlog #19, no model: measures how much a long reply's thinking repeats itself (k-word shingles seen earlier, prose and quoted code apart, by thirds), for telling a loop from a long search. |
 | `eval_harness/repair.py` | The repair pass measured paired on archived replies (seventeenth measurement), its no-model ceiling check, and its successor's pilots (eighteenth). |
 | `eval_harness/labels.json` | Hand labels for every bridge-fixture item scored since the tenth measurement (race, gate, deletion, removal objection, deleted test, other FP). |
 | `eval_harness/corpus_labels.json` | Hand labels for every corpus item (known-bug ids and false-positive classes), each sample labeled before it was scored; a test pins each sample's counts. |
+| `eval_harness/engineer_labels.json` | Hand labels for the engineer's corpus items (twenty-third measurement): every blocker, and each concern or question that states a known bug. |
 | `eval_harness/probe.py`, `bakeoff.py`, `raw_call.py` | The false-positive probe and the model bake-off of ADR-0001, with the raw model call they were measured with (no `config.py` settings, no guardrails). |
 
 ## Fixtures and evidence
@@ -62,6 +63,7 @@ together, see [design.md](design.md); for the current versions, see
 | `docs/fixtures/corpus/<id>/` | One corpus fixture: `change.diff` (tests, docs and `*.md` excluded) and the `--no-llm` index of its base. |
 | `coach_artifacts/decision_debate_*.json` | Debate records: the 2026-10-07 baseline (`203917`), the v1 re-measurement (`014257`), the live-loop control (`170208`), the context-pack pilot and three scored runs (`201540`, `203802`, `204845`, `210548`), the header review (`194320`), and seven telemetry runs from 2026-10-22. |
 | `coach_artifacts/measurement_round1_*.json` | Round-1 measurement records, one reviewer call each. The bridge fixture's are labeled in `labels.json`, the corpus's in `corpus_labels.json`; [history.md](history.md) and ADR-0002 give each sample's id range. Pilot records are kept but never scored. |
+| `coach_artifacts/measurement_engineer_*.json` | Engineer measurement records, one engineer round-1 call each (`corpus run --engineer`), labeled in `engineer_labels.json`. |
 | `coach_artifacts/measurement_round2_*.json` | Round-2 pair records from the eleventh and twelfth measurements. |
 | `coach_artifacts/measurement_repair_*.json` | Repair-call records from the seventeenth and eighteenth measurements. |
 | `coach_artifacts/measurement_runaway_*.json` | Re-sends of a recorded runaway attempt (`eval_harness.runaway repro`), from the runaway diagnostic; each keeps the attempt's telemetry, with its whole thinking when it ran long. |

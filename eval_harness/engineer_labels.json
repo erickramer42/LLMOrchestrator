@@ -1,0 +1,14 @@
+{
+  "about": "Hand labels of round-1 engineer items on the corpus fixtures (docs/fixtures/corpus.json; ADR-0002, twenty-third measurement), judged against each fixture's post_rev by the rules and notes of eval_harness/corpus_labels.json. Keys: #n stored blocker, #hn hedge-demoted blocker (the end of the concerns), #cn concern, #qn question, numbered as eval_harness.corpus score lists them. Every blocker and hedge-demoted blocker is labeled; a concern or question is labeled only when it states a known bug's defect, so an unlabeled one counts as no known bug. Written before either arm is scored.",
+  "classes": {
+    "unlisted": "valid but minor: a change the same fix commit reverted, not a functional bug",
+    "invariant-elsewhere": "false: a removed or missing check whose invariant another function enforces in the post-state",
+    "thread-confusion": "false: a race claimed on state only one thread touches, or that is set before the worker starts",
+    "bounds-fixed-array": "false: an out-of-bounds claim on a fixed-size, zero-initialized array",
+    "deletion": "false: removed code or a removed comment presented as current",
+    "other-fp": "false: any other claim the post-state refutes"
+  },
+  "valid": ["unlisted"],
+  "notes": {},
+  "records": {}
+}

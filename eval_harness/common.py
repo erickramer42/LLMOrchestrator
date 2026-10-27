@@ -79,15 +79,40 @@ def claim_text(item: str) -> str:
     return parse_blocker(item)["claim"] or item
 
 
-def reviewer_status(entry: dict) -> str:
-    """How a round entry's reviewer reply was obtained: 'first', 'retry'
-    or 'failed'. 'unknown' for records without telemetry (before v5.2)."""
-    if entry["reviewer"].get("verdict") == "PARSE_FAILURE":
+def reviewer_status(entry: dict, role: str = "reviewer") -> str:
+    """How a round entry's reviewer reply (or role's: 'auto_engineer')
+    was obtained: 'first', 'retry' or 'failed'. 'unknown' for records
+    without telemetry (before v5.2)."""
+    if entry[role].get("verdict") == "PARSE_FAILURE":
         return "failed"
-    calls = (entry.get("telemetry") or {}).get("reviewer")
+    calls = (entry.get("telemetry") or {}).get(role)
     if not calls:
         return "unknown"
     return "first" if calls[-1]["attempt"] == 0 else "retry"
+
+
+def call_costs(records: List[tuple], role: str) -> dict:
+    """Round-1 cost of a role's calls over records: the median wall time
+    of first attempts that were accepted, attempts that ran to the cap
+    (done_reason 'length') out of all attempts, and records whose call
+    failed closed (the bake-offs, ADR-0002)."""
+    walls, at_cap, attempts, failed = [], 0, 0, 0
+    for _, rec in records:
+        rounds = rec["outputs"]["round_history"]
+        if not rounds or role not in rounds[0]:
+            continue
+        calls = (rounds[0].get("telemetry") or {}).get(role) or []
+        attempts += len(calls)
+        at_cap += sum(c.get("done_reason") == "length" for c in calls)
+        status = reviewer_status(rounds[0], role)
+        failed += status == "failed"
+        if status == "first":
+            walls.append(calls[0]["wall_s"])
+    walls.sort()
+    median = ((walls[len(walls) // 2] + walls[(len(walls) - 1) // 2]) / 2
+              if walls else None)
+    return {"median_wall_s": median, "accepted_first": len(walls),
+            "at_cap": at_cap, "attempts": attempts, "failed": failed}
 
 
 def demoted_tail(entry: dict) -> Tuple[List[str], List[str]]:
