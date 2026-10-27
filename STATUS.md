@@ -16,8 +16,8 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 | Judge | `j8-claim-quote-linkage` |
 | Context-pack format | `f3-diff-authoritative` |
 | Models | reviewer `laguna-xs-2.1`, engineer `gemma4:12b`, on Ollama; `NUM_CTX` 24576, `NUM_PREDICT` 12288 |
-| Tests | 218 regression tests, no model needed; CI on Python 3.11 and 3.13 |
-| Golden suite | 10/10 live (3 model fixtures, 7 hedge units) |
+| Tests | 220 regression tests, no model needed; CI on Python 3.11 and 3.13 |
+| Golden suite | 10/10 at the last live run (3 model fixtures, 7 hedge units); 13 deterministic judge cases since 2026-10-27 |
 
 **Headline numbers (judge j8, round-1 samples, hand-labeled):**
 - **Bridge fixture**, v11.1 control of 2026-10-26 (19 runs): 30 of 32
@@ -29,8 +29,19 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 
 ## In progress
 
-Nothing is registered. The model bake-offs closed on 2026-10-27 with
-both current models kept (see below). The shipped prompt is v11.1.
+- **Twenty-fifth measurement, scored offline:** the engineer judged by
+  the round-1 verdicts it causes, paired with the laguna control. With
+  `gpt-oss:20b` as the engineer, its blockers still rejecting, known
+  bugs approved in round 1 fall from 5 to 3 of 22 pairs, with no added
+  wrong reject. That earns a confirmation sample (GPU, not yet run).
+  Making engineer blockers concerns instead fails.
+- **Corpus v2, built (ADR-0002, "Corpus v2"):** seven bug fixtures that
+  are forward diffs of the commits that introduced each known bug,
+  without the fix comments v1's reverse diffs leak; 11 known bugs. Its
+  laguna baseline has not run yet. `corpus` and `replay --corpus` take
+  `--manifest docs/fixtures/corpus_v2.json`.
+
+The shipped prompt is v11.1.
 
 ## Recently closed
 
@@ -46,6 +57,7 @@ and each is in ADR-0002 in full.
 | 21st | Per-file layer notes for multi-file diffs (#8) | Not shipped: bridge false positives rose (0.11 → 0.33 per review, against a bar of 0.21); invariant-elsewhere unchanged |
 | 22nd | Another local reviewer model: `qwen3-coder:30b`, `nemotron-3.5-lightning:30b` | Closed: nemotron ran every first attempt to the output cap; qwen stored almost nothing (mean recall 0.09 against laguna's 0.42, no false positives) |
 | 23rd | `gpt-oss:20b` as the engineer instead of `gemma4:12b` (the engineer's first measurement) | Not shipped: it found more known bugs (recall in any item 0.74 against 0.51) but raised 0.24 false blockers per review against a bar of 0.10 |
+| 24th | `gpt-oss:20b` as the reviewer | Not shipped: recall 0.31 against laguna's 0.44, false positives 0.73 times laguna's; the union of both models raises recall to 0.56 but false positives to 0.74 per review |
 | Runaway diagnostic | Abort a reply whose thinking repeats (#19) | Closed: of 3 runaways with whole thinking, 1 looped and 2 kept reopening their conclusion; no repetition threshold separates them from long accepted replies, and an early retry at a token budget cuts more valid findings than false ones |
 
 ## Known limitations
@@ -91,10 +103,10 @@ Numbers are stable (code comments and the ADRs cite them) and never
 reused. Done items are removed; their history is in
 [history.md](docs/history.md).
 
-**Suggested order:** #14 structured outputs → #18 early reject → the
-rest. Not registered: `gpt-oss:20b` as a reviewer arm. As the engineer
-it stored blockers with recall close to laguna's and fewer false
-positives, with no evidence check (ADR-0002, twenty-third measurement). The call-site
+**Suggested order:** the twenty-fifth's confirmation sample
+(`gpt-oss:20b` as the engineer, on corpus v1) and a registered laguna
+baseline on corpus v2, both on the GPU → #14 structured outputs → #18
+early reject → the rest. The call-site
 caveat (code review finding 9) rides on the next pack change rather
 than being measured alone.
 
@@ -149,7 +161,9 @@ than being measured alone.
 
 1. **Verdicts are derived, never self-reported.** The judge reads the
    blocker, question and concern arrays. A change to the judge or the
-   convergence rule bumps `JUDGE_VERSION`.
+   convergence rule bumps `JUDGE_VERSION`, and keeps the judge cases
+   (`docs/fixtures/judge_cases.json`) passing or updates their expected
+   outcomes with it.
 2. **Fail closed.** Parse failures, schema violations, timeouts, empty
    or oversized input end in manual review, never in approval.
 3. **Blockers must be demonstrable.** A hedged blocker is a question,

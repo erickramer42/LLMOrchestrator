@@ -1,0 +1,400 @@
+{
+  "index_version": "idx_20261027_160616",
+  "source_commit": "8ffbf197a4f2edb40ef1c53b75bef41b72f89aa2",
+  "source_dirty": false,
+  "llm_summaries": false,
+  "summary_model": null,
+  "summary_prompt_version": null,
+  "files": [
+    {
+      "path": ".github/dependabot.yml",
+      "purpose": "CI workflow",
+      "layer": "meta",
+      "blob": "3e981de2fe3800f6e4d32c65a7c3b567c0930039"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "purpose": "CI workflow",
+      "layer": "meta",
+      "blob": "aa3544223f0f024bc4681248a6c09be75d7026e0"
+    },
+    {
+      "path": ".github/workflows/scorecard.yml",
+      "purpose": "CI workflow",
+      "layer": "meta",
+      "blob": "8741f095dd44cde0140899dc5a87d3f0632e8e34"
+    },
+    {
+      "path": "app/CMakeLists.txt",
+      "purpose": "Build configuration",
+      "layer": "meta",
+      "blob": "021b7c6e2d458e88b6cd82d6bd749f6ce4570364"
+    },
+    {
+      "path": "app/main.cpp",
+      "purpose": "",
+      "layer": "bridge",
+      "blob": "b291b7c24481de8898f0e7b6149d8dd1ce52fae4"
+    },
+    {
+      "path": "app/qml/DashboardPage.qml",
+      "purpose": "",
+      "layer": "app",
+      "blob": "b050c02a71fed700971cf117bd12e0552cc68624"
+    },
+    {
+      "path": "app/qml/HomePage.qml",
+      "purpose": "Logo block \u2014 animated equalizer mark",
+      "layer": "app",
+      "blob": "3ced8a9bebbb7781a37cc8287188644c7e851228"
+    },
+    {
+      "path": "app/qml/LogPage.qml",
+      "purpose": "Toolbar: stats + actions",
+      "layer": "app",
+      "blob": "22ebc909ce55120284c81085871594ea7ada8397"
+    },
+    {
+      "path": "app/qml/Main.qml",
+      "purpose": "Sidebar (\u2265720px)",
+      "layer": "app",
+      "blob": "6d111c42a961a26b0d24502028f37e09a2c5da2c"
+    },
+    {
+      "path": "app/qml/NavButton.qml",
+      "purpose": "",
+      "layer": "app",
+      "blob": "ed42445d1c7352d1c257f0ed986ba2caf3061069"
+    },
+    {
+      "path": "app/qml/SettingsPage.qml",
+      "purpose": "",
+      "layer": "app",
+      "blob": "a4f0791923cf6599c38e0068799bd9764a4d9892"
+    },
+    {
+      "path": "app/qml/Theme.qml",
+      "purpose": "Central palette - dark mode",
+      "layer": "app",
+      "blob": "bd80e81206955c685c29d676f992e99732de50a0"
+    },
+    {
+      "path": "app/qml/ThemedButton.qml",
+      "purpose": "Expose so callers can tweak if needed",
+      "layer": "app",
+      "blob": "8d84e22c082bd08489e9f91ec7673ee1269c3eb4"
+    },
+    {
+      "path": "app/qttunebridge.cpp",
+      "purpose": "FrameListModel",
+      "layer": "bridge",
+      "blob": "1c195f8a60404d4ba769df733e92b1e558325d41"
+    },
+    {
+      "path": "app/qttunebridge.h",
+      "purpose": "File/layer: app/qttunebridge.h | C++17, Qt 6.12+, MSVC/Clang/GCC",
+      "layer": "bridge",
+      "blob": "90b7bc6171c9ad0192c269f1c213aba119f2c5a3"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "purpose": "Build configuration",
+      "layer": "meta",
+      "blob": "489f332ca49addf6c000d518f99c80fdb6700368"
+    },
+    {
+      "path": "core/CMakeLists.txt",
+      "purpose": "Build configuration",
+      "layer": "meta",
+      "blob": "9286bd78e122746b7311c74f18f60db62ba88a2c"
+    },
+    {
+      "path": "core/include/qttune/core.h",
+      "purpose": "File/layer: core/include/qttune/core.h | C ABI, public interface",
+      "layer": "core",
+      "blob": "1d45bda75d6c0c2ac6ae2f356b1c50b172a55ede"
+    },
+    {
+      "path": "core/include/qttune/internal.h",
+      "purpose": "",
+      "layer": "core",
+      "blob": "d6caf810288f8f3191696130c4ec62510dad1252"
+    },
+    {
+      "path": "core/include/qttune/signal_sets.h",
+      "purpose": "",
+      "layer": "core",
+      "blob": "a34fdf6317f583b3c290640e6c436f6989cd971c"
+    },
+    {
+      "path": "core/include/qttune/signals.h",
+      "purpose": "",
+      "layer": "core",
+      "blob": "0bf080ea815df0d471d9cfd4cd36bd422caa795d"
+    },
+    {
+      "path": "core/src/core.cpp",
+      "purpose": "File/layer: core/src/core.cpp | C++17, Qt-free, CI-validated headless build",
+      "layer": "core",
+      "blob": "475f6e23f6f78450f16b59bfd16c906b0b2860eb"
+    },
+    {
+      "path": "core/src/mock_transport.cpp",
+      "purpose": "",
+      "layer": "core",
+      "blob": "c1c205c0f2ffa38319488472cae9598f9aea5de5"
+    },
+    {
+      "path": "core/src/session.h",
+      "purpose": "",
+      "layer": "core",
+      "blob": "995c78b7416ef85b25be9f958968494958ebb98f"
+    },
+    {
+      "path": "core/src/signal_sets.cpp",
+      "purpose": "",
+      "layer": "core",
+      "blob": "64c1df902827ffd69bd1e588b835a5b09b2b84a7"
+    },
+    {
+      "path": "core/src/signals.cpp",
+      "purpose": "",
+      "layer": "core",
+      "blob": "427c5ad6f4f196a4aa633a1f7a7ee562d0b79f61"
+    },
+    {
+      "path": "DISCLAIMER.md",
+      "purpose": "Configuration or docs",
+      "layer": "meta",
+      "blob": "081f97925b8511599a6cf3171f539395994bc837"
+    },
+    {
+      "path": "README.md",
+      "purpose": "Project documentation",
+      "layer": "meta",
+      "blob": "650b5c96a6f774e90ff26481a57b0639a5682470"
+    },
+    {
+      "path": "SECURITY.md",
+      "purpose": "Configuration or docs",
+      "layer": "meta",
+      "blob": "0ffdde988b6c57de4067cc3f1030015e93122e7e"
+    },
+    {
+      "path": "STATUS.md",
+      "purpose": "Configuration or docs",
+      "layer": "meta",
+      "blob": "88e38948f398ddedd76b88aaf20d8e99fc1448fb"
+    },
+    {
+      "path": "tests/CMakeLists.txt",
+      "purpose": "Test suite",
+      "layer": "meta",
+      "blob": "8b88af540fe858d7d3a23cc8f0e12ff986a56a1f"
+    },
+    {
+      "path": "tests/test_bridge.cpp",
+      "purpose": "Double connect = idempotent success, no new session",
+      "layer": "bridge",
+      "blob": "eb9910b12ac78494da1c3e69cfc84ed00e7f2b4c"
+    },
+    {
+      "path": "tests/test_core.cpp",
+      "purpose": "File/layer: tests/test_core.cpp | GTest-based, CI-validated",
+      "layer": "unknown",
+      "blob": "1fb93250d87a638d58244532ac776c242f6591f9"
+    },
+    {
+      "path": "tests/test_signals.cpp",
+      "purpose": "",
+      "layer": "unknown",
+      "blob": "e16ad8fdc7dfeb5aedf7e415a6a094b2272aa0cf"
+    }
+  ],
+  "types": [
+    {
+      "name": "qttune_session_t",
+      "kind": "opaque",
+      "members": [],
+      "decl": "typedef struct qttune_session qttune_session_t;",
+      "doc": "Forward-declared opaque handle types",
+      "def_file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "qttune_frame_t",
+      "kind": "struct",
+      "members": [
+        "timestamp_us",
+        "channel_id",
+        "data",
+        "data_length",
+        "is_extended",
+        "rsvd"
+      ],
+      "decl": "typedef struct {\n    uint64_t timestamp_us;    /* Microseconds since epoch or session start */\n    uint32_t channel_id;      /* Logical channel (e.g., CAN bus ID) */\n    uint8_t data[64];         /* Max CAN-FD payload size */\n    uint8_t data_length;      /* Actual bytes used (0-64) */\n    uint8_t is_extended;      /* Extended frame flag (29-bit address) */\n    uint8_t rsvd[3];          /* Padding for alignment */\n} qttune_frame_t;",
+      "doc": "Frame structure - POD only, no pointers except length",
+      "def_file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "qttune_frame_callback_t",
+      "kind": "function_pointer",
+      "members": [],
+      "decl": "typedef void (*qttune_frame_callback_t)(\n    const qttune_frame_t* frame,\n    void* user_data\n);",
+      "doc": "Callback function signature - called from transport thread",
+      "def_file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "qttune_status_t",
+      "kind": "enum",
+      "members": [
+        "QT_OK",
+        "QT_ERR_NULL_ARGUMENT",
+        "QT_ERR_NOT_IMPLEMENTED",
+        "QT_ERR_NO_TRANSPORT",
+        "QT_ERR_OUT_OF_MEMORY",
+        "QT_ERR_SESSION_CLOSED",
+        "QT_ERR_ALREADY_REGISTERED"
+      ],
+      "values": {
+        "QT_OK": "0",
+        "QT_ERR_NULL_ARGUMENT": "1",
+        "QT_ERR_NOT_IMPLEMENTED": "2",
+        "QT_ERR_NO_TRANSPORT": "3",
+        "QT_ERR_OUT_OF_MEMORY": "4",
+        "QT_ERR_SESSION_CLOSED": "5",
+        "QT_ERR_ALREADY_REGISTERED": "6"
+      },
+      "decl": "typedef enum {\n    QT_OK = 0,\n    QT_ERR_NULL_ARGUMENT = 1,\n    QT_ERR_NOT_IMPLEMENTED = 2,\n    QT_ERR_NO_TRANSPORT = 3,\n    QT_ERR_OUT_OF_MEMORY = 4,\n    QT_ERR_SESSION_CLOSED = 5,\n    QT_ERR_ALREADY_REGISTERED = 6   /* Kept for backward compat if needed */\n} qttune_status_t;",
+      "doc": "Status codes - append-only evolution for ABI stability",
+      "def_file": "core/include/qttune/core.h"
+    },
+    {
+      "name": "QttuneSignalType",
+      "kind": "enum",
+      "members": [
+        "QTTUNE_SIGNAL_TYPE_UINT8",
+        "QTTUNE_SIGNAL_TYPE_UINT16",
+        "QTTUNE_SIGNAL_TYPE_UINT32",
+        "QTTUNE_SIGNAL_TYPE_INT8",
+        "QTTUNE_SIGNAL_TYPE_INT16",
+        "QTTUNE_SIGNAL_TYPE_INT32",
+        "QTTUNE_SIGNAL_TYPE_FLOAT32",
+        "QTTUNE_SIGNAL_TYPE_STRING",
+        "QTTUNE_SIGNAL_TYPE_MANUF_START"
+      ],
+      "values": {
+        "QTTUNE_SIGNAL_TYPE_UINT8": "0",
+        "QTTUNE_SIGNAL_TYPE_UINT16": "1",
+        "QTTUNE_SIGNAL_TYPE_UINT32": "2",
+        "QTTUNE_SIGNAL_TYPE_INT8": "3",
+        "QTTUNE_SIGNAL_TYPE_INT16": "4",
+        "QTTUNE_SIGNAL_TYPE_INT32": "5",
+        "QTTUNE_SIGNAL_TYPE_FLOAT32": "6",
+        "QTTUNE_SIGNAL_TYPE_STRING": "7",
+        "QTTUNE_SIGNAL_TYPE_MANUF_START": "256"
+      },
+      "decl": "typedef enum {\n    QTTUNE_SIGNAL_TYPE_UINT8   = 0,\n    QTTUNE_SIGNAL_TYPE_UINT16  = 1,\n    QTTUNE_SIGNAL_TYPE_UINT32  = 2,\n    QTTUNE_SIGNAL_TYPE_INT8    = 3,\n    QTTUNE_SIGNAL_TYPE_INT16   = 4,\n    QTTUNE_SIGNAL_TYPE_INT32   = 5,\n    QTTUNE_SIGNAL_TYPE_FLOAT32 = 6,\n    QTTUNE_SIGNAL_TYPE_STRING  = 7,  /* Reserved */\n    QTTUNE_SIGNAL_TYPE_MANUF_START = 256\n} QttuneSignalType;",
+      "doc": null,
+      "def_file": "core/include/qttune/signals.h"
+    },
+    {
+      "name": "QttuneSignalDef",
+      "kind": "struct",
+      "members": [
+        "id",
+        "name",
+        "type",
+        "start_byte",
+        "num_bytes",
+        "bit_offset",
+        "bit_length",
+        "scale",
+        "offset",
+        "unit",
+        "decimal_places",
+        "flags",
+        "reserved"
+      ],
+      "decl": "typedef struct {\n    uint16_t id;\n    char name[32];\n    QttuneSignalType type;\n    uint8_t start_byte;\n    uint8_t num_bytes;\n    uint8_t bit_offset;\n    uint8_t bit_length;\n    float scale;\n    float offset;\n    char unit[16];\n    uint8_t decimal_places;\n    uint32_t flags;\n    uint32_t reserved[3];\n} QttuneSignalDef;",
+      "doc": null,
+      "def_file": "core/include/qttune/signals.h"
+    },
+    {
+      "name": "QttuneSignalSet",
+      "kind": "struct",
+      "members": [
+        "version",
+        "count",
+        "defs"
+      ],
+      "decl": "typedef struct {\n    uint32_t version;\n    uint32_t count;\n    const QttuneSignalDef* defs;\n} QttuneSignalSet;",
+      "doc": "Single canonical definition \u2014 no duplicates",
+      "def_file": "core/include/qttune/signals.h"
+    }
+  ],
+  "constants": [
+    {
+      "name": "MaxFrames",
+      "value": "10000",
+      "kind": "const",
+      "file": "app/qttunebridge.h"
+    },
+    {
+      "name": "MOCK_SIG_RPM_ID",
+      "value": "1001",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "MOCK_SIG_COOLANT_ID",
+      "value": "2001",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "MOCK_SIG_SPEED_ID",
+      "value": "3001",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "MOCK_SIG_THROTTLE_ID",
+      "value": "4001",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "MOCK_SIG_IAT_ID",
+      "value": "5001",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "MOCK_SIG_LOAD_ID",
+      "value": "6001",
+      "kind": "define",
+      "file": "core/include/qttune/signal_sets.h"
+    },
+    {
+      "name": "DEFAULT_FRAME_INTERVAL_MS",
+      "value": "50",
+      "kind": "const",
+      "file": "core/src/mock_transport.cpp"
+    },
+    {
+      "name": "kMaxFrames",
+      "value": "20",
+      "kind": "const",
+      "file": "tests/test_core.cpp"
+    }
+  ],
+  "callsites": [
+    {
+      "file": "app/qttunebridge.cpp",
+      "line": 199,
+      "snippet": "QMetaObject::invokeMethod(self, [self, copy]() { calls: handleFrameInternal }, Qt::QueuedConnection);",
+      "connection": "Qt::QueuedConnection",
+      "doc": null
+    }
+  ]
+}

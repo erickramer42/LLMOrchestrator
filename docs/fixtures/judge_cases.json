@@ -1,0 +1,214 @@
+{
+  "about": "Judge unit cases: reviewer blockers copied verbatim from the accepted replies (telemetry 'reply') of labeled round-1 records, each judged alone as a debate judges it (evidence check and claim-quote linkage, then the hedge check) against its fixture's diff and index. 'expected' is where the blocker ends under judge j8-claim-quote-linkage: kept, quote (evidence check), link (linkage) or hedge. 'label' and 'valid' come from eval_harness/corpus_labels.json or labels.json. Cases marked 'known limit' or 'known cost' pin what the judge gets wrong today; a judge change that fixes one updates 'expected' here with its JUDGE_VERSION, never silently. 'bridge' is docs/fixtures/qttune_bridge_refactor.diff with the committed repo_context.json; other fixtures are corpus ids (docs/fixtures/corpus.json).",
+  "judge_version": "j8-claim-quote-linkage",
+  "cases": [
+    {
+      "fixture": "decode_length_b47687c",
+      "record": "round1_20261027_143311_df9425",
+      "key": "#2",
+      "label": [
+        "decode_length_8"
+      ],
+      "valid": true,
+      "expected": "kept",
+      "why": "a defect on one post-change line, quoted from it",
+      "blocker": {
+        "claim": "In handleFrameInternal, the code assumes a fixed 8-byte CAN payload length when calling qttune_decode_signal, which is incorrect for CAN-FD frames that can have payloads longer than 8 bytes.",
+        "file": "app/qttunebridge.cpp",
+        "quote": "if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {"
+      }
+    },
+    {
+      "fixture": "backoff_clamp_d1c20c0",
+      "record": "round1_20261027_131937_a5bf5e",
+      "key": "#1",
+      "label": [
+        "backoff_overshoot"
+      ],
+      "valid": true,
+      "expected": "kept",
+      "why": "a wrong condition, quoted from the added line",
+      "blocker": {
+        "claim": "The inlined backoff calculation has an incorrect condition that allows backoff_ms to exceed J2534_BACKOFF_CAP_MS before being clamped, changing the timing behavior from the original j2534_backoff_next function",
+        "file": "core/src/j2534_transport.cpp",
+        "quote": "backoff_ms = (backoff_ms < J2534_BACKOFF_CAP_MS)\n                            ? backoff_ms * 2 : J2534_BACKOFF_CAP_MS;"
+      }
+    },
+    {
+      "fixture": "poll_override_90020bd",
+      "record": "round1_20261027_132426_5cd231",
+      "key": "#1",
+      "label": [
+        "invariant-elsewhere"
+      ],
+      "valid": false,
+      "expected": "kept",
+      "why": "known limit: a quote proves the line exists, not that the claim holds; parse_query enforces the channel elsewhere",
+      "blocker": {
+        "claim": "Hardcoded channel 0 in build_mode01_request breaks C ABI channel selection - the core module must not assume channel 0 exists or is appropriate for all PIDs",
+        "file": "core/src/j2534_transport.cpp",
+        "quote": "build_mode01_request(req, t->chans[0].tx_id, t->poll_pid);"
+      }
+    },
+    {
+      "fixture": "ecu_support_7d297b4",
+      "record": "round1_20261027_142216_885fb4",
+      "key": "#1",
+      "label": [
+        "thread-confusion"
+      ],
+      "valid": false,
+      "expected": "kept",
+      "why": "known limit: a race claimed on state only the GUI thread touches",
+      "blocker": {
+        "claim": "Thread-unsafe access to m_supportGeneration array without synchronization",
+        "file": "app/qttunebridge.cpp",
+        "quote": "    for (uint32_t c = 0; c < m_channelCount; ++c) {\n        ecuio_channel_support_t s{};\n        if (ecuio_session_get_channel_support(m_session, c, &s) != ECUIO_OK ||\n            s.generation == m_supportGeneration[c]) {\n            continue;\n        }\n        m_supportGeneration[c] = s.generation;\n        emit logMessage(channelSupportText(s));\n    }"
+      }
+    },
+    {
+      "fixture": "trusted_count_6420f09",
+      "record": "round1_20261027_132117_0c4009",
+      "key": "#e1",
+      "label": [
+        "count_under_error"
+      ],
+      "valid": true,
+      "expected": "quote",
+      "why": "known cost: a removal-caused bug quoted from the removed line",
+      "blocker": {
+        "claim": "Removing the trusted count validation breaks the safety guard against vendor bugs that leave pNumMsgs untouched on error",
+        "file": "core/src/j2534_loader.cpp",
+        "quote": "long rc = handle->read_msgs(channel, &msg, &num, timeout_ms);\n    num = qttune_trusted_count(rc, num);"
+      }
+    },
+    {
+      "fixture": "connect_start_4a86231",
+      "record": "round1_20261027_134902_9ad3b4",
+      "key": "#e2",
+      "label": [
+        "other-fp"
+      ],
+      "valid": false,
+      "expected": "quote",
+      "why": "a removed comment quoted as current code",
+      "blocker": {
+        "claim": "connectCoreOnly now starts the session internally, but the comment claims 'safe on ANY thread' - starting a session is not thread-safe without the GUI thread's state being ready",
+        "file": "app/qttunebridge.cpp",
+        "quote": "*// Pure-core half: safe on ANY thread. Creates, registers, starts. On"
+      }
+    },
+    {
+      "fixture": "poll_override_90020bd",
+      "record": "round1_20261026_022111_277842",
+      "key": "#e1",
+      "label": [
+        "invariant-elsewhere"
+      ],
+      "valid": false,
+      "expected": "link",
+      "why": "the claim names chan_count, which its quote's hunk does not contain",
+      "blocker": {
+        "claim": "Worker unconditionally accesses t->chans[0] for poll requests without verifying chan_count > 0. This is undefined behavior if chan_count is 0.",
+        "file": "core/src/j2534_transport.cpp",
+        "quote": "build_mode01_request(req, t->chans[0].tx_id, t->poll_pid);"
+      }
+    },
+    {
+      "fixture": "connect_start_4a86231",
+      "record": "round1_20261026_024406_fa3031",
+      "key": "#e1",
+      "label": [
+        "start_before_gui_owns"
+      ],
+      "valid": true,
+      "expected": "link",
+      "why": "known cost: onFrame lives in another hunk than the quoted lambda",
+      "blocker": {
+        "claim": "Use-after-free potential in onFrame callback: session started before GUI thread ownership transfer allows frames to arrive and call onFrame while bridge may be destroyed",
+        "file": "app/qttunebridge.cpp",
+        "quote": "QMetaObject::invokeMethod(this, [this, uri, err, session]() {"
+      }
+    },
+    {
+      "fixture": "connect_start_4a86231",
+      "record": "round1_20261027_134951_1406df",
+      "key": "#h1",
+      "label": [
+        "start_before_gui_owns"
+      ],
+      "valid": true,
+      "expected": "hedge",
+      "why": "by design: a hedged claim is a question even when true",
+      "blocker": {
+        "claim": "Potential use-after-free: lambda captures session by value but the destructor may run before the queued lambda executes, and there's no mechanism to cancel the queued call",
+        "file": "app/qttunebridge.cpp",
+        "quote": "QMetaObject::invokeMethod(this, [this, uri, err, session]() {"
+      }
+    },
+    {
+      "fixture": "ecu_support_7d297b4",
+      "record": "round1_20261027_142216_885fb4",
+      "key": "#h1",
+      "label": [
+        "thread-confusion"
+      ],
+      "valid": false,
+      "expected": "hedge",
+      "why": "'potentially read concurrently' is hedged",
+      "blocker": {
+        "claim": "Race condition: m_supportGeneration written in applyConnectedState while potentially read concurrently by pollChannelSupport",
+        "file": "app/qttunebridge.cpp",
+        "quote": "    for (uint32_t& g : m_supportGeneration) {\n        g = 0;\n    }"
+      }
+    },
+    {
+      "fixture": "bridge",
+      "record": "round1_20261026_193001_ec4711",
+      "key": "#1",
+      "label": [
+        "race"
+      ],
+      "valid": true,
+      "expected": "kept",
+      "why": "the data race, quoted from post-change code",
+      "blocker": {
+        "claim": "Thread safety violation: m_currentFrameCount is accessed from worker thread without atomic protection",
+        "file": "app/qttunebridge.cpp",
+        "quote": "if (self->m_currentFrameCount >= FrameListModel::MaxFrames) {\n        self->m_droppedFrames.fetch_add(1, std::memory_order_relaxed);\n        return;\n    }"
+      }
+    },
+    {
+      "fixture": "bridge",
+      "record": "round1_20261026_193241_00c568",
+      "key": "#2",
+      "label": [
+        "gate"
+      ],
+      "valid": true,
+      "expected": "kept",
+      "why": "the removed in-flight bound, quoted from the cumulative check that replaced it",
+      "blocker": {
+        "claim": "Backpressure logic is broken: the check against m_currentFrameCount does not prevent queuing - there is no atomic increment before invokeMethod to reserve the slot",
+        "file": "app/qttunebridge.cpp",
+        "quote": "if (self->m_currentFrameCount >= FrameListModel::MaxFrames) {\n        self->m_droppedFrames.fetch_add(1, std::memory_order_relaxed);\n        return;\n    }\n\n    const qttune_frame_t copy = *frame;\n\n    QMetaObject::invokeMethod(self, [self, copy]() {\n        self->handleFrameInternal(&copy);\n    }, Qt::QueuedConnection);"
+      }
+    },
+    {
+      "fixture": "bridge",
+      "record": "round1_20261026_191413_f92ee9",
+      "key": "#e1",
+      "label": [
+        "deletion"
+      ],
+      "valid": false,
+      "expected": "quote",
+      "why": "the deletion class: code the diff removes, quoted as current",
+      "blocker": {
+        "claim": "Thread safety violation: SignalListModel::updateValues() modifies shared state without synchronization from arbitrary caller thread",
+        "file": "app/qttunebridge.cpp",
+        "quote": "void SignalListModel::updateValues(const std::vector<std::pair<uint16_t, float>>& values)\n{\n    if (m_entries.empty() || values.empty()) return;\n\n    int firstRow = -1;\n    int lastRow = -1;\n    for (const auto& pair : values) {\n        for (size_t i = 0; i < m_entries.size(); ++i) {\n            Entry& e = m_entries[i];\n            if (e.id == pair.first && e.subscribed) {\n                e.value = pair.second;\n                if (firstRow < 0 || static_cast<int>(i) < firstRow) firstRow = static_cast<int>(i);\n                if (static_cast<int>(i) > lastRow) lastRow = static_cast<int>(i);\n            }\n        }\n    }\n    if (firstRow >= 0) {\n        emit dataChanged(index(firstRow), index(lastRow), {ValueRole});\n    }\n}"
+      }
+    }
+  ]
+}

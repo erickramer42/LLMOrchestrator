@@ -579,6 +579,8 @@ def main() -> None:
     parser.add_argument("--corpus", action="store_true",
                         help="Group records by corpus fixture, each judged "
                              "against its own diff, scored with corpus labels")
+    parser.add_argument("--manifest", help="With --corpus: the corpus manifest "
+                                           "(default: docs/fixtures/corpus.json)")
     parser.add_argument("--labels", help="Labels file (default: labels.json, "
                                          "or corpus_labels.json with --corpus)")
     parser.add_argument("--index", help="With --diff: the index whose type and "
@@ -591,12 +593,15 @@ def main() -> None:
         parser.error("need 1 <= k <= n")
     if bool(args.corpus) == bool(args.diff):
         parser.error("give --diff or --corpus, not both")
+    if args.manifest and not args.corpus:
+        parser.error("--manifest goes with --corpus")
     sys.stdout.reconfigure(encoding="utf-8")
     labels = args.labels or str(CORPUS_LABELS_PATH if args.corpus else LABELS_PATH)
     label_doc = json.loads(Path(labels).read_text(encoding="utf-8"))
     if args.corpus:
-        from eval_harness.corpus import load_manifest
-        print_corpus_report(replay_corpus(load_records(args.records), load_manifest(),
+        from eval_harness.corpus import MANIFEST, load_manifest
+        manifest = load_manifest(Path(args.manifest or MANIFEST))
+        print_corpus_report(replay_corpus(load_records(args.records), manifest,
                                           label_doc, args.n, args.k))
         return
     from retrieval import CONTEXT_PATH

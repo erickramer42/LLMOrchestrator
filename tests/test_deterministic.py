@@ -2171,6 +2171,46 @@ class LinkageTests(unittest.TestCase):
         self.assertGreater(checked, 100)
 
 
+class JudgeCaseTests(unittest.TestCase):
+    """The golden suite's judge cases (docs/fixtures/judge_cases.json)."""
+
+    def setUp(self):
+        self.cases = json.loads(golden_tests.JUDGE_CASES_PATH.read_text(
+            encoding="utf-8"))["cases"]
+
+    def test_judge_cases_still_pass(self):
+        results = golden_tests.run_judge_unit_tests()
+        self.assertEqual([(r["test_name"], r["outcome"]) for r in results
+                          if not r["test_passed"]], [])
+        self.assertEqual(len(results), 13)
+        # every outcome is pinned on a valid blocker and on a false one
+        self.assertEqual({(r["expected"], r["valid"]) for r in results},
+                         {(o, v) for o in ("kept", "quote", "link", "hedge")
+                          for v in (True, False)})
+
+    def test_judge_cases_are_verbatim_and_labeled(self):
+        # Like the hedge units' texts: each blocker is what a model wrote,
+        # and its label is the committed hand label.
+        corpus_labels = json.loads(corpus.LABELS_PATH.read_text(encoding="utf-8"))
+        bridge_labels = json.loads(replay.LABELS_PATH.read_text(encoding="utf-8"))
+        known_bugs = {b["id"] for f in corpus.load_manifest()["fixtures"]
+                      for b in f.get("known_bugs", [])}
+        for case in self.cases:
+            path = Path(REPO_ROOT, "coach_artifacts", f"measurement_{case['record']}.json")
+            if path.exists():
+                rec = json.loads(path.read_text(encoding="utf-8"))
+                reply = json.loads(rec["outputs"]["round_history"][0]
+                                   ["telemetry"]["reviewer"][0]["reply"])
+                self.assertIn(case["blocker"], reply["blockers"], case["record"])
+            if case["fixture"] == "bridge":
+                label = [bridge_labels["records"][case["record"]]["labels"][case["key"]]]
+                valid = label[0] in ("race", "gate")
+            else:
+                label = corpus_labels["records"][case["record"]]["labels"][case["key"]]
+                valid = any(t in known_bugs or t in corpus_labels["valid"] for t in label)
+            self.assertEqual((label, valid), (case["label"], case["valid"]), case["record"])
+
+
 # ============ runaway repetition (backlog #19) ============
 
 class RunawayTests(unittest.TestCase):
@@ -2366,16 +2406,19 @@ class CorpusTests(NoSleep):
         self._tmp = tempfile.TemporaryDirectory()
         os.chdir(self._tmp.name)  # measurement records land here
         self.manifest = corpus.load_manifest()
+        # v1 (reverse diffs of fixes) and v2 (forward diffs of the commits
+        # that introduced the bugs) are held to the same checks
+        self.manifests = [self.manifest, corpus.load_manifest(corpus.MANIFEST_V2)]
 
     def tearDown(self):
         os.chdir(self._cwd)
         self._tmp.cleanup()
 
     def test_manifest_names_existing_fixtures_with_unique_ids(self):
-        fixtures = self.manifest["fixtures"]
-        self.assertGreaterEqual(len(fixtures), 5)
-        self.assertEqual(len({f["id"] for f in fixtures}), len(fixtures))
-        for f in fixtures:
+        for fixtures in (m["fixtures"] for m in self.manifests):
+            self.assertGreaterEqual(len(fixtures), 5)
+            self.assertEqual(len({f["id"] for f in fixtures}), len(fixtures))
+        for f in (f for m in self.manifests for f in m["fixtures"]):
             self.assertTrue(f["diff_path"].is_file(), f["id"])
             self.assertTrue(f["index_path"].is_file(), f["id"])
             self.assertIn(f["kind"], ("bug", "clean"))
@@ -2390,7 +2433,7 @@ class CorpusTests(NoSleep):
 
     def test_every_fixture_is_reviewable_from_its_own_index(self):
         # No model: the input check and the base check run in _prepare.
-        for f in self.manifest["fixtures"]:
+        for f in (f for m in self.manifests for f in m["fixtures"]):
             row = corpus.describe(f)
             self.assertIsNone(row["refused"], f["id"])
             self.assertIsNone(row["pack_error"], f["id"])
@@ -2403,7 +2446,7 @@ class CorpusTests(NoSleep):
     def test_known_bug_symbols_are_in_the_post_change_lines(self):
         # Recall is measurable only if a blocker about the bug can quote
         # post-change code; every bug has a symbol the reviewer can see.
-        for f in self.manifest["fixtures"]:
+        for f in (f for m in self.manifests for f in m["fixtures"]):
             diff = f["diff_path"].read_text(encoding="utf-8")
             post = " ".join(line[1:] for line in diff.splitlines()
                             if line[:1] in (" ", "+") and not line.startswith("+++"))
@@ -2609,9 +2652,10 @@ class CorpusTests(NoSleep):
 
     def test_committed_labels_cover_the_bake_off_records(self):
         # Stage 1 of the twenty-second (reviewer) and twenty-third (engineer)
-        # bake-offs, labeled before scoring, one pin per arm; the globs leave
-        # out Stage 0 (03*, 04*), and score_records drops the retried
-        # 120882, 8a757b and e6fef5.
+        # bake-offs and of the twenty-fourth (gpt-oss:20b as the reviewer),
+        # labeled before scoring, one pin per arm; the globs leave out
+        # Stage 0 (03*, 04*, 155605 to 160114), and score_records drops the
+        # retried 120882, 8a757b and e6fef5.
         arms = [
             (("measurement_round1_20261027_13*.json",
               "measurement_round1_20261027_14[01]*.json",
@@ -2623,6 +2667,11 @@ class CorpusTests(NoSleep):
               "measurement_engineer_20261027_14590*.json"), "auto_engineer", (35, 6, 5)),
             (("measurement_engineer_20261027_14592*.json",
               "measurement_engineer_20261027_15*.json"), "auto_engineer", (33, 29, 21)),
+            (("measurement_round1_20261027_160[4-9]*.json",
+              "measurement_round1_20261027_16[1-4]*.json",
+              "measurement_round1_20261027_165[0-4]*.json"), "reviewer", (35, 44, 29)),
+            (("measurement_round1_20261027_165[5-9]*.json",
+              "measurement_round1_20261027_17*.json"), "reviewer", (35, 27, 16)),
         ]
         for globs, role, expected in arms:
             records = sorted(p for g in globs

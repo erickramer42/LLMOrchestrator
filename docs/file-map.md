@@ -16,7 +16,7 @@ together, see [design.md](design.md); for the current versions, see
 | `diff_reader.py` | The one unified-diff reader: `read_diff`, `diff_paths`, `base_blobs`, and the identifier helpers (`IDENT`, `code_like`) the judge and retrieval share. Used by the evidence check, retrieval, its base check and layer mapping. |
 | `reviewer_prompt.py` | The agents' system prompts and `PROMPT_VERSION`, with a comment per version on what changed and whether it shipped. |
 | `file_metadata.py` | File path → layer (core, bridge, app, unknown), and the layer notes the transcript carries. |
-| `golden_tests.py` | The golden suite: 3 live-model fixtures, reviewed through `debate.review_round1`, plus 7 deterministic hedge units taken from production blocker texts. |
+| `golden_tests.py` | The golden suite: 3 live-model fixtures, reviewed through `debate.review_round1`, plus 7 deterministic hedge units taken from production blocker texts and the judge cases. |
 | `review_fixtures.py` | The code snippets the golden suite and the bake-off share. Add a fixture rather than edit one. |
 
 **Dependency direction (acyclic):** `reviewer_prompt`, `file_metadata`,
@@ -59,6 +59,8 @@ together, see [design.md](design.md); for the current versions, see
 |---|---|
 | `docs/fixtures/qttune_bridge_refactor.diff` | The bridge fixture: the reverse patch of QtTune `e0c4c31`. Its post-state is QtTune `8ffbf19`, which has two known bugs: the `m_currentFrameCount` race and the in-flight gate that freezes past 10,000 frames. |
 | `docs/fixtures/qttune_core_e08b455.h` | QtTune's `core.h` at `e08b455`, the clean header behind the probe logs and header review 194320. |
+| `docs/fixtures/judge_cases.json` | The golden suite's judge cases: 13 reviewer blockers copied verbatim from labeled records (corpus and bridge), each with its hand label and the outcome judge j8 gives it alone: kept, quote, link or hedge. Valid and false blockers for each outcome, including the known limits (invariant-elsewhere and thread-confusion claims kept) and costs (removal bugs demoted). |
+| `docs/fixtures/corpus_v2.json`, `docs/fixtures/corpus_v2/<id>/` | Corpus v2 (ADR-0002, "Corpus v2"): seven bug fixtures that are forward diffs of the commits that introduced each known bug, scoped to the bug's file when the commit is over the input limit, each with the `--no-llm` index of its parent; the proposal is the commit subject. The two clean fixtures are v1's. |
 | `docs/fixtures/corpus.json` | The corpus manifest: per fixture the commit, direction, base and post-state revisions, proposal, known bugs with their symbols, and what the removed lines leak. |
 | `docs/fixtures/corpus/<id>/` | One corpus fixture: `change.diff` (tests, docs and `*.md` excluded) and the `--no-llm` index of its base. |
 | `coach_artifacts/decision_debate_*.json` | Debate records: the 2026-10-07 baseline (`203917`), the v1 re-measurement (`014257`), the live-loop control (`170208`), the context-pack pilot and three scored runs (`201540`, `203802`, `204845`, `210548`), the header review (`194320`), and seven telemetry runs from 2026-10-22. |

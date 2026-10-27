@@ -1,0 +1,302 @@
+{
+  "version": 2,
+  "built": "2026-10-27",
+  "source_repo": "https://github.com/erickramer42/qttune",
+  "notes": [
+    "Bug fixtures are forward diffs of the commits that introduced each known bug (git diff <commit>^ <commit>), found by searching the history for the buggy code and checking that the bug is present in the commit's tree and absent before it. Unlike v1's reverse diffs of fixes, no removed line carries a fix's comment.",
+    "Each diff excludes tests/, docs/ and *.md. A commit over the input limit is scoped to the file(s) holding its bug ('scope'); a bug whose file alone is over the limit is left out (static_batch_replay), as is a bug whose cause is outside any reviewable diff (unsubscribed_rows_freeze: real gauges reading every row arrived as 60.8K of QML in 40e51ce).",
+    "The proposal is the commit's own subject line: what the author said the change does.",
+    "base_rev is the tree the diff applies to, and repo_context.json is its --no-llm index. post_rev is the commit; score claims against it. A real bug present in the post-state but not introduced by the diff is not a known bug of the fixture; label it as such.",
+    "The clean fixtures are v1's, unchanged apart from the proposal."
+  ],
+  "fixtures": [
+    {
+      "id": "backoff_tristate_808ee49",
+      "kind": "bug",
+      "direction": "forward",
+      "commit": "808ee49",
+      "subject": "feat(j2534): worker consumes timeout/hard-failure tri-state (#11)",
+      "base_rev": "105e2cb",
+      "post_rev": "808ee49",
+      "scope": "all source",
+      "diff": "docs/fixtures/corpus_v2/backoff_tristate_808ee49/change.diff",
+      "index": "docs/fixtures/corpus_v2/backoff_tristate_808ee49/repo_context.json",
+      "proposal": "feat(j2534): worker consumes timeout/hard-failure tri-state (#11)",
+      "known_bugs": [
+        {
+          "id": "backoff_overshoot",
+          "summary": "The cap is checked before the doubling, so 3200 ms doubles to 6400 ms, above the 5 s cap; the next wait is clamped only after one overshoot.",
+          "file": "core/src/j2534_transport.cpp",
+          "symbols": [
+            "backoff_ms",
+            "J2534_BACKOFF_CAP_MS",
+            "6400",
+            "overshoot"
+          ]
+        }
+      ],
+      "leak": "None: a forward diff. The introducing commit is whole; it touches one file."
+    },
+    {
+      "id": "loader_count_0b43261",
+      "kind": "bug",
+      "direction": "forward",
+      "commit": "0b43261",
+      "subject": "refactor(surrogate): retire shared ring, single-thread child over pipe",
+      "base_rev": "c5cc6f7",
+      "post_rev": "0b43261",
+      "scope": [
+        "core/src/j2534_loader.cpp"
+      ],
+      "diff": "docs/fixtures/corpus_v2/loader_count_0b43261/change.diff",
+      "index": "docs/fixtures/corpus_v2/loader_count_0b43261/repo_context.json",
+      "proposal": "refactor(surrogate): retire shared ring, single-thread child over pipe",
+      "known_bugs": [
+        {
+          "id": "count_under_error",
+          "summary": "read_frame now checks the count before the status: a read that returns a nonzero count under a hard-error status is delivered as a frame, so a vendor that leaves pNumMsgs untouched on error makes a zero-filled message read as a delivered frame and a healthy link.",
+          "file": "core/src/j2534_loader.cpp",
+          "symbols": [
+            "num",
+            "rc",
+            "read_msgs",
+            "pNumMsgs",
+            "status"
+          ]
+        }
+      ],
+      "leak": "None: a forward diff. Scoped to core/src/j2534_loader.cpp: the whole commit is a 92.7K surrogate rewrite, over the input limit. Its other bug, static_batch_replay in surrogate/surrogate_main.cpp (41.5K for that file alone), is not in v2."
+    },
+    {
+      "id": "scheduler_8305420",
+      "kind": "bug",
+      "direction": "forward",
+      "commit": "8305420",
+      "subject": "feat: ADR-0013 slice 2 — obd2 profile with multi-PID scheduler",
+      "base_rev": "57d7fcf",
+      "post_rev": "8305420",
+      "scope": [
+        "core/src/j2534_transport.cpp"
+      ],
+      "diff": "docs/fixtures/corpus_v2/scheduler_8305420/change.diff",
+      "index": "docs/fixtures/corpus_v2/scheduler_8305420/repo_context.json",
+      "proposal": "feat: ADR-0013 slice 2 — obd2 profile with multi-PID scheduler",
+      "known_bugs": [
+        {
+          "id": "poll_ignored",
+          "summary": "sched_mode is true whenever the set has entries and the worker checks it before poll_pid, so ?poll= under a profile with mux defs is silently ignored and the URI's PID is never requested on its own.",
+          "file": "core/src/j2534_transport.cpp",
+          "symbols": [
+            "poll_pid",
+            "sched_mode",
+            "sched.count",
+            "ignored",
+            "silently"
+          ]
+        }
+      ],
+      "leak": "None: a forward diff. Scoped to core/src/j2534_transport.cpp: the whole commit is 43.6K, over the input limit."
+    },
+    {
+      "id": "profile_channels_c5cc6f7",
+      "kind": "bug",
+      "direction": "forward",
+      "commit": "c5cc6f7",
+      "subject": "feat(j2534): profile-declared CAN channels; auto-deploy Win32 surrogate",
+      "base_rev": "808ee49",
+      "post_rev": "c5cc6f7",
+      "scope": "all source",
+      "diff": "docs/fixtures/corpus_v2/profile_channels_c5cc6f7/change.diff",
+      "index": "docs/fixtures/corpus_v2/profile_channels_c5cc6f7/repo_context.json",
+      "proposal": "feat(j2534): profile-declared CAN channels; auto-deploy Win32 surrogate",
+      "known_bugs": [
+        {
+          "id": "poll_needs_filter_at_parse",
+          "summary": "parse_query rejects ?poll= without ?filter= before the profile's declared channels are known, so ?profile=obd2&poll=0x0C fails although the profile supplies the channel.",
+          "file": "core/src/j2534_transport.cpp",
+          "symbols": [
+            "parse_query",
+            "rx_id",
+            "QT_ERR_NO_TRANSPORT",
+            "filter"
+          ]
+        }
+      ],
+      "leak": "None: a forward diff. The bug is caused by a change elsewhere: parse_query's rejection of ?poll= without ?filter= dates from 161af4a, where it was correct, and this commit's profile-declared channels make it wrong without touching it. The rejection is not in the diff's hunks."
+    },
+    {
+      "id": "connect_thread_eacf1d0",
+      "kind": "bug",
+      "direction": "forward",
+      "commit": "eacf1d0",
+      "subject": "fix(j2534): keep vendor DLLs off the GUI thread; survive the first real vendor",
+      "base_rev": "161af4a",
+      "post_rev": "eacf1d0",
+      "scope": [
+        "app/qttunebridge.cpp",
+        "app/qttunebridge.h"
+      ],
+      "diff": "docs/fixtures/corpus_v2/connect_thread_eacf1d0/change.diff",
+      "index": "docs/fixtures/corpus_v2/connect_thread_eacf1d0/repo_context.json",
+      "proposal": "fix(j2534): keep vendor DLLs off the GUI thread; survive the first real vendor",
+      "known_bugs": [
+        {
+          "id": "start_before_gui_owns",
+          "summary": "The session is started on the connect thread before the GUI thread has taken it, and the destructor knows nothing of a session whose queued completion was dropped, so a bridge destroyed mid-connect leaves a running worker calling onFrame with a freed `this`.",
+          "file": "app/qttunebridge.cpp",
+          "symbols": [
+            "qttune_session_start",
+            "connectCoreOnly",
+            "invokeMethod",
+            "destructor",
+            "destroyed",
+            "freed",
+            "use-after-free",
+            "onFrame",
+            "m_connectThread"
+          ]
+        }
+      ],
+      "leak": "None: a forward diff. Scoped to app/qttunebridge.cpp and .h: the whole commit is 41.1K, over the input limit."
+    },
+    {
+      "id": "coalescing_e0c4c31",
+      "kind": "bug",
+      "direction": "forward",
+      "commit": "e0c4c31",
+      "subject": "feat: coalesced signal updates with LiveView page (v0.3.0 phase 2)",
+      "base_rev": "8ffbf19",
+      "post_rev": "e0c4c31",
+      "scope": "all source",
+      "diff": "docs/fixtures/corpus_v2/coalescing_e0c4c31/change.diff",
+      "index": "docs/fixtures/corpus_v2/coalescing_e0c4c31/repo_context.json",
+      "proposal": "feat: coalesced signal updates with LiveView page (v0.3.0 phase 2)",
+      "known_bugs": [
+        {
+          "id": "decode_length_8",
+          "summary": "qttune_decode_signal is called with a hardcoded length of 8 instead of the frame's data_length, so short frames decode bytes past their payload and CAN FD frames lose signals beyond byte 8.",
+          "file": "app/qttunebridge.cpp",
+          "symbols": [
+            "qttune_decode_signal",
+            "data_length",
+            "hardcoded",
+            "8-byte",
+            "8 bytes",
+            "CAN FD",
+            "CAN-FD"
+          ]
+        },
+        {
+          "id": "staging_clear_per_frame",
+          "summary": "handleFrameInternal clears m_stagingBuffer before decoding each frame, so the coalesced batch carries only the last frame's signals and every other frame's values in the 100 ms window are lost.",
+          "file": "app/qttunebridge.cpp",
+          "symbols": [
+            "m_stagingBuffer",
+            "clear()",
+            "staging",
+            "last frame",
+            "coalesc"
+          ]
+        },
+        {
+          "id": "drops_unreported_when_saturated",
+          "summary": "Drops are counted in onFrame but reported only from handleFrameInternal, which does not run while the backlog is saturated, so the user is never told about drops while they happen.",
+          "file": "app/qttunebridge.cpp",
+          "symbols": [
+            "m_droppedFrames",
+            "m_lastReportedDropped",
+            "droppedFramesChanged",
+            "MaxInFlightFrames",
+            "m_inFlightFrames",
+            "drop"
+          ]
+        }
+      ],
+      "leak": "None: a forward diff. The bridge fixture is this commit reversed; this commit also fixes the bridge fixture's race and cumulative gate, which its removed lines show. payload_length_unclamped (from 7dbdcec) is still present in the post-state but not introduced here."
+    },
+    {
+      "id": "marshaling_7dbdcec",
+      "kind": "bug",
+      "direction": "forward",
+      "commit": "7dbdcec",
+      "subject": "feat: complete v0.2.0 — bridge marshaling, sort proxy, live LogPage",
+      "base_rev": "131aae5",
+      "post_rev": "7dbdcec",
+      "scope": "all source",
+      "diff": "docs/fixtures/corpus_v2/marshaling_7dbdcec/change.diff",
+      "index": "docs/fixtures/corpus_v2/marshaling_7dbdcec/repo_context.json",
+      "proposal": "feat: complete v0.2.0 — bridge marshaling, sort proxy, live LogPage",
+      "known_bugs": [
+        {
+          "id": "frame_count_race",
+          "summary": "onFrame reads m_currentFrameCount on the worker thread while handleFrameInternal increments it on the GUI thread; the int is not atomic, a data race.",
+          "file": "app/qttunebridge.cpp",
+          "symbols": [
+            "m_currentFrameCount",
+            "race",
+            "atomic",
+            "worker thread",
+            "data race"
+          ]
+        },
+        {
+          "id": "cumulative_gate_freeze",
+          "summary": "The backpressure check compares the cumulative m_currentFrameCount with MaxFrames, and the count only resets on connect, so after 10,000 frames every frame is dropped at the source for the rest of the session; drops are reported only from handleFrameInternal, which then never runs, so the drop count stops updating too.",
+          "file": "app/qttunebridge.cpp",
+          "symbols": [
+            "MaxFrames",
+            "m_currentFrameCount",
+            "10000",
+            "10,000",
+            "cumulative",
+            "freeze",
+            "forever"
+          ]
+        },
+        {
+          "id": "payload_length_unclamped",
+          "summary": "payloadHex reads data_length bytes of the 64-byte inline buffer without clamping, so a transport reporting a longer length makes the bridge read past the buffer.",
+          "file": "app/qttunebridge.cpp",
+          "symbols": [
+            "payloadHex",
+            "data_length",
+            "sizeof(frame->data)",
+            "clamp",
+            "past the"
+          ]
+        }
+      ],
+      "leak": "None: a forward diff. It introduces the bridge fixture's two known bugs."
+    },
+    {
+      "id": "init_noops_cf03331",
+      "kind": "clean",
+      "direction": "forward",
+      "commit": "cf03331",
+      "subject": "refactor(core): ecuio_init and ecuio_shutdown are optional no-ops",
+      "base_rev": "76189e7",
+      "post_rev": "cf03331",
+      "diff": "docs/fixtures/corpus/init_noops_cf03331/change.diff",
+      "index": "docs/fixtures/corpus/init_noops_cf03331/repo_context.json",
+      "proposal": "refactor(core): ecuio_init and ecuio_shutdown are optional no-ops",
+      "known_bugs": [],
+      "leak": "None: a forward diff. Ten files across the app, QML and core layers; the layer note follows the first file (app/qml/HomePage.qml), a known limitation (backlog #8).",
+      "scope": "all source"
+    },
+    {
+      "id": "ecu_support_7d297b4",
+      "kind": "clean",
+      "direction": "forward",
+      "commit": "7d297b4",
+      "subject": "feat(bridge): log what each ECU supports",
+      "base_rev": "fdb12e1",
+      "post_rev": "7d297b4",
+      "diff": "docs/fixtures/corpus/ecu_support_7d297b4/change.diff",
+      "index": "docs/fixtures/corpus/ecu_support_7d297b4/repo_context.json",
+      "proposal": "feat(bridge): log what each ECU supports",
+      "known_bugs": [],
+      "leak": "None: a forward diff.",
+      "scope": "all source"
+    }
+  ]
+}

@@ -21,7 +21,8 @@
     "v15_twentieth": "Sample 'v15' (records 20261026_152132 to 20261026_174138; the retried 9116d9, 7a11c9, c247d4, 187a73, e7d68a, 67e86a and the pilot's 151439 and 151617 are not labeled), labeled before scoring by the same rules. poll_override: req[6] is exactly what build_mode01_request writes (a 4-byte id, mode, PID), so every claim that it is too small is other-fp; 20a19c #3 says poll now forces non-scheduler mode, a false consequence, other-fp; ceac6d #h1 (resource waste) and 182913 #h2 (error code) are other-fp. connect_start: 9bbf58 #e3 is false, connectSession calls applyConnectedState. decode_length: the removed clamp (len) served payloadHex and the decode alike, so 38a5a0 #1 to #3 are payload_length_unclamped; e99c5a #4, the emit the fix added to forceFrameCountForTesting, is unlisted. ecu_support: df0d13 #3, pid_bitmap[(pid - 1) / 8] with pid <= 0xFF indexes at most 31 of 32, bounds-fixed-array; 8b68e1 #1, disconnectSession takes m_session on the GUI thread, thread-confusion.",
     "v16_twenty_first": "Sample 'v16' (records 20261026_200617 to 20261026_211854; the retried 1f7900 and 78f09a and the pilot's 200203 and 200452 are not labeled), labeled before scoring by the same rules. poll_override: a claim that the worker picks the wrong channel for the poll PID is invariant-elsewhere, as a missing-channel claim is; 712a1f #e1 (the worker's and attach's sched_mode disagree, undefined behavior) names no poll consequence and is other-fp; 9f52fe #2 (an ABI boundary on channel ordering) is other-fp. trusted_count: a claim that the removed helper missed ERR_BUFFER_OVERFLOW is count_under_error, as in v15 (a0ed9f).",
     "v11.1_poll_runaway_diagnostic": "Sample 'v11.1_poll' (records 20261026_225640 to 20261026_234601, v11.1, poll_override only; collected for backlog #19's runaway diagnostic, which scored no blockers; the retried 17a355 and 6cb4e4 are not labeled), labeled by the same rules. A claim that the sched_mode change lets the scheduler run or changes which mode is used when poll is set is poll_ignored (619e0c #2, 'poll handling not updated - inconsistent behavior', names no false consequence and is credited). 6ee07d #2 says parse_query's rx_id check is insufficient: false, invariant-elsewhere. b9eaaf #e1 says ?txid= can supply a channel, a wrong side detail; it states the parse-time rejection and is credited. d92498 #1 (req[6] too small for CAN-FD) is other-fp, as in v15.",
-    "b22_twenty_second": "Samples 'b22_laguna' (laguna-xs-2.1, the concurrent control) and 'b22_qwen' (qwen3-coder:30b), records 20261027_131621 to 20261027_143555 (ADR-0002, twenty-second measurement, Stage 1; the retried 120882 and Stage 0's bridge records are not labeled), labeled before either arm was scored, by the same rules; the records name their model, so the labels are not blind. backoff_clamp: a claim that the inlined condition is wrong is backoff_overshoot, as 5890c6 and 294ce8 #1 were. trusted_count: the claim's content decides, as before: a count left untouched on an error is count_under_error, a stale or phantom replay is static_batch_replay. poll_override: a claim that attach lost its poll channel check, or that chans[0] is the wrong or a missing channel, is invariant-elsewhere. connect_start: credited when the claim says the session leaks, dangles or outlives a bridge destroyed mid-connect, or that the destructor can no longer clean it up (as 77f026 #h1 and b90266 were). Not credited: a race between onFrame and applyConnectedState (5a2e6a #1) or a start that is 'not thread-safe' before the GUI state is ready (9ad3b4 #e2), since onFrame returns until applyConnectedState sets m_connected last, with release ordering; and 1406df #2, the queued lambda touching a destroyed this, since a queued call is dropped with its context object. All three are other-fp. decode_length: a claim that drops are counted but never reported is drops_unreported_when_saturated, a claim that the merge was removed is staging_clear_per_frame, as before. ecu_support: m_channelCount is clamped to ECUIO_SESSION_INFO_MAX_CHANNELS by std::min, so 87a5c0 #h1 is bounds-fixed-array."
+    "b22_twenty_second": "Samples 'b22_laguna' (laguna-xs-2.1, the concurrent control) and 'b22_qwen' (qwen3-coder:30b), records 20261027_131621 to 20261027_143555 (ADR-0002, twenty-second measurement, Stage 1; the retried 120882 and Stage 0's bridge records are not labeled), labeled before either arm was scored, by the same rules; the records name their model, so the labels are not blind. backoff_clamp: a claim that the inlined condition is wrong is backoff_overshoot, as 5890c6 and 294ce8 #1 were. trusted_count: the claim's content decides, as before: a count left untouched on an error is count_under_error, a stale or phantom replay is static_batch_replay. poll_override: a claim that attach lost its poll channel check, or that chans[0] is the wrong or a missing channel, is invariant-elsewhere. connect_start: credited when the claim says the session leaks, dangles or outlives a bridge destroyed mid-connect, or that the destructor can no longer clean it up (as 77f026 #h1 and b90266 were). Not credited: a race between onFrame and applyConnectedState (5a2e6a #1) or a start that is 'not thread-safe' before the GUI state is ready (9ad3b4 #e2), since onFrame returns until applyConnectedState sets m_connected last, with release ordering; and 1406df #2, the queued lambda touching a destroyed this, since a queued call is dropped with its context object. All three are other-fp. decode_length: a claim that drops are counted but never reported is drops_unreported_when_saturated, a claim that the merge was removed is staging_clear_per_frame, as before. ecu_support: m_channelCount is clamped to ECUIO_SESSION_INFO_MAX_CHANNELS by std::min, so 87a5c0 #h1 is bounds-fixed-array.",
+    "b24_twenty_fourth": "Samples 'b24_laguna' (laguna-xs-2.1, the concurrent control) and 'b24_gptoss' (gpt-oss:20b), records 20261027_160411 to 20261027_173442 (ADR-0002, twenty-fourth measurement, Stage 1; no first attempt was retried; Stage 0's bridge records are not labeled), labeled before either arm was scored, by the same rules and b22_twenty_second's notes; the records name their model, so the labels are not blind. trusted_count: QTTUNE_PT_STATUS_TIMEOUT is 0x09, J2534's ERR_TIMEOUT, so e82f04 #1 is other-fp, and 47601f #e1, which says so too but states the removed safety check, is credited; QTTUNE_PT_STATUS_NOERROR is defined (3d57b7 #h2, other-fp); the surrogate clamps its loop to QTTUNE_SUR_MAX_FRAMES_PER_READ (52410d #h1, other-fp). poll_override: a claim that sched.count is read without a lock (ac0457 #3) is thread-confusion: the set is built in attach before the worker starts. connect_start (post-state 9c3ef16): connectCoreOnly registers and starts the session and destroys it on failure, and the async completion calls applyConnectedState, which stores m_session, and logs the error; claims that the async path never starts, stores or cleans up the session on error (c58f6a #e1, d050e4 #e1 to #e3, e99fc9 #e1, #e2) are other-fp, and 1cd43f #e1 is credited for its destructor half. A claim that m_pendingSession's removal leaves nothing to clean up with (c58f6a #e3) is credited. Removed test seams and helpers with no remaining caller (b8fb34 #e2, c58f6a #e4) are other-fp. b157ea #1 and #e1 (a start that is not thread-safe) are other-fp as in b22; b157ea #h1 names the handoff but asserts a false consequence (the session destroyed while the lambda holds it), other-fp by fresh_rule; #h2 is false, the destructor joins first. decode_length (post-state b975457): the bridge includes qttune/signals.h (80e7de #1, other-fp); 418ba3 #e1 says the removed notifyDropped is still called, deletion; a claim that the setSignalSet void* breaks the ABI is unlisted, as before. ecu_support: <algorithm> is included (5d5d07 #1, other-fp); every data-race claim on m_session, m_channelCount or m_supportGeneration is thread-confusion (both writers run on the GUI thread)."
   },
   "records": {
     "round1_20261024_015410_fa2343": {
@@ -3657,6 +3658,771 @@
       "labels": {
         "#h1": [
           "bounds-fixed-array"
+        ]
+      }
+    },
+    "round1_20261027_160411_c43dc5": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ],
+        "#2": [
+          "backoff_overshoot"
+        ],
+        "#3": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261027_160519_ea8c6e": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ],
+        "#2": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261027_160549_28af22": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261027_160730_13352e": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b24_laguna",
+      "labels": {}
+    },
+    "round1_20261027_160833_437605": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261027_160854_e10bed": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "count_under_error"
+        ],
+        "#e1": [
+          "count_under_error",
+          "static_batch_replay"
+        ],
+        "#e2": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261027_161014_93dde6": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b24_laguna",
+      "labels": {
+        "#e1": [
+          "count_under_error",
+          "static_batch_replay"
+        ],
+        "#e2": [
+          "count_under_error"
+        ]
+      }
+    },
+    "round1_20261027_161100_7bd79e": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b24_laguna",
+      "labels": {
+        "#e1": [
+          "count_under_error"
+        ],
+        "#e2": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261027_161147_e82f04": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "other-fp"
+        ],
+        "#e1": [
+          "count_under_error"
+        ],
+        "#e2": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261027_161316_47601f": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b24_laguna",
+      "labels": {
+        "#e1": [
+          "count_under_error"
+        ],
+        "#h1": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261027_161354_ac0457": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "poll_ignored"
+        ],
+        "#2": [
+          "other-fp"
+        ],
+        "#3": [
+          "thread-confusion"
+        ],
+        "#4": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261027_161430_77765e": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#e1": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261027_161728_a9d710": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "poll_needs_filter_at_parse"
+        ]
+      }
+    },
+    "round1_20261027_161844_73b270": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ],
+        "#h1": [
+          "poll_ignored"
+        ]
+      }
+    },
+    "round1_20261027_162156_446f14": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ],
+        "#3": [
+          "poll_ignored"
+        ],
+        "#4": [
+          "poll_needs_filter_at_parse"
+        ]
+      }
+    },
+    "round1_20261027_162306_65d899": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ],
+        "#h1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261027_162505_4dd1f9": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#2": [
+          "unsubscribed_rows_freeze"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261027_162732_b8fb34": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ],
+        "#e2": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261027_162905_6dbaf7": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b24_laguna",
+      "labels": {
+        "#e1": [
+          "start_before_gui_owns"
+        ],
+        "#e2": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261027_162954_b157ea": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "other-fp"
+        ],
+        "#e1": [
+          "other-fp"
+        ],
+        "#h1": [
+          "other-fp"
+        ],
+        "#h2": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261027_163026_0bacb5": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "drops_unreported_when_saturated"
+        ],
+        "#2": [
+          "decode_length_8"
+        ],
+        "#3": [
+          "staging_clear_per_frame"
+        ]
+      }
+    },
+    "round1_20261027_163351_9bea05": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "staging_clear_per_frame"
+        ],
+        "#3": [
+          "unlisted"
+        ],
+        "#e1": [
+          "drops_unreported_when_saturated"
+        ]
+      }
+    },
+    "round1_20261027_163455_4fc4cd": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "staging_clear_per_frame"
+        ],
+        "#2": [
+          "drops_unreported_when_saturated"
+        ],
+        "#h1": [
+          "decode_length_8"
+        ]
+      }
+    },
+    "round1_20261027_163803_db70dc": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "drops_unreported_when_saturated"
+        ],
+        "#3": [
+          "staging_clear_per_frame"
+        ]
+      }
+    },
+    "round1_20261027_163850_651c25": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "unlisted"
+        ],
+        "#e1": [
+          "drops_unreported_when_saturated"
+        ]
+      }
+    },
+    "round1_20261027_164045_c96b32": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b24_laguna",
+      "labels": {}
+    },
+    "round1_20261027_164319_0deb92": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b24_laguna",
+      "labels": {}
+    },
+    "round1_20261027_164414_19b4bf": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b24_laguna",
+      "labels": {}
+    },
+    "round1_20261027_164707_76e894": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "other-fp"
+        ],
+        "#2": [
+          "other-fp"
+        ],
+        "#3": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261027_164844_d8b616": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b24_laguna",
+      "labels": {}
+    },
+    "round1_20261027_165143_a72740": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b24_laguna",
+      "labels": {}
+    },
+    "round1_20261027_165206_a6b989": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b24_laguna",
+      "labels": {}
+    },
+    "round1_20261027_165244_c9e0f6": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b24_laguna",
+      "labels": {}
+    },
+    "round1_20261027_165302_5740b8": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b24_laguna",
+      "labels": {
+        "#1": [
+          "thread-confusion"
+        ],
+        "#h1": [
+          "thread-confusion"
+        ]
+      }
+    },
+    "round1_20261027_165405_08b881": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b24_laguna",
+      "labels": {}
+    },
+    "round1_20261027_165537_e715b5": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#h1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261027_165625_29996f": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#h1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261027_165702_abfa63": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261027_165732_9a6b86": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261027_165753_b2fe31": {
+      "fixture": "backoff_clamp_d1c20c0",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "backoff_overshoot"
+        ]
+      }
+    },
+    "round1_20261027_165810_d31ec0": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "count_under_error",
+          "static_batch_replay"
+        ],
+        "#h1": [
+          "static_batch_replay"
+        ]
+      }
+    },
+    "round1_20261027_165856_3d57b7": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "count_under_error"
+        ],
+        "#h1": [
+          "static_batch_replay"
+        ],
+        "#h2": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261027_170011_3f2180": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b24_gptoss",
+      "labels": {}
+    },
+    "round1_20261027_170137_52410d": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#h1": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261027_170238_e2db82": {
+      "fixture": "trusted_count_6420f09",
+      "sample": "b24_gptoss",
+      "labels": {}
+    },
+    "round1_20261027_170318_dbf02a": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261027_170400_3f2791": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#e1": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261027_170437_e4bf34": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b24_gptoss",
+      "labels": {}
+    },
+    "round1_20261027_170503_5d9d08": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261027_170535_c09ea7": {
+      "fixture": "poll_override_90020bd",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "invariant-elsewhere"
+        ],
+        "#2": [
+          "poll_ignored"
+        ],
+        "#h1": [
+          "invariant-elsewhere"
+        ]
+      }
+    },
+    "round1_20261027_170630_1cd43f": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "start_before_gui_owns"
+        ],
+        "#e1": [
+          "start_before_gui_owns"
+        ]
+      }
+    },
+    "round1_20261027_170737_c58f6a": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#e1": [
+          "other-fp"
+        ],
+        "#e2": [
+          "start_before_gui_owns"
+        ],
+        "#e3": [
+          "start_before_gui_owns"
+        ],
+        "#e4": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261027_170857_d050e4": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#e1": [
+          "other-fp"
+        ],
+        "#e2": [
+          "other-fp"
+        ],
+        "#e3": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261027_171019_b82f79": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b24_gptoss",
+      "labels": {}
+    },
+    "round1_20261027_171142_e99fc9": {
+      "fixture": "connect_start_4a86231",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#e1": [
+          "other-fp"
+        ],
+        "#e2": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261027_171337_80e7de": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "other-fp"
+        ],
+        "#2": [
+          "decode_length_8"
+        ],
+        "#3": [
+          "payload_length_unclamped"
+        ],
+        "#4": [
+          "drops_unreported_when_saturated"
+        ]
+      }
+    },
+    "round1_20261027_171511_bb5d72": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "drops_unreported_when_saturated"
+        ],
+        "#2": [
+          "staging_clear_per_frame"
+        ],
+        "#e1": [
+          "payload_length_unclamped"
+        ],
+        "#h1": [
+          "decode_length_8"
+        ]
+      }
+    },
+    "round1_20261027_171622_1e2530": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#e1": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261027_171903_8ad44e": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#e1": [
+          "payload_length_unclamped"
+        ]
+      }
+    },
+    "round1_20261027_172053_418ba3": {
+      "fixture": "decode_length_b47687c",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "decode_length_8"
+        ],
+        "#2": [
+          "payload_length_unclamped"
+        ],
+        "#e1": [
+          "deletion"
+        ]
+      }
+    },
+    "round1_20261027_172226_d93717": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b24_gptoss",
+      "labels": {}
+    },
+    "round1_20261027_172309_3ec529": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b24_gptoss",
+      "labels": {}
+    },
+    "round1_20261027_172351_e9b155": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b24_gptoss",
+      "labels": {}
+    },
+    "round1_20261027_172455_146129": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b24_gptoss",
+      "labels": {}
+    },
+    "round1_20261027_172724_745b66": {
+      "fixture": "init_noops_cf03331",
+      "sample": "b24_gptoss",
+      "labels": {}
+    },
+    "round1_20261027_172818_2e4ef2": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b24_gptoss",
+      "labels": {}
+    },
+    "round1_20261027_172917_5d5d07": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "other-fp"
+        ]
+      }
+    },
+    "round1_20261027_173120_18c45c": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b24_gptoss",
+      "labels": {}
+    },
+    "round1_20261027_173400_4c1235": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b24_gptoss",
+      "labels": {}
+    },
+    "round1_20261027_173442_59d83b": {
+      "fixture": "ecu_support_7d297b4",
+      "sample": "b24_gptoss",
+      "labels": {
+        "#1": [
+          "thread-confusion"
+        ],
+        "#2": [
+          "thread-confusion"
+        ],
+        "#3": [
+          "thread-confusion"
+        ],
+        "#4": [
+          "thread-confusion"
+        ],
+        "#5": [
+          "thread-confusion"
+        ],
+        "#e1": [
+          "thread-confusion"
         ]
       }
     }

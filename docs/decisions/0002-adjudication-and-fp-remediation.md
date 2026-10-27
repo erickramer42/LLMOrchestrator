@@ -47,6 +47,9 @@ results; changes made after seeing data are dated amendments.
 | [Runaway Diagnostic: Do Runaways Repeat?](#runaway-diagnostic--do-runaways-repeat) | 2026-10-26 | Whole thinking of runaways and long replies (backlog #19) | Closed: no repetition threshold separates runaways from long replies; an early retry cuts valid findings |
 | [Twenty-Second Measurement: Reviewer Model Bake-Off](#twenty-second-measurement--reviewer-model-bake-off) | 2026-10-26 | Two local reviewer models against laguna on the corpus | Closed: `qwen3-coder:30b` mean recall 0.09 against 0.42; nemotron dropped at Stage 0 (runs to the cap); laguna stays |
 | [Twenty-Third Measurement: Engineer Model Bake-Off](#twenty-third-measurement--engineer-model-bake-off) | 2026-10-26 | `gpt-oss:20b` against gemma as the engineer | Not shipped: recall in any item +0.23, but 0.24 false blockers per review (bar 0.10) |
+| [Twenty-Fourth Measurement: `gpt-oss:20b` as the Reviewer](#twenty-fourth-measurement--gpt-oss20b-as-the-reviewer) | 2026-10-27 | `gpt-oss:20b` against laguna as the reviewer, on the corpus | Not shipped: recall 0.309 against the control's 0.436, false positives 0.73 times the control's; fails both branches of condition 1 |
+| [Twenty-Fifth Measurement: The Engineer at Verdict Level (Offline)](#twenty-fifth-measurement--the-engineer-at-verdict-level-offline) | 2026-10-27 | Round-1 verdicts of laguna paired with each engineer, blockers rejecting or as concerns | `gpt-oss:20b` with its blockers rejecting earns a confirmation sample (misses 5 → 3 of 22); as concerns it fails |
+| [Corpus v2: Forward Diffs of the Commits That Introduced the Bugs](#corpus-v2--forward-diffs-of-the-commits-that-introduced-the-bugs) | 2026-10-27 | Bug fixtures rebuilt as the commits that introduced each bug, without the fix comments v1's diffs leak | Built; baseline not yet run |
 
 ## Context
 
@@ -5757,3 +5760,362 @@ It does make it a reviewer candidate for a registered arm, with the
 reviewer prompt and the evidence check.
 
 `MODELS["auto_engineer"]` stays `gemma4:12b`.
+
+## Twenty-Fourth Measurement — `gpt-oss:20b` as the Reviewer
+
+**Status (2026-10-27): registered before any sample; scored the same
+day: fails condition 1, so laguna stays the reviewer.**
+
+**Why.** In the twenty-third measurement, `gpt-oss:20b` worked as the
+engineer, with no evidence check. Its stored blockers there had mean
+recall 0.436 at 0.242 false positives per review. The reviewer control
+in the twenty-second had 0.423 and 0.382. Those numbers come from
+another role, prompt and judge, so they say nothing firm about it as a
+reviewer. They make it the best untested candidate.
+
+**Design.** The twenty-second's, with one candidate:
+- **Arms:** `laguna-xs-2.1` (the concurrent control) and `gpt-oss:20b`
+  (digest `f38aa0c53da5…`, as recorded in the twenty-third; `ollama
+  list` shows the same ID on 2026-10-27). Prompt v11.1, judge j8,
+  `NUM_CTX` 24576, `NUM_PREDICT` 12288, temperature 0.7 on first
+  attempts and 0.05 on retries. No `think` option is sent.
+- **Stage 0:** 3 bridge runs of the candidate (`round1 run --runs 3
+  --reviewer-model gpt-oss:20b`), telemetry and schema only, excluded
+  from scoring. The candidate is dropped if 2 or more first attempts are
+  unusable (no schema-valid JSON, or at the cap), or if the median
+  accepted first attempt takes over 276 s. A dropped candidate ends the
+  measurement before Stage 1. Stage 1 then follows without a stop.
+- **Stage 1:** `corpus run --fixture all --runs 5`, the control first,
+  then the candidate (35 runs each). Every item of both arms is labeled
+  in `corpus_labels.json` (samples `b24_laguna` and `b24_gptoss`) before
+  either arm is scored, by the existing rules and notes, including
+  `b22_twenty_second`. The labels are not blind.
+- **Measures and rule:** the twenty-second's, unchanged. Conditions 1
+  (better on the corpus), 2 (practical) and 3 (confirmed) are read
+  against the concurrent control. Condition 3's golden suite now
+  includes the 13 judge cases; they do not depend on the model, so the
+  live fixtures are what can fail.
+
+**Known bias.** The bug fixtures are reverse diffs of fix commits, and
+their removed lines keep the fix's comments, which often describe the
+bug (the manifest's `leak` note). That inflates every arm's recall
+alike. It leaves the comparison between arms fair, but not the absolute
+numbers.
+
+**Predictions** (informed by the twenty-third's engineer data, which
+I had seen):
+
+| | prediction |
+|---|---|
+| Stage 0 | passes; median first attempt below the control's 92 s; no first attempt at the cap |
+| false positives per review | at most 0.7 times the control's: claims of unseen or removed code fail the quote rule here, though they stood as engineer blockers |
+| mean recall (stored) | within 0.05 of the control's; its removal-caused bugs lose their quotes as laguna's do |
+| condition 1 | holds, by the false-positive branch |
+| first attempts at the cap, Stage 1 | at most 1 of 35 |
+| ships at this stage | no decision: passing condition 1 leads to the confirmation sample, which needs a separate go |
+
+**Cost:** about 1 h of GPU for the control and 0.5–1 h for the
+candidate, plus Stage 0.
+
+### Stage 0 (2026-10-27): passes
+
+Three bridge runs, excluded from scoring:
+
+| record | first attempt | wall | prompt / output tokens | thinking chars |
+|---|---|---|---|---|
+| `20261027_155605_eb66a7` | accepted | 130 s | 8,678 / 4,005 | 16,544 |
+| `20261027_155816_9bcc9a` | accepted | 178 s | 8,678 / 5,509 | 21,858 |
+| `20261027_160114_38df9d` | accepted | 177 s | 8,678 / 4,664 | 21,013 |
+
+0 of 3 were unusable and none reached the cap. The median is 177 s
+(limit 276 s), so Stage 1 started at 16:04 UTC without a stop. The
+prediction "median below the control's 92 s" missed: as the reviewer,
+`gpt-oss:20b` thinks for 4,000–5,500 tokens, where as the engineer it
+used about 1,500. That bears on condition 2 (at most twice the
+concurrent control's median), which is read on the corpus, where the
+requests are smaller. Only the gate's telemetry lines were read. The
+runner's blocker counts for these three records were not.
+
+### Stage 1 results (scored 2026-10-27): fails condition 1
+
+Records `measurement_round1_20261027_160411` to `_165405` (control) and
+`_165537` to `_173442` (`gpt-oss:20b`), 35 each, sampled back to back.
+No first attempt in either arm was retried, reached the cap or failed
+closed. Every item was labeled in `corpus_labels.json` (samples
+`b24_laguna` and `b24_gptoss`) before either arm was scored. The labels
+are not blind; the judgment calls are in the note `b24_twenty_fourth`.
+Scored with judge j8:
+
+| | `laguna-xs-2.1` (control) | `gpt-oss:20b` |
+|---|---|---|
+| runs scored | 35 | 35 |
+| stored blockers | 44 | 27 |
+| valid share | 66% | 59% |
+| false positives per review | 0.429 | 0.314 |
+| false positives per clean review | 0.40 | 0.60 |
+| mean recall, stored | 0.436 | 0.309 |
+| mean recall, any item | 0.691 | 0.436 |
+| runs with a stored blocker | 22 of 35 | 16 of 35 |
+| valid items evidence-demoted | 20 | 10 |
+| first attempts at the cap | 0 of 35 | 0 of 35 |
+| calls failed closed | 0 | 0 |
+| median first-attempt wall | 70 s | 60 s |
+| median output tokens, first attempt | 3,316 | 2,554 |
+
+The control matches the twenty-second's (0.423 recall, 0.382 false
+positives per review) and the archived v11.1 sample (0.413, 0.409).
+`replay --corpus` reproduces the control's stored split. It does not
+reproduce one candidate item, `80e7de #3`: gpt-oss added a `quote2`
+field, and the replay's parser reads it into the quote, so the replay
+demotes a blocker the live judge kept. The table uses the live
+judge's stored split; under the replay the candidate's recall would be
+0.29, which changes nothing below.
+
+**Rule.** Condition 1 fails on both branches. Recall is 0.127 below the
+control's, where the first branch needs +0.10 and the second allows at
+most −0.05. False positives are 0.73 times the control's, just over the
+second branch's 0.7 (0.300). The recall shortfall alone fails the
+condition. Condition 2 holds (60 s against a 140 s limit, none failed
+closed). No confirmation sample was run.
+
+**Reading.**
+- **Quieter, and mostly by dropping valid blockers.** gpt-oss stored 27
+  blockers to laguna's 44: valid ones fell from 29 to 16, false ones
+  from 15 to 11. It lost
+  `poll_ignored` and `poll_needs_filter_at_parse` (4 runs to 1),
+  `start_before_gui_owns` (3 to 1) and `staging_clear_per_frame` (4 to
+  1). It gained `payload_length_unclamped` (0 to 2 stored, 4 in any item),
+  the one known bug the control never finds, and the trusted-count pair
+  (1 to 3 stored).
+- **Its false positives are concentrated.** 5 of its 11 come from one
+  `ecu_support_7d297b4` run (`59d83b`): data races claimed on state only
+  the GUI thread touches. The control's 15 are spread over 9 runs, mostly
+  invariant-elsewhere on `poll_override_90020bd`.
+- **The quote rule caught the class it raised as the engineer.** On
+  `connect_start_4a86231` it raised 6 claims that the async connect never
+  starts, stores or cleans up the session (the completion's
+  `applyConnectedState` lies past the hunk's end). In the twenty-third,
+  the same kind of claim stood as engineer blockers. Here the evidence
+  check demoted all 6. The mechanism behind the false-positive prediction
+  held. The recall half of that prediction did not: the candidate stores
+  fewer valid claims in the first place.
+- **The bridge was the slow case.** On the corpus its median output was
+  2,554 tokens and its median call 60 s, faster than laguna's. Stage 0's
+  177 s came from 4,000–5,500 tokens on the larger bridge request.
+
+**Two models together (exploratory, not registered).** Pairing run *i*
+of each arm within a fixture:
+- **Union** of both models' stored blockers: recall 0.564, false
+  positives 0.743 per review. That is +0.128 recall over the control,
+  but +0.314 false positives, against the +0.05 that the first branch
+  allows.
+- **Corroboration** (keep a control blocker only when the paired
+  candidate run stored a blocker in the same hunk): false positives
+  0.114, recall 0.200.
+
+Neither combination passes condition 1, and either one doubles the
+calls. Hunk-level agreement is a coarse test. A finer one would match
+claims, not hunks, and would be a measurement of its own.
+
+| prediction | outcome |
+|---|---|
+| Stage 0: passes | held |
+| Stage 0: median first attempt below the control's 92 s | missed: 177 s |
+| Stage 0: no first attempt at the cap | held |
+| false positives at most 0.7 times the control's | missed, narrowly: 0.73 times (0.314 against 0.429) |
+| mean recall (stored) within 0.05 of the control's | missed: −0.127 |
+| condition 1 holds, by the false-positive branch | missed: fails both branches |
+| first attempts at the cap, Stage 1: at most 1 of 35 | held: 0 |
+| ships at this stage: no decision | moot: condition 1 failed, no confirmation sample |
+
+`MODELS["code_reviewer"]` stays `laguna-xs-2.1`; ADR-0001 is not
+amended.
+
+## Twenty-Fifth Measurement — The Engineer at Verdict Level (Offline)
+
+**Status (2026-10-27): registered before any pairing was computed,
+then scored. Arm A (`gpt-oss:20b`, blockers reject) passes and earns a
+confirmation sample; arm B (blockers as concerns) fails.**
+
+**Why.** The twenty-third scored the engineer alone, and `gpt-oss:20b`
+failed its condition 2: 0.242 false blockers per review. But a false
+blocker costs a verdict only where it changes one. In that sample
+`gpt-oss:20b` raised no blocker on either clean fixture; every false
+blocker fell on a bug diff, where a reject is the right verdict anyway.
+Making engineer blockers concerns removes the false-blocker cost by
+construction, so scoring it on the engineer alone would measure
+nothing. This measurement scores the round-1 verdict a debate would
+reach. It does not reopen the twenty-third, whose result stands. A
+protocol that passes here needs a fresh sample before it ships.
+
+**Data, no model call.** The twenty-second's laguna control runs are
+paired with the twenty-third's engineer runs, by order within each
+fixture, all from the same window, prompt v11.1 and judge j8. Within a
+round neither agent sees the other, so a pair is the round 1 a debate
+would have run. A pair is used only when all three runs (laguna, gemma,
+`gpt-oss:20b`) are first attempts, so every arm is scored on the same
+pairs. The labels are the committed ones (`corpus_labels.json`,
+`engineer_labels.json`), written before any of this was planned.
+
+**Arms:**
+- **today:** gemma, an engineer blocker rejects;
+- **A:** `gpt-oss:20b`, an engineer blocker rejects;
+- **B:** `gpt-oss:20b`, every engineer blocker becomes a concern;
+- **B-gemma:** gemma, every engineer blocker becomes a concern (for
+  reference).
+
+**Measures, per arm, over the common pairs.** Round 1 rejects when
+either agent has a stored blocker that counts; otherwise it converges
+(approved, with open questions if there are any).
+- **misses:** bug-fixture pairs that converge, so a known bug is
+  approved in round 1;
+- **wrong rejects:** clean-fixture pairs that reject;
+- **wrong-reason rejects:** bug-fixture pairs whose reject rests only on
+  false blockers;
+- **reader recall:** mean recall over the 11 known bugs of everything
+  the pair shows: blockers, questions, concerns and demoted items of
+  both agents.
+
+**Rule.** An arm earns a fresh confirmation sample (35 engineer runs,
+paired against a concurrent laguna control; GPU, a separate go) only if,
+against today:
+1. misses are no more than today's;
+2. wrong rejects are no more than today's;
+3. wrong-reason rejects rise by at most 1;
+4. reader recall rises by at least 0.05.
+
+If both A and B pass, A is preferred, since it changes no protocol.
+
+**Predictions** (made knowing the twenty-third's per-agent results, not
+the pairing):
+
+| | prediction |
+|---|---|
+| B-gemma against today | identical verdicts in all but at most 1 pair (gemma blocks only where laguna does) |
+| A against today | misses fall by 2 or more; wrong rejects equal; wrong-reason rejects rise by 1 or 2 |
+| B against today | misses within 1 of today's |
+| reader recall, A and B | at least 0.10 above today's |
+| outcome | A passes all four conditions; B passes all four |
+
+### Results (scored 2026-10-27): arm A earns the confirmation sample
+
+The common pairs number 32 (22 bug, 10 clean). Excluded are the retried
+laguna run on `decode_length_b47687c` and the two retried `gpt-oss:20b`
+runs on `trusted_count_6420f09` and `decode_length_b47687c`.
+
+| arm | misses (of 22) | wrong-reason rejects | wrong rejects (of 10) | reader recall |
+|---|---|---|---|---|
+| today: gemma, blockers reject | 5 | 2 | 2 | 0.735 |
+| A: `gpt-oss:20b`, blockers reject | 3 | 0 | 2 | 0.788 |
+| B: `gpt-oss:20b`, blockers as concerns | 6 | 2 | 2 | 0.788 |
+| B-gemma: gemma, blockers as concerns | 6 | 2 | 2 | 0.735 |
+
+Both wrong rejects in every arm are laguna's, on the clean fixtures; no
+engineer raised a blocker there.
+
+**Rule.** A passes all four conditions: misses 5 → 3, wrong rejects
+equal, wrong-reason rejects 2 → 0, reader recall +0.053. B fails
+condition 1 (6 misses against 5), since gemma's one blocker that
+prevented a miss is gone. A is preferred either way.
+
+**Where A differs from today.** Each of these is one pair:
+- `trusted_count_6420f09`, twice: laguna's valid claims lost their
+  quotes to the evidence check, and gemma raised the bug only as
+  concerns. `gpt-oss:20b`'s engineer blocker needs no quote, so it
+  rejects.
+- `poll_override_90020bd` and `connect_start_4a86231`, once each:
+  laguna's stored blockers were all false. `gpt-oss:20b` adds a valid
+  blocker (`poll_ignored`, `start_before_gui_owns`), so the reject now
+  rests on a real bug.
+
+The gain comes from the same missing check that let its false blockers
+through. Here they fell only on bug diffs. On a clean diff the same
+behavior would cost a wrong reject, and 10 clean runs bound that only
+loosely.
+
+| prediction | outcome |
+|---|---|
+| B-gemma: identical verdicts in all but at most 1 pair | held: 1 pair |
+| A: misses fall by 2 or more; wrong rejects equal; wrong-reason rejects rise by 1 or 2 | misses and wrong rejects held; wrong-reason rejects missed: they fell by 2 |
+| B: misses within 1 of today's | held: 6 against 5 |
+| reader recall, A and B: at least 0.10 above today's | missed: +0.053, since laguna's own items already show most bugs |
+| A passes; B passes | A held; B missed |
+
+The margins are thin: 2 pairs of 22 on misses, and reader recall 0.003
+over its bar. That is what the confirmation sample is for. It is 35
+`gpt-oss:20b` engineer runs paired with 35 concurrent laguna runs, about
+1.5 h of GPU, and needs a separate go. If arm A holds there, it ships
+as `MODELS["auto_engineer"] = "gpt-oss:20b"` with no protocol change.
+
+## Corpus v2 — Forward Diffs of the Commits That Introduced the Bugs
+
+**Status (2026-10-27): built, not yet baselined.** Fixtures only, no
+measurement. Every measurement on it starts from a fresh baseline.
+
+**Why.** v1's bug fixtures are fixes reversed. The direction is right:
+the buggy code is in the post-state. But the fix's removed lines carry
+its comments, which often describe the bug. In the twenty-second
+measurement several valid claims cited them: the "Finding 1" comment on
+`trusted_count_6420f09`, and on `connect_start_4a86231` a removed
+comment that states the bug outright. That inflates recall in every arm
+(v1's `leak` notes). Reversing a fix that added a check also turns every
+such bug into a removal, so v1 leans toward the one class the quote rule
+handles worst.
+
+**Method.** For each known bug, the commit that introduced it was
+found by searching history for its buggy code (`git log -S`). Each
+candidate was checked with blame and by reading the code: the bug is in
+the commit's tree and not in its parent. Two cases needed more than the
+search:
+- **`start_before_gui_owns`:** `qttune_session_start` dates from
+  `7dbdcec`, where the session started on the GUI thread. The bug came
+  with `eacf1d0`, which moved connect onto its own thread.
+- **`count_under_error`:** the read call dates from `1cc3334`, which
+  treated any nonzero status as "no frame". `0b43261` began checking
+  the count before the status.
+
+Each fixture is `git diff <commit>^ <commit>` over source (tests, docs
+and `*.md` left out), with a `--no-llm` index of the parent built from a
+throwaway clone. The proposal is the commit's own subject line. Choices
+made before building (2026-10-27):
+- `poll_needs_filter_at_parse` belongs to `c5cc6f7`, where
+  profile-declared channels made an existing, correct rejection wrong.
+  The rejection is not in that diff, so this is the corpus's one bug
+  caused by a change elsewhere.
+- `start_before_gui_owns` belongs to `eacf1d0`, scoped to the bridge
+  files.
+- A commit over the input limit is scoped to its bug's file. A bug whose
+  file alone is over the limit is left out.
+- The proposal is the commit subject.
+
+| fixture | commit | scope | chars | est. tokens | known bugs |
+|---|---|---|---|---|---|
+| `backoff_tristate_808ee49` | `808ee49` | all source | 13,274 | 6,460 | `backoff_overshoot` |
+| `loader_count_0b43261` | `0b43261` | `j2534_loader.cpp` | 4,116 | 3,299 | `count_under_error` |
+| `scheduler_8305420` | `8305420` | `j2534_transport.cpp` | 12,916 | 6,191 | `poll_ignored` |
+| `profile_channels_c5cc6f7` | `c5cc6f7` | all source | 27,484 | 11,423 | `poll_needs_filter_at_parse` |
+| `connect_thread_eacf1d0` | `eacf1d0` | `qttunebridge.cpp`, `.h` | 8,626 | 4,794 | `start_before_gui_owns` |
+| `coalescing_e0c4c31` | `e0c4c31` | all source | 24,673 | 10,149 | `decode_length_8`, `staging_clear_per_frame`, `drops_unreported_when_saturated` |
+| `marshaling_7dbdcec` | `7dbdcec` | all source | 23,191 | 9,463 | `frame_count_race`, `cumulative_gate_freeze`, `payload_length_unclamped` |
+| `init_noops_cf03331` (clean, v1's) | `cf03331` | all source | 10,067 | 5,502 | none |
+| `ecu_support_7d297b4` (clean, v1's) | `7d297b4` | all source | 7,614 | 4,871 | none |
+
+Eleven known bugs, as in v1, but not the same eleven:
+- **Left out:**
+  - `static_batch_replay`: its file alone is 41.5K in `0b43261`.
+  - `unsubscribed_rows_freeze`: it became a bug only when `40e51ce`
+    added gauges that read every row, which is 60.8K of QML with the
+    cause in C++ outside it.
+- **Added:** `frame_count_race` and `cumulative_gate_freeze`, the bridge
+  fixture's two bugs. `7dbdcec` introduced them.
+- **Moved:** `drops_unreported_when_saturated` belongs to `e0c4c31`.
+  That commit's in-flight gate is what makes the drop report wait for a
+  saturated backlog to drain.
+
+All fixtures pass the input check and the base check, and every bug has
+a symbol in its diff's post-change lines (tests). The diffs are 1.5–3
+times v1's, with more unrelated change around each bug. That is closer
+to a real review and should be harder. A real bug present in a
+post-state but not introduced by its diff (`payload_length_unclamped` in
+`coalescing_e0c4c31`) is not that fixture's known bug and is labeled as
+such.

@@ -162,6 +162,21 @@ changed.
   condition 1 as the engineer (recall in any item 0.74 against 0.51) and
   failed condition 2 (0.24 false blockers per review, bar 0.10). Both
   current models stay.
+- 13 deterministic judge cases joined the golden suite
+  (`docs/fixtures/judge_cases.json`): blockers copied verbatim from
+  labeled records, valid and false for each outcome (kept, quote, link,
+  hedge), including the classes the judge keeps wrongly today.
+- the twenty-fourth measurement registered and started (`gpt-oss:20b`
+  as the reviewer); the twenty-fifth registered and scored offline:
+  `gpt-oss:20b` as the engineer, its blockers rejecting, cut round-1
+  misses from 5 to 3 of 22 bug pairs at no added wrong reject, earning
+  a confirmation sample; engineer blockers as concerns failed.
+- corpus v2 built: forward diffs of the commits that introduced each
+  known bug (`docs/fixtures/corpus_v2.json`); `corpus` and `replay
+  --corpus` gained `--manifest`.
+- the twenty-fourth scored: `gpt-oss:20b` as the reviewer failed
+  condition 1 (mean recall 0.31 against laguna's 0.44, false positives
+  0.73 times laguna's). laguna stays the reviewer.
 
 ## Features and measurements, in detail
 

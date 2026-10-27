@@ -57,6 +57,8 @@ from file_metadata import identify_layer
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = REPO_ROOT / "docs" / "fixtures" / "corpus.json"
+# Forward diffs of the bug-introducing commits (ADR-0002, "Corpus v2").
+MANIFEST_V2 = REPO_ROOT / "docs" / "fixtures" / "corpus_v2.json"
 LABELS_PATH = Path(__file__).with_name("corpus_labels.json")
 ENGINEER_LABELS_PATH = Path(__file__).with_name("engineer_labels.json")
 # The round entry's key for each role, and its key in config.MODELS.
@@ -374,6 +376,9 @@ def main(argv: Optional[List[str]] = None) -> None:
     parser = argparse.ArgumentParser(
         description="The real-diff corpus: list fixtures, collect round-1 "
                     "samples, score records against the known bugs")
+    parser.add_argument("--manifest", default=str(MANIFEST),
+                        help="The corpus manifest (default: docs/fixtures/corpus.json; "
+                             "v2 is docs/fixtures/corpus_v2.json)")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("list", help="Each fixture's size, layer, pack and input check")
     run_p = sub.add_parser("run", help="Collect round-1 reviewer samples")
@@ -398,7 +403,7 @@ def main(argv: Optional[List[str]] = None) -> None:
                               "engineer_labels.json for engineer records)")
     args = parser.parse_args(argv)
 
-    manifest = load_manifest()
+    manifest = load_manifest(Path(args.manifest))
     if args.command == "list":
         print_listing([describe(f) for f in manifest["fixtures"]])
         return

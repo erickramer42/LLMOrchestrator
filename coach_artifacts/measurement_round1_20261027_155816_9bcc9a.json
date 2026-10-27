@@ -1,0 +1,124 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261027_155816_9bcc9a",
+    "created_utc": "2026-10-27T16:01:14.649023+00:00",
+    "prompt_version": "v11.1-critiques-feedback",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "gpt-oss:20b",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 33294,
+      "estimated_tokens": 11098,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 2562,
+      "sections": {
+        "modified_files": 5,
+        "types": 5,
+        "constants": 1,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "entries": 11,
+      "index_version": "idx_20261023_160454",
+      "index_commit": "e0c4c314a8e86b04c563a12232a345549fe9fb4c",
+      "format_version": "f3-diff-authoritative",
+      "error": null,
+      "base_check": {
+        "checked": 6,
+        "mismatched": []
+      },
+      "shown": {
+        "modified_files": 5,
+        "types": 5,
+        "constants": 1,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\repo_context.json",
+      "sha256": "dfac132eb891a42b83149964772734d5fa3143075c63277425283b5c9c297862",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qml/Main.qml] (app): Main.qml defines the primary ApplicationWindow for the QtTune application, establishing the main layout structure including a ToolBar header, a navigation sidebar, and a StackLayout to manage\u2026\n[app/qttunebridge.cpp] (bridge): This file implements the `FrameListModel` for managing a collection of CAN frames, the `FrameSortProxy` for sorting those frames by timestamp, and the `SignalListModel` for managing signal data.  [only on the diff's removed lines: SignalListModel]\n[app/qttunebridge.h] (bridge): This file defines the `QtTuneBridge` class and associated models (`FrameListModel`, `FrameSortProxy`, `SignalListModel`) to bridge core data with the Qt GUI by providing models for frame and signal\u2026  [only on the diff's removed lines: SignalListModel]\n[tests/test_bridge.cpp] (bridge): This file contains unit tests for the `QtTuneBridge` class, which are executed by the Google Test framework to verify connection lifecycle, thread-safe frame marshalling from worker threads to the\u2026\nAlso modified (build/docs/CI, no summary): app/CMakeLists.txt\n\n--- KNOWN TYPES ---\nqttune_session_t (opaque): typedef struct qttune_session qttune_session_t;  // Forward-declared opaque handle types\nqttune_frame_t (struct): typedef struct { uint64_t timestamp_us; uint32_t channel_id; uint8_t data[64]; uint8_t data_length; uint8_t is_extended; uint8_t rsvd[3]; } qttune_frame_t;  // Frame structure - POD only, no pointers except length\nqttune_status_t (enum): typedef enum { QT_OK = 0, QT_ERR_NULL_ARGUMENT = 1, QT_ERR_NOT_IMPLEMENTED = 2, QT_ERR_NO_TRANSPORT = 3, QT_ERR_OUT_OF_MEMORY = 4, QT_ERR_SESSION_CLOSED = 5, QT_ERR_ALREADY_REGISTERED = 6 } qttune_status_t;  // Status codes - append-only evolution for ABI stability\nQttuneSignalDef (struct): typedef struct { uint16_t id; char name[32]; QttuneSignalType type; uint8_t start_byte; uint8_t num_bytes; uint8_t bit_offset; uint8_t bit_length; float scale; float offset; char unit[16]; uint8_t decimal_places; uint32_t flags; uint32_t reserved[3]; } QttuneSignalDef;\nQttuneSignalSet (struct): typedef struct { uint32_t version; uint32_t count; const QttuneSignalDef* defs; } QttuneSignalSet;  // Single canonical definition \u2014 no duplicates\n\n--- CONSTANTS ---\nMaxFrames = 10000 (const)\n\n--- OMITTED (indexed entries this diff removes or rewrites) ---\nMaxInFlightFrames (constant, app/qttunebridge.h)\nqueued call site in app/qttunebridge.cpp using fetch_sub, m_inFlightFrames"
+    },
+    "prompt_fingerprint": "8e76794ac4946aab"
+  },
+  "inputs": {
+    "proposal": "Review: coalesced signal updates with LiveView Page v0.3.0 phase 2",
+    "original_proposal": "Review: coalesced signal updates with LiveView Page v0.3.0 phase 2",
+    "header_artifact": false,
+    "file_path": "app/CMakeLists.txt",
+    "layer": "bridge",
+    "diff_sha256": "f031d33ab6406e94a530898e6bb84959f5629637e0bac4050b368cda8fac6129",
+    "diff_chars": 26695,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "claim: Backpressure mechanism removed: onFrame now drops frames only when m_currentFrameCount >= MaxFrames, which bounds lifetime but not queued backlog, violating the design requirement for queue backlog backpressure.; file: app/qttunebridge.cpp; quote: if (self->m_currentFrameCount >= FrameListModel::MaxFrames) {\n    self->m_droppedFrames.fetch_add(1, std::memory_order_relaxed);\n    return;\n}"
+          ],
+          "questions": [
+            "claim: Missing implementation of SignalListModel: the class is declared in the header but all of its methods are removed from the cpp file, leading to undefined symbols.; file: app/qttunebridge.h; quote: class SignalListModel : public QAbstractListModel\n{\n    Q_OBJECT\n    Q_PROPERTY(int subscribedCount READ subscribedCount NOTIFY subscribedCountChanged)\n\npublic:\n    explicit SignalListModel(QObject* parent = nullptr);\n\n    enum SignalRoles {\n        IdRole = Qt::UserRole + 1,\n        NameRole,\n        UnitRole,\n        ValueRole,\n        SubscribedRole\n    };\n\n    int rowCount(const QModelIndex& parent = {}) const override;\n    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;\n    QHash<int, QByteArray> roleNames() const override;\n    void setSignalSet(const void* set);  // opaque pointer to QttuneSignalSet\n    void updateValues(const std::vector<std::pair<uint16_t, float>>& values);\n    int subscribedCount() const { return static_cast<int>(m_subscribedCount); }\n\n    Q_INVOKABLE void toggleSubscribed(int row);\n\nsignals:\n    void valuesUpdated();\n    void subscribedCountChanged();\n\nprivate:\n    struct Entry {\n        uint16_t id;\n        char name[32];\n        char unit[16];\n        float value = 0.0f;\n        bool subscribed = true;\n    };\n\n    std::vector<Entry> m_entries;\n    int m_subscribedCount = 0;\n};",
+            "claim: Missing implementation of QtTuneBridge::forceFrameCountForTesting: the method is declared as Q_INVOKABLE in the header but its definition has been removed from the cpp file, causing a linker error.; file: app/qttunebridge.cpp; quote: void QtTuneBridge::forceFrameCountForTesting(int count)"
+          ],
+          "nits": [
+            "Consider restoring or re\u2011implementing the SignalListModel and related signal batching logic if they are intended to be part of the public API.",
+            "If the backpressure change was intentional, document the rationale and ensure the rest of the system can tolerate an unbounded queued backlog.",
+            "Remove or update the unused QTimer and stagingBuffer members to avoid confusion."
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 2
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 33294,
+              "prompt_eval_count": 8678,
+              "eval_count": 5509,
+              "thinking_chars": 21858,
+              "content_chars": 2800,
+              "done_reason": "stop",
+              "wall_s": 178.48,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n        {\n            \"claim\": \"Missing implementation of SignalListModel: the class is declared in the header but all of its methods are removed from the cpp file, leading to undefined symbols.\",\n            \"file\": \"app/qttunebridge.h\",\n            \"quote\": \"class SignalListModel : public QAbstractListModel\\n{\\n    Q_OBJECT\\n    Q_PROPERTY(int subscribedCount READ subscribedCount NOTIFY subscribedCountChanged)\\n\\npublic:\\n    explicit SignalListModel(QObject* parent = nullptr);\\n\\n    enum SignalRoles {\\n        IdRole = Qt::UserRole + 1,\\n        NameRole,\\n        UnitRole,\\n        ValueRole,\\n        SubscribedRole\\n    };\\n\\n    int rowCount(const QModelIndex& parent = {}) const override;\\n    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;\\n    QHash<int, QByteArray> roleNames() const override;\\n    void setSignalSet(const void* set);  // opaque pointer to QttuneSignalSet\\n    void updateValues(const std::vector<std::pair<uint16_t, float>>& values);\\n    int subscribedCount() const { return static_cast<int>(m_subscribedCount); }\\n\\n    Q_INVOKABLE void toggleSubscribed(int row);\\n\\nsignals:\\n    void valuesUpdated();\\n    void subscribedCountChanged();\\n\\nprivate:\\n    struct Entry {\\n        uint16_t id;\\n        char name[32];\\n        char unit[16];\\n        float value = 0.0f;\\n        bool subscribed = true;\\n    };\\n\\n    std::vector<Entry> m_entries;\\n    int m_subscribedCount = 0;\\n};\"\n        },\n        {\n            \"claim\": \"Missing implementation of QtTuneBridge::forceFrameCountForTesting: the method is declared as Q_INVOKABLE in the header but its definition has been removed from the cpp file, causing a linker error.\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"void QtTuneBridge::forceFrameCountForTesting(int count)\"\n        },\n        {\n            \"claim\": \"Backpressure mechanism removed: onFrame now drops frames only when m_currentFrameCount >= MaxFrames, which bounds lifetime but not queued backlog, violating the design requirement for queue backlog backpressure.\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"if (self->m_currentFrameCount >= FrameListModel::MaxFrames) {\\n    self->m_droppedFrames.fetch_add(1, std::memory_order_relaxed);\\n    return;\\n}\"\n        }\n    ],\n    \"questions\": [],\n    \"nits\": [\n        \"Consider restoring or re\u2011implementing the SignalListModel and related signal batching logic if they are intended to be part of the public API.\",\n        \"If the backpressure change was intentional, document the rationale and ensure the rest of the system can tolerate an unbounded queued backlog.\",\n        \"Remove or update the unused QTimer and stagingBuffer members to avoid confusion.\"\n    ]\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-27T16:01:14.648943+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

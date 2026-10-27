@@ -1,0 +1,126 @@
+{
+  "metadata": {
+    "debate_id": "round1_20261027_171622_1e2530",
+    "created_utc": "2026-10-27T17:19:03.824561+00:00",
+    "prompt_version": "v11.1-critiques-feedback",
+    "judge_version": "j8-claim-quote-linkage",
+    "models_used": {
+      "code_reviewer": "gpt-oss:20b",
+      "auto_engineer": "gemma4:12b"
+    },
+    "mode": "round1_reviewer",
+    "max_rounds": 1,
+    "temperature_exploration": 0.7,
+    "temperature_retry": 0.05,
+    "num_ctx": 24576,
+    "num_predict": 12288,
+    "context_char_limit": 8000,
+    "input_check": {
+      "request_chars": 16931,
+      "estimated_tokens": 5644,
+      "token_limit": 12288,
+      "verdict": null,
+      "reason": null
+    },
+    "repo_context_pack": {
+      "budget": 6000,
+      "used": 1507,
+      "sections": {
+        "modified_files": 2,
+        "types": 4,
+        "constants": 2,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "entries": 8,
+      "index_version": "idx_20261024_014115",
+      "index_commit": "b47687c6c6d81dc85a539dcd0e17d662e2b3d42f",
+      "format_version": "f3-diff-authoritative",
+      "error": null,
+      "base_check": {
+        "checked": 2,
+        "mismatched": []
+      },
+      "shown": {
+        "modified_files": 2,
+        "types": 4,
+        "constants": 2,
+        "call_sites": 0,
+        "related_call_sites": 0,
+        "omitted": 2
+      },
+      "truncated": false,
+      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\decode_length_b47687c\\repo_context.json",
+      "sha256": "157c98bba4a928fedebe2a6833fdbe6314746197115e3f555690bf8d8f1cbdc0",
+      "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qttunebridge.cpp] (bridge): FrameListModel\n[app/qttunebridge.h] (bridge): FIX: latest-value-per-signal-ID staging (merge, not clear-and-refill)  [only on the diff's removed lines: FIX, ID]\n\n--- KNOWN TYPES ---\nqttune_session_t (opaque): typedef struct qttune_session qttune_session_t;  // Forward-declared opaque handle types\nqttune_frame_t (struct): typedef struct qttune_frame { uint64_t timestamp_us; uint32_t channel_id; uint8_t data[64]; uint8_t data_length; uint8_t is_extended; uint8_t rsvd[3]; } qttune_frame_t;  // Frame structure - POD only, no pointers except length\nQttuneSignalDef (struct): typedef struct QttuneSignalDef { uint16_t id; char name[32]; QttuneSignalType type; uint8_t start_byte; uint8_t num_bytes; uint8_t bit_offset; uint8_t bit_length; float scale; float offset; char unit[16]; uint8_t decimal_places; uint32_t flags; uint32_t reserved[3]; } QttuneSignalDef;\nQttuneSignalSet (struct): typedef struct QttuneSignalSet { uint32_t version; uint32_t count; const QttuneSignalDef* defs; } QttuneSignalSet;  // Single canonical definition \u2014 no duplicates\n\n--- CONSTANTS ---\nMaxFrames = 10000 (const)\nMaxInFlightFrames = 1000 (const)\n\n--- OMITTED (indexed entries this diff removes or rewrites) ---\nqueued call site in app/qttunebridge.cpp using QueuedConnection, m_dropNotifyPending, notifyDropped\nqueued call site in app/qttunebridge.cpp using QueuedConnection"
+    },
+    "prompt_fingerprint": "8e76794ac4946aab"
+  },
+  "inputs": {
+    "proposal": "Bridge cleanup after the coalescing change: setSignalSet takes an opaque pointer, signal decode reads the standard 8-byte CAN payload, the staging buffer is rebuilt per frame, and dropped frames are reported from the GUI-side frame handler.",
+    "original_proposal": "Bridge cleanup after the coalescing change: setSignalSet takes an opaque pointer, signal decode reads the standard 8-byte CAN payload, the staging buffer is rebuilt per frame, and dropped frames are reported from the GUI-side frame handler.",
+    "header_artifact": false,
+    "file_path": "app/qttunebridge.cpp",
+    "layer": "bridge",
+    "diff_sha256": "3fc6fd4098bab1a7684359958f377ec7a6f53985a49557c6348d0e7a163b49fb",
+    "diff_chars": 11213,
+    "context_sha256": null,
+    "context_chars": 0,
+    "context_truncated": false
+  },
+  "outputs": {
+    "final_verdict": "NOT_ADJUDICATED - ROUND1_MEASUREMENT",
+    "round_history": [
+      {
+        "round": 1,
+        "reviewer": {
+          "verdict": "reject",
+          "blockers": [
+            "claim: Buffer size assumption: fixed 8-byte payload for CAN-FD signals, ignoring actual payload length; file: app/qttunebridge.cpp; quote: if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {"
+          ],
+          "questions": [
+            "Could qttune_frame_t::data_length ever exceed 64, leading to a buffer overrun when accessing frame->data?",
+            "Is the removal of the drop\u2011notification mechanism (notifyDropped) intentional, or will dropped frames never be reported to the UI?",
+            "Does the Entry struct in FrameListModel guarantee null\u2011termination of the name and unit fields, or should the code explicitly add a terminating NUL?",
+            "claim: Potential undefined behavior: strncpy does not null\u2011terminate destination strings for signal name and unit; file: app/qttunebridge.cpp; quote: strncpy(e.name, set->defs[i].name, sizeof(e.name) - 1);; quote2: strncpy(e.unit, set->defs[i].unit, sizeof(e.unit) - 1);"
+          ],
+          "nits": [
+            "Consider using std::string or QString for signal names and units to avoid manual strncpy and null\u2011termination issues.",
+            "The lambda capturing `copy` by value in `onFrame` copies the entire frame; if frame size grows, this could become a performance concern.",
+            "Ensure that `qttune_mock_signal_set()` returns a stable, thread\u2011safe pointer before it is passed to `setSignalSet`."
+          ]
+        },
+        "evidence_demotions": {
+          "reviewer_demoted": 1
+        },
+        "hedge_demotions": {
+          "reviewer_demoted": 0
+        },
+        "telemetry": {
+          "reviewer": [
+            {
+              "attempt": 0,
+              "temperature": 0.7,
+              "prompt_chars": 16931,
+              "prompt_eval_count": 4505,
+              "eval_count": 5966,
+              "thinking_chars": 23152,
+              "content_chars": 1544,
+              "done_reason": "stop",
+              "wall_s": 161.58,
+              "outcome": "ok",
+              "reply": "{\n    \"verdict\": \"reject\",\n    \"blockers\": [\n        {\n            \"claim\": \"Buffer size assumption: fixed 8-byte payload for CAN-FD signals, ignoring actual payload length\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {\"\n        },\n        {\n            \"claim\": \"Potential undefined behavior: strncpy does not null\u2011terminate destination strings for signal name and unit\",\n            \"file\": \"app/qttunebridge.cpp\",\n            \"quote\": \"strncpy(e.name, set->defs[i].name, sizeof(e.name) - 1);\",\n            \"quote2\": \"strncpy(e.unit, set->defs[i].unit, sizeof(e.unit) - 1);\"\n        }\n    ],\n    \"questions\": [\n        \"Could qttune_frame_t::data_length ever exceed 64, leading to a buffer overrun when accessing frame->data?\",\n        \"Is the removal of the drop\u2011notification mechanism (notifyDropped) intentional, or will dropped frames never be reported to the UI?\",\n        \"Does the Entry struct in FrameListModel guarantee null\u2011termination of the name and unit fields, or should the code explicitly add a terminating NUL?\"\n    ],\n    \"nits\": [\n        \"Consider using std::string or QString for signal names and units to avoid manual strncpy and null\u2011termination issues.\",\n        \"The lambda capturing `copy` by value in `onFrame` copies the entire frame; if frame size grows, this could become a performance concern.\",\n        \"Ensure that `qttune_mock_signal_set()` returns a stable, thread\u2011safe pointer before it is passed to `setSignalSet`.\"\n    ]\n}"
+            }
+          ]
+        },
+        "timestamp": "2026-10-27T17:19:03.824468+00:00"
+      }
+    ],
+    "agent_failures": []
+  },
+  "audit_trail": {
+    "artifact_type": "measurement_record",
+    "intended_consumer": "eval_harness.round1"
+  }
+}

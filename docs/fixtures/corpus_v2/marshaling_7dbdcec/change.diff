@@ -1,0 +1,685 @@
+diff --git a/app/CMakeLists.txt b/app/CMakeLists.txt
+index 021b7c6..609103e 100644
+--- a/app/CMakeLists.txt
++++ b/app/CMakeLists.txt
+@@ -37,7 +37,7 @@ target_link_libraries(qttune PRIVATE
+ 
+ set_target_properties(qttune PROPERTIES
+     MACOSX_BUNDLE TRUE
+-    WIN32_EXECUTABLE TRUE
++    # WIN32_EXECUTABLE TRUE
+ )
+ 
+ # Icon helpers later: qt_add_resources, ios/macos asset catalogs, etc.
+diff --git a/app/qml/HomePage.qml b/app/qml/HomePage.qml
+index e738ba0..3ced8a9 100644
+--- a/app/qml/HomePage.qml
++++ b/app/qml/HomePage.qml
+@@ -86,7 +86,7 @@ Rectangle {
+             color: Theme.text
+             Layout.alignment: Qt.AlignHCenter
+         }
+-        // des
++        // description text
+         Text {
+             text: qsTr("ECU reader / logger")
+             font.pixelSize: 16
+@@ -106,9 +106,12 @@ Rectangle {
+                 anchors.fill: parent
+                 anchors.margins: 12
+ 
+-                Rectangle { width: 10; height: 10; radius: 5; color: Theme.danger }  // session status dot
++                Rectangle {
++                    width: 10; height: 10; radius: 5
++                    color: QtTune.connected ? Theme.success : Theme.danger
++                }
+                 Text {
+-                    text: qsTr("No session")
++                    text: QtTune.connected ? qsTr("Session active") : qsTr("No session")
+                     color: Theme.textDim
+                     font.pixelSize: 13
+                 }
+@@ -122,10 +125,21 @@ Rectangle {
+         }
+ 
+         ThemedButton {
+-            text: qsTr("Start session")
++            text: QtTune.connected ? qsTr("End session") : qsTr("Start session")
+             Layout.alignment: Qt.AlignHCenter
+             Layout.topMargin: 8
+-            // v0.2.0 bridge: connect mock:// + navigate to Log
++            onClicked: {
++                if (QtTune.connected) {
++                    QtTune.disconnectSession()
++                } else {
++                    var err = QtTune.connectSession("mock://demo")
++                    if (err !== "") {
++                        console.error("connect failed:", err)
++                        return
++                    }
++                    gotoPage(2)   // jump to Log
++                }
++            }
+         }
+ 
+         Text {
+diff --git a/app/qml/LogPage.qml b/app/qml/LogPage.qml
+index ed6e9e7..22ebc90 100644
+--- a/app/qml/LogPage.qml
++++ b/app/qml/LogPage.qml
+@@ -1,13 +1,147 @@
+ import QtQuick
+ import QtQuick.Controls
++import QtQuick.Layouts
+ 
+ Pane {
++    padding: 12
+     background: Rectangle { color: Theme.bg }
+ 
+-    Label {
+-        anchors.centerIn: parent
+-        text: qsTr("Frame log / trace viewer lands here.")
+-        horizontalAlignment: Text.AlignHCenter
+-        color: Theme.text
++    ColumnLayout {
++        anchors.fill: parent
++        spacing: Theme.spacing
++
++        // ---- Toolbar: stats + actions ----
++        RowLayout {
++            Layout.fillWidth: true
++            spacing: Theme.spacing
++
++            Label {
++                text: QtTune.connected
++                      ? qsTr("Logging — %1 frames").arg(QtTune.frameCount)
++                      : qsTr("Idle")
++                color: QtTune.connected ? Theme.success : Theme.textDim
++                font.pixelSize: 13
++            }
++
++            Label {
++                text: qsTr("%1 dropped").arg(QtTune.droppedFrames)
++                color: Theme.danger
++                font.pixelSize: 13
++                visible: QtTune.droppedFrames > 0
++            }
++
++            Item { Layout.fillWidth: true }
++
++            ThemedButton {
++                text: QtTune.model.newestFirst
++                    ? qsTr("Newest first ▾")
++                    : qsTr("Oldest first ▴")
++                onClicked: QtTune.model.newestFirst = !QtTune.model.newestFirst
++            }
++
++            ThemedButton {
++                text: qsTr("Clear")
++                enabled: QtTune.frameCount > 0
++                onClicked: QtTune.clearFrames()
++            }
++        }
++
++        // ---- Frame table ----
++        Rectangle {
++            Layout.fillWidth: true
++            Layout.fillHeight: true
++            radius: Theme.radius
++            color: Theme.surface
++            clip: true
++
++            // Column header
++            Rectangle {
++                id: columnHeader
++                anchors { top: parent.top; left: parent.left; right: parent.right }
++                height: 32
++                z: 2
++                color: Theme.elevated
++
++                RowLayout {
++                    anchors.fill: parent
++                    anchors.leftMargin: 12
++                    anchors.rightMargin: 12
++                    spacing: 8
++
++                    // Widths MUST match delegate columns below
++                    Label { text: qsTr("Time (µs)"); color: Theme.textDim; font.pixelSize: 12;
++                            Layout.preferredWidth: 130 }
++                    Label { text: qsTr("DLC"); color: Theme.textDim; font.pixelSize: 12;
++                            Layout.preferredWidth: 36 }
++                    Label { text: qsTr("Ext"); color: Theme.textDim; font.pixelSize: 12;
++                            Layout.preferredWidth: 36 }
++                    Label { text: qsTr("Payload"); color: Theme.textDim; font.pixelSize: 12;
++                            Layout.fillWidth: true }
++                }
++            }
++
++            ListView {
++                id: frameList
++                anchors { top: columnHeader.bottom; left: parent.left
++                          right: parent.right; bottom: parent.bottom }
++                anchors.margins: 4
++                clip: true
++                model: QtTune.model          // FrameListModel from bridge
++
++                // Auto-follow newest frames
++                // onCountChanged: {
++                //     if (atYEnd)
++                //         positionViewAtEnd()
++                // }
++
++                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
++
++                delegate: RowLayout {
++                    width: frameList.width
++                    height: 26
++                    spacing: 8
++
++                    required property var model    // role access
++                    required property int  index
++
++                    // Roles from FrameListModel::roleNames()
++                    Label {
++                        text: model.timestampUs
++                        color: Theme.textDim
++                        font.family: "monospace"; font.pixelSize: 12
++                        Layout.preferredWidth: 130
++                        elide: Text.ElideRight
++                    }
++                    Label {
++                        text: model.dlc
++                        color: Theme.text
++                        font.family: "monospace"; font.pixelSize: 12
++                        Layout.preferredWidth: 36
++                    }
++                    Label {
++                        text: model.extended ? "E" : "-"
++                        color: model.extended ? Theme.success : Theme.textDim
++                        Layout.preferredWidth: 36
++                    }
++                    Label {
++                        text: model.payloadHex
++                        color: Theme.text
++                        font.family: "monospace"; font.pixelSize: 12
++                        Layout.fillWidth: true
++                        elide: Text.ElideRight
++                    }
++                }
++
++                // ---- Empty state ----
++                Label {
++                    anchors.centerIn: parent
++                    visible: frameList.count === 0
++                    text: QtTune.connected
++                          ? qsTr("Waiting for frames…")
++                          : qsTr("No session — start one from Home")
++                    color: Theme.textDim
++                }
++            }
++        }
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/app/qml/Main.qml b/app/qml/Main.qml
+index ccb67e4..eb815a4 100644
+--- a/app/qml/Main.qml
++++ b/app/qml/Main.qml
+@@ -16,21 +16,50 @@ ApplicationWindow {
+     readonly property bool isCompact: width < 720
+     readonly property int currentPage: stack.currentIndex
+ 
++    function gotoPage(index) { stack.currentIndex = index }
++
++    readonly property bool bridgeConnected: QtTune.connected
++    readonly property bool isConnecting: false  // Future: async loading state
++
+     header: ToolBar {
+         height: 48
+         background: Rectangle {
+             color: Theme.surface
+-            Rectangle { // 1px accent underline — cheap, looks deliberate
++            Rectangle { // 1px accent underline
+                 anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+                 height: 2; color: Theme.primary
+             }
+         }
+-        Label {
+-            anchors.centerIn: parent
+-            text: qsTr("QtTune — core %1 [%2]")
+-                .arg(QtTune.coreVersion)
+-                .arg(QtTune.coreInitialized ? qsTr("ready") : qsTr("init failed"))
+-            color: QtTune.coreInitialized ? Theme.text : Theme.danger
++        RowLayout {
++            anchors.fill: parent
++            spacing: 12
++            
++            Label {
++                Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
++                text: qsTr("QtTune — core %1 [%2]")
++                    .arg(QtTune.coreVersion)
++                    .arg(QtTune.coreInitialized ? qsTr("ready") : qsTr("init failed"))
++                color: QtTune.coreInitialized ? Theme.text : Theme.danger
++            }
++            
++            Item { Layout.fillWidth: true }  // Spacer
++            
++            Button {
++                id: connBtn
++                text: QtTune.connected ? qsTr("Disconnect") : qsTr("Connect Mock")
++                enabled: QtTune.coreInitialized
++                background: Rectangle {
++                    radius: Theme.radius
++                    color: QtTune.connected ? Theme.elevated : Theme.primary
++                }
++                onClicked: QtTune.connected ? QtTune.disconnectSession()
++                                             : QtTune.connectSession("mock://demo")
++            }
++            Label {
++                text: qsTr("%1 fps-drop:%2").arg(QtTune.frameCount).arg(QtTune.droppedFrames)
++                color: Theme.textDim
++                visible: QtTune.frameCount > 0
++            }
+         }
+     }
+ 
+diff --git a/app/qttunebridge.cpp b/app/qttunebridge.cpp
+index ef196d4..8d819d5 100644
+--- a/app/qttunebridge.cpp
++++ b/app/qttunebridge.cpp
+@@ -1,16 +1,97 @@
+ #include "qttunebridge.h"
+ 
+-#include "qttune/core.h"
+ #include "qttune/version.h"
+ 
++#include <QMetaObject>
++#include <QByteArray>
++
++// ---------------- FrameListModel ----------------
++
++FrameListModel::FrameListModel(QObject* parent)
++    : QAbstractListModel(parent)
++{
++    m_frames.reserve(MaxFrames);
++}
++
++int FrameListModel::rowCount(const QModelIndex&) const
++{
++    return static_cast<int>(m_frames.size());
++}
++
++QVariant FrameListModel::data(const QModelIndex& index, int role) const
++{
++    if (!index.isValid() || index.row() >= static_cast<int>(m_frames.size())) {
++        return QVariant();
++    }
++
++    const QVariantMap& frame = m_frames[static_cast<size_t>(index.row())];
++    switch (role) {
++        case TimestampRole: return frame.value("timestampUs");
++        case DlcRole:       return frame.value("dlc");
++        case ExtendedRole:  return frame.value("extended");
++        case PayloadRole:   return frame.value("payloadHex");
++        default:            return QVariant();
++    }
++}
++
++QHash<int, QByteArray> FrameListModel::roleNames() const
++{
++    return {
++        {TimestampRole, "timestampUs"},
++        {DlcRole,       "dlc"},
++        {ExtendedRole,  "extended"},
++        {PayloadRole,   "payloadHex"}
++    };
++}
++
++void FrameListModel::appendFrame(const QVariantMap& frame)
++{
++    const int row = rowCount();
++    beginInsertRows(QModelIndex(), row, row);
++    m_frames.push_back(frame);
++    endInsertRows();
++
++    // Capacity: evict OLDEST, which in arrival order is at the FRONT
++    while (static_cast<int>(m_frames.size()) > MaxFrames) {
++        beginRemoveRows(QModelIndex(), 0, 0);
++        m_frames.erase(m_frames.begin());
++        endRemoveRows();
++    }
++
++    emit countChanged(static_cast<int>(m_frames.size()));
++}
++
++void FrameListModel::clear()
++{
++    if (m_frames.empty()) {
++        return;
++    }
++    beginResetModel();
++    m_frames.clear();
++    endResetModel();
++    emit countChanged(0);
++}
++
++// ---------------- QtTuneBridge ----------------
++
+ QtTuneBridge::QtTuneBridge(QObject* parent)
+     : QObject(parent)
++    , m_sourceModel(new FrameListModel(this))
++    , m_sortProxy(new FrameSortProxy(this))
+ {
+     m_initialized = (qttune_init() == QT_OK);
++    m_sortProxy->setSourceModel(m_sourceModel);
+ }
+ 
+ QtTuneBridge::~QtTuneBridge()
+ {
++    // Ordering constraint: session close FIRST. The worker join happens
++    // inside close, so no queued lambda can arrive after model teardown.
++    if (m_session != nullptr) {
++        qttune_session_close(m_session);
++        m_session = nullptr;
++    }
++
+     if (m_initialized) {
+         qttune_shutdown();
+     }
+@@ -30,3 +111,157 @@ QString QtTuneBridge::statusString(int statusCode) const
+ {
+     return QString::fromUtf8(qttune_status_string(static_cast<qttune_status_t>(statusCode)));
+ }
++
++QString QtTuneBridge::connectSession(const QString& uri)
++{
++    if (m_connected.load(std::memory_order_acquire)) {
++        return {};  // idempotent success
++    }
++
++    // Named local: uri.toUtf8() returns a temporary; binding it keeps the
++    // buffer alive for the whole function scope.
++    const QByteArray uri8 = uri.toUtf8();
++
++    qttune_session_t* session = nullptr;
++    qttune_status_t rc = qttune_session_create(uri8.constData(), &session);
++    if (rc != QT_OK || session == nullptr) {
++        return QString::fromUtf8(qttune_status_string(rc));
++    }
++    m_session = session;
++    m_currentUri = uri;
++
++    rc = qttune_register_frame_callback(session, &QtTuneBridge::onFrame, this);
++    if (rc != QT_OK) {
++        qttune_session_close(session);
++        m_session = nullptr;
++        return QString::fromUtf8(qttune_status_string(rc));
++    }
++
++    rc = qttune_session_start(session);
++    if (rc != QT_OK) {
++        qttune_unregister_frame_callback(session, &QtTuneBridge::onFrame, this);
++        qttune_session_close(session);
++        m_session = nullptr;
++        return QString::fromUtf8(qttune_status_string(rc));
++    }
++
++    m_connected.store(true, std::memory_order_release);
++    m_currentFrameCount = 0;
++    m_droppedFrames.store(0, std::memory_order_relaxed);
++    m_lastReportedDropped = 0;
++    emit connectedChanged(true);
++    emit framesReset();
++
++    return {};
++}
++
++void QtTuneBridge::disconnectSession()
++{
++    if (!m_connected.load(std::memory_order_acquire)) {
++        return;
++    }
++
++    m_connected.store(false, std::memory_order_release);   // drop stragglers
++
++    if (m_session != nullptr) {
++        qttune_session_close(m_session);   // joins mock worker
++        m_session = nullptr;
++    }
++
++    emit connectedChanged(false);
++}
++
++void QtTuneBridge::clearFrames()
++{
++    if (m_sourceModel) {
++        m_sourceModel->clear();
++    }
++    m_currentFrameCount = 0;
++    emit framesReset();
++}
++
++void QtTuneBridge::onFrame(const qttune_frame_t* frame, void* user_data)
++{
++    QtTuneBridge* self = static_cast<QtTuneBridge*>(user_data);
++    if (frame == nullptr || self == nullptr) {
++        return;
++    }
++    if (!self->m_connected.load(std::memory_order_acquire)) {
++        return;
++    }
++    if (self->m_currentFrameCount >= FrameListModel::MaxFrames) {
++        self->m_droppedFrames.fetch_add(1, std::memory_order_relaxed);
++        return;
++    }
++
++    const qttune_frame_t copy = *frame;   // frame is stack-owned by mock_worker
++
++    QMetaObject::invokeMethod(self, [self, copy]() {
++        self->handleFrameInternal(&copy);
++    }, Qt::QueuedConnection);
++}
++
++void QtTuneBridge::handleFrameInternal(const qttune_frame_t* frame)
++{
++    if (!m_connected.load(std::memory_order_acquire)) {
++        return;
++    }
++
++    QVariantMap vm;
++    vm["timestampUs"] = QVariant::fromValue<quint64>(frame->timestamp_us);
++    vm["dlc"]         = static_cast<uint32_t>(frame->data_length);
++    vm["extended"]    = frame->is_extended != 0;
++    vm["payloadHex"]  = QByteArray(
++        reinterpret_cast<const char*>(frame->data),
++        static_cast<qsizetype>(frame->data_length)).toHex();
++
++    m_sourceModel->appendFrame(vm);
++    ++m_currentFrameCount;
++    emit frameCountChanged();
++
++    // and sync the drop counter to the GUI thread while we're here:
++    const int dropped = m_droppedFrames.load(std::memory_order_relaxed);
++    if (dropped != m_lastReportedDropped) {
++        m_lastReportedDropped = dropped;
++        emit droppedFramesChanged(dropped);     // TODO change to coalesce for v0.3 and real data
++    }
++}
++
++// ---------------- FrameSortProxy ----------------
++
++// QSortFilterProxyModel's default lessThan on a quint64 stored in a QVariant,
++// comparison goes through QVariant::compare — for numeric types that's fine in 
++// Qt 6, but the safest defense is an explicit lessThan override
++bool FrameSortProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
++{
++    // Explicit numeric compare on the sort role; never string-compare quint64
++    const quint64 lhs = sourceModel()->data(left, FrameListModel::TimestampRole).toULongLong();
++    const quint64 rhs = sourceModel()->data(right, FrameListModel::TimestampRole).toULongLong();
++    return lhs < rhs;
++}
++
++FrameSortProxy::FrameSortProxy(QObject* parent)
++    : QSortFilterProxyModel(parent)
++{
++    // Sort key: timestamp. Comparator must be numeric — QVariant's default
++    // comparison would string-compare quint64s and 100 < 99. Use a lambda
++    // comparator so timestamps sort numerically.
++    setSortRole(FrameListModel::TimestampRole);
++    setDynamicSortFilter(true);
++    sort(0, Qt::DescendingOrder);   // newestFirst default = true
++}
++
++bool FrameSortProxy::newestFirst() const
++{
++    return m_newestFirst;
++}
++
++void FrameSortProxy::setNewestFirst(bool newestFirst)
++{
++    if (m_newestFirst == newestFirst) {
++        return;
++    }
++    m_newestFirst = newestFirst;
++    sort(0, newestFirst ? Qt::DescendingOrder : Qt::AscendingOrder);
++    emit newestFirstChanged();
++}
+diff --git a/app/qttunebridge.h b/app/qttunebridge.h
+index 6dd804a..a148281 100644
+--- a/app/qttunebridge.h
++++ b/app/qttunebridge.h
+@@ -1,13 +1,92 @@
++// File/layer: app/qttunebridge.h | C++17, Qt 6.12+, MSVC/Clang/GCC
+ #pragma once
+ 
+ #include <QObject>
+ #include <QString>
++#include <QAbstractListModel>
++#include <QSortFilterProxyModel>
++#include <QVariantMap>
++
++#include <atomic>
++#include <vector>
++
++#include "qttune/core.h"   // qttune_frame_t, qttune_session_t — typedef'd
++                           // anonymous structs; cannot be forward-declared.
++
++/**
++ * Canonical frame storage. Rows NEVER reorder: arrival order, monotonic.
++ * Newest appended at back; back-eviction at capacity. Ordering/filtering
++ * is a view concern handled by FrameSortProxy.
++ */
++class FrameListModel : public QAbstractListModel
++{
++    Q_OBJECT
++    Q_PROPERTY(int count READ count NOTIFY countChanged)
++
++public:
++    explicit FrameListModel(QObject* parent = nullptr);
++
++    static constexpr int MaxFrames = 10000;   // backpressure limit (public: bridge reads)
++
++    enum FrameRoles {
++        TimestampRole = Qt::UserRole + 1,
++        DlcRole,
++        ExtendedRole,
++        PayloadRole
++    };
++
++    int rowCount(const QModelIndex& parent = {}) const override;
++    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
++    QHash<int, QByteArray> roleNames() const override;
++
++    void appendFrame(const QVariantMap& frame);   // O(1) amortized, back-eviction
++    void clear();
++    int count() const { return static_cast<int>(m_frames.size()); }
++
++signals:
++    void countChanged(int newCount);
++
++private:
++    std::vector<QVariantMap> m_frames;
++};
++
++/**
++ * View-facing ordering. Wraps FrameListModel; never mutates storage.
++ * newestFirst=true (default): live log, newest at top, view stays at
++ * origin — zero scroll management. newestFirst=false: chronological
++ * reading; auto-follow/jump-to-latest is a future LogPage feature.
++ */
++class FrameSortProxy : public QSortFilterProxyModel
++{
++    Q_OBJECT
++    Q_PROPERTY(bool newestFirst READ newestFirst WRITE setNewestFirst
++               NOTIFY newestFirstChanged)
++
++public:
++    explicit FrameSortProxy(QObject* parent = nullptr);
++
++    bool newestFirst() const;
++    void setNewestFirst(bool newestFirst);
++
++protected:
++    bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
++
++signals:
++    void newestFirstChanged();
++
++private:
++    bool m_newestFirst = true;
++};
+ 
+ class QtTuneBridge : public QObject
+ {
+     Q_OBJECT
+     Q_PROPERTY(QString coreVersion READ coreVersion CONSTANT)
+     Q_PROPERTY(bool coreInitialized READ coreInitialized NOTIFY coreInitializedChanged)
++    Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)
++    Q_PROPERTY(int frameCount READ frameCount NOTIFY frameCountChanged)
++    Q_PROPERTY(int droppedFrames READ droppedFrames NOTIFY droppedFramesChanged)
++    Q_PROPERTY(FrameSortProxy* model READ model CONSTANT)
+ 
+ public:
+     explicit QtTuneBridge(QObject* parent = nullptr);
+@@ -15,13 +94,39 @@ public:
+ 
+     QString coreVersion() const;
+     bool coreInitialized() const;
++    bool connected() const { return m_connected.load(std::memory_order_acquire); }
++    int frameCount() const { return m_currentFrameCount; }
++    int droppedFrames() const { return m_droppedFrames.load(std::memory_order_relaxed); }
++    FrameSortProxy* model() const { return m_sortProxy; }   // QML binds the PROXY
+ 
+-    // Phase 2: Q_INVOKABLE connectSession(uri), disconnectSession(), ...
+     Q_INVOKABLE QString statusString(int statusCode) const;
++    Q_INVOKABLE int maxFrameCount() const { return FrameListModel::MaxFrames; }
++
++public slots:
++    Q_INVOKABLE QString connectSession(const QString& uri);
++    Q_INVOKABLE void disconnectSession();
++    Q_INVOKABLE void clearFrames();
+ 
+ signals:
+     void coreInitializedChanged();
++    void connectedChanged(bool);
++    void frameCountChanged();
++    void framesReset();
++    void droppedFramesChanged(int);
+ 
+ private:
++    static void onFrame(const qttune_frame_t* frame, void* user_data);   // worker thread
++    void handleFrameInternal(const qttune_frame_t* frame);               // GUI thread
++
+     bool m_initialized = false;
++    qttune_session_t* m_session = nullptr;   // closed in dtor BEFORE model teardown
++    QString m_currentUri;
++
++    std::atomic<bool> m_connected{false};
++    std::atomic<int> m_droppedFrames{0};
++    int m_currentFrameCount = 0;
++    int m_lastReportedDropped = 0;           // GUI-thread-only mirror
++
++    FrameListModel* m_sourceModel = nullptr;  // canonical storage
++    FrameSortProxy* m_sortProxy = nullptr;    // view-facing
+ };

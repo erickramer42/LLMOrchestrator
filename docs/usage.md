@@ -163,7 +163,14 @@ python -m eval_harness.corpus run --fixture all --runs 5 --reviewer-model qwen3-
 python -m eval_harness.corpus run --fixture all --runs 5 --engineer [--engineer-model gpt-oss:20b]   # the engineer's round-1 call alone
 python -m eval_harness.corpus score "coach_artifacts/measurement_round1_*.json"
 python -m eval_harness.corpus score "coach_artifacts/measurement_engineer_*.json"
+python -m eval_harness.corpus --manifest docs/fixtures/corpus_v2.json list   # corpus v2; run and score take it too
 ```
+
+Corpus v2 (`docs/fixtures/corpus_v2.json`, `docs/fixtures/corpus_v2/`)
+rebuilds the bug fixtures as forward diffs of the commits that
+introduced each bug, so no removed line carries a fix's comment. Pass
+`--manifest` before the subcommand; `replay --corpus` takes the same
+option.
 
 `score` reports, per fixture, blockers per run, each known bug's recall
 (runs with a stored blocker whose claim names one of its symbols), bugs

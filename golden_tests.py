@@ -1,5 +1,6 @@
 """Golden test suite — reviewer unit tests via live model, plus
-deterministic guardrail regression tests (no LLM).
+deterministic guardrail regression tests (no LLM): the hedge units and
+the judge cases.
 
 Each model fixture is reviewed as a debate's round-1 reviewer reviews it
 (debate.review_round1): the fenced transcript, the layer note, then the
@@ -11,11 +12,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
-from adjudication import JUDGE_VERSION, demote_hedged_blockers
+from adjudication import (JUDGE_VERSION, demote_hedged_blockers, demote_unverified_blockers,
+                          evidence_sources, hunk_identifiers, normalize_agent_output)
 from config import MODELS, TEMPERATURE_RETRY
-from debate import review_round1
+from debate import _index_symbols, review_round1
 from review_fixtures import ABI_TYPE_LEAK, CANFD_BUFFER_OVERFLOW, CLEAN_ABI_HEADER
 from reviewer_prompt import PROMPT_VERSION
+
+REPO_ROOT = Path(__file__).resolve().parent
+# Verbatim reviewer blockers from labeled records, with the judge outcome
+# each must get (see the file's 'about').
+JUDGE_CASES_PATH = REPO_ROOT / "docs" / "fixtures" / "judge_cases.json"
+CORPUS_MANIFEST = REPO_ROOT / "docs" / "fixtures" / "corpus.json"
+BRIDGE_DIFF = REPO_ROOT / "docs" / "fixtures" / "qttune_bridge_refactor.diff"
+BRIDGE_INDEX = REPO_ROOT / "repo_context.json"
 
 # Each fixture's proposal. Neutral on purpose: a fixture name such as
 # "buffer_overflow_can_fd" would tell the reviewer what to find.
@@ -85,6 +95,47 @@ def run_hedge_unit_tests() -> List[dict]:
     return results
 
 
+def judge_outcome(blocker: dict, code_diff: str, index: dict) -> str:
+    """Where one reviewer blocker ends when a debate judges it alone:
+    'kept', 'quote' (evidence check), 'link' (claim-quote linkage, j8),
+    'hedge', or 'invalid' when normalization drops it."""
+    out, _ = normalize_agent_output(
+        {"verdict": "reject", "blockers": [blocker], "questions": [], "nits": []}, "reviewer")
+    if not out or not out.get("blockers"):
+        return "invalid"
+    details: List[dict] = []
+    out, _ = demote_unverified_blockers(out, evidence_sources(code_diff), "questions",
+                                        hunk_identifiers(code_diff), _index_symbols(index),
+                                        details)
+    if details:
+        return details[0]["reason"]
+    _, hedged = demote_hedged_blockers(out, "questions")
+    return "hedge" if hedged else "kept"
+
+
+def run_judge_unit_tests() -> List[dict]:
+    """Deterministic judge regression tests: no LLM involved. Each case
+    in docs/fixtures/judge_cases.json is a blocker a model wrote, judged
+    against the diff and index it was written for."""
+    doc = json.loads(JUDGE_CASES_PATH.read_text(encoding="utf-8"))
+    fixtures = {f["id"]: (REPO_ROOT / f["diff"], REPO_ROOT / f["index"])
+                for f in json.loads(CORPUS_MANIFEST.read_text(encoding="utf-8"))["fixtures"]}
+    fixtures["bridge"] = (BRIDGE_DIFF, BRIDGE_INDEX)
+    results = []
+    for case in doc["cases"]:
+        diff_path, index_path = fixtures[case["fixture"]]
+        outcome = judge_outcome(case["blocker"], diff_path.read_text(encoding="utf-8"),
+                                json.loads(index_path.read_text(encoding="utf-8")))
+        results.append({
+            "test_name": f"judge_{case['fixture']}_{case['record'][-6:]}_{case['key'][1:]}",
+            "expected": case["expected"],
+            "outcome": outcome,
+            "valid": case["valid"],
+            "test_passed": outcome == case["expected"],
+        })
+    return results
+
+
 def run_golden_tests() -> dict:
     """Run the hedge units and the live-model fixtures, write the summary
     to gold_tests/run_<utc>.json and return it. A fixture's snippet is its
@@ -110,7 +161,7 @@ def run_golden_tests() -> dict:
         },
     ]
 
-    results = run_hedge_unit_tests()
+    results = run_hedge_unit_tests() + run_judge_unit_tests()
     for tc in TEST_CASES:
         entry = review_round1(GOLDEN_PROPOSAL, code_context=tc["snippet"],
                               header_artifact=tc.get("header", False),
@@ -150,4 +201,6 @@ def print_summary(summary: dict) -> None:
                 if r.get("agent_failure") else "")
         if r.get("evidence_demoted"):
             note += f"  ({r['evidence_demoted']} blocker(s) evidence-demoted)"
+        if "outcome" in r and not r["test_passed"]:
+            note += f"  (expected {r['expected']}, got {r['outcome']})"
         print(f"  {'PASS' if r['test_passed'] else 'FAIL'} {r['test_name']}{note}")
