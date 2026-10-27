@@ -4,6 +4,7 @@ the scoring helpers (attempt status, demoted blockers, M1, M2
 candidates)."""
 
 import argparse
+import contextlib
 import functools
 import glob
 import json
@@ -12,7 +13,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Iterator, List, Optional, Tuple
 
 from retrieval import IDENT, code_like
 
@@ -163,6 +164,21 @@ def collect(measure: Callable[..., dict], summary: Callable[[dict], str],
                              f"server up and {models} pulled?")
 
 
+@contextlib.contextmanager
+def agent_model(role: str, model: Optional[str]) -> Iterator[str]:
+    """Sample with another model for one role, 'code_reviewer' or
+    'auto_engineer' (the bake-offs, ADR-0002): sets config.MODELS[role],
+    which debate.py reads and every record stamps under models_used, and
+    restores it on exit. None keeps the configured model."""
+    from config import MODELS
+    old = MODELS[role]
+    MODELS[role] = model or old
+    try:
+        yield MODELS[role]
+    finally:
+        MODELS[role] = old
+
+
 # ============ command line ============
 
 def main(name: str, measure: Callable[..., dict], summary: Callable[[dict], str],
@@ -186,6 +202,9 @@ def main(name: str, measure: Callable[..., dict], summary: Callable[[dict], str]
     run_p.add_argument("--index-file", metavar="PATH",
                        help="Repo context index to retrieve from, instead of "
                             "repo_context.json (a corpus fixture's own)")
+    run_p.add_argument("--reviewer-model", metavar="NAME",
+                       help="An Ollama model to review with instead of "
+                            "config.MODELS['code_reviewer']")
 
     score_p = sub.add_parser("score", help=score_help)
     score_p.add_argument("records", nargs="+", metavar="RECORD", help=records_help)
@@ -200,10 +219,11 @@ def main(name: str, measure: Callable[..., dict], summary: Callable[[dict], str]
     if args.command == "run":
         if args.runs < 1:
             parser.error("--runs must be at least 1")
-        collect(measure, summary, models, args.proposal,
-                read_input(args.diff) if args.diff else "",
-                read_input(args.context) if args.context else "",
-                args.header, args.runs, args.index_file)
+        with agent_model("code_reviewer", args.reviewer_model) as model:
+            collect(measure, summary, model if args.reviewer_model else models,
+                    args.proposal, read_input(args.diff) if args.diff else "",
+                    read_input(args.context) if args.context else "",
+                    args.header, args.runs, args.index_file)
         return
     if bool(args.repo) != bool(args.rev):
         parser.error("--repo and --rev go together")

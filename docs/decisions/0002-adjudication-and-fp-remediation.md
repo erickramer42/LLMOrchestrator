@@ -45,6 +45,8 @@ results; changes made after seeing data are dated amendments.
 | [Twentieth Measurement: Field Writers in the Context Pack](#twentieth-measurement--field-writers-in-the-context-pack) | 2026-10-26 | Field definitions and writers in the pack | Not shipped: target false positives rose |
 | [Twenty-First Measurement: Per-File Layer Notes](#twenty-first-measurement--per-file-layer-notes) | 2026-10-26 | Per-file layer notes | Not shipped: bridge false positives rose |
 | [Runaway Diagnostic: Do Runaways Repeat?](#runaway-diagnostic--do-runaways-repeat) | 2026-10-26 | Whole thinking of runaways and long replies (backlog #19) | Closed: no repetition threshold separates runaways from long replies; an early retry cuts valid findings |
+| [Twenty-Second Measurement: Reviewer Model Bake-Off](#twenty-second-measurement--reviewer-model-bake-off) | 2026-10-26 | Two local reviewer models against laguna on the corpus | Draft, awaiting sign-off |
+| [Twenty-Third Measurement: Engineer Model Bake-Off](#twenty-third-measurement--engineer-model-bake-off) | 2026-10-26 | `gpt-oss:20b` against gemma as the engineer | Draft, awaiting sign-off |
 
 ## Context
 
@@ -5361,3 +5363,165 @@ replies that replace them are retries, the short mode the scorers
 exclude. **An early retry on a token or time budget is not worth
 building.** What remains of #19 is the failed-closed call (2 of 398),
 where the retries run away too.
+
+## Twenty-Second Measurement — Reviewer Model Bake-Off
+
+**Status (2026-10-26): draft, awaiting sign-off. Nothing has run.**
+
+**Why.** Five levers in a row changed what the reviewer is sent or how
+its reply is judged, and none shipped (seventeenth to twenty-first
+measurements, the runaway diagnostic). Several readings point at the
+model: in the eighteenth it declined its own valid claims as readily as
+its false ones, most runaways reopen their own conclusion, and voting
+failed on the corpus because the model repeats its false positives. The
+reviewer model itself has not been varied since ADR-0001, which chose
+it on header probes before the corpus existed.
+
+**Arms** (all local, all on Ollama 0.40.4; digests recorded at pull,
+before Stage 0):
+- **Control:** `laguna-xs-2.1` (33B mixture of experts, 3B active),
+  sampled in the same window.
+- `qwen3-coder:30b` (30B mixture of experts, 3B active, 19 GB): a
+  coding model, the same size class as the control, no thinking mode.
+- `nemotron-3.5-lightning:30b` (30B mixture of experts, 3B active):
+  newer, built for agents, thinking mode.
+
+Everything else is today's: prompt v11.1 (fingerprints unchanged; the
+fingerprint hashes templates, not the model), judge j8, `NUM_CTX` 24576,
+`NUM_PREDICT` 12288, temperature 0.7 on first attempts and 0.05 on
+retries. No `think` option is sent, so each model thinks as its Ollama
+default does. A run selects the model with `--reviewer-model`, which
+every record stamps under `models_used`. The prompt was developed on
+the control, which favors it; that bias is accepted, not corrected.
+
+**Stage 0, per candidate** (3 round-1 runs on the bridge fixture;
+telemetry and schema only, blockers not read; excluded from scoring).
+A candidate is dropped if 2 or more of its 3 first attempts are unusable
+(no schema-valid JSON, or at the cap), or if its accepted first attempts
+take a median above 276 s, three times the control's 92 s over 379
+archived round-1 first attempts.
+
+**Stage 1:** `corpus run --fixture all --runs 5` per arm (35 samples
+each), the control first, then each surviving candidate. Every item of
+every arm is labeled in `corpus_labels.json` before any arm is scored,
+by the existing rules; the labels are not blind (records name their
+model), so each new judgment call is written in the label notes.
+
+**Measures** (j8 via replay, first attempts): mean recall (the mean of
+the 11 known bugs' per-fixture rates), false positives per review,
+valid share of stored blockers, false positives per clean review;
+first attempts at the cap, calls that fail closed, and median wall time
+of a first attempt.
+
+**Rule.** A candidate replaces the control only if all of these hold:
+1. **Better on the corpus** against the concurrent control: mean recall
+   up at least 0.10 with false positives per review up at most 0.05;
+   or false positives per review at most 0.7 times the control's with
+   mean recall down at most 0.05.
+2. **Practical:** median first-attempt wall time at most twice the
+   control's, and at most 1 of its 35 calls fails closed.
+3. **Confirmed** (two candidates make one chance pass likely enough to
+   check): a fresh 35-run corpus sample of the candidate passes
+   condition 1 against the same control; 20 bridge runs, labeled, hold
+   the twenty-first's bars (false positives per review at most 0.205,
+   race at least 0.376, gate at least 0.271); the golden suite passes
+   10/10.
+
+A candidate that ships changes `MODELS["code_reviewer"]` and gets an
+ADR-0001 amendment.
+
+**Exploratory, no ship rule: two models as corroboration.** Runs are
+paired by order within a fixture (the control's run i with the
+candidate's run i). A stored blocker is corroborated when the paired
+run of the other model has a stored blocker quoting the same hunk of
+the same file. Reported: false positives per review and mean recall of
+the control's corroborated blockers alone, and of the union of both
+models' stored blockers. A result worth having becomes its own
+registered measurement.
+
+**Predictions:**
+
+| | prediction |
+|---|---|
+| `qwen3-coder:30b` Stage 0 | passes; median wall below the control's, no runaways |
+| `nemotron-3.5-lightning:30b` Stage 0 | passes |
+| `qwen3-coder:30b` corpus | recall below the control's; false positives within ±0.15 per review; fails condition 1 |
+| `nemotron-3.5-lightning:30b` corpus | recall below the control's and false positives above; fails condition 1 |
+| any candidate ships | no |
+| corroboration (exploratory) | false positives per review fall by 30% or more and mean recall by 0.10 or more |
+
+**Cost:** about 1.5–3 h of GPU per arm (4.5–9 h in all) and about 35
+records to label per arm.
+
+## Twenty-Third Measurement — Engineer Model Bake-Off
+
+**Status (2026-10-26): draft, awaiting sign-off. Nothing has run.**
+
+**Why.** The engineer (`gemma4:12b`, the "senior automotive engineer"
+prompt) is the debate's domain expert, and its output has never been
+measured. It matters to the verdict in one way: an engineer blocker,
+which only the hedge check filters (there is no evidence check for the
+engineer), forces a reject. In the 27 archived round-1 engineer replies
+(all on the bridge fixture) gemma raised no blocker at all, about two
+concerns and two questions per reply, in a median 49 s; it raised the
+removed backpressure gate as a concern. The question is whether another
+local model, in the same role with the same prompt, finds more of the
+known bugs without raising false blockers.
+
+**Arms:** `gemma4:12b` (control, sampled in the same window) and
+`gpt-oss:20b` (21B mixture of experts, about 3.6B active, 14 GB, a
+reasoning model). Same prompt (`AUTO_ENGINEER_PROMPT`, v11.1), same
+settings as the reviewer bake-off; no `think` option is sent.
+
+**The mode** (`corpus run --engineer [--engineer-model NAME]`,
+`debate.run_round1_engineer`): the engineer's round-1 call alone, on the
+transcript a debate's round 1 sends it. Within a round the engineer
+never sees the reviewer, so this is the same call a debate makes; a test
+pins the request to a debate's, and debate requests are byte-identical
+before and after the refactor that shares the call. Records are
+`coach_artifacts/measurement_engineer_<id>.json`.
+
+**Stage 0:** 3 `gpt-oss:20b` runs on `poll_override_90020bd`, telemetry
+and schema only, excluded from scoring. It is dropped if 2 or more of
+its 3 first attempts are unusable, or if its accepted first attempts
+take a median above 150 s (three times gemma's 49 s).
+
+**Stage 1:** 35 runs per arm (`--fixture all --runs 5`), the control
+first. Labels, written before either arm is scored: every engineer
+blocker gets a class (a known bug, `unlisted`, or a false class); a
+concern or question is labeled only when it states a known bug's
+defect, by the rules the reviewer labels use.
+
+**Measures** (first attempts): false engineer blockers per review;
+wrong rejects, meaning runs on the two clean fixtures with any engineer
+blocker; mean recall over the 11 known bugs, in blockers and in any
+item (blockers, concerns, questions); median wall time, calls at the
+cap, calls that fail closed.
+
+**Rule.** `gpt-oss:20b` replaces gemma as the engineer only if all of
+these hold:
+1. mean recall in any item at least 0.10 above the control's;
+2. at most 0.10 false engineer blockers per review, and at most 1 wrong
+   reject in its 10 clean-fixture runs;
+3. median first-attempt wall time at most 180 s, and at most 1 of 35
+   calls failing closed;
+4. confirmed by a fresh 35-run sample that again meets conditions 1 and 2.
+
+What a better engineer buys is limited and stated here: its blockers
+can reject, and its concerns and questions reach the reviewer in round
+2's CRITIQUES section and the reader in the verdict's open questions.
+How a different engineer changes later rounds is not measured.
+
+**Predictions:**
+
+| | prediction |
+|---|---|
+| gemma (control) | no engineer blockers, as in the 27 archived replies; recall in any item 0.2–0.4 |
+| `gpt-oss:20b` Stage 0 | passes |
+| `gpt-oss:20b` blockers | raised in at least 20% of runs |
+| `gpt-oss:20b` recall in any item | at least 0.10 above gemma's (condition 1 holds) |
+| `gpt-oss:20b` false blockers | above 0.10 per review (condition 2 fails) |
+| ships | no |
+
+**Cost:** about 0.5 h of GPU for the control and 1–1.5 h for
+`gpt-oss:20b`; labeling about 35 records per arm, mostly blockers.

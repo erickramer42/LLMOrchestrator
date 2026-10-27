@@ -235,6 +235,7 @@ instructions require.
 
 DEBATE_MODE = "debate"
 MEASUREMENT_MODE = "round1_reviewer"
+ENGINEER_MODE = "round1_engineer"
 PAIR_MODE = "round2_pair"
 # Round-2 arms of the pair measurement: the CRITIQUES section, which a
 # debate's round 2 sends since v11.1, and the format debates sent before
@@ -778,14 +779,13 @@ def _run_round(setup: _Setup, proposal: str, round_num: int,
         if _is_failure(reviewer):
             # The round cannot be judged either way; don't spend another
             # (possibly 30-minute) failing call on the engineer.
-            engineer = failure_result("not called: reviewer failed this round")
+            entry["auto_engineer"], hedge_stats["engineer_demoted"] = (
+                demote_hedged_blockers(
+                    failure_result("not called: reviewer failed this round"),
+                    "concerns"))
         else:
-            engineer = call_agent(MODELS["auto_engineer"], AUTO_ENGINEER_PROMPT,
-                                  transcript, temperature,
-                                  validate=_validate_engineer,
-                                  telemetry=telemetry["auto_engineer"])
-        entry["auto_engineer"], hedge_stats["engineer_demoted"] = (
-            demote_hedged_blockers(engineer, "concerns"))
+            entry["auto_engineer"], hedge_stats["engineer_demoted"] = _engineer_call(
+                transcript, temperature, telemetry["auto_engineer"])
 
     entry.update({
         "evidence_demotions": {"reviewer_demoted": unquoted},
@@ -794,6 +794,17 @@ def _run_round(setup: _Setup, proposal: str, round_num: int,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })
     return entry
+
+
+def _engineer_call(transcript: str, temperature: float,
+                   telemetry: List[dict]) -> Tuple[dict, int]:
+    """The engineer's call on a round's transcript, then its hedge check:
+    (output, hedge-demoted count). Debates and the engineer measurement
+    both call it, so they send the same request."""
+    engineer = call_agent(MODELS["auto_engineer"], AUTO_ENGINEER_PROMPT,
+                          transcript, temperature, validate=_validate_engineer,
+                          telemetry=telemetry)
+    return demote_hedged_blockers(engineer, "concerns")
 
 
 def _agent_failures(entry: dict) -> List[str]:
@@ -923,6 +934,55 @@ def run_round1_review(proposal: str, code_diff: str = "", code_context: str = ""
     return _with_diagnostics(result, agent_failures, setup, check)
 
 
+def run_round1_engineer(proposal: str, code_diff: str = "", code_context: str = "",
+                        header_artifact: bool = False,
+                        index_path: Optional[str] = None) -> dict:
+    """One engineer call on the transcript a debate's first round sends
+    (ADR-0002, twenty-third measurement). Within a round the engineer
+    never sees the reviewer, so this samples a debate's round-1 engineer
+    call without the reviewer's: retries and the hedge check work as in
+    a debate; nothing is judged. In a debate the engineer is skipped when
+    the reviewer fails; here it is always called.
+
+    The record is coach_artifacts/measurement_engineer_<id>.json, mode
+    round1_engineer, verdict MEASUREMENT_VERDICT (AGENT_FAILURE_VERDICT
+    if every attempt failed), and only an auto_engineer entry in its one
+    round."""
+    measurement_id = _new_id("engineer")
+    setup = _prepare(code_diff, code_context, header_artifact, index_path)
+    check = _input_check(setup, proposal, code_diff, code_context)
+
+    rounds: List[dict] = []
+    agent_failures: List[str] = []
+    verdict = check["verdict"]
+    if verdict is None:
+        transcript = _render_transcript(proposal, setup.static_section, 1)
+        telemetry = {"auto_engineer": []}
+        engineer, demoted = _engineer_call(transcript, TEMPERATURE_EXPLORATION,
+                                           telemetry["auto_engineer"])
+        rounds = [{"round": 1, "auto_engineer": engineer,
+                   "hedge_demotions": {"engineer_demoted": demoted},
+                   "telemetry": telemetry,
+                   "timestamp": datetime.now(timezone.utc).isoformat()}]
+        agent_failures = _agent_failures(rounds[0])
+        verdict = AGENT_FAILURE_VERDICT if agent_failures else MEASUREMENT_VERDICT
+    record = _save_decision_record(
+        measurement_id,
+        _record_inputs(setup, proposal, proposal, code_diff, code_context,
+                       header_artifact),
+        verdict, rounds, _run_settings(setup, ENGINEER_MODE, 1, check),
+        agent_failures)
+
+    result = {
+        "measurement_id": measurement_id,
+        "final_verdict": verdict,
+        "record_path": str(record),
+        "blockers": sum(len(e["auto_engineer"].get("blockers", []) or []) for e in rounds),
+        "attempts": sum(len(e["telemetry"]["auto_engineer"]) for e in rounds),
+    }
+    return _with_diagnostics(result, agent_failures, setup, check)
+
+
 def review_round1(proposal: str, code_diff: str = "", code_context: str = "",
                   header_artifact: bool = False,
                   temperature: Optional[float] = None) -> dict:
@@ -996,6 +1056,7 @@ def run_round2_pair(proposal: str, code_diff: str = "", code_context: str = "",
 _RECORD_KINDS = {
     DEBATE_MODE: ("decision", "decision_record", "coach_agent"),
     MEASUREMENT_MODE: ("measurement", "measurement_record", "eval_harness.round1"),
+    ENGINEER_MODE: ("measurement", "measurement_record", "eval_harness.corpus"),
     PAIR_MODE: ("measurement", "measurement_record", "eval_harness.round2"),
 }
 

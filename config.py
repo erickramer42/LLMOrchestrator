@@ -21,9 +21,10 @@ MAX_DEBATE_ROUNDS = 3
 # fills any window; that is backlog #16, not a reason to grow this
 # (ADR-0002, 2026-10-22 follow-ups).
 NUM_CTX = 24576
-# Output cap per attempt, thinking included. Runaways are loops (ADR-0002),
-# so the cap makes them fail early and the retry recovers. It sits above
-# every finished reply seen so far (longest 10,097 tokens).
+# Output cap per attempt, thinking included. A runaway (mostly a search that
+# keeps reopening its conclusion, rarely a loop; ADR-0002, "Runaway
+# Diagnostic") stops here and the retry recovers. Accepted replies run up
+# to the cap (longest 12,248 tokens), so it is not lowered.
 NUM_PREDICT = 12288
 # Input check (judge j7): a round-1 request is estimated at one token per
 # this many chars, and refused above NUM_CTX - NUM_PREDICT tokens, so every

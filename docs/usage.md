@@ -159,6 +159,8 @@ direction.
 python -m eval_harness.corpus list                              # sizes, layers, input and base checks; no model
 python -m eval_harness.corpus run --fixture all --runs 5        # round-1 samples, every fixture
 python -m eval_harness.corpus run --fixture backoff_clamp_d1c20c0 --runs 5
+python -m eval_harness.corpus run --fixture all --runs 5 --reviewer-model qwen3-coder:30b   # another reviewer
+python -m eval_harness.corpus run --fixture all --runs 5 --engineer [--engineer-model gpt-oss:20b]   # the engineer's round-1 call alone
 python -m eval_harness.corpus score "coach_artifacts/measurement_round1_*.json"
 ```
 

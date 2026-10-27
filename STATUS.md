@@ -29,8 +29,13 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 
 ## In progress
 
-Nothing is being measured. The shipped prompt is v11.1; the next
-candidates are in the backlog's suggested order.
+**Model bake-offs (twenty-second and twenty-third measurements),
+drafted.** Two local reviewer models, `qwen3-coder:30b` and
+`nemotron-3.5-lightning:30b`, against the current reviewer on the
+corpus; and `gpt-oss:20b` against `gemma4:12b` as the engineer, whose
+output is measured for the first time. Predictions and ship rules are
+in ADR-0002. Awaiting sign-off; nothing has run. The shipped prompt is
+v11.1.
 
 ## Recently closed
 

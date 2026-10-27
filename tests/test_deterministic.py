@@ -786,6 +786,74 @@ class DebateTests(NoSleep):
         sent = post.call_args.kwargs["json"]["messages"]
         self.assertEqual(check["request_chars"], sum(len(m["content"]) for m in sent))
 
+    def test_a_measurement_can_review_with_another_model(self):
+        # the bake-off: --reviewer-model swaps the reviewer for one batch,
+        # the record says so, and the configured model comes back after
+        configured = debate.MODELS["code_reviewer"]
+        with fake_ollama(REVIEWER_CLEAN) as post, common.agent_model("code_reviewer", "other:7b"):
+            result = debate.run_round1_review("p", QUOTED_DIFF, "")
+        self.assertEqual(post.call_args.kwargs["json"]["model"], "other:7b")
+        rec = json.loads(Path(result["record_path"]).read_text(encoding="utf-8"))
+        self.assertEqual(rec["metadata"]["models_used"]["code_reviewer"], "other:7b")
+        self.assertEqual(debate.MODELS["code_reviewer"], configured)
+        seen = []
+
+        def measure(*args, **kwargs):
+            seen.append(debate.MODELS["code_reviewer"])
+            return {"record_path": "r.json", "blockers": 0, "attempts": 1}
+
+        fixture = corpus.load_manifest()["fixtures"][0]["id"]
+        with mock.patch.object(corpus, "run_round1_review", measure), \
+                contextlib.redirect_stdout(io.StringIO()):
+            corpus.main(["run", "--fixture", fixture, "--runs", "1",
+                         "--reviewer-model", "other:7b"])
+            corpus.main(["run", "--fixture", fixture, "--runs", "1"])
+        self.assertEqual(seen, ["other:7b", configured])
+        self.assertEqual(debate.MODELS["code_reviewer"], configured)
+
+    def test_the_engineer_measurement_sends_a_debates_round_1_engineer_call(self):
+        # the twenty-third measurement samples the engineer alone; its one
+        # request must be the one a debate's round 1 sends the engineer
+        hedged = {**ENGINEER_CLEAN, "blockers": ["this might break CAN-FD framing",
+                                                 "frames over 8 bytes are dropped"]}
+        with fake_ollama(*[REVIEWER_CLEAN, hedged] * 3) as debate_post:
+            debate.run_debate("p", QUOTED_DIFF, "")
+        with fake_ollama(hedged) as post, common.agent_model("auto_engineer", "eng:20b"):
+            result = debate.run_round1_engineer("p", QUOTED_DIFF, "")
+        sent = post.call_args.kwargs["json"]
+        self.assertEqual(sent["messages"], debate_post.call_args_list[1].kwargs["json"]["messages"])
+        self.assertEqual(sent["options"], debate_post.call_args_list[1].kwargs["json"]["options"])
+        self.assertEqual(sent["model"], "eng:20b")
+        self.assertTrue(Path(result["record_path"]).name.startswith("measurement_engineer_"))
+        rec = json.loads(Path(result["record_path"]).read_text(encoding="utf-8"))
+        self.assertEqual(rec["metadata"]["mode"], debate.ENGINEER_MODE)
+        self.assertEqual(rec["metadata"]["models_used"]["auto_engineer"], "eng:20b")
+        [entry] = rec["outputs"]["round_history"]
+        self.assertNotIn("reviewer", entry)
+        # the hedge check applies as in a debate
+        self.assertEqual(entry["auto_engineer"]["blockers"], ["frames over 8 bytes are dropped"])
+        self.assertEqual(entry["hedge_demotions"], {"engineer_demoted": 1})
+        self.assertEqual((result["blockers"], result["attempts"]), (1, 1))
+        self.assertEqual(rec["outputs"]["final_verdict"], adjudication.MEASUREMENT_VERDICT)
+
+    def test_the_corpus_runner_samples_the_engineer_on_request(self):
+        seen = []
+
+        def measure(*args, **kwargs):
+            seen.append(debate.MODELS["auto_engineer"])
+            return {"record_path": "r.json", "blockers": 0, "attempts": 1}
+
+        fixture = corpus.load_manifest()["fixtures"][0]["id"]
+        with mock.patch.object(corpus, "run_round1_engineer", measure), \
+                contextlib.redirect_stdout(io.StringIO()):
+            corpus.main(["run", "--fixture", fixture, "--runs", "1", "--engineer",
+                         "--engineer-model", "eng:20b"])
+        self.assertEqual(seen, ["eng:20b"])
+        for argv in (["--engineer-model", "eng:20b"],
+                     ["--engineer", "--reviewer-model", "other:7b"]):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                corpus.main(["run", "--fixture", fixture, *argv])
+
     def test_a_measurement_batch_stops_on_refused_input(self):
         for module, measure in ((round1, debate.run_round1_review),
                                 (round2, debate.run_round2_pair)):

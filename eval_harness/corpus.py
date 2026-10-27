@@ -38,11 +38,11 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import debate
-from config import MODELS
-from debate import run_round1_review, text_sha256
+from debate import run_round1_engineer, run_round1_review, text_sha256
 from diff_reader import diff_paths
-from eval_harness.common import (collect, demoted_tail, load_records, m1_hits,
-                                 parse_blocker, read_input, reviewer_status)
+from eval_harness.common import (agent_model, collect, demoted_tail, load_records,
+                                 m1_hits, parse_blocker, read_input,
+                                 reviewer_status)
 from file_metadata import identify_layer
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -308,6 +308,15 @@ def main(argv: Optional[List[str]] = None) -> None:
     run_p.add_argument("--fixture", action="append", required=True,
                        help="A fixture id, repeatable, or 'all'")
     run_p.add_argument("--runs", type=int, default=1, help="Samples per fixture")
+    run_p.add_argument("--reviewer-model", metavar="NAME",
+                       help="An Ollama model to review with instead of "
+                            "config.MODELS['code_reviewer'] (the bake-off)")
+    run_p.add_argument("--engineer", action="store_true",
+                       help="Sample the engineer's round-1 call instead of the "
+                            "reviewer's (measurement_engineer_<id>.json)")
+    run_p.add_argument("--engineer-model", metavar="NAME",
+                       help="With --engineer: an Ollama model instead of "
+                            "config.MODELS['auto_engineer']")
     score_p = sub.add_parser("score", help="Score records against the known bugs")
     score_p.add_argument("records", nargs="+", metavar="RECORD",
                          help="Record paths or globs (expanded here)")
@@ -323,11 +332,19 @@ def main(argv: Optional[List[str]] = None) -> None:
     if args.command == "run":
         if args.runs < 1:
             parser.error("--runs must be at least 1")
-        for fixture in select(manifest, args.fixture):
-            print(f"== {fixture['id']}: {fixture['proposal']}")
-            collect(run_round1_review, _summary, MODELS["code_reviewer"],
-                    fixture["proposal"], read_input(str(fixture["diff_path"])), "",
-                    False, args.runs, str(fixture["index_path"]))
+        if args.engineer_model and not args.engineer:
+            parser.error("--engineer-model goes with --engineer")
+        if args.engineer and args.reviewer_model:
+            parser.error("--engineer samples no reviewer")
+        role, measure, name = (("auto_engineer", run_round1_engineer, args.engineer_model)
+                               if args.engineer else
+                               ("code_reviewer", run_round1_review, args.reviewer_model))
+        with agent_model(role, name) as model:
+            for fixture in select(manifest, args.fixture):
+                print(f"== {fixture['id']}: {fixture['proposal']}")
+                collect(measure, _summary, model,
+                        fixture["proposal"], read_input(str(fixture["diff_path"])), "",
+                        False, args.runs, str(fixture["index_path"]))
         return
     sys.stdout.reconfigure(encoding="utf-8")
     scores = score_records(load_records(args.records), manifest)
