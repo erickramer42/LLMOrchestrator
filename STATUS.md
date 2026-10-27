@@ -30,12 +30,15 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 ## In progress
 
 **Model bake-offs (twenty-second and twenty-third measurements),
-drafted.** Two local reviewer models, `qwen3-coder:30b` and
+signed off, running.** Two local reviewer models, `qwen3-coder:30b` and
 `nemotron-3.5-lightning:30b`, against the current reviewer on the
 corpus; and `gpt-oss:20b` against `gemma4:12b` as the engineer, whose
 output is measured for the first time. Predictions and ship rules are
-in ADR-0002. Awaiting sign-off; nothing has run. The shipped prompt is
-v11.1.
+in ADR-0002, signed off as drafted on 2026-10-26. Stage 0 (a short
+schema and timing check per candidate) is done: `qwen3-coder:30b` and
+`gpt-oss:20b` pass, and `nemotron-3.5-lightning:30b` is dropped because
+every first attempt ran to the output cap. Stage 1 (35 corpus runs per
+arm) is next. The shipped prompt is v11.1.
 
 ## Recently closed
 

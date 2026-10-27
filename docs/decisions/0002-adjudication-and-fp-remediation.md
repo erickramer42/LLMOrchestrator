@@ -45,8 +45,8 @@ results; changes made after seeing data are dated amendments.
 | [Twentieth Measurement: Field Writers in the Context Pack](#twentieth-measurement--field-writers-in-the-context-pack) | 2026-10-26 | Field definitions and writers in the pack | Not shipped: target false positives rose |
 | [Twenty-First Measurement: Per-File Layer Notes](#twenty-first-measurement--per-file-layer-notes) | 2026-10-26 | Per-file layer notes | Not shipped: bridge false positives rose |
 | [Runaway Diagnostic: Do Runaways Repeat?](#runaway-diagnostic--do-runaways-repeat) | 2026-10-26 | Whole thinking of runaways and long replies (backlog #19) | Closed: no repetition threshold separates runaways from long replies; an early retry cuts valid findings |
-| [Twenty-Second Measurement: Reviewer Model Bake-Off](#twenty-second-measurement--reviewer-model-bake-off) | 2026-10-26 | Two local reviewer models against laguna on the corpus | Draft, awaiting sign-off |
-| [Twenty-Third Measurement: Engineer Model Bake-Off](#twenty-third-measurement--engineer-model-bake-off) | 2026-10-26 | `gpt-oss:20b` against gemma as the engineer | Draft, awaiting sign-off |
+| [Twenty-Second Measurement: Reviewer Model Bake-Off](#twenty-second-measurement--reviewer-model-bake-off) | 2026-10-26 | Two local reviewer models against laguna on the corpus | Running: nemotron dropped at Stage 0 (runs to the cap) |
+| [Twenty-Third Measurement: Engineer Model Bake-Off](#twenty-third-measurement--engineer-model-bake-off) | 2026-10-26 | `gpt-oss:20b` against gemma as the engineer | Signed off, running |
 
 ## Context
 
@@ -5366,7 +5366,9 @@ where the retries run away too.
 
 ## Twenty-Second Measurement — Reviewer Model Bake-Off
 
-**Status (2026-10-26): draft, awaiting sign-off. Nothing has run.**
+**Status (2026-10-26): signed off as drafted, bars and confirmation
+sample kept. Stage 0 done: `qwen3-coder:30b` passes,
+`nemotron-3.5-lightning:30b` dropped (runs to the cap). Stage 1 next.**
 
 **Why.** Five levers in a row changed what the reviewer is sent or how
 its reply is judged, and none shipped (seventeenth to twenty-first
@@ -5453,9 +5455,56 @@ registered measurement.
 **Cost:** about 1.5–3 h of GPU per arm (4.5–9 h in all) and about 35
 records to label per arm.
 
+### Models (2026-10-26, recorded at pull, before Stage 0)
+
+Ollama 0.40.4, digests from `/api/tags`:
+
+| model | digest | size | quantization | parameters |
+|---|---|---|---|---|
+| `laguna-xs-2.1:latest` (control, unchanged) | `0175be1e57f44bb4a96779d1840dbadd84399ab87bf70688c321ecadeadd757f` | 20.3 GB | Q4_K_M | 33.4B |
+| `qwen3-coder:30b` | `06c1097efce0431c2045fe7b2e5108366e43bee1b4603a7aded8f21689e90bca` | 18.6 GB | Q4_K_M | 30.5B |
+| `nemotron-3.5-lightning:30b` | `e6905fffe2e2d9bbe325a9a2d2e074e3bd32683721bc6dfba409dede2f17f4dc` | 25.4 GB | Q4_K_M | 32.9B |
+
+Ollama reports nemotron at 32.9B parameters, not the 30B its tag
+suggests, and 25.4 GB, the largest of the three; on the 12 GB card more
+of it runs on the CPU than the control does, which Stage 0's time limit
+covers.
+
+### Stage 0 (2026-10-26): `qwen3-coder:30b` passes, `nemotron-3.5-lightning:30b` is dropped
+
+Six bridge runs, excluded from scoring. Each candidate's first attempts:
+
+| record | model | first attempt | wall | prompt / output tokens | thinking chars |
+|---|---|---|---|---|---|
+| `20261027_032412_71be42` | `qwen3-coder:30b` | accepted | 43 s | 8,755 / 466 | 0 |
+| `20261027_032455_b83fb7` | `qwen3-coder:30b` | accepted | 13 s | 8,755 / 425 | 0 |
+| `20261027_032508_f4ad3a` | `qwen3-coder:30b` | accepted | 10 s | 8,755 / 299 | 0 |
+| `20261027_032519_aed591` | `nemotron-3.5-lightning:30b` | at the cap | 362 s | 9,283 / 12,288 | 48,388 |
+| `20261027_034101_b6acbe` | `nemotron-3.5-lightning:30b` | at the cap | 496 s | 9,283 / 12,288 | 50,086 |
+| `20261027_040233_9f9587` | `nemotron-3.5-lightning:30b` | at the cap | 297 s | 9,283 / 12,288 | 47,468 |
+
+- **`qwen3-coder:30b` passes:** 0 of 3 unusable, median 13 s (limit
+  276 s). It does not think, as predicted.
+- **`nemotron-3.5-lightning:30b` is dropped:** 3 of 3 first attempts
+  ran to the cap, and all three records failed closed. Of the 6 retries,
+  one was accepted (in `aed591`, 10,733 tokens) but lacked the
+  `questions` key, three more ran to the cap, and two timed out at
+  600 s. The runaway profile (`eval_harness.runaway`) finds no loop:
+  the repeated share of the last third is at most 0.06, with 12 to 18
+  re-checks per thousand words. This is the indecision seen in laguna's
+  runaways, not repetition. Its prediction ("passes") missed.
+
+The runner prints each record's stored blocker count, and those lines
+were seen: 0, 0, 0 for `qwen3-coder:30b`. The bridge's race and gate
+were never read, and the count does not enter any condition. It is
+recorded here because it bears on the corpus prediction for qwen.
+
+Stage 1 is the control and `qwen3-coder:30b`, 35 runs each.
+
 ## Twenty-Third Measurement — Engineer Model Bake-Off
 
-**Status (2026-10-26): draft, awaiting sign-off. Nothing has run.**
+**Status (2026-10-26): signed off as drafted, bars and confirmation
+sample kept. Stage 0 done: `gpt-oss:20b` passes. Stage 1 next.**
 
 **Why.** The engineer (`gemma4:12b`, the "senior automotive engineer"
 prompt) is the debate's domain expert, and its output has never been
@@ -5526,3 +5575,26 @@ How a different engineer changes later rounds is not measured.
 
 **Cost:** about 0.5 h of GPU for the control and 1–1.5 h for
 `gpt-oss:20b`; labeling about 35 records per arm, mostly blockers.
+
+### Models (2026-10-26, recorded at pull, before Stage 0)
+
+Ollama 0.40.4, digests from `/api/tags`:
+
+| model | digest | size | quantization | parameters |
+|---|---|---|---|---|
+| `gemma4:12b` (control, unchanged) | `6114515d63c17436a7c0417d82820ac65ad643e2806c5a3c89cb62846436ed0b` | 8.0 GB | Q4_K_M | 11.9B |
+| `gpt-oss:20b` | `f38aa0c53da5f8c49d08c43a99df24ff53167fe68e24664a7777288e7656fdfe` | 13.8 GB | MXFP4 | 20.9B |
+
+### Stage 0 (2026-10-26): `gpt-oss:20b` passes
+
+Three `poll_override_90020bd` runs, excluded from scoring:
+
+| record | first attempt | wall | prompt / output tokens | thinking chars |
+|---|---|---|---|---|
+| `20261027_042742_3f1d2e` | accepted | 77 s | 2,722 / 1,576 | 5,729 |
+| `20261027_042859_8ccaa6` | accepted | 31 s | 2,722 / 1,222 | 4,374 |
+| `20261027_042930_6f1a1a` | accepted | 39 s | 2,722 / 1,571 | 6,248 |
+
+0 of 3 were unusable, median 39 s (limit 150 s), with no retries, as
+predicted. The runner prints each record's stored blocker count, and
+those lines were seen: 1, 0, 1. The blocker texts were not read.
