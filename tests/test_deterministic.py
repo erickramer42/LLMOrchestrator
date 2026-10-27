@@ -40,7 +40,7 @@ from adjudication import (JUDGE_VERSION, convergence_verdict,  # noqa: E402
 from agent_client import FAILURE_SENTINEL, call_agent, failure_result  # noqa: E402
 from diff_reader import base_blobs, diff_paths, read_diff  # noqa: E402
 from eval_harness import (bakeoff, common, corpus, probe, raw_call, replay, repair,  # noqa: E402
-                          round1, round2)
+                          round1, round2, runaway)
 from eval_harness.bakeoff import tally  # noqa: E402
 from eval_harness.probe import summarize  # noqa: E402
 from file_metadata import get_layer_constraints, identify_layer  # noqa: E402
@@ -554,6 +554,23 @@ class AgentClientTests(NoSleep):
         self.assertNotIn("thinking_tail", ok)
         self.assertEqual(json.loads(ok["reply"]), REVIEWER_CLEAN)
         self.assertNotIn("reply", failed)
+        # backlog #19: a runaway keeps its whole thinking, a short reply none
+        self.assertEqual(failed["thinking"], loop)
+        self.assertNotIn("thinking", ok)
+
+    def test_a_long_accepted_reply_keeps_its_thinking(self):
+        # The control for a repetition rule (#19): long replies that finished.
+        calls = []
+        long_ok = FakeResp(REVIEWER_CLEAN, thinking="Let me check. " * 50,
+                           eval_count=agent_client.LONG_THINKING_TOKENS)
+        short_ok = FakeResp(REVIEWER_CLEAN, thinking="Short check.",
+                            eval_count=agent_client.LONG_THINKING_TOKENS - 1)
+        for resp in (long_ok, short_ok):
+            with fake_ollama(resp):
+                call_agent("m", "sys", "t", 0.7, validate=self.validate,
+                           telemetry=calls)
+        self.assertEqual(calls[0]["thinking"], "Let me check. " * 50)
+        self.assertNotIn("thinking", calls[1])
 
     def test_every_request_caps_output(self):
         with fake_ollama(REVIEWER_CLEAN) as post:
@@ -2035,6 +2052,74 @@ class LinkageTests(unittest.TestCase):
                                  f"{item.sample} {item.key}")
                 checked += 1
         self.assertGreater(checked, 100)
+
+
+# ============ runaway repetition (backlog #19) ============
+
+class RunawayTests(unittest.TestCase):
+    def test_a_loop_repeats_and_a_search_does_not(self):
+        loop = "Wait, let me re-check the frame counter against the cap. " * 40
+        search = " ".join(f"step {i} reads line {i * 7} of the hunk and finds nothing new"
+                          for i in range(60))
+        p = runaway.repeat_profile(loop)
+        self.assertGreater(p["repeat"], 0.9)
+        self.assertEqual(p["longest"], 400 - 10)  # all but the first pass
+        self.assertLess(p["first"], 0.05)
+        q = runaway.repeat_profile(search)
+        self.assertEqual((q["repeat"], q["longest"], q["first"]), (0.0, 0, 1.0))
+        self.assertEqual(runaway.repeat_profile("too short")["repeat"], 0.0)
+
+    def test_quoted_code_is_counted_apart_from_prose(self):
+        hunk = ("```cpp\nif (self->m_currentFrameCount >= FrameListModel::MaxFrames)"
+                " { return; }\n```")
+        prose = [f"Point {i}: the counter is read on thread {i} and written once." for i in range(4)]
+        text = "\n".join(f"{line}\n{hunk}" for line in prose)
+        pr = runaway.profile(text)
+        self.assertEqual(pr["prose"]["repeat"], 0.0)
+        self.assertGreater(pr["code"]["repeat"], 0.5)
+
+    def test_attempts_reads_whole_thinking_and_counts_tails(self):
+        rec = {"metadata": {"debate_id": "r1"}, "outputs": {"round_history": [{
+            "telemetry": {"reviewer": [
+                {"attempt": 0, "eval_count": 12288, "done_reason": "length",
+                 "outcome": "reply was not valid JSON", "thinking_tail": "x"},
+                {"attempt": 1, "eval_count": 9000, "done_reason": "stop",
+                 "outcome": "ok", "thinking": "long but done"}]}}]}}
+        rows, tail_only = runaway.attempts([("p", rec)])
+        self.assertEqual(tail_only, 1)
+        self.assertEqual([(r["record"], r["role"], r["attempt"], r["thinking"]) for r in rows],
+                         [("r1", "reviewer", 1, "long but done")])
+
+    def test_corrections_follow_the_recorded_outcomes(self):
+        calls = [{"outcome": "timeout after 600s"},
+                 {"outcome": "reply was not valid JSON (done_reason=length: ...)"},
+                 {"outcome": "schema violation: missing 'nits'"}, {"outcome": "ok"}]
+        self.assertEqual(runaway.corrections(calls, 3),
+                         [agent_client.JSON_CORRECTION,
+                          agent_client.schema_correction("missing 'nits'")])
+        self.assertEqual(runaway.corrections(calls, 1), [])
+
+    def test_repro_resends_a_recorded_attempt_byte_for_byte(self):
+        # The control's e9c923 ran away on all three attempts (v11.1).
+        path = REPO_ROOT / "coach_artifacts/measurement_round1_20261026_191631_e9c923.json"
+        if not path.exists():
+            self.skipTest("record not present")
+        record = json.loads(path.read_text(encoding="utf-8"))
+        loop = "Let me re-read the diff. " * 40
+        runaway_reply = FakeResp("", done_reason="length", thinking=loop, eval_count=12288)
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(runaway, "Path", side_effect=lambda *a: Path(tmp, *a)
+                                  if a == ("coach_artifacts",) else Path(*a)), \
+                fake_ollama(runaway_reply) as post, \
+                contextlib.redirect_stdout(io.StringIO()):
+            [out] = runaway.repro(str(path), 1, 1)
+            saved = json.loads(out.read_text(encoding="utf-8"))
+        sent = post.call_args.kwargs["json"]
+        self.assertEqual(sum(len(m["content"]) for m in sent["messages"]), 33335)
+        self.assertEqual(sent["messages"][2]["content"], agent_client.JSON_CORRECTION)
+        self.assertEqual(sent["options"]["temperature"], 0.05)
+        self.assertEqual(saved["metadata"]["source_record"], record["metadata"]["debate_id"])
+        self.assertEqual(saved["outputs"]["telemetry"]["reviewer"][0]["thinking"], loop)
 
 
 # ============ indexer ============

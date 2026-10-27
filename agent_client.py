@@ -24,6 +24,21 @@ FAILURE_SENTINEL = {"verdict": "PARSE_FAILURE", "blockers": [],
 MAX_ATTEMPTS = 3
 RETRY_BACKOFF_S = 5
 FAILURE_TAIL_CHARS = 400  # how much of a failed reply telemetry keeps
+# An attempt that runs this long, or to the cap, keeps its whole thinking:
+# the material for telling a loop from a long search (backlog #19). About
+# one accepted reviewer reply in ten runs this long.
+LONG_THINKING_TOKENS = 8192
+
+# What the next attempt is told after an unusable reply. A schema
+# violation's failure reason is SCHEMA_PREFIX plus the problem.
+JSON_CORRECTION = "Invalid JSON. Reply with valid JSON only."
+SCHEMA_PREFIX = "schema violation: "
+
+
+def schema_correction(problem: str) -> str:
+    return (f"Invalid reply: {problem}. Reply with valid JSON only, "
+            "using exactly the keys from your instructions.")
+
 
 # validate(parsed) -> (normalized, None) or (None, reason)
 Validator = Callable[[object], Tuple[Optional[dict], Optional[str]]]
@@ -48,7 +63,9 @@ def _attempt_stats(attempt: int, temperature: float, prompt_chars: int,
 
     eval_count includes the model's thinking, which Ollama returns apart
     from the reply. A failed attempt also keeps the tail of both, so a
-    runaway shows whether the model was looping or still reasoning."""
+    runaway shows whether the model was looping or still reasoning. An
+    attempt that hit the cap or ran past LONG_THINKING_TOKENS, accepted or
+    not, keeps its whole thinking as well."""
     message = body.get("message")
     message = message if isinstance(message, dict) else {}
     thinking = message.get("thinking")
@@ -73,8 +90,12 @@ def _attempt_stats(attempt: int, temperature: float, prompt_chars: int,
     elif not reason:
         # The accepted reply verbatim (v12): records keep what the model
         # said, not only what normalization made of it. Thinking is not
-        # kept.
+        # kept, unless the attempt ran long (below).
         stats["reply"] = content
+    eval_count = body.get("eval_count")
+    if thinking and (body.get("done_reason") == "length" or (
+            isinstance(eval_count, int) and eval_count >= LONG_THINKING_TOKENS)):
+        stats["thinking"] = thinking
     return stats
 
 
@@ -100,23 +121,10 @@ def call_agent(model: str, system_prompt: str, transcript: str,
     for attempt in range(MAX_ATTEMPTS):
         last = attempt == MAX_ATTEMPTS - 1
         attempt_temp = temperature if attempt == 0 else TEMPERATURE_RETRY
-        payload = {
-            "model": model,
-            "messages": messages,
-            "stream": False,
-            "format": "json",
-            "options": {
-                "temperature": attempt_temp,
-                "num_ctx": NUM_CTX,
-                "num_predict": NUM_PREDICT,
-            },
-        }
-        prompt_chars = sum(len(m["content"]) for m in messages)
-        started = time.monotonic()
-        body, result, reason, correction = _attempt(payload, validate)
+        body, result, reason, correction, stats = send_once(
+            model, messages, attempt_temp, validate, attempt)
         if telemetry is not None:
-            telemetry.append(_attempt_stats(attempt, attempt_temp, prompt_chars,
-                                            started, body, reason))
+            telemetry.append(stats)
         if reason is None:
             return result
         if correction:
@@ -131,6 +139,31 @@ def call_agent(model: str, system_prompt: str, transcript: str,
             time.sleep(RETRY_BACKOFF_S)
 
     return failure_result(reason)
+
+
+def send_once(model: str, messages: List[dict], temperature: float,
+              validate: Optional[Validator] = None, attempt: int = 0
+              ) -> Tuple[dict, Optional[dict], Optional[str], Optional[str], dict]:
+    """One request exactly as call_agent sends it, without retries:
+    (ollama_body, result, failure_reason, correction, telemetry entry).
+    call_agent's attempts go through here; eval_harness.runaway re-sends a
+    recorded attempt with it."""
+    payload = {
+        "model": model,
+        "messages": messages,
+        "stream": False,
+        "format": "json",
+        "options": {
+            "temperature": temperature,
+            "num_ctx": NUM_CTX,
+            "num_predict": NUM_PREDICT,
+        },
+    }
+    prompt_chars = sum(len(m["content"]) for m in messages)
+    started = time.monotonic()
+    body, result, reason, correction = _attempt(payload, validate)
+    return (body, result, reason, correction,
+            _attempt_stats(attempt, temperature, prompt_chars, started, body, reason))
 
 
 def _attempt(payload: dict, validate: Optional[Validator]
@@ -171,12 +204,10 @@ def _attempt(payload: dict, validate: Optional[Validator]
                        f"{body.get('prompt_eval_count')} prompt + "
                        f"{body.get('eval_count')} output tokens; "
                        f"NUM_PREDICT={NUM_PREDICT}, check NUM_CTX={NUM_CTX})")
-        return body, None, reason, "Invalid JSON. Reply with valid JSON only."
+        return body, None, reason, JSON_CORRECTION
     if validate is None:
         return body, parsed, None, None
     normalized, problem = validate(parsed)
     if problem is None:
         return body, normalized, None, None
-    return body, None, f"schema violation: {problem}", (
-        f"Invalid reply: {problem}. Reply with valid JSON only, "
-        "using exactly the keys from your instructions.")
+    return body, None, SCHEMA_PREFIX + problem, schema_correction(problem)

@@ -44,6 +44,7 @@ results; changes made after seeing data are dated amendments.
 | [Nineteenth Measurement: Removal-Caused Defects Quoted in Round 1](#nineteenth-measurement--removal-caused-defects-quoted-in-round-1) | 2026-10-25 | A round-1 quote rule for removals | Not shipped: recall +0.05 of +0.10; cross-hunk linkage closed by its ceiling |
 | [Twentieth Measurement: Field Writers in the Context Pack](#twentieth-measurement--field-writers-in-the-context-pack) | 2026-10-26 | Field definitions and writers in the pack | Not shipped: target false positives rose |
 | [Twenty-First Measurement: Per-File Layer Notes](#twenty-first-measurement--per-file-layer-notes) | 2026-10-26 | Per-file layer notes | Not shipped: bridge false positives rose |
+| [Runaway Diagnostic: Do Runaways Repeat?](#runaway-diagnostic--do-runaways-repeat) | 2026-10-26 | Whole thinking of runaways and long replies (backlog #19) | Closed: no repetition threshold separates runaways from long replies |
 
 ## Context
 
@@ -5215,3 +5216,115 @@ so the code behind the records stays in history, and then rolled back:
 (pinned), and `poll_override`'s matches its archived v11.1 records, so
 debates send the requests the live golden suite passed with; the suite
 was not rerun. The v16 label counts stay pinned.
+
+## Runaway Diagnostic — Do Runaways Repeat?
+
+**Status (2026-10-26): closed. A diagnostic for backlog #19, not a ship decision.
+Predictions written after the collection run started and before any of
+its output was read.**
+
+**Why.** About 6% of reviewer first attempts think until the
+12,288-token cap (29 of 458 on record), take a median 266 s against 83 s
+for an accepted reply, and twice on 2026-10-26 failed all three
+attempts. #19 proposes streaming the reply and aborting when the
+thinking repeats. Two things are known without a model:
+- **The 74 runaway tails on record show no verbatim loop.** They keep
+  400 characters; the longest repeat in most is 10 to 37 characters,
+  usually a quoted code fragment. 76 of 77 runaways never began the
+  reply.
+- **A lower cap is not the abort.** Accepted reviewer replies run
+  continuously up to the cap: 10.7% exceed 8,192 tokens, and the
+  longest used 12,248.
+
+**Collection.** Since this change, `agent_client` keeps the whole
+thinking of any attempt that hits the cap or runs past 8,192 tokens
+(`LONG_THINKING_TOKENS`); requests are unchanged (bridge fingerprint
+`8e76794ac4946aab`). The run:
+- `eval_harness.runaway repro` re-sends the control's `e9c923` attempt 1
+  twice (v11.1, bridge, the JSON correction, temperature 0.05; both of
+  its retries ran away), checked byte for byte against the record's
+  sizes;
+- 20 `poll_override` round-1 runs at v11.1, for long accepted replies
+  (the control) and any new runaway.
+
+**Measure** (`eval_harness.runaway`): the share of 12-word shingles in
+the thinking's prose that already occurred earlier, overall and by
+thirds; the longest repeated run; quoted code (``` fences) apart.
+
+**Predictions:**
+
+| | prediction |
+|---|---|
+| `e9c923` re-sends that run away again | 1–2 of 2 |
+| runaways' prose repeat share | below 0.15: an open-ended search, not a loop |
+| runaways' code repeat share | above their prose share (the diff re-quoted) |
+| long accepted replies' prose repeat share | overlaps the runaways' |
+
+**Decision rule for #19's next step:** a repetition abort is worth
+building and measuring only if a threshold on the last third's prose
+repeat share separates every runaway from every long accepted reply in
+this data. Otherwise #19 records that the reviewer's runaways are not
+loops and turns to their cost, not their detection.
+
+### Results (2026-10-26)
+
+The run took 72 minutes: the two re-sends (records
+`measurement_runaway_20261026_224408_1cb3fd` and `_225030_e962c2`),
+then 20 `poll_override` runs (`measurement_round1_20261026_225032_17a355`
+to `_234601_0e61c1`). Nine attempts kept their whole thinking: three
+runaways and six accepted replies past 8,192 tokens.
+
+| record | attempt | tokens | end | prose repeat | by third | longest (words) | code repeat |
+|---|---|---|---|---|---|---|---|
+| e962c2 (re-send) | 1, at 0.05 | 12,288 | cap | 0.152 | 0.01 / 0.08 / 0.36 | 196 | 0.396 |
+| 17a355 | 0, at 0.7 | 12,288 | cap | 0.020 | 0.01 / 0.03 / 0.02 | 23 | 0.286 |
+| 6cb4e4 | 0, at 0.7 | 12,288 | cap | 0.012 | 0.00 / 0.01 / 0.03 | 28 | 0.193 |
+| 242fb1 | 0 | 8,983 | ok | 0.006 | 0.00 / 0.00 / 0.02 | 20 | 0.315 |
+| f4711d | 0 | 10,487 | ok | 0.008 | 0.00 / 0.01 / 0.02 | 31 | 0.284 |
+| 2bf401 | 0 | 10,265 | ok | 0.063 | 0.02 / 0.06 / 0.11 | 41 | 0.188 |
+| dbb036 | 0 | 10,350 | ok | 0.033 | 0.01 / 0.03 / 0.06 | 31 | 0.327 |
+| 660eaa | 0 | 10,798 | ok | 0.026 | 0.01 / 0.02 / 0.05 | 30 | 0.306 |
+| 0e61c1 | 0 | 12,228 | ok | 0.013 | 0.00 / 0.01 / 0.03 | 26 | 0.341 |
+
+| | prediction | result | |
+|---|---|---|---|
+| `e9c923` re-sends that run away again | 1–2 of 2 | 1 of 2 (the other accepted in 3,173 tokens, 108 s) | HIT |
+| runaways' prose repeat share | below 0.15 | 0.020 and 0.012; the re-send 0.152 | MISSED for 1 of 3 |
+| runaways' code repeat share | above their prose share | above in all 3 (and in all 9) | HIT |
+| long accepted replies' prose repeat share | overlaps the runaways' | 0.006–0.063 against 0.012–0.152 | HIT |
+
+**Decision rule: no threshold separates them.** On the last third's
+prose repeat share, two runaways (0.02, 0.03) sit below four of the six
+long accepted replies (up to 0.11). #19's repetition abort is not built.
+
+**Two kinds of runaway.**
+- **The re-send is a loop.** At temperature 0.05, after the JSON
+  correction, the model walked the diff, reached its two findings (the
+  removed in-flight counter and the `MaxFrames` race), then started the
+  walk again: a 196-word passage of its own prose recurs verbatim, and
+  "Now let me think about the verdict" appears twice. It ended
+  re-quoting QML hunks.
+- **The two first-attempt runaways are indecision, not repetition.**
+  Both at temperature 0.7 on `poll_override`. Each reaches a conclusion
+  ("I don't see any clear violations"; "OK, I think I've gone deep
+  enough. Let me write my analysis.") and reopens it ("However, I do see
+  one potential issue"; "Actually, let me re-read the rules one more
+  time"), on a different question each time: thread safety, the request
+  buffer's size, `chans[0]` with no channel, scheduler and poll modes
+  both active. No passage repeats.
+- One loop in three is too few to say that loops belong to retries at
+  low temperature; the archived tails cannot tell, since all but one
+  never began the reply.
+
+**Cost.** The two `poll_override` runaways took 586 s of the batch's
+3,618 s of reviewer time (16%); both retries recovered, in 21 s and
+9 s. Over the 20 runs, 2 first attempts ran away (10%; 6.3% over the
+458 on record). The loss that matters is the failed-closed sample:
+`e9c923`'s retry ran away again on one of two re-sends, so a retry at
+0.05 is no guarantee on that input.
+
+**What #19 becomes.** Not detection by repetition. Open, not
+registered: the cost side, for example a first attempt whose
+wall-clock or token budget below the cap triggers an early retry, which
+would have to be weighed against the 10.7% of accepted replies that run
+past 8,192 tokens.

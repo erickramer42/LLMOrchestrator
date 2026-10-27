@@ -180,6 +180,21 @@ python -m eval_harness.repair score --set corpus
 python -m eval_harness.repair ceiling --set corpus      # the best any repair could do, no model
 ```
 
+**Runaway repetition** (backlog #19), no model: for every attempt that
+kept its whole thinking (those that hit the output cap or ran past
+8,192 tokens), how much of it repeats earlier passages:
+
+```sh
+python -m eval_harness.runaway "coach_artifacts/measurement_round1_*.json"
+python -m eval_harness.runaway repro coach_artifacts/measurement_round1_<id>.json --attempt 1 --dry
+python -m eval_harness.runaway repro coach_artifacts/measurement_round1_<id>.json --attempt 1 --runs 2
+```
+
+`repro` re-sends one recorded round-1 attempt, with the corrections
+before it and at its recorded temperature, after checking that today's
+prompt matches the record's and that the rebuilt request has the
+recorded size. Each run writes `coach_artifacts/measurement_runaway_<id>.json`.
+
 Any review can use another index: `python orchestrator.py --index REPO
 --no-llm --index-out PATH` writes one without touching
 `repo_context.json`, and `--index-file PATH` on a review, or on

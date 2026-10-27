@@ -134,6 +134,11 @@ changed.
   `poll_override` was unchanged (1.11 → 1.05 per run);
 - STATUS.md cut down to the current state; this file and
   [file-map.md](file-map.md) took the rest.
+- backlog #19's runaway diagnostic: records keep the whole thinking of
+  long attempts, and `eval_harness/runaway.py` measures its repetition.
+  Of three runaways with whole thinking, one (a retry at 0.05) looped
+  and two reopened their conclusion on new questions; long accepted
+  replies repeat as much, so an abort on repetition was not built.
 
 ## Features and measurements, in detail
 

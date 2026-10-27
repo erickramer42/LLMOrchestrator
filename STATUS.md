@@ -16,7 +16,7 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 | Judge | `j8-claim-quote-linkage` |
 | Context-pack format | `f3-diff-authoritative` |
 | Models | reviewer `laguna-xs-2.1`, engineer `gemma4:12b`, on Ollama; `NUM_CTX` 24576, `NUM_PREDICT` 12288 |
-| Tests | 204 regression tests, no model needed; CI on Python 3.11 and 3.13 |
+| Tests | 210 regression tests, no model needed; CI on Python 3.11 and 3.13 |
 | Golden suite | 10/10 live (3 model fixtures, 7 hedge units) |
 
 **Headline numbers (judge j8, round-1 samples, hand-labeled):**
@@ -29,9 +29,8 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 
 ## In progress
 
-No measurement is registered. The last three candidates (v14, v15,
-v16) were measured, not shipped and rolled back; the shipped prompt is
-v11.1.
+Nothing is being measured. The shipped prompt is v11.1; the next
+candidates are in the backlog's suggested order.
 
 ## Recently closed
 
@@ -45,6 +44,7 @@ and each is in ADR-0002 in full.
 | 19th, amendment | Cross-hunk claim–quote linkage | Closed without a run: its ceiling is below the bar |
 | 20th | Field definitions and writer functions in the context pack | Not shipped: target false positives rose (1.33 → 1.67 per review), and the bridge's tripled |
 | 21st | Per-file layer notes for multi-file diffs (#8) | Not shipped: bridge false positives rose (0.11 → 0.33 per review, against a bar of 0.21); invariant-elsewhere unchanged |
+| Runaway diagnostic | Abort a reply whose thinking repeats (#19) | Closed: of 3 runaways with whole thinking, 1 looped and 2 kept reopening their conclusion; no repetition threshold separates them from long accepted replies |
 
 ## Known limitations
 
@@ -90,7 +90,7 @@ reused. Done items are removed; their history is in
 [history.md](docs/history.md).
 
 **Suggested order:** the call-site caveat (code review finding 9) → #14 structured outputs → #19
-runaway abort → a local-model bake-off on the corpus → #18 early
+runaway cost → a local-model bake-off on the corpus → #18 early
 reject → the rest.
 
 - **#2 Judge granularity.** Split a finding's severity from whether it
@@ -119,10 +119,16 @@ reject → the rest.
   blockers). Option B: a reviewer blocker and an engineer concern share
   an identifier and a failure-class term. Use round-1 agreement only:
   from round 2 the agents read each other and echo.
-- **#19 Runaway abort.** Stream the reply and abort when the thinking
-  repeats, instead of waiting for the 12,288-token cap. First question,
-  answerable without a GPU: do the reviewer's runaways repeat at all,
-  or are they an open-ended search?
+- **#19 Runaway cost.** About 6% of reviewer first attempts think to
+  the 12,288-token cap (a median 266 s, against 83 s for an accepted
+  reply); a retry usually recovers in seconds, but twice on 2026-10-26
+  a bridge sample failed all three attempts. Aborting on repetition is
+  closed (ADR-0002, "Runaway Diagnostic"): most runaways reopen their
+  conclusion on a new question rather than repeat, and long accepted
+  replies repeat as much. A lower cap is no abort either, since 10.7% of
+  accepted replies run past 8,192 tokens. Open: the cost side, such as
+  an early retry on a time or token budget. Records keep the whole
+  thinking of long attempts for it.
 - **#20 Engineer prompt conflict.** Both engineer runaways on record
   alternated between "argue for shipping" and "a violation is a
   blocker". Say what the engineer does with a correctness violation.
