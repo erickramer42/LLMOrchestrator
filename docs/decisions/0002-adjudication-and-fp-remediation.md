@@ -3988,6 +3988,15 @@ is also the only route past the 6 hedged items. The pack-side work on
 invariant-elsewhere is the other candidate. Neither is registered.
 Debates are unchanged: v11.1 with the repair pass off.
 
+**Code moved (2026-10-28).** The repair code left `debate.py` for
+`eval_harness/repair.py`, the runner that made every repair call on
+record, and the debate's `REPAIR_PASS` switch and hook were deleted.
+Names in the seventeenth and eighteenth sections written as `debate.`
+(`REPAIR_TEMPLATE`, `REPAIR_SYSTEM_PROMPT`, `repair_offer`,
+`repair_call`, `apply_repairs`, the version constants) are now in that
+module, as is `judge_repaired`, formerly in `adjudication.py`. Every
+repair request and fingerprint is byte-identical to those on record.
+
 ## Nineteenth Measurement — Removal-Caused Defects Quoted in Round 1
 
 **Status (2026-10-25): drafted before any code change or model call,

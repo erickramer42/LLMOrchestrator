@@ -12,7 +12,7 @@ together, see [design.md](design.md); for the current versions, see
 | `config.py` | Models, `NUM_CTX`, the `NUM_PREDICT` output cap, the input check's chars-per-token floor, timeouts and temperatures; composes the reviewer prompts. The one place to swap models (the probe and bake-off excepted). |
 | `agent_client.py` | The Ollama client and the only module that touches the network. One agent turn in JSON mode; invalid or schema-violating replies are retried with a corrective message, then fail closed with `FAILURE_SENTINEL`. Records per-attempt telemetry: token counts, thinking and reply sizes, `done_reason`, wall time, the verbatim accepted reply, the tails of failed ones, and the whole thinking of any attempt that hit the cap or ran past `LONG_THINKING_TOKENS` (backlog #19). |
 | `adjudication.py` | Pure judging logic, no I/O: the verdict constants, schema validation (`normalize_agent_output`), the evidence check (`demote_unverified_blockers`: post-change quotes, and since j8 claim–quote linkage), the hedge check (`demote_hedged_blockers`), `derive_verdict`, `convergence_verdict` and `JUDGE_VERSION`. Imports cleanly in CI. |
-| `debate.py` | The debate loop. Builds the transcript (fenced code, layer note, context pack, and from round 2 the CRITIQUES section), runs the input check, calls the agents, applies the guardrails, judges, and writes the decision record. Also the measurement modes: `run_round1_review` (a debate's first reviewer call alone) and `run_round2_pair` (two round-2 formats on the same round 1). The repair pass's helpers stay for `eval_harness/repair.py`; debates run with `REPAIR_PASS` off. |
+| `debate.py` | The debate loop. Builds the transcript (fenced code, layer note, context pack, and from round 2 the CRITIQUES section), runs the input check, calls the agents, applies the guardrails, judges, and writes the decision record. Also the measurement modes: `run_round1_review` (a debate's first reviewer call alone) and `run_round2_pair` (two round-2 formats on the same round 1). |
 | `diff_reader.py` | The one unified-diff reader: `read_diff`, `diff_paths`, `base_blobs`, and the identifier helpers (`IDENT`, `code_like`) the judge and retrieval share. Used by the evidence check, retrieval, its base check and layer mapping. |
 | `reviewer_prompt.py` | The agents' system prompts and `PROMPT_VERSION`, with a comment per version on what changed and whether it shipped. |
 | `file_metadata.py` | File path → layer (core, bridge, app, unknown), and the layer notes the transcript carries. |
@@ -47,7 +47,7 @@ together, see [design.md](design.md); for the current versions, see
 | `eval_harness/corpus.py` | The real-diff corpus: `list` (sizes, layers, input and base checks; no model), `run` (round-1 samples with each fixture's own index, of the reviewer or, with `--engineer`, the engineer, either with another model) and `score` (recall per known bug, false-positive candidates, hand-label summary, call cost; engineer records apart). |
 | `eval_harness/replay.py` | Offline replay, no model: re-judges archived replies under deterministic judge variants (gapped quotes, linkage, k-of-n voting, removed-line exceptions) and scores them with the hand labels; first checks that the current judge reproduces every stored split. `--corpus` does the same per corpus fixture. |
 | `eval_harness/runaway.py` | Backlog #19, no model: measures how much a long reply's thinking repeats itself (k-word shingles seen earlier, prose and quoted code apart, by thirds), for telling a loop from a long search. |
-| `eval_harness/repair.py` | The repair pass measured paired on archived replies (seventeenth measurement), its no-model ceiling check, and its successor's pilots (eighteenth). |
+| `eval_harness/repair.py` | The repair pass (seventeenth measurement, not shipped): its request templates and calls, measured paired on archived replies, its no-model ceiling check, and its successor's pilots (eighteenth). No debate sends it. |
 | `eval_harness/labels.json` | Hand labels for every bridge-fixture item scored since the tenth measurement (race, gate, deletion, removal objection, deleted test, other FP). |
 | `eval_harness/corpus_labels.json` | Hand labels for every corpus item (known-bug ids and false-positive classes), each sample labeled before it was scored; a test pins each sample's counts. |
 | `eval_harness/engineer_labels.json` | Hand labels for the engineer's corpus items (twenty-third measurement): every blocker, and each concern or question that states a known bug. |
@@ -79,6 +79,7 @@ together, see [design.md](design.md); for the current versions, see
 | `tests/test_retrieval.py` | Retrieval and indexer unit tests. |
 | `.github/workflows/` | CI: compile check and the regression suite on Python 3.11 and 3.13, no Ollama. |
 | `README.md` | The project in two minutes. |
+| `LICENSE` | MIT. |
 | `STATUS.md` | Current state, work in progress, limitations, backlog and conventions. |
 | `docs/design.md` | The pipeline and the design decisions behind it. |
 | `docs/results.md` | What was measured, what shipped, and what did not. |

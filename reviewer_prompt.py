@@ -47,11 +47,11 @@ Any edit to a prompt here must be reflected by bumping PROMPT_VERSION."""
 # old format for comparison.
 # v12 (2026-10-24, ADR-0002 seventeenth measurement; NOT SHIPPED): the
 # repair pass. In round 1, a reviewer blocker demoted because its quote
-# was not found is offered back in one repair call (debate.REPAIR_TEMPLATE);
+# was not found is offered back in one repair call (REPAIR_TEMPLATE);
 # the reviewer may give a new quote, never a new claim. Measured paired on
 # archived replies, it recovered 2 of 31 valid items: most calls ran away
-# or re-reviewed. It is off in debates (debate.REPAIR_PASS), which stay
-# v11.1; its records carry debate.REPAIR_VERSION.
+# or re-reviewed. Debates never send it and stay v11.1; its code and
+# REPAIR_VERSION, which its records carry, are in eval_harness/repair.py.
 # v14 (2026-10-25, ADR-0002 nineteenth measurement; NOT SHIPPED): the
 # quote rule. The schema no longer asked for "the code that shows it"; a
 # quote was post-change lines only, never a removed line or an ellipsis,

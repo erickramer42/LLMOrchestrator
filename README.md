@@ -122,3 +122,7 @@ Every command, including the evaluation harness: [usage](docs/usage.md).
 - [QtTune](https://github.com/erickramer42/qttune)
 - [Ollama](https://ollama.com)
 - [Adapting the tribunal to another codebase](docs/portability_guide.md)
+
+## License
+
+MIT; see [LICENSE](LICENSE).

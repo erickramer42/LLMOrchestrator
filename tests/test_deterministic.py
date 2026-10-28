@@ -895,8 +895,7 @@ class DebateTests(NoSleep):
         # The bake-off reviews the same snippets; its abi_type_leak copy
         # had drifted by a space (code review finding 9).
         bake = {name: code for name, _, code, _ in bakeoff.CASES}
-        reviews = [s for s in transcripts(post) if "REPAIR (blockers" not in s]
-        for sent, name in zip(reviews, ("canfd_buffer_overflow",
+        for sent, name in zip(transcripts(post), ("canfd_buffer_overflow",
                                                   "abi_type_leak", "clean_pattern")):
             self.assertIn(f"\n{bake[name]}\n", sent)
 
@@ -1728,10 +1727,10 @@ REPAIR_DIFF = ("--- a/app/x.cpp\n+++ b/app/x.cpp\n"
                " }\n")
 
 
-class RepairSwitchTests(unittest.TestCase):
-    def test_the_repair_pass_is_off_by_default(self):
-        # ADR-0002, seventeenth measurement: measured, not shipped
-        self.assertFalse(debate.REPAIR_PASS)
+class ShippedPromptTests(unittest.TestCase):
+    def test_debates_send_the_v11_1_prompt(self):
+        # v12 (the repair pass) and v14 to v16 were measured and not shipped
+        # (ADR-0002, seventeenth and nineteenth to twenty-first measurements)
         self.assertEqual(debate.PROMPT_VERSION, "v11.1-critiques-feedback")
 
     def test_debates_keep_the_v11_1_fingerprint(self):
@@ -1746,6 +1745,20 @@ class RepairSwitchTests(unittest.TestCase):
             setup = debate._prepare(diff, "", False)
         self.assertEqual(debate._run_settings(setup, "debate", 3, {})["prompt_fingerprint"],
                          "8e76794ac4946aab")
+
+
+class RepairV13Tests(NoSleep):
+    """v13, the repair successor (ADR-0002, eighteenth measurement):
+    its own system prompt and the diff alone; the ceiling check; and the
+    pilot's exits."""
+
+    def offer(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            setup = debate._prepare(REPAIR_DIFF, "", False)
+        ev = {"file": "app/x.cpp", "quote": "m_inFlight.fetch_add(1);",
+              "claim": "m_inFlight leaks", "assertion": "m_inFlight leaks"}
+        return setup, repair.repair_offer(adjudication.before_sources(REPAIR_DIFF),
+                                          [{"blocker": "b", "evidence": ev, "reason": "quote"}])
 
     def test_the_ceiling_check_on_the_archived_offers(self):
         # ADR-0002, eighteenth measurement, Step 0: what any one-line repair
@@ -1767,29 +1780,16 @@ class RepairSwitchTests(unittest.TestCase):
         self.assertAlmostEqual(res["arms"]["judge"]["mean_recall"]
                                - res["arms"]["A"]["mean_recall"], 0.137, places=3)
 
-
-class RepairV13Tests(NoSleep):
-    """v13, the repair successor (ADR-0002, eighteenth measurement):
-    its own system prompt and the diff alone; and the pilot's exits."""
-
-    def offer(self):
-        with contextlib.redirect_stderr(io.StringIO()):
-            setup = debate._prepare(REPAIR_DIFF, "", False)
-        ev = {"file": "app/x.cpp", "quote": "m_inFlight.fetch_add(1);",
-              "claim": "m_inFlight leaks", "assertion": "m_inFlight leaks"}
-        return setup, debate.repair_offer(setup, [{"blocker": "b", "evidence": ev,
-                                                   "reason": "quote"}])
-
     def test_the_v13_request_has_its_own_prompt_and_only_the_diff(self):
         setup, offered = self.offer()
         transcript = debate._render_transcript("THE PROPOSAL", setup.static_section, 1)
         with fake_ollama({"repairs": [{"id": 1, "file": "app/x.cpp",
                                        "quote": "m_dropped.fetch_add(1);"}]}) as post:
-            repairs, skipped = debate.repair_call(setup, transcript, offered, [],
-                                                  debate.REPAIR_V13_VERSION,
+            repairs, skipped = repair.repair_call(setup, transcript, offered, [],
+                                                  repair.REPAIR_V13_VERSION,
                                                   code_diff=REPAIR_DIFF)
         messages = post.call_args.kwargs["json"]["messages"]
-        self.assertEqual(messages[0]["content"], debate.REPAIR_SYSTEM_PROMPT)
+        self.assertEqual(messages[0]["content"], repair.REPAIR_SYSTEM_PROMPT)
         user = messages[1]["content"]
         self.assertIn(REPAIR_DIFF.strip(), user)
         self.assertIn("FINDINGS TO QUOTE", user)
@@ -1798,18 +1798,18 @@ class RepairV13Tests(NoSleep):
         for absent in ("THE PROPOSAL", "role specification", "REPO CONTEXT", "DEBATE ROUND"):
             self.assertNotIn(absent, user)
         self.assertIsNone(skipped)
-        self.assertEqual(debate.apply_repairs(setup, offered, repairs)[0]["result"],
+        self.assertEqual(repair.apply_repairs(setup, offered, repairs)[0]["result"],
                          "restored")
 
     def test_the_v13_1_request_drops_the_review_context(self):
         setup, offered = self.offer()
         with fake_ollama(REPAIR_NONE) as post:
-            debate.repair_call(setup, "", offered, [], debate.REPAIR_V13_1_VERSION,
+            repair.repair_call(setup, "", offered, [], repair.REPAIR_V13_1_VERSION,
                                code_diff=REPAIR_DIFF)
         messages = post.call_args.kwargs["json"]["messages"]
-        self.assertEqual(messages[0]["content"], debate.REPAIR_SYSTEM_PROMPT)
+        self.assertEqual(messages[0]["content"], repair.REPAIR_SYSTEM_PROMPT)
         user = messages[1]["content"]
-        v13 = debate.repair_request_v13(setup, REPAIR_DIFF, offered)
+        v13 = repair.repair_request_v13(setup, REPAIR_DIFF, offered)
         self.assertIn("material under review", v13)
         self.assertIn(setup.layer_note, v13)
         self.assertNotIn("material under review", user)
@@ -1823,11 +1823,11 @@ class RepairV13Tests(NoSleep):
         setup, offered = self.offer()
         transcript = debate._render_transcript("p", setup.static_section, 1)
         with fake_ollama(REPAIR_NONE) as post:
-            debate.repair_call(setup, transcript, offered, [], debate.REPAIR_VERSION)
+            repair.repair_call(setup, transcript, offered, [], repair.REPAIR_VERSION)
         messages = post.call_args.kwargs["json"]["messages"]
         self.assertEqual(messages[0]["content"], setup.reviewer_prompt)
         self.assertEqual(messages[1]["content"],
-                         debate.repair_request(setup, transcript, offered))
+                         repair.repair_request(setup, transcript, offered))
 
     def exit_of(self, firsts, restored_valid=0, corpus_fp=0, bridge_fp=0, declined=0):
         calls = [{"first": f} for f in firsts]
@@ -1862,28 +1862,17 @@ class RepairV13Tests(NoSleep):
         self.assertTrue(self.exit_of(ok, 3, declined=2).startswith("marginal"))
         self.assertTrue(self.exit_of(["runaway"] + ["usable"] * 4, 3).startswith("marginal"))
 
-    def test_debates_never_send_the_v13_prompt(self):
-        with mock.patch.object(debate, "REPAIR_PASS", True):
-            setup, offered = self.offer()
-            with fake_ollama(REPAIR_NONE) as post:
-                debate._repair(setup, debate._render_transcript("p", setup.static_section, 1),
-                               {**REVIEWER_CLEAN, "blockers": [], "questions": ["b"]},
-                               [{"blocker": "b", "evidence": offered[0]["evidence"],
-                                 "reason": "quote"}], 1, 0, [])
-        self.assertEqual(post.call_args.kwargs["json"]["messages"][0]["content"],
-                         setup.reviewer_prompt)
-
     def test_an_unknown_repair_version_raises_before_any_call(self):
         # code review finding 20: an unknown version fell through to v13's
         # request and v12's fingerprint
         setup, offered = self.offer()
         with fake_ollama(REPAIR_NONE) as post:
             with self.assertRaises(KeyError):
-                debate.repair_call(setup, "", offered, [], "v13.2-unknown",
+                repair.repair_call(setup, "", offered, [], "v13.2-unknown",
                                    code_diff=REPAIR_DIFF)
         post.assert_not_called()
         with self.assertRaises(KeyError):
-            debate.repair_request_v13(setup, REPAIR_DIFF, offered, "v13.2-unknown")
+            repair.repair_request_v13(setup, REPAIR_DIFF, offered, "v13.2-unknown")
         with mock.patch.dict(repair.VERSIONS, {"v13.2": "v13.2-unknown"}):
             with self.assertRaises(KeyError):
                 repair.repair_fingerprint("v13.2")
@@ -1893,10 +1882,10 @@ class RepairV13Tests(NoSleep):
         setup, offered = self.offer()
         with fake_ollama(REPAIR_NONE) as post:
             with self.assertRaises(ValueError):
-                debate.repair_call(setup, "", offered, [], debate.REPAIR_V13_1_VERSION)
+                repair.repair_call(setup, "", offered, [], repair.REPAIR_V13_1_VERSION)
         post.assert_not_called()
         with self.assertRaises(ValueError):
-            debate.repair_request_v13(setup, REPAIR_DIFF, offered, debate.REPAIR_VERSION)
+            repair.repair_request_v13(setup, REPAIR_DIFF, offered, repair.REPAIR_VERSION)
 
     def test_the_runner_reads_the_variant_it_is_given(self):
         # code review findings 21 and 22
@@ -1922,142 +1911,119 @@ class RepairV13Tests(NoSleep):
                 self.assertIsNone(repair.score("bridge")["calls"].get("calls"))
 
 
-class RepairPassTests(NoSleep):
+class RepairCallTests(NoSleep):
     """v12, the repair pass (ADR-0002, seventeenth measurement), measured
-    and not shipped: switched on here to exercise the mechanism."""
+    and not shipped: the runner's offer, call and re-judging. Debates
+    hold no repair code since code review finding 32."""
 
     def setUp(self):
         super().setUp()
-        switch = mock.patch.object(debate, "REPAIR_PASS", True)
-        switch.start()
-        self.addCleanup(switch.stop)
         self._cwd = os.getcwd()
         self._tmp = tempfile.TemporaryDirectory()
         os.chdir(self._tmp.name)
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.setup = debate._prepare(REPAIR_DIFF, "", False)
 
     def tearDown(self):
         os.chdir(self._cwd)
         self._tmp.cleanup()
 
-    def review(self, blockers, *replies):
-        rev = {**REVIEWER_CLEAN, "blockers": blockers}
-        with fake_ollama(rev, *replies) as post:
-            result = debate.run_round1_review("p", REPAIR_DIFF, "")
-        rec = json.loads(Path(result["record_path"]).read_text(encoding="utf-8"))
-        return rec["outputs"]["round_history"][0], post
-
     def block(self, claim, quote, file="app/x.cpp"):
         return {"claim": claim, "file": file, "quote": quote}
 
+    def offered(self, blockers):
+        """What the repair pass offers back of a round-1 reply judged as a
+        debate judges it."""
+        out, _ = normalize_agent_output({**REVIEWER_CLEAN, "blockers": blockers}, "reviewer")
+        demoted: list = []
+        adjudication.demote_unverified_blockers(out, self.setup.evidence, "questions",
+                                                self.setup.hunks, self.setup.symbols, demoted)
+        return repair.repair_offer(adjudication.before_sources(REPAIR_DIFF), demoted)
+
+    def call(self, offered, *replies):
+        transcript = debate._render_transcript("p", self.setup.static_section, 1)
+        with fake_ollama(*replies) as post:
+            result = repair.repair_call(self.setup, transcript, offered, [],
+                                        repair.REPAIR_VERSION)
+        return result, post
+
     def test_a_removed_line_quote_is_offered_and_restored_with_its_claim(self):
-        removed = self.block("removing m_inFlight leaves m_count unbounded",
-                             "m_inFlight.fetch_add(1);")
-        entry, post = self.review([removed], {"repairs": [
+        offered = self.offered([self.block("removing m_inFlight leaves m_count unbounded",
+                                           "m_inFlight.fetch_add(1);")])
+        self.assertEqual([o["why"] for o in offered], ["before"])
+        (repairs, skipped), post = self.call(offered, {"repairs": [
             {"id": 1, "file": "app/x.cpp", "quote": "m_dropped.fetch_add(1);",
              "claim": "a different claim"}]})
-        self.assertEqual(post.call_count, 2)
-        request = post.call_args_list[1].kwargs["json"]["messages"][1]["content"]
+        self.assertIsNone(skipped)
+        sent = post.call_args.kwargs["json"]
+        self.assertEqual(sent["messages"][0]["content"], self.setup.reviewer_prompt)
+        request = sent["messages"][1]["content"]
         self.assertIn("REPAIR (blockers from your reply", request)
         self.assertIn("your quote: m_inFlight.fetch_add(1);", request)
         self.assertIn("found only in the code before the change", request)
+        self.assertEqual(sent["options"]["temperature"], debate.TEMPERATURE_RETRY)
         # the claim is the original; the reply's claim field is ignored
-        self.assertEqual(entry["reviewer"]["blockers"], [
-            "claim: removing m_inFlight leaves m_count unbounded; file: app/x.cpp; "
-            "quote: m_dropped.fetch_add(1);"])
-        self.assertEqual(entry["reviewer"]["questions"], [])
-        self.assertEqual(entry["evidence_demotions"]["reviewer_demoted"], 0)
-        self.assertEqual(entry["repair"]["restored"], 1)
-        self.assertEqual(entry["repair"]["items"][0]["why"], "before")
-        self.assertEqual(entry["repair"]["before"]["questions"], [
-            "claim: removing m_inFlight leaves m_count unbounded; file: app/x.cpp; "
-            "quote: m_inFlight.fetch_add(1);"])
-        self.assertEqual(post.call_args_list[1].kwargs["json"]["options"]["temperature"],
-                         debate.TEMPERATURE_RETRY)
+        outcome = repair.apply_repairs(self.setup, offered, repairs)[0]
+        self.assertEqual(outcome["result"], "restored")
+        self.assertEqual(outcome["blocker"],
+                         "claim: removing m_inFlight leaves m_count unbounded; "
+                         "file: app/x.cpp; quote: m_dropped.fetch_add(1);")
 
     def test_the_repaired_quote_reenters_every_check(self):
-        b1 = self.block("m_count races", "no such line")
-        b2 = self.block("m_lastReported races", "no such line either")
-        b3 = self.block("m_count overflows", "still no such line")
-        b4 = self.block("m_count might overflow", "nor this")
-        entry, _ = self.review([b1, b2, b3, b4], {"repairs": [
+        offered = self.offered([self.block("m_count races", "no such line"),
+                                self.block("m_lastReported races", "no such line either"),
+                                self.block("m_count overflows", "still no such line"),
+                                self.block("m_count might overflow", "nor this")])
+        self.assertEqual([o["why"] for o in offered], ["nowhere"] * 4)
+        outcomes = repair.apply_repairs(self.setup, offered, [
             {"id": 1, "file": "app/x.cpp", "quote": "if (self->m_count >= MaxFrames) {"},
             {"id": 2, "file": "app/x.cpp", "quote": "m_dropped.fetch_add(1);"},  # unlinked
             {"id": 3, "file": "app/x.cpp", "quote": "made up code();"},          # not found
             {"id": 4, "file": "app/x.cpp", "quote": "if (self->m_count >= MaxFrames) {"},
             {"id": 9, "file": "app/x.cpp", "quote": "if (self->m_count >= MaxFrames) {"},
-            {"id": 1, "file": "app/x.cpp", "quote": "made up code();"}]})        # repeat
-        results = [i["result"] for i in entry["repair"]["items"]]
-        self.assertEqual(results, ["restored", "link", "quote", "hedge"])
-        self.assertEqual([b.split(";")[0] for b in entry["reviewer"]["blockers"]],
-                         ["claim: m_count races"])
-        self.assertEqual(entry["evidence_demotions"]["reviewer_demoted"], 3)
-        # the scorers' tail reading still finds the three left
-        unquoted, hedged = common.demoted_tail(entry)
-        self.assertEqual([q.split(";")[0] for q in unquoted],
-                         ["claim: m_lastReported races", "claim: m_count overflows",
-                          "claim: m_count might overflow"])
+            {"id": 1, "file": "app/x.cpp", "quote": "made up code();"}])        # repeat
+        self.assertEqual([o["result"] for o in outcomes], ["restored", "link", "quote", "hedge"])
+        self.assertEqual([bool(o["blocker"]) for o in outcomes], [True, False, False, False])
 
     def test_hedged_and_unlinked_blockers_are_never_offered(self):
         hedged = self.block("m_count might overflow", "if (self->m_count >= MaxFrames) {")
         unlinked = self.block("m_lastReported races", "if (self->m_count >= MaxFrames) {")
-        entry, post = self.review([hedged, unlinked])
-        self.assertEqual(post.call_count, 1)  # no repair call
-        self.assertEqual(entry["repair"]["offered"], 0)
-        self.assertEqual(entry["telemetry"]["reviewer_repair"], [])
+        self.assertEqual(self.offered([hedged, unlinked]), [])
 
-    def test_a_failed_repair_restores_nothing(self):
-        entry, post = self.review([self.block("m_count races", "no such line")],
-                                  "not json", "still not json", ["a list"])
-        self.assertEqual(post.call_count, 4)
-        self.assertIn("repair call failed", entry["repair"]["skipped"])
-        self.assertEqual(entry["reviewer"]["blockers"], [])
-        self.assertEqual(entry["evidence_demotions"]["reviewer_demoted"], 1)
+    def test_a_failed_repair_call_restores_nothing(self):
+        offered = self.offered([self.block("m_count races", "no such line")])
+        (repairs, skipped), post = self.call(offered, "not json", "still not json", ["a list"])
+        self.assertEqual(post.call_count, 3)
+        self.assertIsNone(repairs)
+        self.assertIn("repair call failed", skipped)
 
     def test_an_oversized_repair_request_is_skipped(self):
         # the claim travels in the repair request, not in round 1's
-        long_claim = "m_count races " + "x" * 40000
-        entry, post = self.review([self.block(long_claim, "no such line")])
-        self.assertEqual(post.call_count, 1)
-        self.assertIn("estimated", entry["repair"]["skipped"])
+        offered = self.offered([self.block("m_count races " + "x" * 40000, "no such line")])
+        (repairs, skipped), post = self.call(offered)
+        post.assert_not_called()
+        self.assertIsNone(repairs)
+        self.assertIn("estimated", skipped)
 
-    def test_round_one_requests_are_unchanged_and_later_rounds_never_repair(self):
-        # a stored blocker keeps the debate going past round 1
-        rev = {**REVIEWER_CLEAN, "blockers": [
-            self.block("m_count is read off-thread", "if (self->m_count >= MaxFrames) {"),
-            self.block("m_count races", "no such line")]}
-        with fake_ollama(rev, REPAIR_NONE, ENGINEER_CLEAN,
-                         *[rev, ENGINEER_CLEAN] * (debate.MAX_DEBATE_ROUNDS - 1)) as post:
-            result = debate.run_debate("p", REPAIR_DIFF, "")
-        sent = [c.kwargs["json"]["messages"][1]["content"] for c in post.call_args_list]
-        setup = debate._prepare(REPAIR_DIFF, "", False)
-        self.assertEqual(sent[0], debate._render_transcript("p", setup.static_section, 1))
-        self.assertEqual(sum("REPAIR (blockers" in s for s in sent), 1)
-        self.assertTrue(sent[1].startswith(sent[0]))
-        rounds = json.loads(Path(result["decision_record_path"]).read_text(
-            encoding="utf-8"))["outputs"]["round_history"]
-        self.assertIn("repair", rounds[0])
-        self.assertTrue(all("repair" not in r for r in rounds[1:]))
-
-    def test_debates_run_without_the_repair_pass(self):
-        # Not shipped: with the switch at its default, a quote failure
-        # makes no repair call and the fingerprint is v11.1's.
-        with mock.patch.object(debate, "REPAIR_PASS", False):
-            entry, post = self.review([self.block("m_count races", "no such line")])
-            setup = debate._prepare(REPAIR_DIFF, "", False)
-            off = debate._run_settings(setup, "debate", 1, {})["prompt_fingerprint"]
-            with mock.patch.object(debate, "REPAIR_TEMPLATE", "changed"):
-                same = debate._run_settings(setup, "debate", 1, {})["prompt_fingerprint"]
+    def test_debates_make_no_repair_call(self):
+        rev = {**REVIEWER_CLEAN, "blockers": [self.block("m_count races", "no such line")]}
+        with fake_ollama(rev) as post:
+            result = debate.run_round1_review("p", REPAIR_DIFF, "")
+        entry = json.loads(Path(result["record_path"]).read_text(
+            encoding="utf-8"))["outputs"]["round_history"][0]
         self.assertEqual(post.call_count, 1)
         self.assertNotIn("repair", entry)
-        self.assertEqual(off, same)
+        self.assertEqual(list(entry["telemetry"]), ["reviewer"])
+        self.assertEqual(entry["evidence_demotions"]["reviewer_demoted"], 1)
 
-    def test_the_fingerprint_names_the_repair_template(self):
-        rec_fp = debate._run_settings(debate._prepare(REPAIR_DIFF, "", False),
-                                      "debate", 1, {})["prompt_fingerprint"]
-        with mock.patch.object(debate, "REPAIR_TEMPLATE", debate.REPAIR_TEMPLATE + " "):
-            changed = debate._run_settings(debate._prepare(REPAIR_DIFF, "", False),
-                                           "debate", 1, {})["prompt_fingerprint"]
-        self.assertNotEqual(rec_fp, changed)
+    def test_the_repair_fingerprints_match_the_records(self):
+        # Each variant's hash as its records in coach_artifacts/ carry it;
+        # a template edit changes it.
+        self.assertEqual({v: repair.repair_fingerprint(v) for v in repair.VARIANTS},
+                         {"v12": "42661b01253e5b13", "v13": "09a782e33e7aa6d6",
+                          "v13.1": "71b3eb178777e3af"})
+        with mock.patch.object(repair, "REPAIR_TEMPLATE", repair.REPAIR_TEMPLATE + " "):
+            self.assertNotEqual(repair.repair_fingerprint("v12"), "42661b01253e5b13")
 
 
 class LinkageTests(unittest.TestCase):

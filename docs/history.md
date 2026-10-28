@@ -185,6 +185,19 @@ changed.
   cases); replay names the judge it reproduces with; lint and stale
   docstrings. No recorded number changed. Tests 220 → 226.
 
+### 2026-10-28
+
+- an MIT license.
+- the closed repair experiment moved out of the debate: its templates,
+  variants and calls now live in `eval_harness/repair.py`, the only
+  code that ever ran them, and `debate.py` lost the always-off
+  `REPAIR_PASS` switch, its round-1 hook and the fingerprint term behind
+  it (about 280 lines). v13.1's request now reuses the debate's fenced
+  code section under its own preamble. Every repair request, repair
+  fingerprint and runner output is byte-identical, and debate
+  fingerprints are unchanged. Tests 226 → 224: the two that switched the
+  hook on went with it.
+
 ## Features and measurements, in detail
 
 Each entry is dated. Newer entries supersede older ones where they
