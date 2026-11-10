@@ -199,6 +199,16 @@ def _index_symbols(index: dict) -> frozenset:
         return frozenset()
 
 
+def _recorded_index_path(path: Path) -> str:
+    """The index path a record stores: repo-relative with forward slashes for
+    an index inside the repo, so committed records carry no local path; any
+    other path as given."""
+    try:
+        return Path(path).resolve().relative_to(Path(__file__).resolve().parent).as_posix()
+    except ValueError:
+        return str(path)
+
+
 def _retrieve_pack(code_diff: str,
                    index_path: Optional[str] = None) -> Tuple[str, dict, frozenset]:
     """(pack_text, pack_report, index symbols) for the diff, from the
@@ -208,15 +218,16 @@ def _retrieve_pack(code_diff: str,
     debate to no retrieval, with the reason in report['error'], and no
     symbols."""
     path = Path(index_path) if index_path else CONTEXT_PATH
+    recorded = _recorded_index_path(path)
     repo_index = _load_repo_index(path)
     if "_load_error" in repo_index:
-        return "", {"error": repo_index["_load_error"], "index_file": str(path)}, frozenset()
+        return "", {"error": repo_index["_load_error"], "index_file": recorded}, frozenset()
     try:
         pack_text, report = build_context_pack(code_diff, repo_index)
     except Exception as exc:  # malformed index content, e.g. an entry without "name"
         return "", {"error": f"malformed index: {type(exc).__name__}: {exc}",
-                    "index_file": str(path)}, frozenset()
-    report["index_file"] = str(path)
+                    "index_file": recorded}, frozenset()
+    report["index_file"] = recorded
     return pack_text, report, _index_symbols(repo_index)
 
 

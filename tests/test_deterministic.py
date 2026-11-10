@@ -940,7 +940,20 @@ class DebateTests(NoSleep):
         with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN):
             result = debate.run_debate("p", "+++ b/app/x.cpp\n+int y;\n", "")
         pack = self.record(result)["metadata"]["repo_context_pack"]
-        self.assertEqual(pack["index_file"], str(debate.CONTEXT_PATH))
+        self.assertEqual(pack["index_file"], "repo_context.json")
+
+    def test_an_index_inside_the_repo_is_recorded_repo_relative(self):
+        # Committed records carry no local path: an in-repo index, given
+        # by absolute path, is stored relative to the repo root.
+        index = Path(debate.__file__).resolve().parent / "docs" / "fixtures" / "corpus" \
+            / "poll_override_90020bd" / "repo_context.json"
+        with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN), \
+                contextlib.redirect_stderr(io.StringIO()):
+            result = debate.run_debate("p", "+++ b/app/x.cpp\n+int y;\n", "",
+                                       index_path=str(index))
+        pack = self.record(result)["metadata"]["repo_context_pack"]
+        self.assertEqual(pack["index_file"],
+                         "docs/fixtures/corpus/poll_override_90020bd/repo_context.json")
 
     def test_missing_index_path_degrades_to_no_retrieval_and_names_the_file(self):
         missing = str(Path(self._tmp.name) / "absent.json")
