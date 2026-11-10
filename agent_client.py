@@ -1,4 +1,4 @@
-"""Ollama client — single agent turn with JSON-mode enforcement and retries.
+"""Ollama client: a single agent turn with JSON-mode enforcement and retries.
 The only module that talks to the network. Retry notes go to the
 'agent_client' logger as warnings; with no logging configured, Python
 prints them to stderr."""

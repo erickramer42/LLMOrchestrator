@@ -1,4 +1,4 @@
-"""corpus.py — the stable real-diff corpus (backlog #7): list its fixtures,
+"""The stable real-diff corpus (backlog #7): list its fixtures,
 collect round-1 reviewer samples on one or all of them, each with the
 repo context index of its own base, and score the records against each
 fixture's known bugs.
@@ -70,7 +70,7 @@ MODEL_KEYS = {"reviewer": "code_reviewer", "auto_engineer": "auto_engineer"}
 OPTIONAL_KINDS = ("concern", "question")
 
 
-# ============ manifest ============
+# Manifest
 
 def load_manifest(path: Path = MANIFEST) -> dict:
     """The corpus manifest. Fixture paths are relative to the repo root."""
@@ -142,7 +142,7 @@ def print_listing(rows: List[dict]) -> None:
               "'tokens' is the input check's estimate of the round-1 request")
 
 
-# ============ score ============
+# Score
 
 def score_records(records: List[tuple], manifest: dict, role: str = "reviewer") -> dict:
     """Per fixture: the first-attempt round-1 records on its diff, each
@@ -389,7 +389,7 @@ def print_costs(costs: dict, role: str) -> None:
           f"{costs['attempts']} attempts at the cap; {costs['failed']} failed closed")
 
 
-# ============ command line ============
+# Command line
 
 def _summary(res: dict) -> str:
     return f"{res['blockers']} blockers, {res['attempts']} attempt(s)"

@@ -1,4 +1,4 @@
-"""Central configuration — models, runtime parameters, prompt composition.
+"""Central configuration: models, runtime parameters, prompt composition.
 Single place to swap models or tune knobs for debates, the measurements,
 the golden suite and the indexer. The probe and the bake-off keep the
 settings they were measured with, in eval_harness/raw_call.py, so their
@@ -7,7 +7,7 @@ numbers stay comparable with ADR-0001's."""
 from reviewer_prompt import (REVIEWER_SYSTEM, IMPL_SCOPE_CLAUSE,
                              HEADER_SCOPE_CLAUSE)
 
-# ============ RUNTIME ============
+# Runtime
 OLLAMA_BASE_URL = "http://localhost:11434/api/chat"
 
 MODELS = {
@@ -19,7 +19,7 @@ MAX_DEBATE_ROUNDS = 3
 # 24576 (was 16384, which the probe validated on header-only fixtures). On
 # the bridge diff the prompt alone is ~9.4K tokens, and finished reviewer
 # replies reach 10K output tokens, thinking included. Runaway thinking
-# fills any window; that is backlog #16, not a reason to grow this
+# fills any window; that is backlog #19, not a reason to grow this
 # (ADR-0002, 2026-10-22 follow-ups).
 NUM_CTX = 24576
 # Output cap per attempt, thinking included. A runaway (mostly a search that
@@ -39,6 +39,6 @@ REQUEST_TIMEOUT_S = 600    # Kept at 600s per probe latency discussion
 TEMPERATURE_EXPLORATION = 0.7
 TEMPERATURE_RETRY = 0.05
 
-# ============ PROMPT COMPOSITION ============
+# Prompt composition
 REVIEWER_IMPL_PROMPT = REVIEWER_SYSTEM + IMPL_SCOPE_CLAUSE
 REVIEWER_HEADER_PROMPT = REVIEWER_SYSTEM + HEADER_SCOPE_CLAUSE

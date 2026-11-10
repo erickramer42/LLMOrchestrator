@@ -1,4 +1,4 @@
-"""Golden test suite — reviewer unit tests via live model, plus
+"""Golden test suite: reviewer unit tests via live model, plus
 deterministic guardrail regression tests (no LLM): the hedge units and
 the judge cases.
 
@@ -53,7 +53,7 @@ def score_fixture(out: dict, expected_to_block: bool) -> dict:
 
 
 def run_hedge_unit_tests() -> List[dict]:
-    """Deterministic guardrail regression tests — no LLM involved.
+    """Deterministic guardrail regression tests, with no LLM involved.
 
     Blocker texts are taken verbatim from the 2026-10-07 bridge-refactor
     debate (decision_debate_20261007_203917) plus synthetic controls.

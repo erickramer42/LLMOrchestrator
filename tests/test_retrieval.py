@@ -148,7 +148,7 @@ class BuildContextPack(unittest.TestCase):
         self.assertEqual(report["entries"], 0)
 
 
-# ============ code review 2026-10-21, finding 3: identifier matching ============
+# Identifier matching
 
 class IdentifierMatching(unittest.TestCase):
     def test_all_identifier_styles_are_collected(self):
@@ -171,7 +171,7 @@ class IdentifierMatching(unittest.TestCase):
         self.assertEqual(text, "")
 
 
-# ============ code review 2026-10-21, finding 4: presentation fidelity ============
+# Presentation fidelity
 
 class CallsiteRendering(unittest.TestCase):
     SRC = """
@@ -263,7 +263,7 @@ class TypeAndPurposeRendering(unittest.TestCase):
         self.assertNotIn("Build configuration", text)
 
 
-# ============ code review 2026-10-21, finding 6: pack accounting and sections ============
+# Pack accounting and sections
 
 class PackAccountingAndSections(unittest.TestCase):
     INDEX = BuildContextPack.INDEX
@@ -321,7 +321,7 @@ class PackAccountingAndSections(unittest.TestCase):
         self.assertIsNone(report["error"])
 
 
-# ============ code review 2026-10-21, finding 1: the diff wins ============
+# The diff wins
 
 class DiffAuthoritativePack(unittest.TestCase):
     # Shaped like the bridge fixture: the diff deletes a class, a constant

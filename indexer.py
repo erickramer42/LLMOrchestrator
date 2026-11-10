@@ -1,4 +1,4 @@
-"""Offline repo indexer — builds repo_context.json for a target codebase.
+"""Offline repo indexer: builds repo_context.json for a target codebase.
 
 Two-tier extraction:
   - Deterministic (free, CI-safe): file walk, typedef harvesting,
@@ -8,7 +8,7 @@ Two-tier extraction:
     Cached by content hash, model and summary-prompt version; only
     changed files re-summarize.
 
-Output is a checked-in artifact — the codebase's context pack that
+Output is a checked-in artifact: the codebase's context pack that
 retrieval.py retrieves from at review time. Regenerate explicitly:
     python orchestrator.py --index ../qttune [--no-llm]
 
@@ -114,7 +114,7 @@ def _enclosing_lead_call(blanked: str, pos: int) -> Optional[Tuple[int, int, int
     """The (innermost or enclosing) connect()/invokeMethod() call whose
     argument list contains pos. Returns (stmt_start, open_paren,
     close_paren) or None. Paren-depth scanning treats semicolons inside
-    lambda bodies as invisible — unlike statement-bound heuristics."""
+    lambda bodies as invisible, unlike statement-bound heuristics."""
     cursor = pos
     while True:
         depth, i, open_paren = 0, cursor - 1, -1
@@ -419,7 +419,7 @@ def harvest_callsites(text: str, file_path: str) -> List[Dict]:
     return out
 
 
-# ============ LLM PURPOSE SUMMARIES ============
+# LLM purpose summaries
 
 def _validate_purpose(raw) -> Tuple[Optional[dict], Optional[str]]:
     """call_agent validator: a reply with a 'purpose' string over 10
@@ -443,7 +443,7 @@ def llm_purpose(model: str, file_path: str, text: str) -> Optional[str]:
     return clip(result["purpose"], 500)  # presentation clips further
 
 
-# ============ INDEX BUILD ============
+# Index build
 
 _SKIP_DIRS = {".git", "build", ".venv", "__pycache__", "node_modules"}
 _SKIP_DIR_PREFIXES = ("build-", "cmake-build-")

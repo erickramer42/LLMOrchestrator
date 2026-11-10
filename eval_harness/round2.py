@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""round2.py — the round-2 pair measurement (ADR-0002, eleventh
+"""The round-2 pair measurement (ADR-0002, eleventh
 measurement): collect samples, list them for scoring.
 
     python -m eval_harness.round2 run --proposal "..." --diff FILE [--runs N]
@@ -21,7 +21,7 @@ claim (never its quote):
   blockers demoted to questions;
 - echo?: else a round-1 engineer item does;
 - new: none does.
-The tags are candidates for hand labelling, like round1's M2 candidates.
+The tags are candidates for hand labeling, like round1's M2 candidates.
 M1 (--symbols) and M2 work as in round1. Score round 1 itself with
 eval_harness.round1, which reads these records too.
 
@@ -44,7 +44,7 @@ ARMS = (CRITIQUES_ARM, V9_ARM)
 ORIGINS = ("carried", "from-question", "echo?", "new")
 
 
-# ============ score ============
+# Score
 
 def names(item: str) -> set:
     return {n for n in IDENT.findall(claim_text(item)) if code_like(n)}

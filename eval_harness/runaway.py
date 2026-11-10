@@ -1,4 +1,4 @@
-"""runaway.py — does a long reply repeat itself? (backlog #19)
+"""Does a long reply repeat itself? (backlog #19)
 
 Reads the whole thinking that agent_client keeps for attempts that hit the
 output cap or ran past LONG_THINKING_TOKENS, and measures repetition the

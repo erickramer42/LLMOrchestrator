@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""round1.py — round-1 reviewer measurements: collect samples, score them.
+"""Round-1 reviewer measurements: collect samples, score them.
 
     python -m eval_harness.round1 run --proposal "..." --diff FILE [--runs N]
     python -m eval_harness.round1 score --diff FILE RECORD_OR_GLOB...
@@ -36,7 +36,7 @@ from eval_harness.common import (demoted_tail, m1_hits, m2_candidates, main,
 from retrieval import removed_identifiers
 
 
-# ============ score ============
+# Score
 
 def score_records(records: List[tuple], code_diff: str, symbols: List[str],
                   lacks: Optional[Callable[[str], bool]]) -> dict:

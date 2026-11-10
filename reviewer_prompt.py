@@ -1,4 +1,4 @@
-"""Canonical agent system prompts — single source of truth.
+"""Canonical agent system prompts: the single source of truth.
 Imported by config.py (prompt composition), debate.py, golden_tests.py
 and eval_harness/probe.py and bakeoff.py.
 Any edit to a prompt here must be reflected by bumping PROMPT_VERSION."""
@@ -21,7 +21,7 @@ Any edit to a prompt here must be reflected by bumping PROMPT_VERSION."""
 # whose quote is not in the named file to questions (judge j3).
 # v9 (2026-10-22, ADR-0002 arm G3): the quote must be code as it reads
 # after the change; removed lines are not evidence (judge j4).
-# v10 (2026-10-22, ADR-0002 eleventh measurement; backlog #11): the
+# v10 (2026-10-22, ADR-0002 eleventh measurement): the
 # transcript protocol, all in debate.py. The diff and context are fenced
 # as data, truncated context is marked, and the previous round's replies
 # go in a CRITIQUES section instead of the proposal: every channel but nits,
@@ -30,10 +30,10 @@ Any edit to a prompt here must be reflected by bumping PROMPT_VERSION."""
 # v10.1 (2026-10-22): v10's fence and truncation marker, with v9's
 # feedback. The CRITIQUES section kept the race but dropped the in-flight
 # gate and ran away more often, so it was not shipped.
-# v10.2 (2026-10-23, code review finding 19): input with no file path
+# v10.2 (2026-10-23, ADR-0002 "Unknown-Layer Note v10.2"): input with no file path
 # gets the unknown-layer note instead of no layer note. Input with a path
 # is sent exactly as under v10.1, so the bridge fixture's runs compare.
-# v11 (2026-10-23, ADR-0002 twelfth measurement; backlog #11): the
+# v11 (2026-10-23, ADR-0002 twelfth measurement): the
 # candidate CRITIQUES section, revised. A reviewer blocker stands unless
 # the code contradicts it, its checked quote is not searched for again,
 # and a removal-caused defect is quoted from the code left unprotected.

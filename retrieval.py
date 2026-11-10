@@ -50,7 +50,7 @@ MAX_RELATED_CALL_SITES = 10
 # are re-exported from here.
 
 
-# ============ TEXT HELPERS (shared with indexer.py) ============
+# Text helpers (shared with indexer.py)
 
 def clip(text: str, limit: int) -> str:
     """Shorten text to at most `limit` chars at a word boundary, marking the
@@ -100,7 +100,7 @@ def blank_comments(text: str) -> str:
     return "".join(out)
 
 
-# ============ RETRIEVAL ============
+# Retrieval
 
 def _referenced_identifiers(code_diff: str) -> set:
     """Every identifier token in the diff. Retrieval intersects this set
@@ -160,8 +160,8 @@ def _base_check(code_diff: str, index: dict) -> dict:
     """Whether the index describes the diff's base: for each changed file
     whose blob id both the diff and the index record, does the index hold
     the version the diff starts from? 'mismatched' lists the files where
-    it does not; the pack may then describe other code (code review
-    2026-10-23, finding 15). Diffs without blob ids, and indexes built
+    it does not; the pack may then describe other code.
+    Diffs without blob ids, and indexes built
     before blob ids were recorded, check nothing."""
     indexed = {f["path"]: f.get("blob") for f in index.get("files", [])}
     checked = {path: blob for path, blob in base_blobs(code_diff).items()
@@ -186,7 +186,7 @@ def build_context_pack(code_diff: str, index: dict,
     an entry from a modified file that names an identifier only the
     diff's removed lines use is left out of its section and listed by
     name under OMITTED, and a purpose that mentions one says so
-    (code review 2026-10-21, finding 1).
+    (v6: the diff is authoritative).
 
     Sections in priority order (truncation cuts from the end); a section
     with no entries is left out entirely:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""bakeoff.py — reviewer slot bake-off. One model at a time, isolated calls."""
+"""Reviewer slot bake-off. One model at a time, isolated calls."""
 
 import argparse
 import time
@@ -50,7 +50,7 @@ def call(model: str, code: str, is_header: bool):
 def tally(outcomes) -> dict:
     """Score (expect_bug, failure, flagged) triples.
 
-    Clean passes are tallied SEPARATELY from bug hits — conflating them
+    Clean passes are tallied SEPARATELY from bug hits: conflating them
     made 'Detection' read N+1/N+1 and 'Clean' go negative on any miss.
     An unusable reply on a bug case is a miss (fn), not a dropped case.
     Invariants (third occurrence of this bug class; keep them):

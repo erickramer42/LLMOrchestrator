@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""replay.py — archived round-1 reviewer replies, re-judged offline under
+"""Archived round-1 reviewer replies, re-judged offline under
 deterministic judge variants (ADR-0002, thirteenth measurement). No model.
 
     python -m eval_harness.replay --diff FILE [--labels FILE] [--n 3 --k 2]
@@ -92,7 +92,7 @@ class Item(NamedTuple):
     label: Optional[str]
 
 
-# ============ the diff ============
+# The diff
 
 class Diff(NamedTuple):
     sources: Dict[str, List[str]]   # adjudication.evidence_sources
@@ -156,7 +156,7 @@ def load_diff(code_diff: str, symbols: frozenset = frozenset()) -> Diff:
                 before_sources(code_diff), symbols)
 
 
-# ============ quotes ============
+# Quotes
 
 def locate(fragment: List[str], source: List[str], gapped: bool = False
            ) -> Optional[List[int]]:
@@ -232,7 +232,7 @@ def linked(blocker: dict, diff: Diff, where: Tuple[str, List[int]],
     return bool(ids & set().union(*(diff.hunk_ids[path][h] for h in hunks)))
 
 
-# ============ judging ============
+# Judging
 
 def judge(item: Item, diff: Diff, variant: str) -> Tuple[Optional[str], Optional[tuple]]:
     """(why the variant demotes the blocker or None, where its quote
@@ -286,7 +286,7 @@ def as_stored(reason: Optional[str]) -> Optional[str]:
     return "evidence" if reason == "link" else reason
 
 
-# ============ voting ============
+# Voting
 
 def vote(groups: List[List[Tuple[Item, tuple]]], diff: Diff, k: int) -> List[Item]:
     """The kept blockers of several samples (one list per sample), merged:
@@ -316,7 +316,7 @@ def vote(groups: List[List[Tuple[Item, tuple]]], diff: Diff, k: int) -> List[Ite
     return [item for i, (_, item, _) in enumerate(members) if len(spans[root(i)]) >= k]
 
 
-# ============ scoring ============
+# Scoring
 
 def review_stats(kept: List[Item]) -> dict:
     labels = [i.label for i in kept]
@@ -394,7 +394,7 @@ def replay(records: List[tuple], code_diff: str, label_doc: dict,
             "samples": {s: len(v) for s, v in samples.items()}}
 
 
-# ============ the corpus ============
+# The corpus
 
 def corpus_stats(kept: List[Item], bug_ids: Set[str], valid_classes: Set[str]) -> dict:
     """One review's kept blockers, scored with corpus labels (lists)."""

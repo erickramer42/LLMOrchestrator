@@ -1,4 +1,4 @@
-"""raw_call.py — the probe's and the bake-off's model call.
+"""The probe's and the bake-off's model call.
 
 One raw Ollama request per attempt, with the settings both scripts were
 measured with (ADR-0001, probe_logs/): num_ctx 16384, no output cap,

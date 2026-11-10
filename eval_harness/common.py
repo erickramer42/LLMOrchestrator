@@ -1,4 +1,4 @@
-"""common.py — what the measurement scripts share: the round-1 and
+"""What the measurement scripts share: the round-1 and
 round-2 command line, collecting samples, reading inputs and records,
 per-role model selection, and the scoring helpers (attempt status, call
 costs, demoted blockers, M1, M2 candidates). The corpus, replay, repair
@@ -19,7 +19,7 @@ from typing import Callable, Iterator, List, Optional, Tuple
 from diff_reader import IDENT, code_like
 
 
-# ============ inputs and records ============
+# Inputs and records
 
 def read_input(path: str) -> str:
     """Read as orchestrator.py does, so the diff hashes match the records."""
@@ -47,7 +47,7 @@ def load_records(patterns: List[str]) -> List[tuple]:
     return records
 
 
-# ============ scoring helpers ============
+# Scoring helpers
 
 # Where a field starts in a flattened {claim, file, quote} blocker
 # (adjudication._coerce_item joins "key: value" pairs with "; ").
@@ -160,7 +160,7 @@ def post_state_lacks(repo: str, rev: str) -> Callable[[str], bool]:
     return lacks
 
 
-# ============ run ============
+# Run
 
 def collect(measure: Callable[..., dict], summary: Callable[[dict], str],
             models: str, proposal: str, code_diff: str, code_context: str,
@@ -205,7 +205,7 @@ def agent_model(role: str, model: Optional[str]) -> Iterator[str]:
         MODELS[role] = old
 
 
-# ============ command line ============
+# Command line
 
 def main(name: str, measure: Callable[..., dict], summary: Callable[[dict], str],
          models: str, score: Callable, report: Callable, score_help: str,

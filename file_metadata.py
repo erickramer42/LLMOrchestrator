@@ -1,4 +1,4 @@
-"""file_metadata.py — file-to-layer mapping for context-aware review.
+"""File-to-layer mapping for context-aware review.
 Injects layer metadata into review transcripts so the reviewer knows
 which rules apply to which file paths. Layer rules match QtTune's
 actual repo layout (core/ = strict, app/ = Qt-allowed bridge)."""

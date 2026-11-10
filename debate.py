@@ -1,4 +1,4 @@
-"""Debate orchestration — the loop, guardrail application, judging,
+"""Debate orchestration: the loop, guardrail application, judging,
 and decision-record persistence. Also the measurement modes: round 1's
 reviewer alone, which sends the same first transcript as a debate, and
 the round-2 pair, which compares a candidate feedback format with a
@@ -30,7 +30,7 @@ from file_metadata import get_layer_constraints, identify_layer
 from retrieval import CONTEXT_PATH, PACK_FORMAT_VERSION, build_context_pack
 from reviewer_prompt import PROMPT_VERSION, AUTO_ENGINEER_PROMPT
 
-# ============ TRANSCRIPT TEMPLATES ============
+# Transcript templates
 # Model-facing text. Editing any of these is a prompt edit: bump
 # PROMPT_VERSION. All of them feed the prompt_fingerprint in each record.
 CONTEXT_CHAR_LIMIT = 8000
@@ -67,7 +67,7 @@ TRUNCATION_NOTE = ("[The CODE CONTEXT is truncated: the first {shown} of "
 
 # Retrieved repo context. The pack is a snapshot of the indexed tree, which
 # need not match the code before or after the diff, so the diff wins
-# (code review 2026-10-21, finding 1; v6).
+# (v6; ADR-0002, fifth measurement).
 REPO_CONTEXT_TEMPLATE = """
 REPO CONTEXT (a snapshot of the indexed source tree; it may not match
 the code before or after this diff. The CODE DIFF is authoritative for
@@ -98,7 +98,7 @@ REVISE ADDRESSING:
 - Engineer concerns: {concerns}"""
 
 # The previous round's replies in their own section, sent from round 2 on
-# (backlog #11; v11.1): every channel but nits, the last round only. As
+# (v11.1; ADR-0002, twelfth measurement): every channel but nits, the last round only. As
 # v10 it kept the race but dropped the in-flight-gate blocker and ran
 # away more often, so debates kept v9's feedback (ADR-0002, eleventh
 # measurement). v11 lets a reviewer blocker, whose quote the evidence
@@ -264,7 +264,7 @@ def _prepare(code_diff: str, code_context: str, header_artifact: bool,
     reviewer_prompt = (REVIEWER_HEADER_PROMPT if header_artifact
                        else REVIEWER_IMPL_PROMPT)
 
-    # ============ CONTEXT PACK RETRIEVAL ============
+    # Context pack retrieval
     pack_text, pack_report, symbols = _retrieve_pack(code_diff, index_path)
     if pack_report.get("error"):
         print(f"WARNING: repo context retrieval unavailable "
@@ -282,7 +282,7 @@ def _prepare(code_diff: str, code_context: str, header_artifact: bool,
     pack_report["sha256"] = text_sha256(pack_text) if pack_text else None
     pack_report["text"] = pack_text
 
-    # Static transcript sections — built once, they never change.
+    # Static transcript sections: built once, they never change.
     shown_context = code_context[:CONTEXT_CHAR_LIMIT]
     static_section = _code_section(code_diff, code_context)
 
@@ -443,7 +443,7 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
         entry = _run_round(setup, proposal, round_num, critiques=critiques)
         round_history.append(entry)
 
-        # ============ FAIL CLOSED on unusable agent output ============
+        # Fail closed on unusable agent output
         agent_failures = _agent_failures(entry)
         if agent_failures:
             final_verdict = AGENT_FAILURE_VERDICT
@@ -494,7 +494,7 @@ def _run_round(setup: _Setup, proposal: str, round_num: int,
                           transcript, temperature, validate=_validate_reviewer,
                           telemetry=telemetry["reviewer"])
 
-    # ============ GUARDRAILS: unquoted, then hedged blockers (before storing) ============
+    # Guardrails: unquoted, then hedged blockers (before storing)
     reviewer, unquoted = demote_unverified_blockers(reviewer, setup.evidence,
                                                     "questions", setup.hunks,
                                                     setup.symbols)

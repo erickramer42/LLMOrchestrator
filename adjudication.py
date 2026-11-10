@@ -22,14 +22,14 @@ from diff_reader import DEV_NULL, IDENT, code_like, read_diff
 # lines, so the reviewer could not block it, and empty or oversized input
 # still went to the models. j7 refuses such input, reads lines outside any
 # file as evidence for any file, and ignores a reply's own
-# blocker_evidence (code review 2026-10-23, findings 13, 16 and 17). j8
+# blocker_evidence (ADR-0002, "Input Checks j7"). j8
 # also demotes a blocker whose claim names code identifiers, none of
 # which occurs in the hunk its quote comes from (claim-quote linkage;
 # ADR-0002, sixteenth measurement).
 JUDGE_VERSION = "j8-claim-quote-linkage"
 
 
-# ============ VERDICTS ============
+# Verdicts
 
 # Every final verdict a record can carry. Only the first two approve.
 APPROVED_FOR_MERGE = "APPROVED_FOR_MERGE"
@@ -45,7 +45,7 @@ MEASUREMENT_VERDICT = "NOT_ADJUDICATED - ROUND1_MEASUREMENT"
 PAIR_VERDICT = "NOT_ADJUDICATED - ROUND2_PAIR_MEASUREMENT"
 
 
-# ============ SCHEMA VALIDATION ============
+# Schema validation
 
 # The arrays the judge reads, per agent role (schemas are defined in the
 # prompts in reviewer_prompt.py). A reply missing a required array is a
@@ -127,7 +127,7 @@ def normalize_agent_output(raw, role: str) -> Tuple[Optional[dict], Optional[str
     return out, None
 
 
-# ============ VERDICT DERIVATION ============
+# Verdict derivation
 
 def derive_verdict(agent_out: dict, concern_key: str = "questions") -> str:
     """Merge decision from agent CONTENT, never the model's self-reported label.
@@ -161,7 +161,7 @@ def convergence_verdict(reviewer_v: str, engineer_v: str) -> Optional[str]:
     return APPROVED_WITH_OPEN_QUESTIONS
 
 
-# ============ HEDGE LANGUAGE DEMOTION ============
+# Hedge language demotion
 
 HEDGE_PATTERNS = re.compile(
     r"\b(may|might|could|possibly|potentially|speculative|"
@@ -202,7 +202,7 @@ def demote_hedged_blockers(agent_out: dict,
     return out, len(demoted)
 
 
-# ============ EVIDENCE QUOTES (judge j4, ADR-0002 arms G and G3) ============
+# Evidence quotes (judge j4, ADR-0002 arms G and G3)
 
 # A supplied code context accepts a quote whatever file the blocker names,
 # and so do diff lines under no file header (judge j7), since no path can
@@ -336,7 +336,7 @@ def quote_location(evidence: Optional[dict], sources: Dict[str, List[str]]
     return None
 
 
-# ============ CLAIM-QUOTE LINKAGE (judge j8) ============
+# claim-quote linkage (judge j8)
 
 # A token of capital letters only (PID, UI): an acronym, not code, unless
 # the index of the reviewed repo defines it as a type or constant name.

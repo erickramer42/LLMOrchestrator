@@ -1,4 +1,4 @@
-"""repair.py — the repair pass measured paired on archived round-1 replies
+"""The repair pass measured paired on archived round-1 replies
 (ADR-0002, seventeenth measurement).
 
     python -m eval_harness.repair run --set corpus|bridge
@@ -7,7 +7,7 @@
     python -m eval_harness.repair run --variant v13|v13.1 --pilot
     python -m eval_harness.repair pilot [--variant v13.1]
 
-For each labelled first-attempt record, `run` rebuilds the round-1
+For each labeled first-attempt record, `run` rebuilds the round-1
 request a debate sends today (debate._prepare and _render_transcript
 from the committed fixture and the record's proposal), re-judges the
 record's raw reviewer items with judge j8 (replay's flinked), offers the
@@ -64,10 +64,9 @@ from diff_reader import IDENT
 from eval_harness import replay
 from eval_harness.common import load_records, read_input, reviewer_status
 
-# ============ the repair call ============
-# Model-facing text of the repair versions, which no debate sends. Until
-# 2026-10-28 it lived in debate.py behind a switch that was always off
-# (code review finding 32); debate fingerprints never hashed it. Each
+# The repair call
+# Model-facing text of the repair versions, which no debate sends;
+# debate fingerprints never hash it. Each
 # version's records carry its name, and repair_fingerprint hashes its
 # templates.
 # v12, the repair pass (ADR-0002, seventeenth measurement), NOT SHIPPED:
@@ -171,7 +170,7 @@ class RepairVariant(NamedTuple):
 
 
 # Read with a plain lookup, so an unknown version raises KeyError instead
-# of sending another version's request (code review finding 20).
+# of sending another version's request.
 REPAIR_VARIANTS = {
     REPAIR_VERSION: RepairVariant(None, None, False),
     REPAIR_V13_VERSION: RepairVariant(REPAIR_SYSTEM_PROMPT, debate.STATIC_TEMPLATE, True),
@@ -253,7 +252,7 @@ def repair_call(setup: debate._Setup, transcript: str, offered: List[dict],
     is estimated over the input limit or every attempt fails. The version
     alone picks the request (REPAIR_VARIANTS): v12 sends the transcript,
     v13 and v13.1 their own system prompt and code_diff, which they
-    require (code review finding 23)."""
+    require."""
     variant = REPAIR_VARIANTS[version]
     if variant.code_template is None:
         system, user = setup.reviewer_prompt, repair_request(setup, transcript, offered)
@@ -353,10 +352,10 @@ def out_path(source: str, variant: str = "v12") -> Path:
     return OUT_DIR / f"measurement_repair_{tag}{source}.json"
 
 
-# ============ the samples ============
+# The samples
 
 def samples(set_name: str) -> List[dict]:
-    """Each labelled first-attempt record of the set, with what its repair
+    """Each labeled first-attempt record of the set, with what its repair
     call is built from: the record, its labels, the fixture (corpus) or
     None (bridge), the diff and the index path."""
     from eval_harness.corpus import load_manifest
@@ -410,7 +409,7 @@ def _symbols(index_path: Optional[str]) -> frozenset:
         Path(index_path or CONTEXT_PATH).read_text(encoding="utf-8")))
 
 
-# ============ run ============
+# Run
 
 def _offer(sample: dict):
     """The review's setup, its j8-judged items, and what a debate offers
@@ -487,7 +486,7 @@ def run(set_name: str, dry: bool = False, variant: str = "v12",
             raise SystemExit("Stopping: the Ollama request failed. Is the server up?")
 
 
-# ============ ceiling ============
+# Ceiling
 
 def ceiling(set_name: str, batch: bool = False) -> dict:
     """Step 0 of the eighteenth measurement: what any repair could
@@ -570,7 +569,7 @@ def print_ceiling(res: dict) -> None:
               f"{','.join(r['ids']) or '-'}  {(r['example'] or '')[:90]}")
 
 
-# ============ score ============
+# Score
 
 def _bridge_class(label) -> str:
     if label in ("race", "gate"):  # labels.json's valid classes
@@ -681,7 +680,7 @@ def print_score(res: dict) -> None:
             print(f"   {r['source']} {r['key']} [{r['label']}] {r['restored'][:200]}")
 
 
-# ============ the pilot ============
+# The pilot
 
 def first_attempt_kind(entry: dict) -> str:
     """A telemetry entry's attempt as the pilot's exits read it: usable
