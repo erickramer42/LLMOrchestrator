@@ -17,7 +17,7 @@ changed.
 - record provenance and per-attempt telemetry;
 - context window raised to 24576 and output capped at 12288;
 - v6 diff-authoritative retrieval;
-- backlog #18–#21 filed;
+- backlog #18-#21 filed;
 - convergence rule j2;
 - the round-1 measurement mode and scorer;
 - the v6 baseline;
@@ -38,7 +38,7 @@ changed.
 
 ### 2026-10-23
 
-**Code review 2026-10-23, findings 13–18; `6f020f2`:**
+**Code review 2026-10-23, findings 13-18; `6f020f2`:**
 - judge j7: empty and oversized input refused before any model call,
   and diff lines outside any file header made evidence; no recorded
   result changes (ADR-0002, "Input Checks j7");
@@ -80,13 +80,13 @@ changed.
 
 **Night:**
 - the real-diff corpus (#7) built and its baseline scored (fourteenth
-  measurement): 57% of stored blockers valid, against 80–94% on the
+  measurement): 57% of stored blockers valid, against 80-94% on the
   bridge fixture;
 - judge variants replayed on it (fifteenth): voting and removed-line
-  exceptions fail, claim–quote linkage passes once acronyms are not
+  exceptions fail, claim-quote linkage passes once acronyms are not
   counted as identifiers;
 - a fresh sample of 35 corpus runs, labelled before replay (sixteenth),
-  confirms it, and judge j8 ships claim–quote linkage.
+  confirms it, and judge j8 ships claim-quote linkage.
 
 ### 2026-10-24
 
@@ -120,8 +120,8 @@ changed.
 - the twentieth measurement drafted, signed off and implemented (field
   writers in the pack, v15); Step 0 recorded;
 - the twentieth measured and not shipped: `poll_override` false
-  positives rose (1.33 → 1.67 per review), and so did the bridge's
-  (0.18 → 0.60). Rolled back to the v11.1 prompt version, pack f3 and
+  positives rose (1.33 to 1.67 per review), and so did the bridge's
+  (0.18 to 0.60). Rolled back to the v11.1 prompt version, pack f3 and
   the earlier indexes.
 - the twenty-first measurement (backlog #8, per-file layer notes)
   drafted and signed off; a concurrent v11.1 bridge control sampled
@@ -129,9 +129,9 @@ changed.
   showed that v15's bridge rise came with its section; v16 implemented
   and piloted;
 - the twenty-first measured and not shipped: conditions on the corpus
-  held, but bridge false positives rose (0.11 → 0.33 per review, mostly
+  held, but bridge false positives rose (0.11 to 0.33 per review, mostly
   objections to the removed UI feature), and invariant-elsewhere on
-  `poll_override` was unchanged (1.11 → 1.05 per run);
+  `poll_override` was unchanged (1.11 to 1.05 per run);
 - STATUS.md cut down to the current state; this file and
   [file-map.md](file-map.md) took the rest.
 - backlog #19's runaway diagnostic: records keep the whole thinking of
@@ -141,7 +141,7 @@ changed.
   replies repeat as much, so an abort on repetition was not built.
 - the cost side of #19 checked offline: an early retry at a token budget
   cuts more valid findings than false ones for any real time saving;
-  code review findings 20–23 (the repair runner's version handling)
+  code review findings 20-23 (the repair runner's version handling)
   fixed; 18 v11.1 `poll_override` runs labeled, putting that fixture's
   baseline at 27 runs (1.22 false positives per review under j8).
 - the model bake-offs drafted and signed off: two local reviewer models
@@ -183,7 +183,7 @@ changed.
   `corpus score` counts labeled records only in its rates; records of
   either corpus resolve to their fixture (`runaway repro`, the judge
   cases); replay names the judge it reproduces with; lint and stale
-  docstrings. No recorded number changed. Tests 220 → 226.
+  docstrings. No recorded number changed. Tests 220 to 226.
 
 ### 2026-10-28
 
@@ -195,7 +195,7 @@ changed.
   it (about 280 lines). v13.1's request now reuses the debate's fenced
   code section under its own preamble. Every repair request, repair
   fingerprint and runner output is byte-identical, and debate
-  fingerprints are unchanged. Tests 226 → 224: the two that switched the
+  fingerprints are unchanged. Tests 226 to 224: the two that switched the
   hook on went with it.
 
 ## Features and measurements, in detail
@@ -249,10 +249,10 @@ disagree; STATUS.md has the current state.
   repo_context.py was split into indexer.py (offline) and retrieval.py
   (debate time).
 - **False-positive reduction v1, measured twice:** baseline 2/12 blocker
-  precision (2026-10-07, decision_debate_20261007_203917) → 4/6 after
+  precision (2026-10-07, decision_debate_20261007_203917) to 4/6 after
   layer metadata + hedge demotion (2026-10-09,
   decision_debate_20261009_014257, same diff), as re-triaged on
-  2026-10-23 (first scored 1/12 → 1/6). Qt-include layer FPs: 3 → 0.
+  2026-10-23 (first scored 1/12 to 1/6). Qt-include layer FPs: 3 to 0.
   All valid blockers are the `m_currentFrameCount` race; the first
   triage's one TP, the 8-byte decode, is in code the diff removes
   (ADR-0002, "Re-Triage of the Early Runs").
@@ -303,9 +303,9 @@ disagree; STATUS.md has the current state.
   - The bridge fixture's pack is byte-identical to v5.1's.
 - **Context window and output cap (2026-10-22, backlog #16; ADR-0002
   telemetry follow-ups).** Seven live telemetry runs on the bridge
-  fixture showed a stable ~9.4K–10.2K-token prompt, while the output,
+  fixture showed a stable ~9.4K-10.2K-token prompt, while the output,
   thinking included, varies widely.
-  - **`NUM_CTX` 16384 → 24576:** finished reviewer replies reach 10,097
+  - **`NUM_CTX` 16384 to 24576:** finished reviewer replies reach 10,097
     output tokens, which 16384 cannot hold.
   - **`NUM_PREDICT` 12288:** some attempts loop in their thinking and
     would fill any window. The cap stops them, and the retry recovers.
@@ -328,7 +328,7 @@ disagree; STATUS.md has the current state.
   - **Measured 2026-10-22** (ADR-0002, sixth measurement; 10 round-1
     samples, all first attempts, 26 blockers):
     - Deletion-consistency FPs held at 0.5 per run, against a predicted
-      ≤ 0.2. They no longer cite pack-asserted symbols.
+      <= 0.2. They no longer cite pack-asserted symbols.
     - The `m_currentFrameCount` race appeared in 5 of 10 runs.
     - 4 blockers in 3 runs correctly flag that the diff reverts
       `e0c4c31`'s in-flight backpressure gate. Arm 1 had none.
@@ -480,7 +480,7 @@ disagree; STATUS.md has the current state.
   - **gapped quotes** (quote lines may skip lines within a hunk)
     readmit the 3 valid race blockers demoted for skipping lines, and no
     FP;
-  - **claim–quote linkage** (a claim's code identifiers must occur in
+  - **claim-quote linkage** (a claim's code identifiers must occur in
     its quote's hunk) demotes the 2 deletion-class FPs with unrelated
     quotes, and no valid blocker. Together: 0.18 FPs, race 0.82;
   - **2-of-3 voting** (keep blockers whose quoted lines recur across 3
@@ -498,7 +498,7 @@ disagree; STATUS.md has the current state.
   a false-positive rate. Each excludes tests and docs, carries a
   proposal written in its real direction (#21) and the `--no-llm` index
   of its own base, built from a throwaway clone. All seven pass the
-  input check (2.9K–5.6K estimated tokens) and the base check.
+  input check (2.9K-5.6K estimated tokens) and the base check.
   `python -m eval_harness.corpus list|run|score` lists them, collects
   round-1 samples through `debate.run_round1_review` with each
   fixture's index, and scores records per known bug. Reviews and both
@@ -511,7 +511,7 @@ disagree; STATUS.md has the current state.
 - **Corpus baseline (2026-10-23; ADR-0002, fourteenth measurement).**
   35 samples, 33 scored first attempts, hand labels in
   `eval_harness/corpus_labels.json`. 24 of 42 stored blockers valid
-  (57%, against 80–94% on the bridge fixture); 8 of the 18 false
+  (57%, against 80-94% on the bridge fixture); 8 of the 18 false
   positives are one new class in one fixture, a removed check whose
   invariant another function enforces. Mean recall per known bug 0.46
   among stored blockers, 0.65 before the guardrails. The evidence check
@@ -523,10 +523,10 @@ disagree; STATUS.md has the current state.
 - **Corpus replay (2026-10-23; ADR-0002, fifteenth measurement).**
   `python -m eval_harness.replay --corpus` re-judges the corpus runs
   offline with its labels; three removed-line exception variants were
-  added and replayed on both data sets. Claim–quote linkage passes on
-  the corpus too (FPs per review 0.55 → 0.48, recall 0.46 → 0.44), but 2
+  added and replayed on both data sets. Claim-quote linkage passes on
+  the corpus too (FPs per review 0.55 to 0.48, recall 0.46 to 0.44), but 2
   of its 4 corpus decisions turned on all-caps words (`PID`, `UI`).
-  Voting fails (FPs 0.55 → 0.98). No exception passes: the best,
+  Voting fails (FPs 0.55 to 0.98). No exception passes: the best,
   removed+said (accept a pre-change quote when the claim names a
   removal), lifts corpus recall to 0.57 for +0.03 FPs, readmits no
   bridge deletion claim, and fails on 3 bridge removal objections (+0.11
@@ -534,13 +534,13 @@ disagree; STATUS.md has the current state.
   quote pre-change code at all. Nothing changed in debates.
   Amendment: filtered linkage (acronyms such as `PID` and `UI` are not
   identifiers unless the index defines them) passes on both data sets
-  (corpus FPs per review 0.55 → 0.52, recall unchanged; bridge 0.25 →
+  (corpus FPs per review 0.55 to 0.52, recall unchanged; bridge 0.25 to
   0.18). The composed arm, removal words plus filtered linkage, misses
   the corpus recall bar by one point (+0.09). A fresh sample of 35 corpus
   runs, labelled before replay, decides both (sixteenth measurement,
   registered in `1be7179`).
-- **Judge j8, claim–quote linkage (2026-10-23; ADR-0002, sixteenth
-  measurement and "Claim–Quote Linkage j8").** On the fresh sample,
+- **Judge j8, claim-quote linkage (2026-10-23; ADR-0002, sixteenth
+  measurement and "Claim-Quote Linkage j8").** On the fresh sample,
   linkage cut FPs per review from 0.39 to 0.30 with recall unchanged,
   demoting 3 invariant-elsewhere claims and no valid one, so it shipped:
   a verified blocker whose claim names code identifiers, none in its
@@ -585,11 +585,11 @@ disagree; STATUS.md has the current state.
   reviewer prompt's quote rule: post-change lines only, never a removed
   one, and for a removal the line that now runs without it, with one
   example. On 69 fresh corpus runs and 9 bridge runs:
-  - corpus mean recall 0.41 → 0.46 (+0.05, against a bar of +0.10);
-  - corpus FPs per review 0.41 → 0.35;
-  - valid quote failures per run 0.47 → 0.30 (the secondary rule needed
+  - corpus mean recall 0.41 to 0.46 (+0.05, against a bar of +0.10);
+  - corpus FPs per review 0.41 to 0.35;
+  - valid quote failures per run 0.47 to 0.30 (the secondary rule needed
     0.24);
-  - bridge race 0.79 → 0.56 and gate 0.29 → 0.56.
+  - bridge race 0.79 to 0.56 and gate 0.29 to 0.56.
 
   More of the gain came from new claims than from better quotes: recall
   counting demoted items rose 0.10. 17 of 21 valid quote failures still
@@ -614,12 +614,12 @@ disagree; STATUS.md has the current state.
   (2026-10-26; ADR-0002, twentieth measurement, Results).** 74 corpus
   runs (15 on `poll_override`) and 20 bridge runs, labeled before
   scoring, judged by j8:
-  - `poll_override` FPs per review 1.33 → 1.67 (the bar was ≤ 0.83);
-    invariant-elsewhere 1.11 → 1.40 per run;
-  - corpus mean recall 0.413 → 0.430; the other six fixtures' mean FPs
-    per review 0.274 → 0.283 (both guards hold);
-  - bridge FPs per review 0.18 → 0.60 (the bar was ≤ 0.23), race 0.79 →
-    0.65, gate 0.29 → 0.30.
+  - `poll_override` FPs per review 1.33 to 1.67 (the bar was <= 0.83);
+    invariant-elsewhere 1.11 to 1.40 per run;
+  - corpus mean recall 0.413 to 0.430; the other six fixtures' mean FPs
+    per review 0.274 to 0.283 (both guards hold);
+  - bridge FPs per review 0.18 to 0.60 (the bar was <= 0.23), race 0.79 to
+    0.65, gate 0.29 to 0.30.
 
   Every `poll_override` request carried both refuting facts (the fixed,
   zero-initialized `chans` and `resolve_channels`), and no claim used
@@ -653,7 +653,7 @@ STATUS.md keeps the short list.
   `LiveViewPage.qml`. So the class does not need the pack (ADR-0002,
   sixth measurement).
   **Since v9 / j4 the judge removes most of it** (0.1 per run stored).
-  The model still produces 3–4 per 10 runs, which are demoted because
+  The model still produces 3-4 per 10 runs, which are demoted because
   their quotes exist only on the removed side.
 - **A quote proves the code exists, not that it supports the claim.**
   The one deletion-class blocker G3 kept quoted unrelated post-change
@@ -681,7 +681,7 @@ STATUS.md keeps the short list.
   Both engineer runaways were a persona-versus-blocker loop (#20). The
   one reviewer runaway with a tail read as an open-ended search for
   more issues, not a visible loop. All six retries recovered. With
-  `NUM_PREDICT` a runaway still costs 3–5 minutes (#19). Before the
+  `NUM_PREDICT` a runaway still costs 3-5 minutes (#19). Before the
   telemetry, at 16384, it caused one AGENT_FAILURE in the N=3 (e4d1b3).
   In the eleventh measurement, 0 of 20 round-1 first attempts ran away,
   against 4 of 20 round-2 reviewer first attempts: 3 with the candidate
@@ -692,7 +692,7 @@ STATUS.md keeps the short list.
   retry did. Round 2: 2 of 10 with the v11 section, 1 of 10 with v9's
   feedback, with the same "let me also check" tail in both arms.
 - **Retried rounds are a different mode.** The "Invalid JSON"
-  correction makes the reviewer answer in 267–493 tokens with little or
+  correction makes the reviewer answer in 267-493 tokens with little or
   no thinking (`thinking_chars` 0 in 15cc3f). In the telemetry runs, 4
   of 21 reviewer rounds came from such retries; telemetry shows which.
   Score them separately; `eval_harness.round1 score` excludes them.
@@ -749,12 +749,12 @@ was shortened.
 Suggested order as of 2026-10-26 (judge j8 shipped; the repair route,
 seventeenth and eighteenth measurements, closed; the round-1 quote
 prompt, nineteenth, not shipped; cross-hunk linkage closed by its
-ceiling; field writers in the pack, twentieth, not shipped) →
+ceiling; field writers in the pack, twentieth, not shipped), then
 recall levers, one measurement each: the call-site caveat (code review
 finding 9), #8 per-file layer notes, #14 structured outputs, #19 early
 runaway abort (its first question, whether the reviewer's runaways
-repeat, needs no GPU) → a local-model bake-off on the corpus → #18
-early reject → the rest.
+repeat, needs no GPU), then a local-model bake-off on the corpus, then #18
+early reject, then the rest.
 
 Done items are removed (#1, #3, #4, #5, #9, #11, #12, #15 and #17 so far); their history
 is in Current State, the ADRs and git. Numbers are not reused, so
@@ -765,7 +765,7 @@ references elsewhere stay valid.
    converges as APPROVED_WITH_OPEN_QUESTIONS.
 - **#6 Chained/escalated debates.** On MAX_ROUNDS_EXCEEDED, re-submit
    unresolved questions as a fresh debate. Depends on #2.
-- **#7 Stable real-diff corpus — BASELINE DONE (2026-10-23).** Seven
+- **#7 Stable real-diff corpus: BASELINE DONE (2026-10-23).** Seven
    fixtures in `docs/fixtures/corpus/`, 33 labelled runs (Current State;
    ADR-0002, fourteenth measurement). Replayed offline (fifteenth).
    Fresh sample scored (sixteenth): linkage shipped as j8; no
@@ -787,10 +787,10 @@ references elsewhere stay valid.
     (structured outputs). That changes how replies are sampled, so
     predict and measure it. The other half, routing the golden fixtures
     through the transcript builder, was done on 2026-10-23.
-- **#16 Context budget and runaway output — settled (2026-10-22; its
+- **#16 Context budget and runaway output: settled (2026-10-22; its
     open thread moved to #19 on 2026-10-23).**
     Settled (Current State; ADR-0002, third follow-up and
-    verification): the prompt is ~9.4K–10.2K tokens, ~83% of it the
+    verification): the prompt is ~9.4K-10.2K tokens, ~83% of it the
     diff, so dropping the ~820-token pack is not worth it. `NUM_CTX`
     stays 24576, and `NUM_PREDICT` 12288 caps every attempt.
     - **The reviewer's runaways are #19's question now.** The one with
@@ -799,7 +799,7 @@ references elsewhere stay valid.
       ruled out. The engineer prompt conflict is #20.
     - **New data (eleventh measurement):** the round-2 reviewer ran away
       on 4 of 20 first attempts, and round 1 on 0 of 20. The tails were
-      open-ended re-checking ("Let me also check…"), not repetition.
+      open-ended re-checking ("Let me also check..."), not repetition.
 - **#18 Early-reject termination (design, not code).** Filed 2026-10-22
     from the 2026-10-21 STATUS note, with code review 2026-10-21 finding
     7 applied. Goal: end a debate as `CONVERGED_REJECT - BLOCKED` when
@@ -825,7 +825,7 @@ references elsewhere stay valid.
       round-1 blockers in all 19 records with an engineer round 1 (the
       nine archived debates and the eleventh measurement's 10 samples),
       so only Option B can fire.
-    - **#2 first — done (j2, 2026-10-22).** The engineer returned
+    - **#2 first: done (j2, 2026-10-22).** The engineer returned
       concerns in all 35 completed engineer rounds on record, so no
       debate could converge whatever the reviewer said. #2's minimal
       rule was the root fix. #18 only adds early exits for the 7 of 8
@@ -841,7 +841,7 @@ references elsewhere stay valid.
       CRITIQUES section tells the reviewer that a checked blocker stands
       unless the code contradicts it.
 - **#19 Stop looping replies early (filed 2026-10-22).** A runaway spends
-    ~12K tokens and 3–5 minutes going in circles before `NUM_PREDICT`
+    ~12K tokens and 3-5 minutes going in circles before `NUM_PREDICT`
     stops it. Stream the reply in agent_client.py and abort once the
     recent thinking repeats an earlier passage, then retry as usual.
     Most of a runaway's time would be saved. Watch for false positives
@@ -871,5 +871,5 @@ references elsewhere stay valid.
     new baseline (predict, then measure). The stable corpus (#7) should
     take its proposal text from the diff's actual direction.
 
-Deliberately deferred: MAX_DEBATE_ROUNDS / loop-shape tuning — #2
+Deliberately deferred: MAX_DEBATE_ROUNDS / loop-shape tuning: #2
 supersedes.

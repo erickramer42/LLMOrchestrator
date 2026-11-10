@@ -17,43 +17,43 @@ results; changes made after seeing data are dated amendments.
 | [Blocker Triage](#blocker-triage-original-run-2026-10-07) | 2026-10-07 | First real diff, one debate | 2 of 12 blockers valid (after the re-triage below) |
 | [Decision](#decision) | 2026-10-07 | v1 guardrails: derived verdicts, hedge demotion, layer notes | Adopted |
 | [Re-Measurement After v1](#re-measurement-after-v1-2026-10-09) | 2026-10-09 | v1 on the same diff | 4 of 6 valid; layer-rule false positives gone |
-| [Intermediate Measurement: Live Feedback Loop, No Context Injection](#intermediate-measurement-2026-10-13--live-feedback-loop-no-context-injection) | 2026-10-13 | Live feedback loop as a control | Feedback reintroduced false blockers in round 3, so later measurements score round 1 |
-| [Fourth Measurement: Context Pack Injection](#fourth-measurement--context-pack-injection) | 2026-10-13 | Context pack from a repo index (N=3) | 3 of 10 valid; the race found once, the first gate blockers |
-| [Fifth Measurement: Context-Pack Ablation](#fifth-measurement--context-pack-ablation) | 2026-10-22 | Context-pack ablation | Claims of surviving removed code cite the stale pack; led to v6 |
+| [Intermediate Measurement: Live Feedback Loop, No Context Injection](#intermediate-measurement-2026-10-13-live-feedback-loop-no-context-injection) | 2026-10-13 | Live feedback loop as a control | Feedback reintroduced false blockers in round 3, so later measurements score round 1 |
+| [Fourth Measurement: Context Pack Injection](#fourth-measurement-context-pack-injection) | 2026-10-13 | Context pack from a repo index (N=3) | 3 of 10 valid; the race found once, the first gate blockers |
+| [Fifth Measurement: Context-Pack Ablation](#fifth-measurement-context-pack-ablation) | 2026-10-22 | Context-pack ablation | Claims of surviving removed code cite the stale pack; led to v6 |
 | [Convergence Rule j2](#convergence-rule-j2-2026-10-22) | 2026-10-22 | A blocker-free round converges | Shipped (judge j2) |
-| [Sixth Measurement: v6 Baseline](#sixth-measurement--v6-baseline) | 2026-10-22 | v6: diff authoritative over the pack | 42% valid; the surviving-code class persists without the pack |
-| [Seventh Measurement: Survival-Claim Check](#seventh-measurement--survival-claim-check-backlog-15) | 2026-10-22 | A survival-claim check | Parked |
-| [Eighth Measurement: Arm H: No Hedging Ban](#eighth-measurement--arm-h-no-hedging-ban) | 2026-10-22 | Arm H: no ban on hedged blockers | Not supported: the reviewer did not hedge more |
-| [Ninth Measurement: Arm G: Evidence-Quoted Blockers](#ninth-measurement--arm-g-evidence-quoted-blockers) | 2026-10-22 | Arm G: quotes from either side | Not shipped: false claims moved to removed lines |
-| [Tenth Measurement: Arm G3: Post-Change Quotes](#tenth-measurement--arm-g3-post-change-quotes) | 2026-10-22 | Arm G3: post-change quotes only | Shipped (v9, j4): 94% valid |
+| [Sixth Measurement: v6 Baseline](#sixth-measurement-v6-baseline) | 2026-10-22 | v6: diff authoritative over the pack | 42% valid; the surviving-code class persists without the pack |
+| [Seventh Measurement: Survival-Claim Check](#seventh-measurement-survival-claim-check-backlog-15) | 2026-10-22 | A survival-claim check | Parked |
+| [Eighth Measurement: Arm H: No Hedging Ban](#eighth-measurement-arm-h-no-hedging-ban) | 2026-10-22 | Arm H: no ban on hedged blockers | Not supported: the reviewer did not hedge more |
+| [Ninth Measurement: Arm G: Evidence-Quoted Blockers](#ninth-measurement-arm-g-evidence-quoted-blockers) | 2026-10-22 | Arm G: quotes from either side | Not shipped: false claims moved to removed lines |
+| [Tenth Measurement: Arm G3: Post-Change Quotes](#tenth-measurement-arm-g3-post-change-quotes) | 2026-10-22 | Arm G3: post-change quotes only | Shipped (v9, j4): 94% valid |
 | [Evidence Reader j5](#evidence-reader-j5-2026-10-22) | 2026-10-22 | One shared diff reader | No recorded result changed |
 | [Hedge Check j6](#hedge-check-j6-2026-10-22) | 2026-10-22 | The hedge check reads the claim, not the quote | No recorded result changed |
-| [Eleventh Measurement: Transcript Protocol v10](#eleventh-measurement--transcript-protocol-v10-backlog-11) | 2026-10-22 | Transcript protocol v10 | The fence shipped (v10.1); the critiques section did not |
+| [Eleventh Measurement: Transcript Protocol v10](#eleventh-measurement-transcript-protocol-v10-backlog-11) | 2026-10-22 | Transcript protocol v10 | The fence shipped (v10.1); the critiques section did not |
 | [Input Checks j7](#input-checks-j7-2026-10-23) | 2026-10-23 | Empty and oversized input refused before any call | Shipped (judge j7) |
 | [Golden Suite Routing](#golden-suite-routing-2026-10-23-backlog-14) | 2026-10-23 | Golden fixtures through the real round-1 path | 10/10, as predicted |
 | [Unknown-Layer Note v10.2](#unknown-layer-note-v102-2026-10-23) | 2026-10-23 | A note for input with no path | Shipped (v10.2) |
 | [Re-Triage of the Early Runs](#re-triage-of-the-early-runs-2026-10-23-backlog-17) | 2026-10-23 | Early runs re-labeled against the diff's post-state | The 'false positives' were the real race |
-| [Twelfth Measurement: Feedback Section v11](#twelfth-measurement--feedback-section-v11-backlog-11) | 2026-10-23 | Feedback section v11 | Shipped (v11.1) |
-| [Thirteenth Measurement: Offline Replay of Judge Variants](#thirteenth-measurement--offline-replay-of-judge-variants) | 2026-10-23 | Offline replay of judge variants | Linkage and voting become corpus candidates |
-| [Fourteenth Measurement: Corpus Baseline](#fourteenth-measurement--corpus-baseline-backlog-7) | 2026-10-23 | Corpus of seven real diffs, baseline | 57% valid, mean recall 0.46 |
-| [Fifteenth Measurement: Corpus Replay and a Removed-Line Exception](#fifteenth-measurement--corpus-replay-and-a-removed-line-exception) | 2026-10-23 | Judge variants replayed on the corpus | Linkage passes; voting and removed-line exceptions fail |
-| [Sixteenth Measurement: Fresh Corpus Sample](#sixteenth-measurement--fresh-corpus-sample) | 2026-10-23 | A fresh corpus sample, labeled before replay | Linkage confirmed |
-| [Claim–Quote Linkage j8](#claimquote-linkage-j8-2026-10-23) | 2026-10-23 | Claim–quote linkage | Shipped (judge j8) |
-| [Seventeenth Measurement: Repair Pass for Quote Failures](#seventeenth-measurement--repair-pass-for-quote-failures) | 2026-10-24 | A repair call for demoted quotes | Not shipped: recall +0.009 |
-| [Eighteenth Measurement: Repair Successor: Ceiling Check and Pilot](#eighteenth-measurement--repair-successor-ceiling-check-and-pilot) | 2026-10-24 | A dedicated repair prompt: ceiling and pilots | Closed at the pilot |
-| [Nineteenth Measurement: Removal-Caused Defects Quoted in Round 1](#nineteenth-measurement--removal-caused-defects-quoted-in-round-1) | 2026-10-25 | A round-1 quote rule for removals | Not shipped: recall +0.05 of +0.10; cross-hunk linkage closed by its ceiling |
-| [Twentieth Measurement: Field Writers in the Context Pack](#twentieth-measurement--field-writers-in-the-context-pack) | 2026-10-26 | Field definitions and writers in the pack | Not shipped: target false positives rose |
-| [Twenty-First Measurement: Per-File Layer Notes](#twenty-first-measurement--per-file-layer-notes) | 2026-10-26 | Per-file layer notes | Not shipped: bridge false positives rose |
-| [Runaway Diagnostic: Do Runaways Repeat?](#runaway-diagnostic--do-runaways-repeat) | 2026-10-26 | Whole thinking of runaways and long replies (backlog #19) | Closed: no repetition threshold separates runaways from long replies; an early retry cuts valid findings |
-| [Twenty-Second Measurement: Reviewer Model Bake-Off](#twenty-second-measurement--reviewer-model-bake-off) | 2026-10-26 | Two local reviewer models against laguna on the corpus | Closed: `qwen3-coder:30b` mean recall 0.09 against 0.42; nemotron dropped at Stage 0 (runs to the cap); laguna stays |
-| [Twenty-Third Measurement: Engineer Model Bake-Off](#twenty-third-measurement--engineer-model-bake-off) | 2026-10-26 | `gpt-oss:20b` against gemma as the engineer | Not shipped: recall in any item +0.23, but 0.24 false blockers per review (bar 0.10) |
-| [Twenty-Fourth Measurement: `gpt-oss:20b` as the Reviewer](#twenty-fourth-measurement--gpt-oss20b-as-the-reviewer) | 2026-10-27 | `gpt-oss:20b` against laguna as the reviewer, on the corpus | Not shipped: recall 0.309 against the control's 0.436, false positives 0.73 times the control's; fails both branches of condition 1 |
-| [Twenty-Fifth Measurement: The Engineer at Verdict Level (Offline)](#twenty-fifth-measurement--the-engineer-at-verdict-level-offline) | 2026-10-27 | Round-1 verdicts of laguna paired with each engineer, blockers rejecting or as concerns | `gpt-oss:20b` with its blockers rejecting earns a confirmation sample (misses 5 → 3 of 22); as concerns it fails |
-| [Corpus v2: Forward Diffs of the Commits That Introduced the Bugs](#corpus-v2--forward-diffs-of-the-commits-that-introduced-the-bugs) | 2026-10-27 | Bug fixtures rebuilt as the commits that introduced each bug, without the fix comments v1's diffs leak | Built; baseline not yet run |
+| [Twelfth Measurement: Feedback Section v11](#twelfth-measurement-feedback-section-v11-backlog-11) | 2026-10-23 | Feedback section v11 | Shipped (v11.1) |
+| [Thirteenth Measurement: Offline Replay of Judge Variants](#thirteenth-measurement-offline-replay-of-judge-variants) | 2026-10-23 | Offline replay of judge variants | Linkage and voting become corpus candidates |
+| [Fourteenth Measurement: Corpus Baseline](#fourteenth-measurement-corpus-baseline-backlog-7) | 2026-10-23 | Corpus of seven real diffs, baseline | 57% valid, mean recall 0.46 |
+| [Fifteenth Measurement: Corpus Replay and a Removed-Line Exception](#fifteenth-measurement-corpus-replay-and-a-removed-line-exception) | 2026-10-23 | Judge variants replayed on the corpus | Linkage passes; voting and removed-line exceptions fail |
+| [Sixteenth Measurement: Fresh Corpus Sample](#sixteenth-measurement-fresh-corpus-sample) | 2026-10-23 | A fresh corpus sample, labeled before replay | Linkage confirmed |
+| [Claim-Quote Linkage j8](#claim-quote-linkage-j8-2026-10-23) | 2026-10-23 | Claim-quote linkage | Shipped (judge j8) |
+| [Seventeenth Measurement: Repair Pass for Quote Failures](#seventeenth-measurement-repair-pass-for-quote-failures) | 2026-10-24 | A repair call for demoted quotes | Not shipped: recall +0.009 |
+| [Eighteenth Measurement: Repair Successor: Ceiling Check and Pilot](#eighteenth-measurement-repair-successor-ceiling-check-and-pilot) | 2026-10-24 | A dedicated repair prompt: ceiling and pilots | Closed at the pilot |
+| [Nineteenth Measurement: Removal-Caused Defects Quoted in Round 1](#nineteenth-measurement-removal-caused-defects-quoted-in-round-1) | 2026-10-25 | A round-1 quote rule for removals | Not shipped: recall +0.05 of +0.10; cross-hunk linkage closed by its ceiling |
+| [Twentieth Measurement: Field Writers in the Context Pack](#twentieth-measurement-field-writers-in-the-context-pack) | 2026-10-26 | Field definitions and writers in the pack | Not shipped: target false positives rose |
+| [Twenty-First Measurement: Per-File Layer Notes](#twenty-first-measurement-per-file-layer-notes) | 2026-10-26 | Per-file layer notes | Not shipped: bridge false positives rose |
+| [Runaway Diagnostic: Do Runaways Repeat?](#runaway-diagnostic-do-runaways-repeat) | 2026-10-26 | Whole thinking of runaways and long replies (backlog #19) | Closed: no repetition threshold separates runaways from long replies; an early retry cuts valid findings |
+| [Twenty-Second Measurement: Reviewer Model Bake-Off](#twenty-second-measurement-reviewer-model-bake-off) | 2026-10-26 | Two local reviewer models against laguna on the corpus | Closed: `qwen3-coder:30b` mean recall 0.09 against 0.42; nemotron dropped at Stage 0 (runs to the cap); laguna stays |
+| [Twenty-Third Measurement: Engineer Model Bake-Off](#twenty-third-measurement-engineer-model-bake-off) | 2026-10-26 | `gpt-oss:20b` against gemma as the engineer | Not shipped: recall in any item +0.23, but 0.24 false blockers per review (bar 0.10) |
+| [Twenty-Fourth Measurement: `gpt-oss:20b` as the Reviewer](#twenty-fourth-measurement-gpt-oss20b-as-the-reviewer) | 2026-10-27 | `gpt-oss:20b` against laguna as the reviewer, on the corpus | Not shipped: recall 0.309 against the control's 0.436, false positives 0.73 times the control's; fails both branches of condition 1 |
+| [Twenty-Fifth Measurement: The Engineer at Verdict Level (Offline)](#twenty-fifth-measurement-the-engineer-at-verdict-level-offline) | 2026-10-27 | Round-1 verdicts of laguna paired with each engineer, blockers rejecting or as concerns | `gpt-oss:20b` with its blockers rejecting earns a confirmation sample (misses 5 to 3 of 22); as concerns it fails |
+| [Corpus v2: Forward Diffs of the Commits That Introduced the Bugs](#corpus-v2-forward-diffs-of-the-commits-that-introduced-the-bugs) | 2026-10-27 | Bug fixtures rebuilt as the commits that introduced each bug, without the fix comments v1's diffs leak | Built; baseline not yet run |
 
 ## Context
 
-On its first real workload — a 300-line QtTune bridge refactor — the
+On its first real workload, a 300-line QtTune bridge refactor, the
 tribunal's reviewer produced 12 blockers, of which post-hoc triage against
 actual source confirmed exactly 1 real defect: precision 1/12 (~8%),
 despite 0/5 false positives on the clean-header fixture probe.
@@ -69,9 +69,9 @@ Input: `docs/fixtures/qttune_bridge_refactor.diff`
 | Class | Count | Examples | Disposition |
 |---|---|---|---|
 | Layer-rule misapplication | 7 | Qt-header includes in qttunebridge.h/.cpp | FP: bridge is app-layer; CMake FATAL_ERRORs on Qt in qttune-core |
-| Definition-context guessing | 3 | "frame->data may reference freed stack memory"; anon-struct ABI worry | FP: qttune_frame_t has inline uint8_t data[64] — struct copy IS a deep copy; anon typedef is legal C |
+| Definition-context guessing | 3 | "frame->data may reference freed stack memory"; anon-struct ABI worry | FP: qttune_frame_t has inline uint8_t data[64]: struct copy IS a deep copy; anon typedef is legal C |
 | Pedantic over-promotion | 1 | m_lastReportedDropped non-atomic | FP: GUI-thread-only mirror paired with atomic counter is the correct pattern |
-| Real defect | 1 | qttune_decode_signal(..., 8, ...) ignores frame->data_length | Confirmed — latent under mock transport (always 8 bytes), breaks for CAN-FD. Fixed in QtTune. |
+| Real defect | 1 | qttune_decode_signal(..., 8, ...) ignores frame->data_length | Confirmed: latent under mock transport (always 8 bytes), breaks for CAN-FD. Fixed in QtTune. |
 
 Missed by the review (found by source-level triage): dropped-frame
 report starvation under saturation; last-write-wins in the staging
@@ -85,8 +85,8 @@ staging buffer.*
 
 **Key diagnostic:** in round 2, the reviewer asked "What is the exact
 structure of qttune_frame_t?" in its questions channel while filing a
-stack-memory-use blocker. The model's epistemic state was correct —
-uncertain — but the taxonomy discipline failed: hedged speculation was
+stack-memory-use blocker. The model's epistemic state was correct:
+uncertain, but the taxonomy discipline failed: hedged speculation was
 promoted to a demonstrable-violation claim.
 
 ## Decision
@@ -95,24 +95,24 @@ Adjudication is implemented as deterministic guardrails over model
 output, not prompt pleas. Failure classes are remediated per-class with
 the narrowest mechanism that addresses the root cause:
 
-1. **Hedge demotion** (class: speculative phrasing) — blockers whose
+1. **Hedge demotion** (class: speculative phrasing): blockers whose
    text contains hedge language ("may", "might", "could", "appears to")
    are demoted to questions before judging. Regex guardrail
    (adjudication.demote_hedged_blockers), regression-tested against
-   production-derived blocker texts — runnable with no LLM.
+   production-derived blocker texts, runnable with no LLM.
 
    Deliberate boundary: catches phrased-as-speculation only.
-   Confidently stated assertions — including wrong ones — pass through.
+   Confidently stated assertions, including wrong ones, pass through.
    Verified experimentally: a reviewer confidently flagging a race
    condition documented in the code's own comment was correctly NOT
    demoted.
 
-2. **Layer metadata injection** (class: layer misapplication) —
+2. **Layer metadata injection** (class: layer misapplication):
    file_metadata.py maps paths to QtTune layers (core/bridge/app);
    the transcript states which rules apply, pre-legitimizing
    bridge-layer Qt includes.
 
-3. **Definition-context injection** (class: information deficit) —
+3. **Definition-context injection** (class: information deficit):
    planned (v2). Inject struct definitions and repo-level context
    as ground truth. Not a filtering problem: no regex can fix a model
    confidently asserting facts it cannot see.
@@ -131,14 +131,14 @@ hardcoded-8 catch retained.
 | Class | Baseline | v1 Re-run | Result |
 |---|---|---|---|
 | Layer-rule misapplication | 7 | 0 | Eliminated |
-| Hedge-speculation | 3 | 0 | Eliminated — notably, 0 demotions fired: the reviewer stopped hedging (taxonomy discipline at the source), the guardrail never triggered |
-| Definition-context guessing | 3 | 1 | Persists — expected, not yet remediated |
+| Hedge-speculation | 3 | 0 | Eliminated: notably, 0 demotions fired: the reviewer stopped hedging (taxonomy discipline at the source), the guardrail never triggered |
+| Definition-context guessing | 3 | 1 | Persists: expected, not yet remediated |
 | Confident-but-wrong assertions | 0 | 4 | NEW dominant class: thread-safety claims on m_currentFrameCount, which is GUI-thread-only by queued-connection construction |
 | Real defect | 1 | 1 | Retained (hardcoded 8-byte buffer) |
 
-Precision: 1/12 (~8%) → 1/6 (~17%). Blocker volume halved (12 → 6).
+Precision: 1/12 (~8%) to 1/6 (~17%). Blocker volume halved (12 to 6).
 
-*Re-triaged 2026-10-23: 2/12 → 4/6. The four confident-but-wrong
+*Re-triaged 2026-10-23: 2/12 to 4/6. The four confident-but-wrong
 blockers are the race, and the real defect is in removed code (see
 "Re-Triage of the Early Runs").*
 
@@ -152,8 +152,8 @@ blockers are the race, and the real defect is in removed code (see
   require seeing the queued-connection call sites, which retrieval-
   based context injection can supply.
 - An honest tension to keep visible: as FP rate drops, the reviewer's
-  blockers become fewer and higher-precision — but single-run results
-  remain anecdotes. The 1/12 → 1/6 delta is one run vs. one run;
+  blockers become fewer and higher-precision, but single-run results
+  remain anecdotes. The 1/12 to 1/6 delta is one run vs. one run;
   the class-level eliminations (7/7 and 3/3) are the stronger evidence.
 - Cross-cutting limits identified: the reviewer still missed both
   real bugs found only by full-repo triage (drop-count starvation,
@@ -172,7 +172,7 @@ Two defects found by external review (2026-10-09):
    before the loop; the REVISE ADDRESSING feedback accumulated in the
    proposal variable but was never re-rendered into agent transcripts.
    Consequence: archived "3-round debates" were one exploratory sample
-   (round 1) plus two constrained resamples — not adversarial
+   (round 1) plus two constrained resamples, not adversarial
    iteration. Impact on recorded results: none on validity of the
    precision measurements (baseline and v1 re-measurement ran the same
    code, so they are internally consistent multi-sample comparisons;
@@ -180,15 +180,15 @@ Two defects found by external review (2026-10-09):
    sampling measurements, not convergent debates. Fixed 2026-10-09:
    transcript re-rendered per round; PROMPT_VERSION bumped.
    Attribution note for future measurements: post-fix debates differ
-   from archived ones in mechanism, not just remediation — per-class
+   from archived ones in mechanism, not just remediation; per-class
    comparison remains the method.
 
 2. **Bake-off summary conflated clean passes with bug hits** (second
-   occurrence; prior fix never committed). ADR numbers unaffected —
+   occurrence; prior fix never committed). ADR numbers unaffected:
    5/5 was read from individual result lines. Summary printer fixed;
    tp + fn invariant documented inline.
    
-## Intermediate Measurement (2026-10-13) — Live Feedback Loop, No Context Injection
+## Intermediate Measurement (2026-10-13): Live Feedback Loop, No Context Injection
 
 Not the context-pack measurement (that remains queued): this run
 isolates a different variable. The 2026-10-09 records ran with the
@@ -196,14 +196,14 @@ dead feedback loop; this is the first run of the same diff and
 proposal on the live loop (plus the 2026-10-10 hardening pass).
 
 Prediction recorded before running: round 1 reproduces ~v1 volume
-(5–7 blockers, 4 thread-safety FPs, decode defect retained), rounds
-2–3 diverge, no agent failures, verdict MAX_ROUNDS_EXCEEDED.
+(5-7 blockers, 4 thread-safety FPs, decode defect retained), rounds
+2-3 diverge, no agent failures, verdict MAX_ROUNDS_EXCEEDED.
 
 Result: prediction MISSED on volume and placement.
 
 | Class | v1 Re-run (014257) | Live loop (170208) |
 |---|---|---|
-| Round-1 blockers | 6 | 1 (m_currentFrameCount data race — confident-but-wrong) |
+| Round-1 blockers | 6 | 1 (m_currentFrameCount data race, confident-but-wrong) |
 | Confident-but-wrong FPs | 4 | 1 (same m_currentFrameCount claim, consolidated) |
 | Layer-rule FPs | 0 | 0 |
 | Hedge demotions | 0 | 0 |
@@ -224,11 +224,11 @@ Findings:
   engineer held "approve" throughout. Feedback reached both agents
   (evidence: round-2 content responds to round-1 engineer concerns).
 - Three stacked deltas make attribution impossible from one run:
-  live loop, hardening (schema validation, layer note now "bridge"
-  — v1 also had that), and model run-to-run variance. Laguna-xs-2.1
-  is nondeterministic at temp 0.7; a 6→1 blocker drop is within
+  live loop, hardening (schema validation, layer note now "bridge";
+  v1 also had that), and model run-to-run variance. Laguna-xs-2.1
+  is nondeterministic at temp 0.7; a 6 to 1 blocker drop is within
   plausible single-sample variance for this model.
-- Defect drifting blocker→nit is a new failure mode worth watching:
+- Defect drifting blocker to nit is a new failure mode worth watching:
   precision metrics that only count blockers will miss a defect the
   reviewer technically surfaced. Future measurements should scan all
   channels for known-defect mentions.
@@ -241,7 +241,7 @@ treated as stable measurements at current settings. The context-pack
 measurement should run multiple times (or score a multi-run aggregate)
 before claiming FP-class collapse.
 
-## Fourth Measurement — Context Pack Injection
+## Fourth Measurement: Context Pack Injection
 
 **Design:** Same diff (`qttune_bridge_refactor.diff`), same proposal text,
 same models (laguna-xs-2.1 + gemma4:12b), PROMPT_VERSION v5-context-pack,
@@ -253,28 +253,28 @@ attribution. Control arms: v1 blind resample (014257), live-loop control
 **Indexed ground truth confirmed:** `app/qttunebridge.cpp` contains two
 queued-connection call sites, both carrying `Qt::QueuedConnection`:
 - Line 390: `invokeMethod(self, [...], Qt::QueuedConnection)` invoking
-  `handleFrameInternal` — the receiver of m_currentFrameCount access
+  `handleFrameInternal`, the receiver of m_currentFrameCount access
   flagged in the 170208 run as a "data race."
 
 **Prediction (per-class rates, N=3):**
 
 | Class | v1 (014257) | Live-loop control (170208) | Predicted (v5, N=3) |
 |---|---|---|---|
-| Thread-safety FPs (queued-conn class) | 4 | 1 | 0–2 (median 1) |
-| Real defect (decode_signal 8-byte) | 1 (blocker) | 0 (drifted to nit) | 0–1 |
+| Thread-safety FPs (queued-conn class) | 4 | 1 | 0-2 (median 1) |
+| Real defect (decode_signal 8-byte) | 1 (blocker) | 0 (drifted to nit) | 0-1 |
 | Layer-rule FPs | 0 | 0 | 0 |
 | Hedge FPs | 0 | 0 | 0 |
-| Deletion-consistency FPs (new class) | 0 | 0 | 0–4 (emerging; pilot suggested 3) |
+| Deletion-consistency FPs (new class) | 0 | 0 | 0-4 (emerging; pilot suggested 3) |
 
 **Rationale for range, not point estimate:** the live-loop control
-showed single-run variance of 6→1 blockers on near-identical inputs
+showed single-run variance of 6 to 1 blockers on near-identical inputs
 (without retrieval). Even if retrieval supplies the queued-connection
 ground truth that refutes the m_currentFrameCount claim, laguna-xs-2.1
 at temp 0.7 may or may not draw on it within a single run. Three runs
 estimate the per-class rate; median of 1 FP acknowledges variance while
 predicting collapse of the *majority* of the 4-v1 FP class.
 
-**Failure mode to watch:** decoder defect drifts blocker→question/nit
+**Failure mode to watch:** decoder defect drifts blocker to question/nit
 (as in 170208 round 2). Future precision metrics must scan all channels,
 not just blockers.
 
@@ -293,17 +293,17 @@ Runs: `decision_debate_20261013_203802_276bd0` (run 1),
 `decision_debate_20261013_204845_e4d1b3` (run 2),
 `decision_debate_20261013_210548_6ce6c0` (run 3). Retrieval was
 identical in all three runs (pack 1983/6000 chars, 14 entries, 2
-queued-connection call sites, `error: null`) — deterministic across
+queued-connection call sites, `error: null`): deterministic across
 runs. A pilot run (`ff958c`, wiring validation only) is committed as
 unscored evidence and is excluded from these numbers.
 
 | Class | Run 1 | Run 2 | Run 3 | Total | Prediction | Outcome |
 |---|---|---|---|---|---|---|
-| Round-1 blockers | 3 | 6 | 1 | 10 | — | — |
-| Thread-safety FPs | 0 | 0 | 0 | 0 | 0–2 | **HIT — class collapsed, 3/3 runs** |
-| Deletion-consistency FPs | 2 | 6 | 0 | 8 | 0–4 | **MISSED HIGH** |
-| True positives | 1 | 0 | 1 | 2 | — | Best catches in project history |
-| Hedge demotions | 0 | 0 | 1 | — | — | First firing since remediation |
+| Round-1 blockers | 3 | 6 | 1 | 10 | - | - |
+| Thread-safety FPs | 0 | 0 | 0 | 0 | 0-2 | **HIT: class collapsed, 3/3 runs** |
+| Deletion-consistency FPs | 2 | 6 | 0 | 8 | 0-4 | **MISSED HIGH** |
+| True positives | 1 | 0 | 1 | 2 | - | Best catches in project history |
+| Hedge demotions | 0 | 0 | 1 | - | - | First firing since remediation |
 
 Round-1 precision: **2/10 (20%)**; run-level 1/3, 0/6, 1/1. Run 2
 ended `AGENT_FAILURE` at round 2 (num_ctx truncation); its round-1 arm
@@ -317,11 +317,11 @@ remove (see "Re-Triage of the Early Runs").*
 QtTune real history):**
 
 1. Run 1: the cumulative `m_currentFrameCount` gate drops every frame
-   permanently after 10,000 total frames — and the diff deletes
+   permanently after 10,000 total frames, and the diff deletes
    `StreamingContinuesPastTenThousandFrames`, the regression test
    guarding exactly this regression. Confirmed against QtTune's
    history as the freeze bug.
-2. Run 3: data race on plain `int m_currentFrameCount` — read in
+2. Run 3: data race on plain `int m_currentFrameCount`: read in
    `onFrame()` on the worker thread (backpressure check), written in
    `handleFrameInternal()` on the GUI thread; unsynchronized in the
    diff's post-state. The pilot additionally showed the claim
@@ -342,7 +342,7 @@ previously-shipped bugs from a diff alone.
 **Negative findings (recorded, not yet remediated):**
 
 - **Deletion-consistency class exceeded prediction** (8 total, 6/0/1
-  by run — extreme variance): the reviewer fabricates surviving
+  by run: extreme variance): the reviewer fabricates surviving
   remnants of jointly removed code ("signalModel() still declared"),
   all false against the diff. Candidate remediation: ground removed
   symbols from the diff's minus side and require confirmation before
@@ -421,8 +421,8 @@ previously-shipped bugs from a diff alone.
     attempts at 16384 instead of two.
   - **Runaways now cost about twice as long,** ~310 s against ~159 s,
     and they also occur at temperature 0.05.
-  - **Every retry recovered quickly,** with 420–493 output tokens in
-    10–13 s across all four runs. The "Invalid JSON" correction appears
+  - **Every retry recovered quickly,** with 420-493 output tokens in
+    10-13 s across all four runs. The "Invalid JSON" correction appears
     to cut the thinking short. So 3 of the 12 reviewer rounds were
     decided by a short, low-thinking reply. Treat those rounds as a
     different mode when scoring blockers.
@@ -457,13 +457,13 @@ previously-shipped bugs from a diff alone.
     > persona.* / *Persona: Senior Engineer advocating for v0.2.0
     > goals. Goal: Shipping velocity. Action: Approve the roadmap
     > move.* / *Wait, I'll check the "Blocker" rule again.* / *If I
-    > don't flag it, and it's a violation, I'm wrong.* / *I'll …*
+    > don't flag it, and it's a violation, I'm wrong.* / *I'll ...*
 
     The engineer prompt pulls two ways. The persona says to argue for
     roadmap fit and leave implementation correctness to the reviewer.
     The rules say a demonstrable violation is a blocker. The model
     alternated between the two without converging.
-  - **Across runs A–E** (34 attempts, 30 of them first attempts),
+  - **Across runs A-E** (34 attempts, 30 of them first attempts),
     finished replies had a median of 1,506 tokens for the reviewer and
     1,968 for the engineer. The longest were 10,097 and 5,596. All four
     runaways were first attempts, and all four retries recovered.
@@ -485,14 +485,14 @@ previously-shipped bugs from a diff alone.
   - **The second engineer runaway was the same conflict** (run F,
     round 3): *"If I don't block a data race, I'm ignoring a safety
     violation. I'll put it in 'blockers'. Wait, if I block, I'm not
-    advocating for 'Shipping Velocity'. … I will approve the intent but
+    advocating for 'Shipping Velocity'. ... I will approve the intent but
     list the implementation issues as concerns."* Both engineer
     runaways are this loop.
   - **The reviewer runaway did not look like a loop** in its 400-char
     tail (run F, round 2, 48,034 chars of thinking): *"Now I have
     identified the blockers. Let me also check for any other potential
     issues. Looking at the code, I also notice that
-    `m_currentFrameCount` is used in `clearFrames` …"* It reads as an
+    `m_currentFrameCount` is used in `clearFrames` ..."* It reads as an
     open-ended search for more issues. A repeat cycle longer than 400
     chars cannot be ruled out.
   - **The reviewer's retry used no thinking at all** (267 output tokens,
@@ -502,21 +502,21 @@ previously-shipped bugs from a diff alone.
     finished at 9,971 tokens; the longest finished reply is still
     10,097, ~18% under the cap. Uncapped reviewer runaways reached at
     least 14,500, so the cap sits in the gap between them.
-  - **Totals for runs A–G:** 6 runaways in 42 first attempts (4
+  - **Totals for runs A-G:** 6 runaways in 42 first attempts (4
     reviewer, 2 engineer), all on a first attempt, and all 6 retries
     recovered.
 
 **Re-adjudication flag (retroactive):** the v1 re-measurement's
-dominant residual class — thread-safety claims on
+dominant residual class, thread-safety claims on
 `m_currentFrameCount`, refuted as "GUI-thread-only by
-queued-connection construction" — is **invalidated by the forensics
+queued-connection construction", is **invalidated by the forensics
 above**: in the fixture's post-state the variable IS read on the
 worker thread. Some of the four v1 "confident-but-wrong" FPs and the
 170208 control's single blocker are likely true positives, mislabeled
 because the triage refutation was drawn from maintained QtTune rather
 than the diff's post-state. Those runs warrant re-triage against
 their blocker texts before their historical FP counts stand. This
-measurement's numbers are unaffected — scored against the diff text.
+measurement's numbers are unaffected: scored against the diff text.
 
 *Executed 2026-10-23 (backlog #17): all four v1 blockers and every
 control blocker are the race, so the interpretation below does not hold
@@ -524,15 +524,15 @@ for the thread-safety class. This measurement's own labels changed too,
 because the gate became a valid class later (see "Re-Triage of the Early
 Runs").*
 
-**Interpretation:** the context pack did what it was designed to do —
+**Interpretation:** the context pack did what it was designed to do:
 eliminated the targeted information-deficit class in 3/3 runs, with
-the residual concern correctly filed as questions — and enabled the
+the residual concern correctly filed as questions, and enabled the
 best catches in the project's history. But total FP volume did not
 fall; it migrated to a new hallucination class. The tribunal now
 knows what the code contains; it still cannot reliably reason about
 what a diff removes. Per the standing loop, that is the next class to
 remediate and re-measure.
-## Fifth Measurement — Context-Pack Ablation
+## Fifth Measurement: Context-Pack Ablation
 
 *Prediction recorded 2026-10-22, before any arm was scored.*
 
@@ -593,9 +593,9 @@ post-state and are not in P.
 
 | Metric (round 1, first attempts) | Stale pack (6 runs) | No pack (N=3) | Post-state pack (N=3) |
 |---|---|---|---|
-| M2, total | 6–18 (mean 1–3 per run) | 0–2 | 0–2 |
-| Runs with M2 ≥ 1 | ≥ 4 of 6 | ≤ 1 of 3 | ≤ 1 of 3 |
-| M2-P as a share of M2 | ≥ 50% | — | — |
+| M2, total | 6-18 (mean 1-3 per run) | 0-2 | 0-2 |
+| Runs with M2 >= 1 | >= 4 of 6 | <= 1 of 3 | <= 1 of 3 |
+| M2-P as a share of M2 | >= 50% | - | - |
 
 **Basis:** the three scored v5 runs had 2, 6 and 0 deletion-consistency
 FPs (mean 2.7), and the review found most of their round-1 blockers
@@ -604,11 +604,11 @@ v5.2 pack asserts the same three symbols, now with fuller declarations.
 
 **Decision rule** (on per-run M2 means):
 
-- **Pack-driven:** no-pack mean ≤ stale-pack mean − 1.0, and post-state
-  mean ≤ no-pack mean + 0.7. Remediate in retrieval (finding 1:
+- **Pack-driven:** no-pack mean <= stale-pack mean - 1.0, and post-state
+  mean <= no-pack mean + 0.7. Remediate in retrieval (finding 1:
   post-state index, flag removed symbols, invert the precedence
   wording). Defer backlog #15 until re-measured.
-- **Intrinsic:** no-pack mean ≥ 0.7 × stale-pack mean. The class does
+- **Intrinsic:** no-pack mean >= 0.7 x stale-pack mean. The class does
   not need the pack, so #15 proceeds and the retrieval fixes are
   hygiene.
 - **Otherwise inconclusive:** add N=3 to each new arm before deciding.
@@ -620,36 +620,36 @@ arm detects only a large effect. A null result here is weak evidence.
 
 | Metric | Predicted | Observed | Outcome |
 |---|---|---|---|
-| M2, total | 6–18 | **3** (2 without the borderline case) | **MISSED LOW** |
-| Runs with M2 ≥ 1 | ≥ 4 of 6 | 2 of 6 | **MISSED** |
-| M2-P as a share of M2 | ≥ 50% | 3 of 3 | HIT |
-| M1 (no prediction) | — | 4 of 19 blockers | — |
+| M2, total | 6-18 | **3** (2 without the borderline case) | **MISSED LOW** |
+| Runs with M2 >= 1 | >= 4 of 6 | 2 of 6 | **MISSED** |
+| M2-P as a share of M2 | >= 50% | 3 of 3 | HIT |
+| M1 (no prediction) | - | 4 of 19 blockers | - |
 
 | Run | Round-1 blockers | M1 | M2 | Composition |
 |---|---|---|---|---|
 | bbe168 | 5 | 2 | 2 | 2 deletion-consistency, 3 feature-removal objections |
 | 1b11cc | 5 | 1 | 0 | 5 feature-removal objections |
 | 743bc4 | 3 | 1 | 1 | 1 deletion-consistency, 2 feature-removal objections |
-| 7a4809 | 2 | 0 | 0 | 2 × the `m_currentFrameCount` race |
+| 7a4809 | 2 | 0 | 0 | 2 x the `m_currentFrameCount` race |
 | 15cc3f | 2 | 0 | 0 | the race; `m_droppedFrames` ordering (unadjudicated) |
 | 5b3f1d | 2 | 0 | 0 | the race; 8-byte decode in removed code |
 
 **The three M2 blockers, checked against the post-state (`8ffbf19`):**
 
-1. **bbe168 #5** — *"Line 390 in app/qttunebridge.cpp: The comment
+1. **bbe168 #5**: *"Line 390 in app/qttunebridge.cpp: The comment
    references m_inFlightFrames.fetch_sub but that atomic counter and
    MaxInFlightFrames constant were removed from the header, creating a
    dangling reference."* The post-state file has 269 lines, and
    `m_inFlightFrames` has no hits anywhere in the tree. Line 390 exists
    only in the indexed tree (`6b58c3a`), where it is the call site the
-   pack shows: `[app/qttunebridge.cpp:390] QMetaObject::invokeMethod(…
-   calls: m_inFlightFrames.fetch_sub, handleFrameInternal …)`. The
+   pack shows: `[app/qttunebridge.cpp:390] QMetaObject::invokeMethod(...
+   calls: m_inFlightFrames.fetch_sub, handleFrameInternal ...)`. The
    citation is copied from the pack.
-2. **743bc4 #2** — *"The QML Main.qml previously bound to
-   QtTune.signalModel … with SignalListModel gone, this property no
+2. **743bc4 #2**: *"The QML Main.qml previously bound to
+   QtTune.signalModel ... with SignalListModel gone, this property no
    longer exists, creating a broken QML binding."* Post-state `Main.qml`
    contains no `signal` reference, and `signalModel` has no hits.
-3. **bbe168 #1 (borderline)** — *"SignalListModel class definition was
+3. **bbe168 #1 (borderline)**: *"SignalListModel class definition was
    removed from header but referenced in QML."* No post-state QML
    references `SignalListModel` or `signalModel`. Borderline because the
    same blocker also notes that `LiveViewPage.qml` was deleted.
@@ -685,7 +685,7 @@ arm detects only a large effect. A null result here is weak evidence.
 
 **Consequence for the decision rule:** with a stale-pack mean of 0.5,
 the rule as written cannot return "pack-driven", because that needs a
-no-pack mean of −0.5 or less. Arms 2 and 3 at N=3 can only return
+no-pack mean of -0.5 or less. Arms 2 and 3 at N=3 can only return
 "intrinsic" (two or more M2 across the three no-pack runs) or
 "inconclusive". Any change to the rule or to N must be recorded here
 as an amendment before those arms run.
@@ -752,7 +752,7 @@ other 15 have reviewer blockers in every round and are unaffected.
 **Effect on measurements:** none. Measurements score round-1 reviewer
 output, which no judge rule can change.
 
-## Sixth Measurement — v6 Baseline
+## Sixth Measurement: v6 Baseline
 
 *Prediction recorded 2026-10-22, before any v6 sample was run. No v6
 blocker has been seen.*
@@ -807,13 +807,13 @@ deletion-consistency class persist? The answer decides backlog #15.
 
 | Metric | Arm 1 (v5.2, 6 runs) | Predicted v6 |
 |---|---|---|
-| M2, confirmed | 3 (0.5 per run) | 0–2 (≤ 0.2 per run) |
-| M2 citing a P symbol | 3 | 0–1 |
-| M1 | 4 (0.67 per run) | 1–6 (0.1–0.6 per run) |
-| Blockers per run | 3.17 | 2–4 |
-| Feature-removal objections, share of blockers | 10 of 19 | 35–65% |
-| Runs with the race blocker | 3 of 6 | 3–7 of the scored runs |
-| Samples excluded (retry or failure) | 1 of 7 | 0–3 of 10 |
+| M2, confirmed | 3 (0.5 per run) | 0-2 (<= 0.2 per run) |
+| M2 citing a P symbol | 3 | 0-1 |
+| M1 | 4 (0.67 per run) | 1-6 (0.1-0.6 per run) |
+| Blockers per run | 3.17 | 2-4 |
+| Feature-removal objections, share of blockers | 10 of 19 | 35-65% |
+| Runs with the race blocker | 3 of 6 | 3-7 of the scored runs |
+| Samples excluded (retry or failure) | 1 of 7 | 0-3 of 10 |
 
 **Basis:**
 
@@ -831,15 +831,15 @@ deletion-consistency class persist? The answer decides backlog #15.
 
 **Decision rule** (on confirmed M2 per scored run):
 
-- **≤ 0.2: handled by v6.** #15 stays filed but deferred; next is #21.
-- **≥ 0.4: persists.** The class survives without the pack asserting
+- **<= 0.2: handled by v6.** #15 stays filed but deferred; next is #21.
+- **>= 0.4: persists.** The class survives without the pack asserting
   the symbols, so #15 proceeds.
 - **Between:** add 5 samples and apply the same thresholds to all of
   them. If the result is still between, defer #15 and record it as
   unresolved.
 
 **Power caveat:** arm 1's rate of 0.5 per run predicts about 5 M2 in 10
-runs if v6 changed nothing. A Poisson count with mean 5 is ≤ 2 about
+runs if v6 changed nothing. A Poisson count with mean 5 is <= 2 about
 12% of the time. So "handled" is moderate evidence, not proof. Rates on
 this fixture have also drifted widely: 2.7 per run at v5, 0.5 at v5.2.
 
@@ -852,19 +852,19 @@ this fixture have also drifted widely: 2.7 per run at v5, 0.5 at v5.2.
 - Every sample carries fingerprint `64bacb21aa6fb8b1` and pack
   `dfac132e…`. One hedge demotion fired (8e3c25).
 - No reviewer reply ran away. Collecting all 10 took 16.4 minutes, or
-  0.6–3.4 minutes per sample.
+  0.6-3.4 minutes per sample.
 
 | Metric | Predicted | Observed | Outcome |
 |---|---|---|---|
-| M2, confirmed | 0–2 (≤ 0.2 per run) | **5 (0.5 per run)**, in 3 of 10 runs | **MISSED HIGH** |
-| M2 citing a P symbol | 0–1 | 2 | **MISSED HIGH** |
-| M1 | 1–6 | **10** | **MISSED HIGH** |
-| Blockers per run | 2–4 | 2.6 (26 in all) | HIT |
-| Feature-removal objections, share | 35–65% | 13 of 26 (50%) | HIT |
-| Runs with the race blocker | 3–7 | 5 of 10 (7 blockers) | HIT |
-| Samples excluded | 0–3 | 0 | HIT |
+| M2, confirmed | 0-2 (<= 0.2 per run) | **5 (0.5 per run)**, in 3 of 10 runs | **MISSED HIGH** |
+| M2 citing a P symbol | 0-1 | 2 | **MISSED HIGH** |
+| M1 | 1-6 | **10** | **MISSED HIGH** |
+| Blockers per run | 2-4 | 2.6 (26 in all) | HIT |
+| Feature-removal objections, share | 35-65% | 13 of 26 (50%) | HIT |
+| Runs with the race blocker | 3-7 | 5 of 10 (7 blockers) | HIT |
+| Samples excluded | 0-3 | 0 | HIT |
 
-**Decision rule:** 0.5 confirmed M2 per run is ≥ 0.4, so the class
+**Decision rule:** 0.5 confirmed M2 per run is >= 0.4, so the class
 **persists** and #15 proceeds. The outcome holds under either
 borderline call:
 - Dropping the vaguest M2 (81a8dc #2) leaves 0.4.
@@ -876,14 +876,14 @@ borderline call:
 |---|---|---|---|---|
 | 5d2fc3 | 2 | 1 | 0 | the race; in-flight gate |
 | 8e3c25 | 4 | 1 | 1 | 1 deletion-consistency, 3 removal objections |
-| ae1a96 | 2 | 0 | 0 | 2 × the race |
+| ae1a96 | 2 | 0 | 0 | 2 x the race |
 | fe4eea | 3 | 1 | 0 | 3 removal objections |
 | a18d4b | 2 | 1 | 0 | the race; removal objection (borderline) |
 | fcb3ac | 1 | 0 | 0 | the race |
 | 81a8dc | 4 | 2 | 3 | 3 deletion-consistency; 8-byte decode in removed code |
-| 6f29d3 | 3 | 2 | 0 | 2 × in-flight gate; removal objection |
+| 6f29d3 | 3 | 2 | 0 | 2 x in-flight gate; removal objection |
 | 07bb6b | 3 | 2 | 1 | in-flight gate; removal objection; 1 deletion-consistency |
-| dc4008 | 2 | 0 | 0 | 2 × the race |
+| dc4008 | 2 | 0 | 0 | 2 x the race |
 
 **The five M2 blockers, checked against `8ffbf19`:**
 
@@ -957,7 +957,7 @@ These blockers are removal objections, not M2.
     contained the name.
 - **Scorer check:** all 5 confirmed M2 were among the 16 candidates.
 
-## Seventh Measurement — Survival-Claim Check (backlog #15)
+## Seventh Measurement: Survival-Claim Check (backlog #15)
 
 *Design and prediction recorded 2026-10-22, before the rule ran on
 any held-out blocker. Draft for review: nothing is implemented yet.*
@@ -1051,11 +1051,11 @@ evidence for them):
 |---|---|
 | Valid blockers demoted (race, gate, TPs, other valid), A + B + C | **0** |
 | B demotions | 0 of 3 |
-| A recall | ≥ 4 of 8 M2 |
-| C recall | ≥ 50% of its M2 |
-| A + C recall | ≥ 50% |
-| C removal objections demoted | ≤ 1 |
-| C M2 per run (replication, no decision attached) | 0.2–0.9 (sixth: 0.5) |
+| A recall | >= 4 of 8 M2 |
+| C recall | >= 50% of its M2 |
+| A + C recall | >= 50% |
+| C removal objections demoted | <= 1 |
+| C M2 per run (replication, no decision attached) | 0.2-0.9 (sixth: 0.5) |
 
 **Basis:**
 - The dev set gives 7 of 8 with no false demotions, so the prediction
@@ -1067,8 +1067,8 @@ evidence for them):
 
 **Decision rule:**
 
-- **Ship:** zero valid blockers demoted in A–C, and A + C recall
-  ≥ 50%. The rule goes into debates and measurements, and
+- **Ship:** zero valid blockers demoted in A-C, and A + C recall
+  >= 50%. The rule goes into debates and measurements, and
   `JUDGE_VERSION` becomes `j3-survival-claims`.
 - **Any valid blocker demoted:** do not ship. The case becomes a
   negative-control unit, and the held-out sets become dev. Revise the
@@ -1100,7 +1100,7 @@ The scorer rebuilds that from `survival_demotions`.
 4. Only if it ships: wire the rule into `run_debate` and
    `run_round1_review`, and bump `JUDGE_VERSION`.
 
-## Eighth Measurement — Arm H: No Hedging Ban
+## Eighth Measurement: Arm H: No Hedging Ban
 
 *Prediction recorded 2026-10-22, before any H sample was run.*
 
@@ -1124,7 +1124,7 @@ guesses.
   MUST NOT appear in blockers — such statements belong in 'questions'".
 - **Kept:** the demotion guardrail, which becomes the cheap "I don't
   know" path because a hedged blocker turns into a question.
-- **Also kept:** "A blocker is a DEMONSTRABLE violation … If you cannot
+- **Also kept:** "A blocker is a DEMONSTRABLE violation ... If you cannot
   cite the line and rule, it does not belong in blockers."
 - **Side effect:** the probe and bake-off share `REVIEWER_SYSTEM`, so
   they change too. This measurement does not run them.
@@ -1147,18 +1147,18 @@ like misreadings, so I expect hedging to rise without M2 falling much.
 
 | Metric | Sixth (v6) | Predicted H |
 |---|---|---|
-| Hedge demotions per run | 0.1 | 0.3–1.5 |
-| M2 per run, stored blockers | 0.5 | 0.2–0.7 |
-| M2 among the hedge-demoted | — | 0–2 |
-| Valid blockers hedge-demoted (race, gate) | 0 | 0–2 |
-| Runs with the race, stored blockers | 5 of 10 | 3–7 |
-| Blockers per run, stored | 2.6 | 1.8–3.2 |
+| Hedge demotions per run | 0.1 | 0.3-1.5 |
+| M2 per run, stored blockers | 0.5 | 0.2-0.7 |
+| M2 among the hedge-demoted | - | 0-2 |
+| Valid blockers hedge-demoted (race, gate) | 0 | 0-2 |
+| Runs with the race, stored blockers | 5 of 10 | 3-7 |
+| Blockers per run, stored | 2.6 | 1.8-3.2 |
 
 **Decision rule** (on stored M2 per scored run):
 
-- **≤ 0.2, with hedge demotions ≥ 0.3 per run: supported.** H's prompt
+- **<= 0.2, with hedge demotions >= 0.3 per run: supported.** H's prompt
   stays, and G builds on it.
-- **≥ 0.4: not supported.** The class is not forced confidence. Revert
+- **>= 0.4: not supported.** The class is not forced confidence. Revert
   to the v6 prompt, and G builds on v6.
 - **Between:** add 5 samples and apply the same thresholds. If the
   result is still between, treat it as not supported and record it as
@@ -1168,7 +1168,7 @@ like misreadings, so I expect hedging to rise without M2 falling much.
   for #12, the hedge gate.
 
 **Power caveat:** as in the sixth measurement, 10 samples against 10
-detect only a large change. 5 M2 against ≤ 2 is a difference that
+detect only a large change. 5 M2 against <= 2 is a difference that
 arises by chance about 1 time in 8.
 
 ### Results (scored 2026-10-22)
@@ -1181,20 +1181,20 @@ arises by chance about 1 time in 8.
 
 | Metric | Sixth (v6) | Predicted H | Observed H | Outcome |
 |---|---|---|---|---|
-| Hedge demotions per run | 0.1 | 0.3–1.5 | **0.11** (1 in 9) | **MISSED LOW** |
-| M2 per run, stored | 0.5 | 0.2–0.7 | 0.33 (3 in 2 runs); 0.44 with the borderline case | HIT |
-| M2 among the hedge-demoted | — | 0–2 | 0 | HIT |
-| Valid blockers hedge-demoted | 0 | 0–2 | 0 | HIT |
-| Runs with the race | 5 of 10 | 3–7 | 6 of 9 | HIT |
-| Blockers per run, stored | 2.6 | 1.8–3.2 | 2.89 (26) | HIT |
+| Hedge demotions per run | 0.1 | 0.3-1.5 | **0.11** (1 in 9) | **MISSED LOW** |
+| M2 per run, stored | 0.5 | 0.2-0.7 | 0.33 (3 in 2 runs); 0.44 with the borderline case | HIT |
+| M2 among the hedge-demoted | - | 0-2 | 0 | HIT |
+| Valid blockers hedge-demoted | 0 | 0-2 | 0 | HIT |
+| Runs with the race | 5 of 10 | 3-7 | 6 of 9 | HIT |
+| Blockers per run, stored | 2.6 | 1.8-3.2 | 2.89 (26) | HIT |
 
 **Decision rule:** the hypothesis is not supported.
 - **The mechanism did not appear.** Without the ban the reviewer still
   did not hedge its blockers, so no extra claims reached the "I don't
-  know" path. "Supported" also needs hedge demotions ≥ 0.3 per run.
+  know" path. "Supported" also needs hedge demotions >= 0.3 per run.
 - **M2 lands between the thresholds.** At 0.33 per run (0.44 with the
   borderline case), the rule calls for 5 more samples.
-- **Those samples cannot reach "supported".** M2 ≤ 0.2 over 14 runs
+- **Those samples cannot reach "supported".** M2 <= 0.2 over 14 runs
   would need at most 2 M2, and 3 are already counted. They can only
   decide between "not supported" and "unresolved", and both mean
   reverting to v6. Whether to run them anyway is decided in the
@@ -1204,10 +1204,10 @@ arises by chance about 1 time in 8.
 
 | Run | Blockers | M2 | Composition |
 |---|---|---|---|
-| 927761 | 3 | 0 | the race; 2 × in-flight gate |
-| ec3bc7 | 2 | 0 | 2 × in-flight gate |
+| 927761 | 3 | 0 | the race; 2 x in-flight gate |
+| ec3bc7 | 2 | 0 | 2 x in-flight gate |
 | 9d7d20 | 1 | 0 | the race |
-| 19c2e0 | 4 | 0 | the race; 2 × in-flight gate; deleted regression test |
+| 19c2e0 | 4 | 0 | the race; 2 x in-flight gate; deleted regression test |
 | 766a37 | 3 | 0 | the race; in-flight gate; deleted regression test |
 | b0756d | 3 | 0 | the race; in-flight gate; **the 10,000-frame freeze** |
 | c83c91 | 3 | 1 | 1 deletion-consistency; 2 ABI objections to removed code |
@@ -1222,9 +1222,9 @@ synchronous call, so the demotion was correct.
 
 **The M2 blockers, checked against `8ffbf19`:**
 
-- **eadc06 #3:** "Main.qml: UI references QtTune.signalModel … dangling
+- **eadc06 #3:** "Main.qml: UI references QtTune.signalModel ... dangling
   QML binding". This is the sixth measurement's pattern again.
-- **eadc06 #2:** "SignalListModel … removed from header but references
+- **eadc06 #2:** "SignalListModel ... removed from header but references
   still exist in comments and code". `SignalListModel` has no hits.
 - **c83c91 #2:** "the comment 'Backpressure: bound the QUEUED backlog'
   references code that was removed". That comment exists only in the
@@ -1268,7 +1268,7 @@ prompt goes back to the v6 text, ban included. The ninth measurement, G,
 builds on v6, so it compares directly with the sixth. The unpredicted
 composition shift stays an observation; nothing relies on it.
 
-## Ninth Measurement — Arm G: Evidence-Quoted Blockers
+## Ninth Measurement: Arm G: Evidence-Quoted Blockers
 
 *Design and prediction recorded 2026-10-22, before G was implemented
 or run.*
@@ -1341,14 +1341,14 @@ settings as in the sixth measurement, which is the comparison.
 
 | Metric | Sixth (v6) | Predicted G |
 |---|---|---|
-| M2 per run, stored | 0.5 | ≤ 0.2 (0–2 in total) |
-| M2 among the evidence-demoted | — | ≥ 2 |
-| Valid blockers evidence-demoted | — | 0–3 |
-| Runs with the race, stored | 5 of 10 | 3–7 |
-| Blockers per run, stored | 2.6 | 1.5–3.0 |
-| Evidence demotions per run | — | 0.3–1.5 |
-| Raw blockers that carry a file and a quote | — | ≥ 80% |
-| Samples excluded | 0 | 0–3 |
+| M2 per run, stored | 0.5 | <= 0.2 (0-2 in total) |
+| M2 among the evidence-demoted | - | >= 2 |
+| Valid blockers evidence-demoted | - | 0-3 |
+| Runs with the race, stored | 5 of 10 | 3-7 |
+| Blockers per run, stored | 2.6 | 1.5-3.0 |
+| Evidence demotions per run | - | 0.3-1.5 |
+| Raw blockers that carry a file and a quote | - | >= 80% |
+| Samples excluded | 0 | 0-3 |
 
 **Basis:**
 - **M2 should fall.** In four of the five sixth-measurement M2, the
@@ -1361,11 +1361,11 @@ settings as in the sixth measurement, which is the comparison.
 
 **Decision rule:**
 
-- **Ship (keep v8 and j3):** stored M2 ≤ 0.2 per run, at most 2 valid
+- **Ship (keep v8 and j3):** stored M2 <= 0.2 per run, at most 2 valid
   blockers evidence-demoted, and the race in at least 3 runs.
-- **M2 ≥ 0.4:** G does not fix the class. Revert, and choose between
+- **M2 >= 0.4:** G does not fix the class. Revert, and choose between
   the parked #15 check and other options.
-- **M2 ≤ 0.2 but more than 2 valid blockers demoted:** the recall cost
+- **M2 <= 0.2 but more than 2 valid blockers demoted:** the recall cost
   is too high. Do not ship as is. Find out why the quotes failed, then
   revise and predict again.
 - **M2 between 0.2 and 0.4:** add 5 samples and apply the same
@@ -1385,16 +1385,16 @@ settings as in the sixth measurement, which is the comparison.
 
 | Metric | Predicted G | Observed | Outcome |
 |---|---|---|---|
-| M2 per run, stored | ≤ 0.2 | 0.1 strict (1); 0.6 counting removed code described as current (6) | HIT strict, see below |
-| M2 among the evidence-demoted | ≥ 2 | 0 | **MISSED** |
-| Valid blockers evidence-demoted | 0–3 | **4** (3 gate, 1 race), plus 1 valid deleted-test objection | **MISSED HIGH** |
-| Runs with the race, stored | 3–7 | 5 of 10 (10 blockers) | HIT |
-| Blockers per run, stored | 1.5–3.0 | 2.0 | HIT |
-| Evidence demotions per run | 0.3–1.5 | 0.7 | HIT |
-| Raw blockers with a file and a quote | ≥ 80% | 27 of 27 | HIT |
-| Samples excluded | 0–3 | 0 | HIT |
+| M2 per run, stored | <= 0.2 | 0.1 strict (1); 0.6 counting removed code described as current (6) | HIT strict, see below |
+| M2 among the evidence-demoted | >= 2 | 0 | **MISSED** |
+| Valid blockers evidence-demoted | 0-3 | **4** (3 gate, 1 race), plus 1 valid deleted-test objection | **MISSED HIGH** |
+| Runs with the race, stored | 3-7 | 5 of 10 (10 blockers) | HIT |
+| Blockers per run, stored | 1.5-3.0 | 2.0 | HIT |
+| Evidence demotions per run | 0.3-1.5 | 0.7 | HIT |
+| Raw blockers with a file and a quote | >= 80% | 27 of 27 | HIT |
+| Samples excluded | 0-3 | 0 | HIT |
 
-**Decision rule:** on the strict M2 count (0.1 ≤ 0.2) with 4 valid
+**Decision rule:** on the strict M2 count (0.1 <= 0.2) with 4 valid
 blockers demoted (more than 2), the branch is "do not ship as is; find
 out why the quotes failed; revise and predict again". G is not shipped.
 
@@ -1402,15 +1402,15 @@ out why the quotes failed; revise and predict again". G is not shipped.
 
 | Run | Kept | Evidence-demoted |
 |---|---|---|
-| e18362 | 2 × the freeze | deleted-test objection (quote `}`) |
-| ec62e7 | — | in-flight gate |
-| b7a5a1 | 2 × the race | — |
+| e18362 | 2 x the freeze | deleted-test objection (quote `}`) |
+| ec62e7 | - | in-flight gate |
+| b7a5a1 | 2 x the race | - |
 | 66371a | the race | the race |
-| 3bee25 | 2 × the race | in-flight gate |
-| eb1077 | 4 × removed code described as current | — |
-| 074dfc | 2 × the race | — |
+| 3bee25 | 2 x the race | in-flight gate |
+| eb1077 | 4 x removed code described as current | - |
+| 074dfc | 2 x the race | - |
 | 5cc2ba | removed code described as current; M2 | false "dangling pointer" (fabricated quote) |
-| fe9ad9 | 3 × the race | — |
+| fe9ad9 | 3 x the race | - |
 | c88bcd | 2 false claims with quotes that mix the diff's sides | in-flight gate; false "null check removed" |
 
 Of the 20 kept blockers, 12 are valid (10 race, 2 freeze), against 11
@@ -1468,7 +1468,7 @@ quote line against consecutive non-blank lines of one side.
   quote does. Every other valid blocker quotes the post-change side
   (context or added lines).
 
-## Tenth Measurement — Arm G3: Post-Change Quotes
+## Tenth Measurement: Arm G3: Post-Change Quotes
 
 *Design and prediction recorded 2026-10-22, before G3 was implemented
 or run.*
@@ -1527,15 +1527,15 @@ show whether the model still produces the class.
 
 | Metric | Sixth (v6) | G | Predicted G3 |
 |---|---|---|---|
-| Deletion class per run, stored | 0.5 | 0.6 | ≤ 0.2 (0–2 in total) |
-| Valid blockers evidence-demoted (race, gate, freeze) | — | 4 | 0–2 |
-| Runs with the race, stored | 5 of 10 | 5 of 10 | 3–7 |
-| Valid share of stored blockers | 42% | 60% | ≥ 70% |
-| Other FPs, stored | 1 | 2 | 0–3 |
-| Blockers per run, stored | 2.6 | 2.0 | 1.0–2.5 |
-| Evidence demotions per run | — | 0.7 | 0.3–1.5 |
-| Raw blockers with a file and a quote | — | 100% | ≥ 80% |
-| Samples excluded | 0 | 0 | 0–3 |
+| Deletion class per run, stored | 0.5 | 0.6 | <= 0.2 (0-2 in total) |
+| Valid blockers evidence-demoted (race, gate, freeze) | - | 4 | 0-2 |
+| Runs with the race, stored | 5 of 10 | 5 of 10 | 3-7 |
+| Valid share of stored blockers | 42% | 60% | >= 70% |
+| Other FPs, stored | 1 | 2 | 0-3 |
+| Blockers per run, stored | 2.6 | 2.0 | 1.0-2.5 |
+| Evidence demotions per run | - | 0.7 | 0.3-1.5 |
+| Raw blockers with a file and a quote | - | 100% | >= 80% |
+| Samples excluded | 0 | 0 | 0-3 |
 
 **Basis:**
 - In G, all 6 deletion-class blockers quoted removed lines only.
@@ -1548,12 +1548,12 @@ show whether the model still produces the class.
 
 **Decision rule:**
 
-- **Ship (v9 and j4 become the default):** the deletion class ≤ 0.2 per
+- **Ship (v9 and j4 become the default):** the deletion class <= 0.2 per
   run, at most 2 valid blockers evidence-demoted, and the race in at
   least 3 runs.
-- **Deletion class ≥ 0.4 per run:** quoting does not hold the class.
+- **Deletion class >= 0.4 per run:** quoting does not hold the class.
   Revert to v6 and j2, and take stock before any further variant.
-- **Class ≤ 0.2 but more than 2 valid blockers demoted:** not shipped.
+- **Class <= 0.2 but more than 2 valid blockers demoted:** not shipped.
   This is the last revision in this line; the next step is a broader
   review, not G4.
 - **Between 0.2 and 0.4:** add 5 samples and apply the same thresholds.
@@ -1562,7 +1562,7 @@ show whether the model still produces the class.
 - **Raw blockers with a quote below 50%:** fix the prompt first.
 
 **Power caveat:** v6 and G had 5 and 6 deletion-class blockers, a mean
-of about 5.5 per 10 runs. If G3 changed nothing, a count ≤ 2 would
+of about 5.5 per 10 runs. If G3 changed nothing, a count <= 2 would
 occur by chance about 9% of the time.
 
 ### Results (scored 2026-10-22)
@@ -1576,19 +1576,19 @@ occur by chance about 9% of the time.
 
 | Metric | Sixth (v6) | G | Predicted G3 | Observed G3 | Outcome |
 |---|---|---|---|---|---|
-| Deletion class per run, stored | 0.5 | 0.6 | ≤ 0.2 | **0.1** (1) | HIT |
-| Valid blockers evidence-demoted | — | 4 | 0–2 | **2** (1 gate, 1 race) | HIT, at the limit |
-| Runs with the race, stored | 5 of 10 | 5 of 10 | 3–7 | 7 of 10 (14 blockers) | HIT |
-| Valid share of stored blockers | 42% | 60% | ≥ 70% | **94%** (17 of 18) | HIT |
-| Other FPs, stored | 1 | 2 | 0–3 | 0 | HIT |
-| Blockers per run, stored | 2.6 | 2.0 | 1.0–2.5 | 1.8 | HIT |
-| Evidence demotions per run | — | 0.7 | 0.3–1.5 | 0.8 | HIT |
-| Raw blockers with a file and a quote | — | 100% | ≥ 80% | 100% | HIT |
-| Samples excluded | 0 | 0 | 0–3 | 0 | HIT |
+| Deletion class per run, stored | 0.5 | 0.6 | <= 0.2 | **0.1** (1) | HIT |
+| Valid blockers evidence-demoted | - | 4 | 0-2 | **2** (1 gate, 1 race) | HIT, at the limit |
+| Runs with the race, stored | 5 of 10 | 5 of 10 | 3-7 | 7 of 10 (14 blockers) | HIT |
+| Valid share of stored blockers | 42% | 60% | >= 70% | **94%** (17 of 18) | HIT |
+| Other FPs, stored | 1 | 2 | 0-3 | 0 | HIT |
+| Blockers per run, stored | 2.6 | 2.0 | 1.0-2.5 | 1.8 | HIT |
+| Evidence demotions per run | - | 0.7 | 0.3-1.5 | 0.8 | HIT |
+| Raw blockers with a file and a quote | - | 100% | >= 80% | 100% | HIT |
+| Samples excluded | 0 | 0 | 0-3 | 0 | HIT |
 
 **Decision rule: ship.** All three conditions hold: the deletion class
-is 0.1 ≤ 0.2 per run, 2 ≤ 2 valid blockers were demoted, and the race
-appeared in 7 ≥ 3 runs. v9 and j4 become the default.
+is 0.1 <= 0.2 per run, 2 <= 2 valid blockers were demoted, and the race
+appeared in 7 >= 3 runs. v9 and j4 become the default.
 
 **Kept blockers (18):**
 - **The race,** 14 in 7 runs.
@@ -1628,7 +1628,7 @@ two GUI-thread accesses. It is false, so the demotion was correct.
   plus demoted. Only one survived, and it carried a quote that does not
   support it.
 - **Stored blockers are the most precise of any arm,** 94% valid,
-  against v6's 42% and G's 60%. A count of ≤ 1 deletion-class blocker
+  against v6's 42% and G's 60%. A count of <= 1 deletion-class blocker
   when about 5.5 were expected occurs by chance about 3% of the time.
 - **Valid demotions have two causes:** a removal-caused claim that
   quoted removed lines despite the prompt, and a quote that skipped
@@ -1683,8 +1683,8 @@ the minimum of backlog #12, from code review 2026-10-21, finding 9.
 - **No kept blocker can change.** The check reads less text than
   before, so it can only demote fewer blockers.
 - **G has no hedge demotions.**
-- **G3 has one,** 2eb07e #h1: "…potentially accessed from QML/GUI
-  thread…". The hedge word is in the claim, so j6 demotes it too.
+- **G3 has one,** 2eb07e #h1: "...potentially accessed from QML/GUI
+  thread...". The hedge word is in the claim, so j6 demotes it too.
 
 No recorded result changes.
 
@@ -1703,7 +1703,7 @@ one in the N=3 measurement, becomes a question. It stays in the
 record, and the verdict is APPROVED_WITH_OPEN_QUESTIONS, not a clean
 approval. Backlog #12 is closed.
 
-## Eleventh Measurement — Transcript Protocol v10 (backlog #11)
+## Eleventh Measurement: Transcript Protocol v10 (backlog #11)
 
 *Design and prediction recorded 2026-10-22. v10 and the pair mode were
 implemented and unit-tested before this was written, and no v10 sample
@@ -1776,26 +1776,26 @@ text, and the injection surface is fenced. It ships if it does no harm.
 
 | Metric | Reference | Predicted |
 |---|---|---|
-| Round 1: deletion class per run, stored | G3 0.1 | ≤ 0.2 |
-| Round 1: runs with the race, stored | G3 7 of 10 | 3–9 |
-| Round 1: valid share of stored blockers | G3 94% | ≥ 70% |
-| Round 1: blockers per run, stored | G3 1.8 | 1.0–2.5 |
-| Samples reaching round 2 | — | 6–9 of 10 |
-| Pairs compared | — | 5–9 |
-| v9 arm: share of round-2 blockers carried | prior 95% | ≥ 80% |
-| Critiques arm: share carried | — | ≥ 70% |
-| Race kept in round 2, of pairs whose round 1 stored it | — | v9 arm: all but at most 1; critiques arm ≥ v9 arm − 1 |
-| Round-2 blockers per pair | — | critiques arm ≤ v9 arm + 0.5 |
-| Echo and from-question FPs, confirmed | prior 1 | critiques arm ≤ v9 arm + 1 |
-| Valid share of round-2 blockers | — | both ≥ 80%; critiques arm ≥ v9 arm − 10 points |
+| Round 1: deletion class per run, stored | G3 0.1 | <= 0.2 |
+| Round 1: runs with the race, stored | G3 7 of 10 | 3-9 |
+| Round 1: valid share of stored blockers | G3 94% | >= 70% |
+| Round 1: blockers per run, stored | G3 1.8 | 1.0-2.5 |
+| Samples reaching round 2 | - | 6-9 of 10 |
+| Pairs compared | - | 5-9 |
+| v9 arm: share of round-2 blockers carried | prior 95% | >= 80% |
+| Critiques arm: share carried | - | >= 70% |
+| Race kept in round 2, of pairs whose round 1 stored it | - | v9 arm: all but at most 1; critiques arm >= v9 arm - 1 |
+| Round-2 blockers per pair | - | critiques arm <= v9 arm + 0.5 |
+| Echo and from-question FPs, confirmed | prior 1 | critiques arm <= v9 arm + 1 |
+| Valid share of round-2 blockers | - | both >= 80%; critiques arm >= v9 arm - 10 points |
 
 **Decision rule:**
 - **Ship (v10 stays the default)** if both hold:
-  - round 1 holds: the deletion class ≤ 0.2 per run, the race in ≥ 3
-    runs, and a valid share ≥ 70%;
-  - the critiques arm is not worse: race retention ≥ the v9 arm's − 1
-    pair, a valid share ≥ the v9 arm's − 10 points, and confirmed echo
-    and from-question FPs ≤ the v9 arm's + 1.
+  - round 1 holds: the deletion class <= 0.2 per run, the race in >= 3
+    runs, and a valid share >= 70%;
+  - the critiques arm is not worse: race retention >= the v9 arm's - 1
+    pair, a valid share >= the v9 arm's - 10 points, and confirmed echo
+    and from-question FPs <= the v9 arm's + 1.
 - **Round 1 fails:** the fence harms round 1. Revert the fence and the
   truncation marker, keep the feedback change if its own conditions
   hold, and re-measure round 1.
@@ -1803,7 +1803,7 @@ text, and the injection surface is fenced. It ships if it does no harm.
   fence if round 1 holds.
 - **Fewer than 4 pairs compared:** add 5 samples before deciding.
 
-**Power caveat:** with 5–9 pairs only large differences show, such as
+**Power caveat:** with 5-9 pairs only large differences show, such as
 the race lost in 2 or more extra pairs, or 2 or more extra FPs. The
 ship rule is non-inferiority within those margins, not a test for an
 improvement.
@@ -1858,18 +1858,18 @@ ran away.
 
 | Metric | Predicted | Observed | Outcome |
 |---|---|---|---|
-| Round 1: deletion class per run | ≤ 0.2 | 0.1 | HIT |
-| Round 1: runs with the race | 3–9 | 10 | MISSED HIGH |
-| Round 1: valid share | ≥ 70% | 80% (20 of 25) | HIT |
-| Round 1: blockers per run | 1.0–2.5 | 2.5 | HIT, at the limit |
-| Samples reaching round 2 | 6–9 | 10 | MISSED HIGH |
-| Pairs compared | 5–9 | 6 | HIT |
-| v9 arm: share carried | ≥ 80% | 100% | HIT |
-| Critiques arm: share carried | ≥ 70% | 100% | HIT |
-| Race kept | v9 all but ≤ 1; critiques ≥ v9 − 1 | 6 and 6 of 6 | HIT |
-| Round-2 blockers per pair | critiques ≤ v9 + 0.5 | 2.33 vs 2.5 | HIT |
-| Echo and from-question FPs | critiques ≤ v9 + 1 | 0 and 0 | HIT |
-| Valid share, round 2 | both ≥ 80%; critiques ≥ v9 − 10 | 93% and 93% | HIT |
+| Round 1: deletion class per run | <= 0.2 | 0.1 | HIT |
+| Round 1: runs with the race | 3-9 | 10 | MISSED HIGH |
+| Round 1: valid share | >= 70% | 80% (20 of 25) | HIT |
+| Round 1: blockers per run | 1.0-2.5 | 2.5 | HIT, at the limit |
+| Samples reaching round 2 | 6-9 | 10 | MISSED HIGH |
+| Pairs compared | 5-9 | 6 | HIT |
+| v9 arm: share carried | >= 80% | 100% | HIT |
+| Critiques arm: share carried | >= 70% | 100% | HIT |
+| Race kept | v9 all but <= 1; critiques >= v9 - 1 | 6 and 6 of 6 | HIT |
+| Round-2 blockers per pair | critiques <= v9 + 0.5 | 2.33 vs 2.5 | HIT |
+| Echo and from-question FPs | critiques <= v9 + 1 | 0 and 0 | HIT |
+| Valid share, round 2 | both >= 80%; critiques >= v9 - 10 | 93% and 93% | HIT |
 
 **By the recorded rule: ship.** Round 1 holds, and the critiques arm is
 not worse on any registered metric.
@@ -1880,8 +1880,8 @@ not worse on any registered metric.
   cause is "keep a point only if the code shows it": the gate is a
   defect caused by a removal, the case a quote shows least directly.
 - **It ran away on 3 of 10 first attempts,** against 1 of 10 for the
-  v9 arm. Its thinking tails re-check open-endedly: "Let me also check…"
-  and "Now let me also check for the … removal".
+  v9 arm. Its thinking tails re-check open-endedly: "Let me also check..."
+  and "Now let me also check for the ... removal".
 
 On this fixture the section showed no benefit: both arms withdrew the
 same two round-1 FPs. Each cost rests on very few samples (2 pairs, and
@@ -1929,7 +1929,7 @@ the evidence check reads diffs without file headers. These are findings
   MANUAL_REVIEW_REQUIRED`.
   - The round-1 request (the larger agent's system prompt plus the
     transcript) is estimated at 3 chars per token. That is below every
-    ratio on record: 3.43–3.52 for laguna-xs-2.1 and 3.21–3.30 for
+    ratio on record: 3.43-3.52 for laguna-xs-2.1 and 3.21-3.30 for
     gemma4:12b, over 134 calls.
   - The limit is `NUM_CTX - NUM_PREDICT`, 12,288 tokens. Every reply
     keeps its full output cap, so `NUM_PREDICT`, not the window, ends a
@@ -2055,12 +2055,12 @@ resampled round 1 (see the erratum). The fourth measurement counted
 round 1 of three debates.
 
 **Baseline, 203917** (12 blockers). The 2026-10-07 triage kept class
-counts only. By elimination, its 7 layer-rule FPs were round 1's #1–#5,
+counts only. By elimination, its 7 layer-rule FPs were round 1's #1-#5,
 #7 and #8.
 
 | Blocker | Claim | 2026-10-07 | Re-triage |
 |---|---|---|---|
-| R1 #1–#3 | Qt headers in qttunebridge.h/.cpp | layer | layer |
+| R1 #1-#3 | Qt headers in qttunebridge.h/.cpp | layer | layer |
 | R1 #4 | `onFrame` reads non-atomic `m_currentFrameCount` unsynchronized | layer | **the race** |
 | R1 #5 | `handleFrameInternal` writes `m_currentFrameCount` without a mutex | layer | **the race**, write side |
 | R1 #6 | `m_lastReportedDropped` is non-atomic | pedantic | other: GUI thread only |
@@ -2073,7 +2073,7 @@ counts only. By elimination, its 7 layer-rule FPs were round 1's #1–#5,
 
 **v1, 014257** (6 blockers): R1 #1, the hardcoded 8, was the real
 defect and is removed code. R1 #2, a shallow-copy use-after-free, is
-other. R2 #1–#2 and R3 #1–#2, the four "confident-but-wrong" blockers,
+other. R2 #1-#2 and R3 #1-#2, the four "confident-but-wrong" blockers,
 are **the race**.
 
 **Control, 170208** (1 round-1 blocker, 5 in all): every one is **the
@@ -2086,7 +2086,7 @@ race**.
 | 276bd0 #1 | signal batching removed without replacement | deletion-consistency | removal objection |
 | 276bd0 #2 | in-flight tracking removed, so the queued backlog is unbounded | deletion-consistency | **the gate** |
 | 276bd0 #3 | the check compares the cumulative count, not the queued backlog | TP | **the gate** (the TP stands) |
-| e4d1b3 #1–#6 | removed members and methods "still declared" | deletion-consistency | deletion class; none is in the post-state |
+| e4d1b3 #1-#6 | removed members and methods "still declared" | deletion-consistency | deletion class; none is in the post-state |
 | 6ce6c0 #1 | the race | TP | **the race** |
 
 **Result:**
@@ -2149,7 +2149,7 @@ measurement's held-out sets A (the v5 runs) and B (014257 and 170208).
 That rule stays frozen as recorded. If #15 is ever scored, A and B are
 no longer unseen by the labeller.
 
-## Twelfth Measurement — Feedback Section v11 (backlog #11)
+## Twelfth Measurement: Feedback Section v11 (backlog #11)
 
 *Design and prediction recorded 2026-10-23, before any v11 sample was
 run. Drafted in the 2026-10-23 code review (finding 9) and approved as
@@ -2170,7 +2170,7 @@ v10, and why:
 - **No re-confirmation.** Every stored reviewer blocker has passed the
   evidence check, and the section now says so. It asks the reviewer not
   to search the diff again to re-confirm one. The runaway tails in the
-  eleventh measurement were this search: "Let me also check…".
+  eleventh measurement were this search: "Let me also check...".
 - **A removal-caused defect is quoted from the code that now runs
   without the removed part.** That is how the round-1 gate blockers
   that survived were quoted: 751a8f R#1 quoted the
@@ -2225,21 +2225,21 @@ withdrew the same two round-1 FPs (c55779 #2 and #4).
   fingerprint above. The eleventh's carry `0e6f4ef2bcdfe385`, so score
   the two sets apart.
 - **Cost:** about 2 hours on the RTX 3060. Each sample makes three
-  reviewer calls and one engineer call, at 1–4 minutes each; a runaway
-  adds 3–5 minutes.
+  reviewer calls and one engineer call, at 1-4 minutes each; a runaway
+  adds 3-5 minutes.
 
 **Prediction:**
 
 | Metric | Eleventh: v10 arm / v9 arm | Predicted for v11 |
 |---|---|---|
-| Round-2 first attempts that ran away, all samples | 3 / 1 of 10 | ≤ the v9 arm's + 1 |
+| Round-2 first attempts that ran away, all samples | 3 / 1 of 10 | <= the v9 arm's + 1 |
 | Gate kept, of compared pairs whose round 1 stored it | 0 / 2 of 2 | in every pair where the v9 arm keeps it |
-| Race kept, of compared pairs | 6 / 6 of 6 | ≥ the v9 arm's − 1 |
-| Round-1 FPs withdrawn | 2 / 2 | ≥ the v9 arm's − 1 |
-| Echo and from-question FPs, confirmed | 0 / 0 | ≤ the v9 arm's + 1 |
-| Valid share of round-2 blockers | 93% / 93% | both ≥ 80%; v11 ≥ the v9 arm's − 10 points |
-| Round-2 blockers per pair | 2.33 / 2.5 | ≤ the v9 arm's + 0.5 |
-| Round 1 (replication) | v10.1: deletion 0.1 per run, race 10 of 10, valid 80%, other FPs 0.4 per run | deletion ≤ 0.2 per run, race in ≥ 3 runs, valid ≥ 70%; other FPs reported |
+| Race kept, of compared pairs | 6 / 6 of 6 | >= the v9 arm's - 1 |
+| Round-1 FPs withdrawn | 2 / 2 | >= the v9 arm's - 1 |
+| Echo and from-question FPs, confirmed | 0 / 0 | <= the v9 arm's + 1 |
+| Valid share of round-2 blockers | 93% / 93% | both >= 80%; v11 >= the v9 arm's - 10 points |
+| Round-2 blockers per pair | 2.33 / 2.5 | <= the v9 arm's + 0.5 |
+| Round 1 (replication) | v10.1: deletion 0.1 per run, race 10 of 10, valid 80%, other FPs 0.4 per run | deletion <= 0.2 per run, race in >= 3 runs, valid >= 70%; other FPs reported |
 
 **Ship rule:** v11 replaces v9's feedback in debates if all of these
 hold:
@@ -2248,8 +2248,8 @@ hold:
   and that pair is read by hand and reported. In 751a8f, v10 reworded
   the gate as a race instead of dropping it;
 - the eleventh's race, valid-share and echo conditions: race retention
-  ≥ the v9 arm's − 1 pair, a valid share ≥ 80% in both arms and ≥ the
-  v9 arm's − 10 points, and confirmed echo and from-question FPs ≤ the
+  >= the v9 arm's - 1 pair, a valid share >= 80% in both arms and >= the
+  v9 arm's - 10 points, and confirmed echo and from-question FPs <= the
   v9 arm's + 1.
 
 If v11 ships, debates send the section from round 2 on, PROMPT_VERSION
@@ -2260,7 +2260,7 @@ left in v9's feedback, the omitted engineer blockers. Adding them to
 measurement.
 
 **Power caveat:** as in the eleventh, only large differences show with
-5–9 pairs. The gate condition rests on the few pairs whose round 1
+5-9 pairs. The gate condition rests on the few pairs whose round 1
 stored it, 2 of 6 in the eleventh.
 
 ### Results (scored 2026-10-23)
@@ -2277,11 +2277,11 @@ labels used the post-state at `8ffbf19`.
 blockers; 42ec47 and e52a94 are excluded as retries):
 - the race: 11 blockers, in 5 runs;
 - the in-flight gate: 6, in 3 runs (9ef325 #1 and #2, 8dc61a #1,
-  802999 #1–#3);
+  802999 #1-#3);
 - the deletion class: 0;
 - other FPs: 1. 61e3c6 #2 says the `payloadHex` conversion can read past
   the 64-byte array, though `data_length` is a `uint8_t` documented as
-  0–64, and says CAN-FD payloads exceed 64 bytes.
+  0-64, and says CAN-FD payloads exceed 64 bytes.
 
 Valid: 17 of 18 (94%), at 2.25 blockers per run. 3 blockers were
 evidence-demoted: 8dc61a #e1, a valid race claim whose quote joined
@@ -2322,7 +2322,7 @@ pairs, and each time it became a question:
   instruction asked. It did keep the point visible.
 - **42ec47:** round 1 stored the race (R#1) and the gate (R#2). The v11
   arm kept both. The v9 arm's blockers are three race claims, and its
-  questions ask whether the backpressure change "should … be restored".
+  questions ask whether the backpressure change "should ... be restored".
 
 **The two from-question blockers** are 8dc61a's race claims above, both
 valid. v9's feedback carries no reviewer questions, so that arm never
@@ -2331,14 +2331,14 @@ recovering a valid blocker the evidence check demoted. The same channel
 could return a demoted false positive; none did here.
 
 **Runaways.** The tails of two of the three end the same way. The v9
-arm's (4ee454): "…So this is not an issue. Now let me also check if
+arm's (4ee454): "...So this is not an issue. Now let me also check if
 there are any other issues." The v11 arm's (e52a94): "Now let me also
 check if there are any other issues: 1. The removal of signal batching
-… 2. The removal of `forceFrameCountForTesting`…". The third (v11,
+... 2. The removal of `forceFrameCountForTesting`...". The third (v11,
 d693ca) is prose about the deleted test file. So the open-ended search
 is not caused by the section, and v11's "do not search the diff again
 to re-confirm it" did not stop it. In the compared pairs the two arms'
-thinking is of a size, 2.8–6.7K chars against 2.7–9.4K.
+thinking is of a size, 2.8-6.7K chars against 2.7-9.4K.
 
 **Round 1 ran away too:** the reviewer's first attempt in 42ec47 and
 e52a94, against 0 of 10 in the eleventh. In e52a94 the retry ran away as
@@ -2347,14 +2347,14 @@ did. The engineer did not run away.
 
 | Metric | Predicted | Observed | Outcome |
 |---|---|---|---|
-| Round-2 first attempts that ran away | ≤ the v9 arm's + 1 | 2 against 1 | HIT, at the limit |
+| Round-2 first attempts that ran away | <= the v9 arm's + 1 | 2 against 1 | HIT, at the limit |
 | Gate kept where the v9 arm keeps it | every pair | 2 of 3 (8dc61a, asked as a question) | MISSED; within the ship rule's allowance |
-| Race kept | ≥ the v9 arm's − 1 | 4 and 4 of 4 | HIT |
-| Round-1 FPs withdrawn | ≥ the v9 arm's − 1 | 0 and 0 of 1 | HIT |
-| Echo and from-question FPs | ≤ the v9 arm's + 1 | 0 and 0 | HIT |
-| Valid share, round 2 | both ≥ 80%; v11 ≥ v9 − 10 | 94% and 94% | HIT |
-| Round-2 blockers per pair | ≤ the v9 arm's + 0.5 | 2.43 against 2.29 | HIT |
-| Round 1 | deletion ≤ 0.2, race in ≥ 3 runs, valid ≥ 70% | 0, 5 of 8, 94%; other FPs 0.13 per run | HIT |
+| Race kept | >= the v9 arm's - 1 | 4 and 4 of 4 | HIT |
+| Round-1 FPs withdrawn | >= the v9 arm's - 1 | 0 and 0 of 1 | HIT |
+| Echo and from-question FPs | <= the v9 arm's + 1 | 0 and 0 | HIT |
+| Valid share, round 2 | both >= 80%; v11 >= v9 - 10 | 94% and 94% | HIT |
+| Round-2 blockers per pair | <= the v9 arm's + 0.5 | 2.43 against 2.29 | HIT |
+| Round 1 | deletion <= 0.2, race in >= 3 runs, valid >= 70% | 0, 5 of 8, 94%; other FPs 0.13 per run | HIT |
 
 **By the recorded rule: ship.** Every condition holds. The two that
 sank v10 hold at their limits: runaways 2 against 1, and the gate
@@ -2389,7 +2389,7 @@ blocker; the rest is protocol, feedback no longer reading as the
 author's text. Round-2 runaways in live debates are the number to
 watch (STATUS #16). Backlog #11 is closed.
 
-## Thirteenth Measurement — Offline Replay of Judge Variants
+## Thirteenth Measurement: Offline Replay of Judge Variants
 
 *Design and prediction recorded 2026-10-23, before any variant was
 scored. The replay tool, the labels and the reproduction check below
@@ -2449,9 +2449,9 @@ FPs per review, race found 0.79, gate found 0.29.
 
 | Variant | FPs per review | Race found | Gate found | Valid blockers demoted |
 |---|---|---|---|---|
-| gapped | 0.25–0.29 (0–1 readmitted) | 0.79–0.83 | 0.29 | — (3 readmitted) |
-| linked | 0.15–0.22 | ≥ 0.75 | ≥ 0.25 | 0–1 |
-| vote 2-of-3 @j7 | 0.05–0.15 | 0.75–0.90 | 0.30–0.50 | — |
+| gapped | 0.25-0.29 (0-1 readmitted) | 0.79-0.83 | 0.29 | - (3 readmitted) |
+| linked | 0.15-0.22 | >= 0.75 | >= 0.25 | 0-1 |
+| vote 2-of-3 @j7 | 0.05-0.15 | 0.75-0.90 | 0.30-0.50 | - |
 
 Reasons: most false positives quote a line that no other sample quotes,
 while the race recurs. Gate blockers that quote the backpressure check
@@ -2508,19 +2508,19 @@ set):
     long quote can carry an unrelated claim through the vote. In the
     twelfth's set this raised FPs per review from 0.12 to 0.38.
 - A voted review keeps every member of a kept group, so it repeats
-  blockers across samples, at 4.5–4.9 per review. A debate would show
+  blockers across samples, at 4.5-4.9 per review. A debate would show
   one per group.
 
 | Prediction | Predicted | Observed | Outcome |
 |---|---|---|---|
-| gapped: FPs per review | 0.25–0.29 | 0.25 (0 readmitted) | HIT |
-| gapped: race found | 0.79–0.83 | 0.82 | HIT |
-| linked: FPs per review | 0.15–0.22 | 0.18 | HIT |
-| linked: valid blockers demoted | 0–1 | 0 | HIT |
-| linked: race, gate found | ≥ 0.75, ≥ 0.25 | 0.79, 0.29 | HIT |
-| vote 2-of-3: FPs per review | 0.05–0.15 | 0.16 | MISSED HIGH |
-| vote 2-of-3: race found | 0.75–0.90 | 0.92 | MISSED HIGH |
-| vote 2-of-3: gate found | 0.30–0.50 | 0.47 | HIT |
+| gapped: FPs per review | 0.25-0.29 | 0.25 (0 readmitted) | HIT |
+| gapped: race found | 0.79-0.83 | 0.82 | HIT |
+| linked: FPs per review | 0.15-0.22 | 0.18 | HIT |
+| linked: valid blockers demoted | 0-1 | 0 | HIT |
+| linked: race, gate found | >= 0.75, >= 0.25 | 0.79, 0.29 | HIT |
+| vote 2-of-3: FPs per review | 0.05-0.15 | 0.16 | MISSED HIGH |
+| vote 2-of-3: race found | 0.75-0.90 | 0.92 | MISSED HIGH |
+| vote 2-of-3: gate found | 0.30-0.50 | 0.47 | HIT |
 
 **By the rule** (FPs fall; race and gate each drop by at most 0.1):
 - **linked, gapped+linked, and voting over either: pass.** They become
@@ -2535,7 +2535,7 @@ set):
   and race-found from 0.79 to 0.82.
 - **Voting is the larger lever.** Against the union of the same three
   samples it cuts FPs per review from 0.80 to 0.16 and keeps most of the
-  recall: race 0.99 → 0.92, gate 0.66 → 0.47. Against today's single
+  recall: race 0.99 to 0.92, gate 0.66 to 0.47. Against today's single
   sample it is better on all three counts, at three times the
   reviewer's round-1 calls.
 - **Its weak point is the bridge a long quote makes.** One fix is to
@@ -2545,7 +2545,7 @@ set):
 - **None of this ships from the replay.** The corpus measurement decides
   (ADR-0002's next measurement; backlog #7).
 
-## Fourteenth Measurement — Corpus Baseline (backlog #7)
+## Fourteenth Measurement: Corpus Baseline (backlog #7)
 
 **Status (2026-10-23): the set was approved as listed, with the
 `--no-llm` indexes and the fixtures' file sets unchanged, sampled the
@@ -2570,7 +2570,7 @@ bugs come from the commit's message and diff:
 
 | fixture | fix commit | layer | chars | known bugs |
 |---|---|---|---|---|
-| `backoff_clamp_d1c20c0` | d1c20c0, clamp backoff step to the 5 s cap | core | 4.0K | the doubled wait overshoots the cap (3200 → 6400 ms) |
+| `backoff_clamp_d1c20c0` | d1c20c0, clamp backoff step to the 5 s cap | core | 4.0K | the doubled wait overshoots the cap (3200 to 6400 ms) |
 | `trusted_count_6420f09` | 6420f09, ignore vendor counts under hard-error statuses | core | 3.4K | count trusted under an error status; the surrogate's static batch replays stale frames |
 | `poll_override_90020bd` | 90020bd, `?poll=` overrides the rotation | app (QML first; the code is core) | 6.7K | `?poll=` ignored under a mux profile; `?poll=` without `?filter=` rejected at parse |
 | `connect_start_4a86231` | 4a86231, start sessions on the GUI thread | bridge | 7.9K | session started off-thread before the GUI owns it (freed `this` under a running worker); unsubscribed rows stop updating |
@@ -2609,7 +2609,7 @@ tests), `5924214` (its added comments name the bug as a known issue),
 ### Design
 
 - 5 round-1 reviewer samples per fixture, 35 calls, through
-  `python -m eval_harness.corpus run --fixture all --runs 5` (about 2–3
+  `python -m eval_harness.corpus run --fixture all --runs 5` (about 2-3
   h of GPU). Round 1 only, as in every measurement since the fifth.
 - Prompt v11.1, judge j7, the debate fingerprint. First attempts only;
   retries are excluded as before.
@@ -2619,26 +2619,26 @@ tests), `5924214` (its added comments name the bug as a known issue),
 
 ### Predictions (recorded 2026-10-23, before any sample)
 
-The bridge fixture gave 80–94% valid stored blockers and found the race
-in 10 of 10 runs, the gate in 2–4 of 10. The corpus is unfamiliar code
+The bridge fixture gave 80-94% valid stored blockers and found the race
+in 10 of 10 runs, the gate in 2-4 of 10. The corpus is unfamiliar code
 in smaller diffs, with the leak working in recall's favour.
 
 | metric | prediction |
 |---|---|
-| stored blockers per run, bug fixtures | 1.5–3.0 |
-| stored blockers per run, clean fixtures | 0.5–1.5 |
-| valid share of stored blockers, pooled | 60–80% |
-| `backoff_overshoot` found | 3–5 of 5 (arithmetic, visible, leaked) |
-| `count_under_error` found | 1–3 of 5; `static_batch_replay` 0–2 |
-| `poll_ignored` found | 2–4 of 5; `poll_needs_filter_at_parse` 0–2 |
-| `start_before_gui_owns` found | 3–5 of 5 (thread safety, the reviewer's strongest class) |
-| `unsubscribed_rows_freeze` found | 1–3 of 5 |
-| `decode_length_8` found | 3–5 of 5; `staging_clear_per_frame` 2–4; `drops_unreported_when_saturated` 1–3; `payload_length_unclamped` 1–3 |
-| evidence demotions per run | 0.2–0.6, higher than the bridge's: smaller diffs leave fewer quotable lines |
-| first attempts that run away | 1–4 of 35 |
+| stored blockers per run, bug fixtures | 1.5-3.0 |
+| stored blockers per run, clean fixtures | 0.5-1.5 |
+| valid share of stored blockers, pooled | 60-80% |
+| `backoff_overshoot` found | 3-5 of 5 (arithmetic, visible, leaked) |
+| `count_under_error` found | 1-3 of 5; `static_batch_replay` 0-2 |
+| `poll_ignored` found | 2-4 of 5; `poll_needs_filter_at_parse` 0-2 |
+| `start_before_gui_owns` found | 3-5 of 5 (thread safety, the reviewer's strongest class) |
+| `unsubscribed_rows_freeze` found | 1-3 of 5 |
+| `decode_length_8` found | 3-5 of 5; `staging_clear_per_frame` 2-4; `drops_unreported_when_saturated` 1-3; `payload_length_unclamped` 1-3 |
+| evidence demotions per run | 0.2-0.6, higher than the bridge's: smaller diffs leave fewer quotable lines |
+| first attempts that run away | 1-4 of 35 |
 
 **What the baseline decides:** nothing ships from it. It fixes the
-corpus numbers the replay's candidates (gapped quotes with claim–quote
+corpus numbers the replay's candidates (gapped quotes with claim-quote
 linkage; 2-of-3 voting, with the first-line-only link pre-registered
 here as its variant) are measured against next, with the thirteenth
 measurement's rule: FPs fall, and no known bug's recall drops by more
@@ -2703,31 +2703,31 @@ guardrails):
 
 | known bug | predicted | stored | any item | |
 |---|---|---|---|---|
-| backoff_overshoot | 3–5 of 5 | 4/5 | 4/5 | HIT |
-| count_under_error | 1–3 of 5 | 2/5 | 5/5 | HIT |
-| static_batch_replay | 0–2 of 5 | 2/5 | 5/5 | HIT |
-| poll_ignored | 2–4 of 5 | 1/5 | 1/5 | MISSED LOW |
-| poll_needs_filter_at_parse | 0–2 of 5 | 1/5 | 2/5 | HIT |
-| start_before_gui_owns | 3–5 of 5 | 2/5 | 5/5 | MISSED LOW |
-| unsubscribed_rows_freeze | 1–3 of 5 | 1/5 | 1/5 | HIT |
-| decode_length_8 | 0.6–1.0 per run | 4/4 | 4/4 | HIT |
-| staging_clear_per_frame | 0.4–0.8 | 3/4 | 3/4 | HIT |
-| drops_unreported_when_saturated | 0.2–0.6 | 3/4 | 3/4 | MISSED HIGH |
-| payload_length_unclamped | 0.2–0.6 | 0/4 | 0/4 | MISSED LOW |
+| backoff_overshoot | 3-5 of 5 | 4/5 | 4/5 | HIT |
+| count_under_error | 1-3 of 5 | 2/5 | 5/5 | HIT |
+| static_batch_replay | 0-2 of 5 | 2/5 | 5/5 | HIT |
+| poll_ignored | 2-4 of 5 | 1/5 | 1/5 | MISSED LOW |
+| poll_needs_filter_at_parse | 0-2 of 5 | 1/5 | 2/5 | HIT |
+| start_before_gui_owns | 3-5 of 5 | 2/5 | 5/5 | MISSED LOW |
+| unsubscribed_rows_freeze | 1-3 of 5 | 1/5 | 1/5 | HIT |
+| decode_length_8 | 0.6-1.0 per run | 4/4 | 4/4 | HIT |
+| staging_clear_per_frame | 0.4-0.8 | 3/4 | 3/4 | HIT |
+| drops_unreported_when_saturated | 0.2-0.6 | 3/4 | 3/4 | MISSED HIGH |
+| payload_length_unclamped | 0.2-0.6 | 0/4 | 0/4 | MISSED LOW |
 
 Mean recall per bug: 0.46 stored, 0.65 for any item.
 
 | metric | predicted | observed | |
 |---|---|---|---|
-| stored blockers per run, bug fixtures | 1.5–3.0 | 1.58 (38 in 24 runs) | HIT |
-| stored blockers per run, clean fixtures | 0.5–1.5 | 0.44 (4 in 9 runs) | MISSED LOW |
-| valid share of stored blockers, pooled | 60–80% | 57% (24 of 42) | MISSED LOW |
-| evidence demotions per run | 0.2–0.6 | 0.52 | HIT |
-| first attempts that run away | 1–4 of 35 | 2 | HIT |
+| stored blockers per run, bug fixtures | 1.5-3.0 | 1.58 (38 in 24 runs) | HIT |
+| stored blockers per run, clean fixtures | 0.5-1.5 | 0.44 (4 in 9 runs) | MISSED LOW |
+| valid share of stored blockers, pooled | 60-80% | 57% (24 of 42) | MISSED LOW |
+| evidence demotions per run | 0.2-0.6 | 0.52 | HIT |
+| first attempts that run away | 1-4 of 35 | 2 | HIT |
 
 **Reading:**
 - **The bridge fixture's precision did not travel whole.** 57% valid
-  against 80–94% there. One fixture carries half the false positives:
+  against 80-94% there. One fixture carries half the false positives:
   `poll_override_90020bd`'s 8 invariant-elsewhere blockers, a class the
   bridge fixture never showed. The reviewer reads a removed backstop in
   one function and does not see that another function, in the same
@@ -2745,7 +2745,7 @@ Mean recall per bug: 0.46 stored, 0.65 for any item.
   that now misbehaves, and are stored.
 - **The leak is real but narrow.** In `trusted_count_6420f09`, four
   claims cite the removed comments outright ("the surrogate comment
-  explicitly warns…"), and those claims are among the demoted ones. The
+  explicitly warns..."), and those claims are among the demoted ones. The
   other bug fixtures' valid claims do not lean on removed comments;
   `backoff_clamp`'s compare the inlined code with the removed function,
   which is ordinary diff reading.
@@ -2765,7 +2765,7 @@ Mean recall per bug: 0.46 stored, 0.65 for any item.
 **What this decides:** nothing ships from a baseline. It sets the
 numbers the next measurements are compared with, on this corpus, with
 these labels:
-1. **The replay's candidates, offline:** gapped quotes with claim–quote
+1. **The replay's candidates, offline:** gapped quotes with claim-quote
    linkage, and 2-of-3 voting (with the first-line-only link
    pre-registered in the thirteenth measurement), replayed over these
    33 runs and scored with `corpus_labels.json`. No GPU. The rule stays:
@@ -2781,7 +2781,7 @@ these labels:
    the pack, or the function that enforces the invariant) is a pack
    change with its own PACK_FORMAT_VERSION.
 
-## Fifteenth Measurement — Corpus Replay and a Removed-Line Exception
+## Fifteenth Measurement: Corpus Replay and a Removed-Line Exception
 
 **Status (2026-10-23): registered before any variant was scored, then
 scored the same night (Results, below).** Before registering, only
@@ -2809,7 +2809,7 @@ can answer with no model call:
 - **removed:** a quote the evidence check rejects is accepted when it is
   found in the named file's code as it read before the change (context
   and removed lines, same matching rules);
-- **removed+linked:** removed, with claim–quote linkage on every quote,
+- **removed+linked:** removed, with claim-quote linkage on every quote,
   pre-change ones included;
 - **removed+said:** removed, but a pre-change quote is accepted only when
   the claim names a removal (`remov…`, `delet…`, `no longer`, `dropp…`,
@@ -2844,22 +2844,22 @@ gate 0.29.
 
 | variant | data | metric | prediction |
 |---|---|---|---|
-| gapped | corpus | FPs per review | 0.52–0.58 |
-| gapped | corpus | mean recall | 0.46–0.50 |
-| linked, gapped+linked | corpus | FPs per review | 0.48–0.55 (0–2 FPs demoted) |
-| linked, gapped+linked | corpus | mean recall | 0.40–0.46 |
-| vote 2-of-3 @j7 | corpus | FPs per review | 0.60–1.20, not below j7 |
-| vote 2-of-3 @j7 | corpus | mean recall | 0.40–0.55 |
-| removed | corpus | mean recall | 0.58–0.65 |
-| removed | corpus | FPs per review | 0.58–0.64 |
-| removed | corpus | valid share | 62–68% |
+| gapped | corpus | FPs per review | 0.52-0.58 |
+| gapped | corpus | mean recall | 0.46-0.50 |
+| linked, gapped+linked | corpus | FPs per review | 0.48-0.55 (0-2 FPs demoted) |
+| linked, gapped+linked | corpus | mean recall | 0.40-0.46 |
+| vote 2-of-3 @j7 | corpus | FPs per review | 0.60-1.20, not below j7 |
+| vote 2-of-3 @j7 | corpus | mean recall | 0.40-0.55 |
+| removed | corpus | mean recall | 0.58-0.65 |
+| removed | corpus | FPs per review | 0.58-0.64 |
+| removed | corpus | valid share | 62-68% |
 | removed+linked | corpus | all three | within 0.03 (3 points) of removed |
-| removed+said | corpus | mean recall | 0.58–0.65 |
-| removed+said | corpus | FPs per review | 0.56–0.62 |
-| removed | bridge | FPs per review | 0.45–0.80 |
-| removed | bridge | race, gate found | race 0.79–0.85, gate 0.35–0.55 |
-| removed+linked | bridge | FPs per review | 0.40–0.75 |
-| removed+said | bridge | FPs per review | 0.35–0.65 |
+| removed+said | corpus | mean recall | 0.58-0.65 |
+| removed+said | corpus | FPs per review | 0.56-0.62 |
+| removed | bridge | FPs per review | 0.45-0.80 |
+| removed | bridge | race, gate found | race 0.79-0.85, gate 0.35-0.55 |
+| removed+linked | bridge | FPs per review | 0.40-0.75 |
+| removed+said | bridge | FPs per review | 0.35-0.65 |
 
 **Expected by the rules:** no precision variant passes on the corpus
 (linkage demotes too few, voting keeps the recurring faults). No
@@ -2891,29 +2891,29 @@ thirteenth's.
 
 | prediction | predicted | observed | |
 |---|---|---|---|
-| gapped, corpus FPs per review | 0.52–0.58 | 0.55 | HIT |
-| gapped, corpus mean recall | 0.46–0.50 | 0.46 | HIT |
-| linked, corpus FPs per review | 0.48–0.55 | 0.48 | HIT |
-| linked, corpus mean recall | 0.40–0.46 | 0.44 | HIT |
-| vote @j7, corpus FPs per review | 0.60–1.20 | 0.98 | HIT |
-| vote @j7, corpus mean recall | 0.40–0.55 | 0.53 | HIT |
-| removed, corpus mean recall | 0.58–0.65 | 0.59 | HIT |
-| removed, corpus FPs per review | 0.58–0.64 | 0.61 | HIT |
-| removed, corpus valid share | 62–68% | 62% | HIT |
-| removed+linked within 0.03 of removed | — | recall 0.06 and FPs 0.06 lower | MISSED |
-| removed+said, corpus mean recall | 0.58–0.65 | 0.57 | MISSED LOW |
-| removed+said, corpus FPs per review | 0.56–0.62 | 0.58 | HIT |
-| removed, bridge FPs per review | 0.45–0.80 | 0.50 | HIT |
-| removed, bridge race / gate | 0.79–0.85 / 0.35–0.55 | 0.79 / 0.29 | HIT / MISSED LOW |
-| removed+linked, bridge FPs per review | 0.40–0.75 | 0.39 | MISSED LOW |
-| removed+said, bridge FPs per review | 0.35–0.65 | 0.36 | HIT |
-| no precision variant passes | — | linked passes | MISSED |
-| no exception variant passes | — | none passes | HIT |
+| gapped, corpus FPs per review | 0.52-0.58 | 0.55 | HIT |
+| gapped, corpus mean recall | 0.46-0.50 | 0.46 | HIT |
+| linked, corpus FPs per review | 0.48-0.55 | 0.48 | HIT |
+| linked, corpus mean recall | 0.40-0.46 | 0.44 | HIT |
+| vote @j7, corpus FPs per review | 0.60-1.20 | 0.98 | HIT |
+| vote @j7, corpus mean recall | 0.40-0.55 | 0.53 | HIT |
+| removed, corpus mean recall | 0.58-0.65 | 0.59 | HIT |
+| removed, corpus FPs per review | 0.58-0.64 | 0.61 | HIT |
+| removed, corpus valid share | 62-68% | 62% | HIT |
+| removed+linked within 0.03 of removed | - | recall 0.06 and FPs 0.06 lower | MISSED |
+| removed+said, corpus mean recall | 0.58-0.65 | 0.57 | MISSED LOW |
+| removed+said, corpus FPs per review | 0.56-0.62 | 0.58 | HIT |
+| removed, bridge FPs per review | 0.45-0.80 | 0.50 | HIT |
+| removed, bridge race / gate | 0.79-0.85 / 0.35-0.55 | 0.79 / 0.29 | HIT / MISSED LOW |
+| removed+linked, bridge FPs per review | 0.40-0.75 | 0.39 | MISSED LOW |
+| removed+said, bridge FPs per review | 0.35-0.65 | 0.36 | HIT |
+| no precision variant passes | - | linked passes | MISSED |
+| no exception variant passes | - | none passes | HIT |
 
 **By the rules:**
 - **linked and gapped+linked pass on the corpus:** FPs per review 0.55
-  → 0.48, mean recall 0.46 → 0.44. With the thirteenth's bridge pass,
-  claim–quote linkage is now a candidate on both data sets.
+  to 0.48, mean recall 0.46 to 0.44. With the thirteenth's bridge pass,
+  claim-quote linkage is now a candidate on both data sets.
 - **gapped** changes nothing on the corpus: none of its demoted quotes
   skip lines. It stays a bridge-only recall fix.
 - **Voting fails.** FPs per review rise from 0.55 to 0.98, and on clean
@@ -3004,12 +3004,12 @@ the composed arm is an exception variant.
 
 | variant | data | metric | prediction |
 |---|---|---|---|
-| flinked, gapped+flinked | corpus | FPs per review | 0.48–0.55 |
-| flinked, gapped+flinked | corpus | mean recall | 0.44–0.47 |
-| flinked | bridge | FPs per review; race, gate | 0.18–0.21; 0.79, 0.29 |
-| removed+said+flinked | corpus | FPs per review | 0.50–0.58 |
-| removed+said+flinked | corpus | mean recall | 0.55–0.58 |
-| removed+said+flinked | bridge | FPs per review | 0.29–0.33 |
+| flinked, gapped+flinked | corpus | FPs per review | 0.48-0.55 |
+| flinked, gapped+flinked | corpus | mean recall | 0.44-0.47 |
+| flinked | bridge | FPs per review; race, gate | 0.18-0.21; 0.79, 0.29 |
+| removed+said+flinked | corpus | FPs per review | 0.50-0.58 |
+| removed+said+flinked | corpus | mean recall | 0.55-0.58 |
+| removed+said+flinked | bridge | FPs per review | 0.29-0.33 |
 
 **Expected by the rules:** flinked passes on both data sets. The
 composed arm is borderline on two conditions, corpus recall (+0.09 to
@@ -3027,13 +3027,13 @@ narrowly.
 
 | prediction | predicted | observed | |
 |---|---|---|---|
-| flinked, corpus FPs per review | 0.48–0.55 | 0.52 | HIT |
-| flinked, corpus mean recall | 0.44–0.47 | 0.46 | HIT |
-| flinked, bridge | 0.18–0.21; 0.79, 0.29 | 0.18; 0.79, 0.29 | HIT |
-| composed, corpus FPs per review | 0.50–0.58 | 0.55 | HIT |
-| composed, corpus mean recall | 0.55–0.58 | 0.55 | HIT |
-| composed, bridge FPs per review | 0.29–0.33 | 0.29 | HIT |
-| composed passes both borderline conditions | — | bridge passes (+0.04), corpus recall fails (+0.09) | MISSED |
+| flinked, corpus FPs per review | 0.48-0.55 | 0.52 | HIT |
+| flinked, corpus mean recall | 0.44-0.47 | 0.46 | HIT |
+| flinked, bridge | 0.18-0.21; 0.79, 0.29 | 0.18; 0.79, 0.29 | HIT |
+| composed, corpus FPs per review | 0.50-0.58 | 0.55 | HIT |
+| composed, corpus mean recall | 0.55-0.58 | 0.55 | HIT |
+| composed, bridge FPs per review | 0.29-0.33 | 0.29 | HIT |
+| composed passes both borderline conditions | - | bridge passes (+0.04), corpus recall fails (+0.09) | MISSED |
 
 - **flinked passes on both data sets.** On the corpus it keeps the two
   intended demotions (claims resting on `chan_count`) and drops the two
@@ -3045,7 +3045,7 @@ narrowly.
   is inside the limit: linkage takes out two of the bridge deletion
   claims, and the rest is removal objections.
 
-## Sixteenth Measurement — Fresh Corpus Sample
+## Sixteenth Measurement: Fresh Corpus Sample
 
 **Status: registered 2026-10-23 before any sample was taken (`1be7179`), scored the same night (Results, below).**
 
@@ -3086,16 +3086,16 @@ every judge candidate, at one collection's GPU cost.
 
 | metric (fresh samples) | prediction |
 |---|---|
-| j7 valid share | 50–68% |
-| j7 FPs per review | 0.40–0.70 |
-| j7 mean recall per known bug | 0.35–0.55 |
-| j7 FPs per clean review | 0.20–0.80 |
-| j7 evidence demotions per run | 0.30–0.70 |
-| first attempts that run away | 0–4 of 35 |
-| flinked FPs per review, below j7 by | 0.00–0.10 (passes) |
+| j7 valid share | 50-68% |
+| j7 FPs per review | 0.40-0.70 |
+| j7 mean recall per known bug | 0.35-0.55 |
+| j7 FPs per clean review | 0.20-0.80 |
+| j7 evidence demotions per run | 0.30-0.70 |
+| first attempts that run away | 0-4 of 35 |
+| flinked FPs per review, below j7 by | 0.00-0.10 (passes) |
 | flinked mean recall, within | 0.03 of j7 |
-| removed+said, recall gain / FP rise | +0.05–0.15 / +0.00–0.06 |
-| removed+said+flinked, recall gain / FP rise | +0.04–0.13 / −0.03–+0.04 |
+| removed+said, recall gain / FP rise | +0.05 to 0.15 / +0.00 to 0.06 |
+| removed+said+flinked, recall gain / FP rise | +0.04 to 0.13 / -0.03 to +0.04 |
 
 **Expected:** flinked passes and becomes j8, by a small margin, because
 linkage acts on few blockers. The exception arms are a coin flip on the
@@ -3122,20 +3122,20 @@ split.
 
 | prediction | predicted | observed | |
 |---|---|---|---|
-| j7 valid share | 50–68% | 65% | HIT |
-| j7 FPs per review | 0.40–0.70 | 0.39 | MISSED LOW |
-| j7 mean recall | 0.35–0.55 | 0.36 | HIT |
-| j7 FPs per clean review | 0.20–0.80 | 0.33 | HIT |
-| j7 evidence demotions per run | 0.30–0.70 | 0.70 | HIT |
-| first attempts that run away | 0–4 of 35 | 2 | HIT |
-| flinked FPs below j7 by | 0.00–0.10 | 0.09 | HIT |
-| flinked mean recall within 0.03 of j7 | — | +0.00 | HIT |
-| removed+said recall gain / FP rise | +0.05–0.15 / +0.00–0.06 | +0.05 / +0.12 | HIT / MISSED HIGH |
-| removed+said+flinked recall gain / FP rise | +0.04–0.13 / −0.03–+0.04 | +0.05 / +0.00 | HIT / HIT |
-| flinked passes, by a small margin | — | passes | HIT |
+| j7 valid share | 50-68% | 65% | HIT |
+| j7 FPs per review | 0.40-0.70 | 0.39 | MISSED LOW |
+| j7 mean recall | 0.35-0.55 | 0.36 | HIT |
+| j7 FPs per clean review | 0.20-0.80 | 0.33 | HIT |
+| j7 evidence demotions per run | 0.30-0.70 | 0.70 | HIT |
+| first attempts that run away | 0-4 of 35 | 2 | HIT |
+| flinked FPs below j7 by | 0.00-0.10 | 0.09 | HIT |
+| flinked mean recall within 0.03 of j7 | - | +0.00 | HIT |
+| removed+said recall gain / FP rise | +0.05 to 0.15 / +0.00 to 0.06 | +0.05 / +0.12 | HIT / MISSED HIGH |
+| removed+said+flinked recall gain / FP rise | +0.04 to 0.13 / -0.03 to +0.04 | +0.05 / +0.00 | HIT / HIT |
+| flinked passes, by a small margin | - | passes | HIT |
 
 **By the rules:**
-- **flinked passes:** FPs per review 0.39 → 0.30 on the fresh samples,
+- **flinked passes:** FPs per review 0.39 to 0.30 on the fresh samples,
   mean recall unchanged. It demoted 3 items, all invariant-elsewhere
   false positives whose claims rest on `chan_count`, which the quoted
   hunk never touches, and no valid item. No acronym decided anything
@@ -3148,7 +3148,7 @@ split.
   The removal-word gate does not keep the deletion class out of fresh
   corpus data, so the bridge result was not only the #21 artifact.
 - **Voting** stays out (fifteenth). On this sample its clean-fixture
-  rate is 0.00, but its FPs per review still rise, 0.39 → 0.53.
+  rate is 0.00, but its FPs per review still rise, 0.39 to 0.53.
 
 **Reading:**
 - **The fresh sample agrees with the replayed one on every decision.**
@@ -3159,13 +3159,13 @@ split.
   cannot tell a removal the change intends from one that breaks
   something; the remaining levers are the prompt or the protocol, and
   they need live measurement.
-- **The baseline numbers moved between samples:** valid share 57% →
-  65%, FPs per review 0.55 → 0.39, recall 0.46 → 0.36. Same requests,
+- **The baseline numbers moved between samples:** valid share 57% to
+  65%, FPs per review 0.55 to 0.39, recall 0.46 to 0.36. Same requests,
   same judge. Ranges of this width between two 33-run samples are the
   noise floor any later single-sample comparison on this corpus has to
   clear.
 
-## Claim–Quote Linkage j8 (2026-10-23)
+## Claim-Quote Linkage j8 (2026-10-23)
 
 Shipped by the sixteenth measurement's rule: `JUDGE_VERSION`
 `j8-claim-quote-linkage`. In `demote_unverified_blockers`, a reviewer
@@ -3180,8 +3180,8 @@ a supplied context, which has no hunks.
 - **What it is for:** a verified quote proves the code exists, not that
   it supports the claim. Linkage catches the claim that rests on code
   the quote does not show, as the invariant-elsewhere class does.
-- **Measured:** corpus FPs per review 0.39 → 0.30 on fresh samples and
-  0.55 → 0.52 on the baseline, recall unchanged on both; bridge 0.25 →
+- **Measured:** corpus FPs per review 0.39 to 0.30 on fresh samples and
+  0.55 to 0.52 on the baseline, recall unchanged on both; bridge 0.25 to
   0.18, race and gate unchanged (thirteenth, fifteenth and sixteenth
   measurements).
 - **What changes in code:** `IDENT` and `code_like` moved from
@@ -3205,7 +3205,7 @@ a supplied context, which has no hunks.
   requests are unchanged; a debate's round 2
   differs only when linkage moved a blocker.
 
-## Seventeenth Measurement — Repair Pass for Quote Failures
+## Seventeenth Measurement: Repair Pass for Quote Failures
 
 **Status (2026-10-24): drafted before any code or model call, signed off
 with the amendment below, implemented, run and scored: not shipped
@@ -3289,7 +3289,7 @@ pass in its metadata.
 hand, so one repair call per record with quote failures gives both arms
 on the same replies: A, the j8 split as stored; B, the split after
 repair. Pairing removes the between-sample noise the sixteenth measured
-(57% → 65% valid on identical requests).
+(57% to 65% valid on identical requests).
 - **Corpus:** the 66 runs of the fourteenth and sixteenth measurements.
 - **Bridge:** the 28 labelled samples (G3, the eleventh's and twelfth's
   round 1).
@@ -3331,14 +3331,14 @@ repair calls, runaways, size skips and failed repairs.
 
 | metric | prediction |
 |---|---|
-| repair calls, corpus / bridge | 20–30 / 8–15 |
-| corpus valid items readmitted | 16–26 of 31 (9–15 of the 18 pre-change quotes, 7–11 of the 13 found nowhere) |
-| corpus false items readmitted | 2–5 of 9 |
+| repair calls, corpus / bridge | 20-30 / 8-15 |
+| corpus valid items readmitted | 16-26 of 31 (9-15 of the 18 pre-change quotes, 7-11 of the 13 found nowhere) |
+| corpus false items readmitted | 2-5 of 9 |
 | corpus mean recall | +0.08 to +0.14 |
 | corpus FPs per review | +0.03 to +0.08 |
-| bridge false items readmitted | 2–6 of 12 (+0.07 to +0.21 FPs per review) |
-| bridge race found | 0.79 → 0.82–0.89 |
-| repair-call runaways / size skips | 0–3 / 0–2 |
+| bridge false items readmitted | 2-6 of 12 (+0.07 to +0.21 FPs per review) |
+| bridge race found | 0.79 to 0.82-0.89 |
+| repair-call runaways / size skips | 0-3 / 0-2 |
 
 **Expected by the rule:** v12 fails on the bridge ceiling, through
 deletion claims re-quoted from their own hunks; the corpus conditions
@@ -3397,7 +3397,7 @@ also change the suite's count.
   `evidence_demotions` counts what stays demoted, so the scorers' tail
   reading holds. Every accepted reply's text is kept in its telemetry
   entry as `reply`.
-- Tests: 188 → 195 at sign-off, 198 after the results (the pass off by
+- Tests: 188 to 195 at sign-off, 198 after the results (the pass off by
   default, v11.1's fingerprint pinned). Offering linkage demotions,
   repairing in every round, and not decrementing the demotion count
   each fail them.
@@ -3436,16 +3436,16 @@ quote and was demoted by the hedge check.
 
 | prediction | predicted | observed | |
 |---|---|---|---|
-| repair calls, corpus / bridge | 20–30 / 8–15 | 22 / 11 | HIT / HIT |
-| corpus valid readmitted | 16–26 of 31 | 2 | MISSED LOW |
-| of the 18 pre-change quotes / 13 found nowhere | 9–15 / 7–11 | 1 / 1 | MISSED LOW |
-| corpus false readmitted | 2–5 of 9 | 0 | MISSED LOW |
+| repair calls, corpus / bridge | 20-30 / 8-15 | 22 / 11 | HIT / HIT |
+| corpus valid readmitted | 16-26 of 31 | 2 | MISSED LOW |
+| of the 18 pre-change quotes / 13 found nowhere | 9-15 / 7-11 | 1 / 1 | MISSED LOW |
+| corpus false readmitted | 2-5 of 9 | 0 | MISSED LOW |
 | corpus mean recall | +0.08 to +0.14 | +0.009 | MISSED LOW |
 | corpus FPs per review | +0.03 to +0.08 | +0.000 | MISSED LOW |
-| bridge false readmitted | 2–6 of 12 | 0 | MISSED LOW |
-| bridge race found | 0.82–0.89 | 0.79 | MISSED LOW |
-| repair-call runaways / size skips | 0–3 / 0–2 | 34 of 77 attempts / 0 | MISSED HIGH / HIT |
-| fails on the bridge ceiling | — | fails condition 1 instead | MISSED |
+| bridge false readmitted | 2-6 of 12 | 0 | MISSED LOW |
+| bridge race found | 0.82-0.89 | 0.79 | MISSED LOW |
+| repair-call runaways / size skips | 0-3 / 0-2 | 34 of 77 attempts / 0 | MISSED HIGH / HIT |
+| fails on the bridge ceiling | - | fails condition 1 instead | MISSED |
 
 **By the rule: v12 fails condition 1** (corpus recall +0.009 against
 +0.10) and does not ship. Debates run with `debate.REPAIR_PASS` off and
@@ -3456,7 +3456,7 @@ the final code.
 
 **Why it failed: the calls mostly did not attempt the task.**
 - **First attempts, 33:** 19 ran to the 12,288-token output cap with
-  30,000–73,000 characters of thinking, 6 replied in the reviewer's own
+  30,000-73,000 characters of thinking, 6 replied in the reviewer's own
   schema (blockers, questions, nits: a fresh review), and 8 replied in
   the repair schema, 2 of them with repairs.
 - **Retries:** 18 of the 26 accepted replies came after a corrective
@@ -3482,7 +3482,7 @@ the code part of the transcript, and would pilot a handful of live calls
 before the full paired batch. That is a new prompt and a new
 registration; the paired archive and the runner are ready for it.
 
-## Eighteenth Measurement — Repair Successor: Ceiling Check and Pilot
+## Eighteenth Measurement: Repair Successor: Ceiling Check and Pilot
 
 **Status (2026-10-24): closed.** The pilot set and the ceiling check
 were registered before the check ran and before any successor prompt
@@ -3517,7 +3517,7 @@ no model call or few:
 | `012856_819df9` | bridge | #e1 false/before, #e2 false/nowhere, #e3 false/before |
 
 14 items: 7 valid (3 before, 4 nowhere) and 7 false (4 before, 3
-nowhere). Chosen for coverage of the class × quote-group cells, from the
+nowhere). Chosen for coverage of the class x quote-group cells, from the
 seventeenth's offers only: b90266 is the earliest connect_start record
 with valid items in both groups; 2e95fa the only one with false and
 valid items found nowhere; a0d8f9 the earliest trusted_count record with
@@ -3559,10 +3559,10 @@ own functions (`adjudication.evidence_sources`, `hunk_identifiers`,
 
 | quantity | predicted |
 |---|---|
-| hedged claims among the offered, corpus / bridge | 2–6 of 40 / 1–4 of 19 |
-| judge-quotable, corpus valid / false | 26–31 of 31 / 6–9 of 9 |
-| on-point, corpus valid / false | 18–27 of 31 / 4–8 of 9 |
-| judge-quotable, bridge valid / false | 3–4 of 4 / 8–12 of 12 |
+| hedged claims among the offered, corpus / bridge | 2-6 of 40 / 1-4 of 19 |
+| judge-quotable, corpus valid / false | 26-31 of 31 / 6-9 of 9 |
+| on-point, corpus valid / false | 18-27 of 31 / 4-8 of 9 |
+| judge-quotable, bridge valid / false | 3-4 of 4 / 8-12 of 12 |
 | judge ceiling, corpus recall / FPs per review | +0.12 to +0.16 / +0.08 to +0.14 |
 | on-point ceiling, corpus recall | +0.08 to +0.14 |
 
@@ -3608,12 +3608,12 @@ on-point arm: a passing line names one of the claim's identifiers.
 
 | prediction | predicted | observed | |
 |---|---|---|---|
-| hedged, corpus / bridge | 2–6 / 1–4 | 6 / 2 | HIT / HIT |
-| judge-quotable, corpus valid / false | 26–31 / 6–9 | 24 / 9 | MISSED LOW / HIT |
-| on-point (named), corpus valid / false | 18–27 / 4–8 | 9 / 5 | MISSED LOW / HIT |
-| judge-quotable, bridge valid / false | 3–4 / 8–12 | 4 / 10 | HIT / HIT |
-| judge ceiling, corpus recall / FPs | +0.12–0.16 / +0.08–0.14 | +0.137 / +0.136 | HIT / HIT |
-| on-point (named) ceiling, corpus recall | +0.08–0.14 | +0.083 | HIT |
+| hedged, corpus / bridge | 2-6 / 1-4 | 6 / 2 | HIT / HIT |
+| judge-quotable, corpus valid / false | 26-31 / 6-9 | 24 / 9 | MISSED LOW / HIT |
+| on-point (named), corpus valid / false | 18-27 / 4-8 | 9 / 5 | MISSED LOW / HIT |
+| judge-quotable, bridge valid / false | 3-4 / 8-12 | 4 / 10 | HIT / HIT |
+| judge ceiling, corpus recall / FPs | +0.12 to 0.16 / +0.08 to 0.14 | +0.137 / +0.136 | HIT / HIT |
+| on-point (named) ceiling, corpus recall | +0.08 to 0.14 | +0.083 | HIT |
 
 **What it shows:**
 - **The recall is there, by the judge's count.** The judge ceiling
@@ -3719,7 +3719,7 @@ Replies that come from retries are counted and reported apart.
 4. **Pass:** at least 5 of the 6 recoverable valid items restored, at
    most 1 of the 4 false corpus items, none of the 3 false bridge items.
    The batch runs.
-5. **Marginal:** anything else (valid 3–4 of 6, false within the
+5. **Marginal:** anything else (valid 3-4 of 6, false within the
    tripwires). The batch runs with the prompt unchanged, and the ship
    rule decides.
 
@@ -3737,12 +3737,12 @@ marginal miss would let n = 7 make the batch's decision.
 
 | quantity | predicted (point) |
 |---|---|
-| usable first attempts | 3–5 of 5 (4) |
-| first-attempt runaways | 0–2 (1; 819df9's 30K-char bridge request most likely) |
-| first-attempt re-reviews | 0–1 |
-| valid restored, of 6 recoverable | 2–5 (4) |
-| false corpus restored, of 4 | 0–2 (1) |
-| false bridge restored, of 3 | 0–1 (0) |
+| usable first attempts | 3-5 of 5 (4) |
+| first-attempt runaways | 0-2 (1; 819df9's 30K-char bridge request most likely) |
+| first-attempt re-reviews | 0-1 |
+| valid restored, of 6 recoverable | 2-5 (4) |
+| false corpus restored, of 4 | 0-2 (1) |
+| false bridge restored, of 3 | 0-1 (0) |
 | exit | marginal most likely, then selectivity |
 
 **The batch, if it runs:** the seventeenth's sets without the pilot's
@@ -3768,8 +3768,8 @@ The pilot's exclusion lowered the batch's ceiling from +0.137 to
 recoverable valid items.
 
 **Batch prediction, stated per recoverable item:** valid restored
-55–85% of 18, so corpus recall +0.06 to +0.10; false corpus 1–3 of 5;
-false bridge 1–3 of 7. Predicted to fail condition 1, which needs
+55-85% of 18, so corpus recall +0.06 to +0.10; false corpus 1-3 of 5;
+false bridge 1-3 of 7. Predicted to fail condition 1, which needs
 restoration near 88%. Condition 3 (bridge FPs) is the next most likely
 failure.
 
@@ -3786,7 +3786,7 @@ fingerprint `09a782e33e7aa6d6`). About 21 minutes on the GPU.
 | b90266 | usable (30 s) | first | 5,851 | 0 |
 | 2e95fa | usable (36 s) | first | 7,199 | 1 |
 | 61d927 | runaway | retry (32 s) | 53,046; 6,866 | 0 |
-| 819df9 (bridge) | runaway | failed, 3 runaways | 47,884; 49,326; 73,627 | — |
+| 819df9 (bridge) | runaway | failed, 3 runaways | 47,884; 49,326; 73,627 | - |
 
 **Items by reply source, class, quote group and result:**
 
@@ -3805,12 +3805,12 @@ nothing carries over to the re-pilot.
 
 | prediction | predicted | observed | |
 |---|---|---|---|
-| usable first attempts | 3–5 (4) | 3 | HIT, low edge |
-| first-attempt runaways | 0–2 (1; 819df9 most likely) | 2 (819df9, 61d927) | HIT, high edge |
-| first-attempt re-reviews | 0–1 | 0 | HIT |
-| valid restored, of 6 | 2–5 (4) | 1 | MISSED LOW |
-| false corpus restored, of 4 | 0–2 (1) | 0 | HIT |
-| false bridge restored, of 3 | 0–1 (0) | 0 (call failed) | HIT, no data |
+| usable first attempts | 3-5 (4) | 3 | HIT, low edge |
+| first-attempt runaways | 0-2 (1; 819df9 most likely) | 2 (819df9, 61d927) | HIT, high edge |
+| first-attempt re-reviews | 0-1 | 0 | HIT |
+| valid restored, of 6 | 2-5 (4) | 1 | MISSED LOW |
+| false corpus restored, of 4 | 0-2 (1) | 0 | HIT |
+| false bridge restored, of 3 | 0-1 (0) | 0 (call failed) | HIT, no data |
 | exit | marginal, then selectivity | wiring | MISSED |
 
 **Reading the replies:**
@@ -3876,7 +3876,7 @@ incapacity and before the bar.
   in usable first attempts is below 59%, the repair line closes on
   arithmetic, recorded as such. With all 6 read, that is 3 or fewer
   restored.
-- **Why 59%:** a rate r projects a batch gain of about r × 0.113, and
+- **Why 59%:** a rate r projects a batch gain of about r x 0.113, and
   59% is the rate that reaches two-thirds of the +0.10 bar (+0.067).
   3 of 6 projects +0.057; 4 of 6, +0.075.
 - **Why it rarely misfires:** passing the batch takes about 88%
@@ -3895,11 +3895,11 @@ the pilot as an instrument failure.
 
 | quantity | predicted (point) |
 |---|---|
-| usable first attempts | 3–5 (4) |
-| first-attempt runaways | 0–2 (1; a 61d927-type deliberation) |
+| usable first attempts | 3-5 (4) |
+| first-attempt runaways | 0-2 (1; a 61d927-type deliberation) |
 | 819df9 (bridge) first attempt usable | 40% |
-| valid restored, of 6 recoverable | 1–4 (2) |
-| false corpus / bridge restored | 0–1 of 4 / 0–1 of 3 |
+| valid restored, of 6 recoverable | 1-4 (2) |
+| false corpus / bridge restored | 0-1 of 4 / 0-1 of 3 |
 | exit | incapacity or arithmetic most likely, then wiring |
 
 If a 61d927-type runaway persists without the review context, it is
@@ -3942,11 +3942,11 @@ line closes;** the batch does not run.
 
 | prediction | predicted | observed | |
 |---|---|---|---|
-| usable first attempts | 3–5 (4) | 4 | HIT |
-| first-attempt runaways | 0–2 (1; a 61d927-type) | 1 (a0d8f9, another type) | HIT |
-| 819df9 first attempt usable | 40% | yes | — |
-| valid restored, of 6 recoverable | 1–4 (2) | 0 | MISSED LOW |
-| false corpus / bridge restored | 0–1 / 0–1 | 0 / 0 | HIT / HIT |
+| usable first attempts | 3-5 (4) | 4 | HIT |
+| first-attempt runaways | 0-2 (1; a 61d927-type) | 1 (a0d8f9, another type) | HIT |
+| 819df9 first attempt usable | 40% | yes | - |
+| valid restored, of 6 recoverable | 1-4 (2) | 0 | MISSED LOW |
+| false corpus / bridge restored | 0-1 / 0-1 | 0 / 0 | HIT / HIT |
 | exit | incapacity or arithmetic, then wiring | incapacity | HIT |
 
 **Reading the replies:**
@@ -3997,7 +3997,7 @@ Names in the seventeenth and eighteenth sections written as `debate.`
 module, as is `judge_repaired`, formerly in `adjudication.py`. Every
 repair request and fingerprint is byte-identical to those on record.
 
-## Nineteenth Measurement — Removal-Caused Defects Quoted in Round 1
+## Nineteenth Measurement: Removal-Caused Defects Quoted in Round 1
 
 **Status (2026-10-25): drafted before any code change or model call,
 reviewed, and signed off with the amendments below. Implemented as
@@ -4166,7 +4166,7 @@ FPs by class, null-check claims included; deletion-class blockers
 stored per run on the bridge; runaways.
 
 **Noise:** between two 33-run samples on identical requests, valid share
-moved 57% → 65%, FPs per review 0.55 → 0.39 and recall 0.46 → 0.36
+moved 57% to 65%, FPs per review 0.55 to 0.39 and recall 0.46 to 0.36
 (sixteenth). The recall bar is the same size as that swing, which is why
 the sample is twice the usual size.
 
@@ -4174,16 +4174,16 @@ the sample is twice the usual size.
 
 | metric | prediction |
 |---|---|
-| pilot exit | passes (0–1 of 3 bad first attempts) |
-| first-attempt runaways, corpus | 0–6 of 70 (archived: 4 of 70) |
-| valid quote failures per run | 0.47 → 0.15–0.30 |
-| corpus valid share | 62–74% |
-| corpus FPs per review | 0.33–0.50 |
+| pilot exit | passes (0-1 of 3 bad first attempts) |
+| first-attempt runaways, corpus | 0-6 of 70 (archived: 4 of 70) |
+| valid quote failures per run | 0.47 to 0.15-0.30 |
+| corpus valid share | 62-74% |
+| corpus FPs per review | 0.33-0.50 |
 | corpus mean recall, stored | +0.04 to +0.14 |
 | corpus recall counting demoted items | within 0.06 of 0.59 |
-| corpus FPs per clean review | 0.20–0.60 |
-| bridge FPs per review | 0.14–0.32 |
-| bridge race / gate | 0.60–0.90 / 0.10–0.50 |
+| corpus FPs per clean review | 0.20-0.60 |
+| bridge FPs per review | 0.14-0.32 |
+| bridge race / gate | 0.60-0.90 / 0.10-0.50 |
 
 **Expected by the rule:** the mechanism works (quote failures fall by
 about half), and condition 1 is a coin flip (point estimate +0.08). If
@@ -4268,19 +4268,19 @@ valid). Both arms are judged by j8. The stored split reproduces exactly.
 
 | | baseline (j8, archived) | v14 | change | bar |
 |---|---|---|---|---|
-| corpus mean recall, stored | 0.413 | 0.464 | +0.051 | ≥ +0.10 |
-| corpus FPs per review | 0.409 | 0.348 | −0.061 | ≤ +0.05 |
-| bridge FPs per review | 0.179 | 0.111 | −0.068 | ≤ +0.05 |
-| bridge race found | 0.786 | 0.556 | −0.230 | ≥ −0.1 |
-| bridge gate found | 0.286 | 0.556 | +0.270 | ≥ −0.1 |
-| corpus valid quote failures per run | 0.470 | 0.304 | −35% | ≤ 0.24 (secondary) |
+| corpus mean recall, stored | 0.413 | 0.464 | +0.051 | >= +0.10 |
+| corpus FPs per review | 0.409 | 0.348 | -0.061 | <= +0.05 |
+| bridge FPs per review | 0.179 | 0.111 | -0.068 | <= +0.05 |
+| bridge race found | 0.786 | 0.556 | -0.230 | >= -0.1 |
+| bridge gate found | 0.286 | 0.556 | +0.270 | >= -0.1 |
+| corpus valid quote failures per run | 0.470 | 0.304 | -35% | <= 0.24 (secondary) |
 | corpus valid share | 64% | 70% | | |
 | corpus recall counting demoted items | 0.588 | 0.691 | +0.103 | |
 | corpus FPs per clean review | 0.389 | 0.211 | | |
 
 **By the rules: v14 does not ship.**
 - **Primary rule:** condition 1 fails (recall +0.051), and so does
-  condition 3 (race −0.23). Condition 2 holds.
+  condition 3 (race -0.23). Condition 2 holds.
 - **Secondary rule:** the recall gain is inside its band by one
   thousandth, but the mechanism clause fails: valid quote failures fell
   to 0.30, not to 0.24. Condition 3 fails here too.
@@ -4293,17 +4293,17 @@ the suite was not rerun.
 | prediction | predicted | observed | |
 |---|---|---|---|
 | pilot exit | passes | passes | HIT |
-| first-attempt runaways, corpus | 0–6 of 70 | 1 | HIT |
-| valid quote failures per run | 0.15–0.30 | 0.304 | MISSED HIGH |
-| corpus valid share | 62–74% | 70% | HIT |
-| corpus FPs per review | 0.33–0.50 | 0.348 | HIT |
+| first-attempt runaways, corpus | 0-6 of 70 | 1 | HIT |
+| valid quote failures per run | 0.15-0.30 | 0.304 | MISSED HIGH |
+| corpus valid share | 62-74% | 70% | HIT |
+| corpus FPs per review | 0.33-0.50 | 0.348 | HIT |
 | corpus mean recall, stored | +0.04 to +0.14 | +0.051 | HIT |
 | recall counting demoted items | within 0.06 of 0.59 | 0.691 | MISSED HIGH |
-| corpus FPs per clean review | 0.20–0.60 | 0.211 | HIT |
-| bridge FPs per review | 0.14–0.32 | 0.111 | MISSED LOW |
-| bridge race / gate | 0.60–0.90 / 0.10–0.50 | 0.556 / 0.556 | MISSED LOW / MISSED HIGH |
-| quote failures fall by about half | — | by a third | MISSED |
-| condition 3 fails through deletion claims | — | fails through the race | MISSED |
+| corpus FPs per clean review | 0.20-0.60 | 0.211 | HIT |
+| bridge FPs per review | 0.14-0.32 | 0.111 | MISSED LOW |
+| bridge race / gate | 0.60-0.90 / 0.10-0.50 | 0.556 / 0.556 | MISSED LOW / MISSED HIGH |
+| quote failures fall by about half | - | by a third | MISSED |
+| condition 3 fails through deletion claims | - | fails through the race | MISSED |
 
 **Corpus demotions** (shapes from the same scratch tally as the "Why".
 "Mixed" includes a removed block quoted with a closing brace that is
@@ -4321,10 +4321,10 @@ also a context line, so it overstates quotes that span a removal):
   quoted.** Recall counting demoted items rose by 0.10, against 0.05 for
   stored recall. The new claims are mostly removal-caused bugs: the
   `payloadHex` clamp (`payload_length_unclamped`, stored in 0 of 9
-  baseline runs, 3 of 10 here), `unsubscribed_rows_freeze` (0.10 →
-  0.30) and `static_batch_replay` (0.20 → 0.40). A few others fell:
-  `poll_ignored` 0.11 → 0, `backoff_overshoot` 0.90 → 0.80,
-  `decode_length_8` 1.00 → 0.90. A one-run change on one fixture is
+  baseline runs, 3 of 10 here), `unsubscribed_rows_freeze` (0.10 to
+  0.30) and `static_batch_replay` (0.20 to 0.40). A few others fell:
+  `poll_ignored` 0.11 to 0, `backoff_overshoot` 0.90 to 0.80,
+  `decode_length_8` 1.00 to 0.90. A one-run change on one fixture is
   within this corpus's noise.
 - **The quote instruction was followed only in part.** 17 of the 21
   valid quote failures still quote removed lines, and several keep the
@@ -4416,7 +4416,7 @@ An earlier rescore in this session put the v14 ceiling at +0.027 and
 +0.058. It counted linkage-demoted items as kept and skipped the hedge
 check that would have demoted them. The `j7` numbers above are correct.
 
-## Twentieth Measurement — Field Writers in the Context Pack
+## Twentieth Measurement: Field Writers in the Context Pack
 
 **Status (2026-10-26): drafted before any code change or model call,
 reviewed, and signed off with the amendments at the end. Implemented as
@@ -4555,12 +4555,12 @@ fixtures, proposals and fresh indexes:
   context, not decided on. The extra `poll_override` runs weight them
   differently from the baseline.
 
-**The bridge limit is −0.15, not the nineteenth's −0.1.** The section
+**The bridge limit is -0.15, not the nineteenth's -0.1.** The section
 probably treats the bridge too, so its race and gate rates are outcomes
 here. Against the 28-run baseline, 20 runs leave a standard error of
 about 0.12 on the race difference and 0.13 on the gate difference. With
-no real effect, a −0.1 limit fails by chance 20% (race) and 22% (gate)
-of the time; −0.15 fails 11% and 13%. Taken together, condition 4 still
+no real effect, a -0.1 limit fails by chance 20% (race) and 22% (gate)
+of the time; -0.15 fails 11% and 13%. Taken together, condition 4 still
 fails by chance about one time in four, and a failure is read with that
 in mind.
 
@@ -4577,12 +4577,12 @@ body; runaways.
 | metric | prediction |
 |---|---|
 | Step 0: section on `poll_override` | `chans` and `chan_count` declarations plus `resolve_channels` |
-| Step 0: fixtures with a non-empty section | 4–7 of 8 |
-| `poll_override` FPs per review | 1.33 → 0.4–1.0 |
+| Step 0: fixtures with a non-empty section | 4-7 of 8 |
+| `poll_override` FPs per review | 1.33 to 0.4-1.0 |
 | `poll_override` recall (`poll_ignored`, `poll_needs_filter_at_parse`) | unchanged within 0.2 |
-| corpus mean recall | 0.36–0.46 |
-| other six fixtures' FPs per review (mean of fixture rates) | 0.15–0.35 |
-| bridge FPs per review / race / gate | 0.10–0.30 / 0.60–0.90 / 0.15–0.45 |
+| corpus mean recall | 0.36-0.46 |
+| other six fixtures' FPs per review (mean of fixture rates) | 0.15-0.35 |
+| bridge FPs per review / race / gate | 0.10-0.30 / 0.60-0.90 / 0.15-0.45 |
 
 **Expected by the rule:** condition 1 is a coin flip. The model has to
 connect two facts, `parse_query`'s rejection in the diff and
@@ -4608,7 +4608,7 @@ fixtures' sections will be small.
 A review of the draft settled these:
 - **Decision 2: 20 `poll_override` runs.** Condition 1 rests on this one
   fixture, and 10 runs against a baseline of 9 is thin.
-- **Decision 3: 20 bridge runs, with the limit widened to −0.15**
+- **Decision 3: 20 bridge runs, with the limit widened to -0.15**
   (Rule). The bridge is probably a second treated arm, not a control.
 - **Aggregation is named** (Rule): condition 3 is a mean of fixture
   rates, and pooled figures are context only.
@@ -4649,7 +4649,7 @@ Every choice is now made; the draft is signed off as amended.
 - **Indexes:** all 8 were rebuilt from throwaway clones at their bases,
   the bridge's with the summary cache and model calls disabled. Apart
   from the two new keys and `index_version`, each is identical to the
-  index it replaces. Storing function lines makes them 4–5 times larger,
+  index it replaces. Storing function lines makes them 4-5 times larger,
   60 to 450 KB each.
 - **Tests:** 218. Two mutations fail them: a writer the diff changes
   kept in the section, and the removed-code check counting every
@@ -4659,8 +4659,8 @@ Every choice is now made; the draft is signed off as amended.
 
 | fixture | section | section chars | pack chars | input estimate | shown |
 |---|---|---|---|---|---|
-| `backoff_clamp` | empty | 0 | 518 | 2,865 | — |
-| `trusted_count` | empty | 0 | 1,757 | 3,092 | — |
+| `backoff_clamp` | empty | 0 | 518 | 2,865 | - |
+| `trusted_count` | empty | 0 | 1,757 | 3,092 | - |
 | `poll_override` | treated | 1,571 | 2,532 | 4,413 | 8 declarations; `resolve_channels` (24 of 41 lines) |
 | `connect_start` | treated | 1,762 | 3,829 | 5,324 | 5 declarations; `applyConnectedState` (18 of 18), `SignalListModel::setSignalSet` (25 of 25) |
 | `decode_length` | treated | 1,143 | 2,775 | 6,067 | 7 declarations; `toggleSubscribed` (9 of 9), `~QtTuneBridge` (10 of 10) |
@@ -4698,7 +4698,7 @@ controls: their diffs use no member of a struct or class defined in a
 modified file.
 
 **The bridge is effectively a control, too.** The review that set its 20
-runs and the −0.15 limit expected it to be a second treated fixture. It
+runs and the -0.15 limit expected it to be a second treated fixture. It
 is not: its diff changes every function that writes a member it uses, so
 the section holds one declaration unrelated to the race or the gate. The
 registration is unchanged. The 20 runs now check that the pack change
@@ -4775,12 +4775,12 @@ exactly.
 
 | | baseline (j8, archived v11.1) | v15 | change | bar |
 |---|---|---|---|---|
-| 1. `poll_override` FPs per review | 1.333 (9 runs) | 1.667 (15 runs) | +0.333 | ≤ 0.83 |
-| 2. corpus mean recall, stored | 0.413 | 0.430 | +0.017 | ≥ −0.05 |
-| 3. other six fixtures, mean FPs per review | 0.274 | 0.283 | +0.009 | ≤ +0.05 |
-| 4. bridge FPs per review | 0.179 | 0.600 | +0.421 | ≤ +0.05 |
-| 4. bridge race found | 0.786 | 0.650 | −0.136 | ≥ −0.15 |
-| 4. bridge gate found | 0.286 | 0.300 | +0.014 | ≥ −0.15 |
+| 1. `poll_override` FPs per review | 1.333 (9 runs) | 1.667 (15 runs) | +0.333 | <= 0.83 |
+| 2. corpus mean recall, stored | 0.413 | 0.430 | +0.017 | >= -0.05 |
+| 3. other six fixtures, mean FPs per review | 0.274 | 0.283 | +0.009 | <= +0.05 |
+| 4. bridge FPs per review | 0.179 | 0.600 | +0.421 | <= +0.05 |
+| 4. bridge race found | 0.786 | 0.650 | -0.136 | >= -0.15 |
+| 4. bridge gate found | 0.286 | 0.300 | +0.014 | >= -0.15 |
 | corpus FPs per review, pooled | 0.409 | 0.568 | | context |
 | corpus valid share | 64% | 59% | | context |
 | recall counting demoted items | 0.588 | 0.628 | | context |
@@ -4795,14 +4795,14 @@ inside the widened limit.
 
 | fixture | runs | FPs per review | baseline classes | v15 classes |
 |---|---|---|---|---|
-| `backoff_clamp` | 10 → 10 | 0.00 → 0.00 | — | — |
-| `trusted_count` | 10 → 9 | 0.00 → 0.00 | — | — |
-| `poll_override` | 9 → 15 | 1.33 → 1.67 | invariant-elsewhere 10, thread 1, other 1 | invariant-elsewhere 21, thread 1, other 3 |
-| `connect_start` | 10 → 10 | 0.20 → 0.00 | thread 1, deletion 1 | — |
-| `decode_length` | 9 → 10 | 0.67 → 0.30 | other 4, thread 2 | thread 2, other 1 |
-| `init_noops` | 9 → 10 | 0.00 → 0.10 | — | other 1 |
-| `ecu_support` | 9 → 10 | 0.78 → 1.30 | thread 4, bounds 3 | thread 11, bounds 2 |
-| bridge | 28 → 20 | 0.18 → 0.60 | other 5 | other 11, deletion 1 |
+| `backoff_clamp` | 10 to 10 | 0.00 to 0.00 | - | - |
+| `trusted_count` | 10 to 9 | 0.00 to 0.00 | - | - |
+| `poll_override` | 9 to 15 | 1.33 to 1.67 | invariant-elsewhere 10, thread 1, other 1 | invariant-elsewhere 21, thread 1, other 3 |
+| `connect_start` | 10 to 10 | 0.20 to 0.00 | thread 1, deletion 1 | - |
+| `decode_length` | 9 to 10 | 0.67 to 0.30 | other 4, thread 2 | thread 2, other 1 |
+| `init_noops` | 9 to 10 | 0.00 to 0.10 | - | other 1 |
+| `ecu_support` | 9 to 10 | 0.78 to 1.30 | thread 4, bounds 3 | thread 11, bounds 2 |
+| bridge | 28 to 20 | 0.18 to 0.60 | other 5 | other 11, deletion 1 |
 
 **Reported apart:**
 - **Invariant-elsewhere** occurs only on `poll_override`: 10 claims in 9
@@ -4834,13 +4834,13 @@ inside the widened limit.
 | prediction | predicted | observed | |
 |---|---|---|---|
 | Step 0: section on `poll_override` | `chans`, `chan_count`, `resolve_channels` | as predicted | HIT |
-| Step 0: fixtures with a non-empty section | 4–7 of 8 | 6 (5 treated, plus the bridge's 81 characters) | HIT |
-| `poll_override` FPs per review | 0.4–1.0 | 1.67 | MISSED HIGH |
-| `poll_override` recall unchanged within 0.2 | — | `poll_ignored` 0.11 → 0.07; `poll_needs_filter_at_parse` 0.11 → 0.33 | MISSED (one bug) |
-| corpus mean recall | 0.36–0.46 | 0.430 | HIT |
-| other six fixtures' FPs per review | 0.15–0.35 | 0.283 | HIT |
-| bridge FPs per review / race / gate | 0.10–0.30 / 0.60–0.90 / 0.15–0.45 | 0.60 / 0.65 / 0.30 | MISSED HIGH / HIT / HIT |
-| the guards hold | — | condition 4 fails | MISSED |
+| Step 0: fixtures with a non-empty section | 4-7 of 8 | 6 (5 treated, plus the bridge's 81 characters) | HIT |
+| `poll_override` FPs per review | 0.4-1.0 | 1.67 | MISSED HIGH |
+| `poll_override` recall unchanged within 0.2 | - | `poll_ignored` 0.11 to 0.07; `poll_needs_filter_at_parse` 0.11 to 0.33 | MISSED (one bug) |
+| corpus mean recall | 0.36-0.46 | 0.430 | HIT |
+| other six fixtures' FPs per review | 0.15-0.35 | 0.283 | HIT |
+| bridge FPs per review / race / gate | 0.10-0.30 / 0.60-0.90 / 0.15-0.45 | 0.60 / 0.65 / 0.30 | MISSED HIGH / HIT / HIT |
+| the guards hold | - | condition 4 fails | MISSED |
 
 **Reading:**
 - **The facts reached the reviewer and did not change the claim.**
@@ -4863,7 +4863,7 @@ inside the widened limit.
   read as noise.
 - **The bridge's false positives rose with an 81-character section.**
   Its section holds one unrelated declaration, so the section's content
-  cannot explain 0.18 → 0.60. Of the 12 false positives, 5 are
+  cannot explain 0.18 to 0.60. Of the 12 false positives, 5 are
   thread-safety claims on members other than the race's
   (`m_guiNotifyCount` twice, `m_lastReportedDropped`, `m_connected`,
   `m_droppedFrames`), and 4 are lifetime claims about `self` or the
@@ -4871,7 +4871,7 @@ inside the widened limit.
   section heading ("members the changed code uses") primes member-level
   claims, or the archived baseline (v9 to v11 prompts) understates
   today's rate. The nineteenth's 9 bridge runs (v14, f3 pack) had 0.11,
-  which leans toward the first. The −0.15 widening was about chance
+  which leans toward the first. The -0.15 widening was about chance
   failures of race and gate; this failure is not one.
 
 **Conclusion:** putting the refuting facts in the pack does not remove
@@ -4891,7 +4891,7 @@ indexes are as they were at `d2a7dc8`. The bridge debate fingerprint is
 live golden suite passed with, and the suite was not rerun. The v15
 label counts stay pinned.
 
-## Twenty-First Measurement — Per-File Layer Notes
+## Twenty-First Measurement: Per-File Layer Notes
 
 **Status (2026-10-26): drafted before any code change or model call,
 and signed off with the choices recorded at the end. The bridge control
@@ -4996,12 +4996,12 @@ hypothesis test, not decided on.
 
 | metric | prediction |
 |---|---|
-| `poll_override` FPs per review | 1.0–1.9 (no fall) |
-| `poll_override` invariant-elsewhere per run | 0.9–1.6 |
-| `init_noops` FPs per review | 0.0–0.4 (the core block may invite C ABI claims) |
-| `trusted_count` FPs per review | 0.0–0.2 |
-| mean recall of the four bugs | 0.10–0.30 |
-| bridge FPs per review / race / gate | 0.10–0.40 / 0.60–0.90 / 0.15–0.45 |
+| `poll_override` FPs per review | 1.0-1.9 (no fall) |
+| `poll_override` invariant-elsewhere per run | 0.9-1.6 |
+| `init_noops` FPs per review | 0.0-0.4 (the core block may invite C ABI claims) |
+| `trusted_count` FPs per review | 0.0-0.2 |
+| mean recall of the four bugs | 0.10-0.30 |
+| bridge FPs per review / race / gate | 0.10-0.40 / 0.60-0.90 / 0.15-0.45 |
 
 **Expected by the rule:** conditions 1 and 2 hold; condition 3 is the
 risk, because the twentieth's bridge rate (0.60 with a nearly empty
@@ -5036,8 +5036,8 @@ may rise by at most 0.10 over the control's, and race and gate found may
 each drop by at most 0.15 from the control's. The archived baseline is
 reported as context. No `poll_override` control.
 
-**Prediction for the control:** FPs per review 0.10–0.40, race
-0.60–0.90, gate 0.15–0.45.
+**Prediction for the control:** FPs per review 0.10-0.40, race
+0.60-0.90, gate 0.15-0.45.
 
 **What the control also reads.** The twentieth's bridge rate (0.60 with
 a one-declaration section) had two readings: the section heading
@@ -5064,9 +5064,9 @@ set `control21`).
 
 | | archived (28) | control (19) | prediction | |
 |---|---|---|---|---|
-| FPs per review | 0.179 | 0.105 | 0.10–0.40 | HIT |
-| race found | 0.786 | 0.526 | 0.60–0.90 | MISSED LOW |
-| gate found | 0.286 | 0.421 | 0.15–0.45 | HIT |
+| FPs per review | 0.179 | 0.105 | 0.10-0.40 | HIT |
+| race found | 0.786 | 0.526 | 0.60-0.90 | MISSED LOW |
+| gate found | 0.286 | 0.421 | 0.15-0.45 | HIT |
 
 Of 32 kept blockers, 30 are valid (18 race, 12 gate); the two false
 positives are the dangling-copy claims (`228951`). Condition 3's bars
@@ -5082,7 +5082,7 @@ are now: v16 bridge FPs per review at most 0.205, race found at least
   (0.556) would not have read as a drop. That does not change the
   nineteenth's verdict, which failed on recall as well, but bridge race
   comparisons against the archived 28 should be read with this in mind.
-  Gate moved the other way (0.29 → 0.42), so attention between the two
+  Gate moved the other way (0.29 to 0.42), so attention between the two
   shifts from sample to sample.
 
 ### Implementation (2026-10-26, while the control sampled)
@@ -5142,11 +5142,11 @@ exactly.
 
 | | baseline | v16 | change | bar |
 |---|---|---|---|---|
-| 1. mean FPs per review, three fixtures | 0.444 | 0.478 | +0.034 | ≤ +0.15 |
-| 2. mean recall, four bugs | 0.181 | 0.126 | −0.054 | ≥ −0.10 |
-| 3. bridge FPs per review (control) | 0.105 | 0.333 | +0.228 | ≤ 0.205 |
-| 3. bridge race found (control) | 0.526 | 0.556 | +0.029 | ≥ 0.376 |
-| 3. bridge gate found (control) | 0.421 | 0.500 | +0.079 | ≥ 0.271 |
+| 1. mean FPs per review, three fixtures | 0.444 | 0.478 | +0.034 | <= +0.15 |
+| 2. mean recall, four bugs | 0.181 | 0.126 | -0.054 | >= -0.10 |
+| 3. bridge FPs per review (control) | 0.105 | 0.333 | +0.228 | <= 0.205 |
+| 3. bridge race found (control) | 0.526 | 0.556 | +0.029 | >= 0.376 |
+| 3. bridge gate found (control) | 0.421 | 0.500 | +0.079 | >= 0.271 |
 | recall counting demoted items | 0.533 | 0.503 | | context |
 | bridge valid share | 94% | 82% | | context |
 
@@ -5161,10 +5161,10 @@ fails on bridge false positives: 6 in 18 runs against the control's 2 in
 
 | fixture | runs | FPs per review | recall (stored) | classes |
 |---|---|---|---|---|
-| `poll_override` | 9 → 19 | 1.33 → 1.21 | `poll_ignored` 0.11 → 0.05, `poll_needs_filter_at_parse` 0.11 → 0.05 | invariant-elsewhere 10 → 20, thread 1 → 2, other 1 → 1 |
-| `init_noops` | 9 → 9 | 0.00 → 0.22 | — | other 0 → 2 (one run) |
-| `trusted_count` | 10 → 10 | 0.00 → 0.00 | `count_under_error` 0.30 → 0.10, `static_batch_replay` 0.20 → 0.30 | — |
-| bridge | 19 → 18 | 0.11 → 0.33 | race 0.53 → 0.56, gate 0.42 → 0.50 | other 2 → 1, removal-objection 0 → 4, deletion 0 → 1 |
+| `poll_override` | 9 to 19 | 1.33 to 1.21 | `poll_ignored` 0.11 to 0.05, `poll_needs_filter_at_parse` 0.11 to 0.05 | invariant-elsewhere 10 to 20, thread 1 to 2, other 1 to 1 |
+| `init_noops` | 9 to 9 | 0.00 to 0.22 | - | other 0 to 2 (one run) |
+| `trusted_count` | 10 to 10 | 0.00 to 0.00 | `count_under_error` 0.30 to 0.10, `static_batch_replay` 0.20 to 0.30 | - |
+| bridge | 19 to 18 | 0.11 to 0.33 | race 0.53 to 0.56, gate 0.42 to 0.50 | other 2 to 1, removal-objection 0 to 4, deletion 0 to 1 |
 
 **Reported apart:**
 - **The hypothesis test: invariant-elsewhere on `poll_override`** went
@@ -5195,13 +5195,13 @@ fails on bridge false positives: 6 in 18 runs against the control's 2 in
 
 | prediction | predicted | observed | |
 |---|---|---|---|
-| `poll_override` FPs per review | 1.0–1.9 | 1.21 | HIT |
-| `poll_override` invariant-elsewhere per run | 0.9–1.6 | 1.05 | HIT |
-| `init_noops` FPs per review | 0.0–0.4 | 0.22 | HIT |
-| `trusted_count` FPs per review | 0.0–0.2 | 0.00 | HIT |
-| mean recall of the four bugs | 0.10–0.30 | 0.126 | HIT |
-| bridge FPs per review / race / gate | 0.10–0.40 / 0.60–0.90 / 0.15–0.45 | 0.33 / 0.56 / 0.50 | HIT / MISSED LOW / MISSED HIGH |
-| conditions 1 and 2 hold, 3 is the risk | — | 1 and 2 hold, 3 fails | HIT |
+| `poll_override` FPs per review | 1.0-1.9 | 1.21 | HIT |
+| `poll_override` invariant-elsewhere per run | 0.9-1.6 | 1.05 | HIT |
+| `init_noops` FPs per review | 0.0-0.4 | 0.22 | HIT |
+| `trusted_count` FPs per review | 0.0-0.2 | 0.00 | HIT |
+| mean recall of the four bugs | 0.10-0.30 | 0.126 | HIT |
+| bridge FPs per review / race / gate | 0.10-0.40 / 0.60-0.90 / 0.15-0.45 | 0.33 / 0.56 / 0.50 | HIT / MISSED LOW / MISSED HIGH |
+| conditions 1 and 2 hold, 3 is the risk | - | 1 and 2 hold, 3 fails | HIT |
 
 **Reading:**
 - **The layer note is not what drives invariant-elsewhere.** With the
@@ -5231,7 +5231,7 @@ so the code behind the records stays in history, and then rolled back:
 debates send the requests the live golden suite passed with; the suite
 was not rerun. The v16 label counts stay pinned.
 
-## Runaway Diagnostic — Do Runaways Repeat?
+## Runaway Diagnostic: Do Runaways Repeat?
 
 **Status (2026-10-26): closed. A diagnostic for backlog #19, not a ship decision.
 Predictions written after the collection run started and before any of
@@ -5269,7 +5269,7 @@ thirds; the longest repeated run; quoted code (``` fences) apart.
 
 | | prediction |
 |---|---|
-| `e9c923` re-sends that run away again | 1–2 of 2 |
+| `e9c923` re-sends that run away again | 1-2 of 2 |
 | runaways' prose repeat share | below 0.15: an open-ended search, not a loop |
 | runaways' code repeat share | above their prose share (the diff re-quoted) |
 | long accepted replies' prose repeat share | overlaps the runaways' |
@@ -5302,10 +5302,10 @@ runaways and six accepted replies past 8,192 tokens.
 
 | | prediction | result | |
 |---|---|---|---|
-| `e9c923` re-sends that run away again | 1–2 of 2 | 1 of 2 (the other accepted in 3,173 tokens, 108 s) | HIT |
+| `e9c923` re-sends that run away again | 1-2 of 2 | 1 of 2 (the other accepted in 3,173 tokens, 108 s) | HIT |
 | runaways' prose repeat share | below 0.15 | 0.020 and 0.012; the re-send 0.152 | MISSED for 1 of 3 |
 | runaways' code repeat share | above their prose share | above in all 3 (and in all 9) | HIT |
-| long accepted replies' prose repeat share | overlaps the runaways' | 0.006–0.063 against 0.012–0.152 | HIT |
+| long accepted replies' prose repeat share | overlaps the runaways' | 0.006-0.063 against 0.012-0.152 | HIT |
 
 **Decision rule: no threshold separates them.** On the last third's
 prose repeat share, two runaways (0.02, 0.03) sit below four of the six
@@ -5368,15 +5368,15 @@ Lost findings are counted on the hand-labeled corpus first attempts
 | 10,240 | 2.2% | 18 (4.7%) | 9 of 178 | 6 of 143 |
 | 11,264 | 0.9% | 9 (2.4%) | 7 of 178 | 2 of 143 |
 
-Long replies are not worse: labeled replies of 8,192–10,240 tokens carry
-1.00 valid blockers each, against 0.65–0.67 below 8,192. Every budget
+Long replies are not worse: labeled replies of 8,192-10,240 tokens carry
+1.00 valid blockers each, against 0.65-0.67 below 8,192. Every budget
 that saves real time cuts more valid findings than false ones, and the
 replies that replace them are retries, the short mode the scorers
 exclude. **An early retry on a token or time budget is not worth
 building.** What remains of #19 is the failed-closed call (2 of 398),
 where the retries run away too.
 
-## Twenty-Second Measurement — Reviewer Model Bake-Off
+## Twenty-Second Measurement: Reviewer Model Bake-Off
 
 **Status (2026-10-27): closed, no candidate ships.
 `nemotron-3.5-lightning:30b` was dropped at Stage 0 (runs to the cap);
@@ -5460,12 +5460,12 @@ registered measurement.
 |---|---|
 | `qwen3-coder:30b` Stage 0 | passes; median wall below the control's, no runaways |
 | `nemotron-3.5-lightning:30b` Stage 0 | passes |
-| `qwen3-coder:30b` corpus | recall below the control's; false positives within ±0.15 per review; fails condition 1 |
+| `qwen3-coder:30b` corpus | recall below the control's; false positives within +/-0.15 per review; fails condition 1 |
 | `nemotron-3.5-lightning:30b` corpus | recall below the control's and false positives above; fails condition 1 |
 | any candidate ships | no |
 | corroboration (exploratory) | false positives per review fall by 30% or more and mean recall by 0.10 or more |
 
-**Cost:** about 1.5–3 h of GPU per arm (4.5–9 h in all) and about 35
+**Cost:** about 1.5-3 h of GPU per arm (4.5-9 h in all) and about 35
 records to label per arm.
 
 ### Models (2026-10-26, recorded at pull, before Stage 0)
@@ -5519,7 +5519,7 @@ Stage 1 is the control and `qwen3-coder:30b`, 35 runs each.
 In Stage 0, qwen stored 0 blockers in each of its 3 bridge runs. The
 control stored none in 5 of the twenty-first's 19 control runs (0.26),
 so at the control's rate three empty runs would happen about 2% of the
-time (0.26³ ≈ 0.018). The prediction is now: qwen's corpus mean recall
+time (0.26^3 ~ 0.018). The prediction is now: qwen's corpus mean recall
 falls 0.10 or more below the control's, and qwen fails both branches of
 condition 1. The rule is unchanged. More bridge runs were considered and
 not added: Stage 1 is scored on the corpus, and the bridge enters only
@@ -5575,11 +5575,11 @@ those; the trusted-count pair it finds only as evidence-demoted items.
 |---|---|
 | `qwen3-coder:30b` Stage 0: passes, median below the control's, no runaways | held |
 | `nemotron-3.5-lightning:30b` Stage 0: passes | missed: dropped |
-| `qwen3-coder:30b` corpus, as amended: recall 0.10 or more below the control's, fails both branches | held: −0.332, fails both |
-| `qwen3-coder:30b` corpus, as first registered: recall below, false positives within ±0.15 per review, fails condition 1 | recall and condition 1 held; false positives missed (−0.382) |
+| `qwen3-coder:30b` corpus, as amended: recall 0.10 or more below the control's, fails both branches | held: -0.332, fails both |
+| `qwen3-coder:30b` corpus, as first registered: recall below, false positives within +/-0.15 per review, fails condition 1 | recall and condition 1 held; false positives missed (-0.382) |
 | `nemotron-3.5-lightning:30b` corpus | not run |
 | any candidate ships | held: none |
-| corroboration: false positives fall 30% or more, mean recall 0.10 or more | held: 0.382 → 0.029 (−92%), 0.423 → 0.136 |
+| corroboration: false positives fall 30% or more, mean recall 0.10 or more | held: 0.382 to 0.029 (-92%), 0.423 to 0.136 |
 
 **Corroboration (exploratory).** There are 34 pairs; the retried
 control run drops its pair. Only `decode_length_b47687c` has
@@ -5594,7 +5594,7 @@ blockers, so nothing is registered.
 `MODELS["code_reviewer"]` stays `laguna-xs-2.1`; ADR-0001 is not
 amended.
 
-## Twenty-Third Measurement — Engineer Model Bake-Off
+## Twenty-Third Measurement: Engineer Model Bake-Off
 
 **Status (2026-10-27): not shipped. `gpt-oss:20b` passes condition 1
 (mean recall in any item 0.741 against gemma's 0.509) and fails
@@ -5661,14 +5661,14 @@ How a different engineer changes later rounds is not measured.
 
 | | prediction |
 |---|---|
-| gemma (control) | no engineer blockers, as in the 27 archived replies; recall in any item 0.2–0.4 |
+| gemma (control) | no engineer blockers, as in the 27 archived replies; recall in any item 0.2-0.4 |
 | `gpt-oss:20b` Stage 0 | passes |
 | `gpt-oss:20b` blockers | raised in at least 20% of runs |
 | `gpt-oss:20b` recall in any item | at least 0.10 above gemma's (condition 1 holds) |
 | `gpt-oss:20b` false blockers | above 0.10 per review (condition 2 fails) |
 | ships | no |
 
-**Cost:** about 0.5 h of GPU for the control and 1–1.5 h for
+**Cost:** about 0.5 h of GPU for the control and 1-1.5 h for
 `gpt-oss:20b`; labeling about 35 records per arm, mostly blockers.
 
 ### Models (2026-10-26, recorded at pull, before Stage 0)
@@ -5747,7 +5747,7 @@ invariant-elsewhere blockers are counted valid (0.182 per review).
 
 | prediction | outcome |
 |---|---|
-| gemma: no engineer blockers; recall in any item 0.2–0.4 | missed: 6 blockers in 5 runs (backoff 1, decode length 5; 1 false); recall in any item 0.509 |
+| gemma: no engineer blockers; recall in any item 0.2-0.4 | missed: 6 blockers in 5 runs (backoff 1, decode length 5; 1 false); recall in any item 0.509 |
 | `gpt-oss:20b` Stage 0: passes | held |
 | `gpt-oss:20b` blockers in at least 20% of runs | held: 17 of 33 (52%) |
 | `gpt-oss:20b` recall in any item at least 0.10 above gemma's | held: +0.232 |
@@ -5770,7 +5770,7 @@ reviewer prompt and the evidence check.
 
 `MODELS["auto_engineer"]` stays `gemma4:12b`.
 
-## Twenty-Fourth Measurement — `gpt-oss:20b` as the Reviewer
+## Twenty-Fourth Measurement: `gpt-oss:20b` as the Reviewer
 
 **Status (2026-10-27): registered before any sample; scored the same
 day: fails condition 1, so laguna stays the reviewer.**
@@ -5823,7 +5823,7 @@ I had seen):
 | first attempts at the cap, Stage 1 | at most 1 of 35 |
 | ships at this stage | no decision: passing condition 1 leads to the confirmation sample, which needs a separate go |
 
-**Cost:** about 1 h of GPU for the control and 0.5–1 h for the
+**Cost:** about 1 h of GPU for the control and 0.5-1 h for the
 candidate, plus Stage 0.
 
 ### Stage 0 (2026-10-27): passes
@@ -5839,7 +5839,7 @@ Three bridge runs, excluded from scoring:
 0 of 3 were unusable and none reached the cap. The median is 177 s
 (limit 276 s), so Stage 1 started at 16:04 UTC without a stop. The
 prediction "median below the control's 92 s" missed: as the reviewer,
-`gpt-oss:20b` thinks for 4,000–5,500 tokens, where as the engineer it
+`gpt-oss:20b` thinks for 4,000-5,500 tokens, where as the engineer it
 used about 1,500. That bears on condition 2 (at most twice the
 concurrent control's median), which is read on the corpus, where the
 requests are smaller. Only the gate's telemetry lines were read. The
@@ -5882,7 +5882,7 @@ judge's stored split; under the replay the candidate's recall would be
 
 **Rule.** Condition 1 fails on both branches. Recall is 0.127 below the
 control's, where the first branch needs +0.10 and the second allows at
-most −0.05. False positives are 0.73 times the control's, just over the
+most -0.05. False positives are 0.73 times the control's, just over the
 second branch's 0.7 (0.300). The recall shortfall alone fails the
 condition. Condition 2 holds (60 s against a 140 s limit, none failed
 closed). No confirmation sample was run.
@@ -5910,7 +5910,7 @@ closed). No confirmation sample was run.
   fewer valid claims in the first place.
 - **The bridge was the slow case.** On the corpus its median output was
   2,554 tokens and its median call 60 s, faster than laguna's. Stage 0's
-  177 s came from 4,000–5,500 tokens on the larger bridge request.
+  177 s came from 4,000-5,500 tokens on the larger bridge request.
 
 **Two models together (exploratory, not registered).** Pairing run *i*
 of each arm within a fixture:
@@ -5932,7 +5932,7 @@ claims, not hunks, and would be a measurement of its own.
 | Stage 0: median first attempt below the control's 92 s | missed: 177 s |
 | Stage 0: no first attempt at the cap | held |
 | false positives at most 0.7 times the control's | missed, narrowly: 0.73 times (0.314 against 0.429) |
-| mean recall (stored) within 0.05 of the control's | missed: −0.127 |
+| mean recall (stored) within 0.05 of the control's | missed: -0.127 |
 | condition 1 holds, by the false-positive branch | missed: fails both branches |
 | first attempts at the cap, Stage 1: at most 1 of 35 | held: 0 |
 | ships at this stage: no decision | moot: condition 1 failed, no confirmation sample |
@@ -5940,7 +5940,7 @@ claims, not hunks, and would be a measurement of its own.
 `MODELS["code_reviewer"]` stays `laguna-xs-2.1`; ADR-0001 is not
 amended.
 
-## Twenty-Fifth Measurement — The Engineer at Verdict Level (Offline)
+## Twenty-Fifth Measurement: The Engineer at Verdict Level (Offline)
 
 **Status (2026-10-27): registered before any pairing was computed,
 then scored. Arm A (`gpt-oss:20b`, blockers reject) passes and earns a
@@ -6022,8 +6022,8 @@ runs on `trusted_count_6420f09` and `decode_length_b47687c`.
 Both wrong rejects in every arm are laguna's, on the clean fixtures; no
 engineer raised a blocker there.
 
-**Rule.** A passes all four conditions: misses 5 → 3, wrong rejects
-equal, wrong-reason rejects 2 → 0, reader recall +0.053. B fails
+**Rule.** A passes all four conditions: misses 5 to 3, wrong rejects
+equal, wrong-reason rejects 2 to 0, reader recall +0.053. B fails
 condition 1 (6 misses against 5), since gemma's one blocker that
 prevented a miss is gone. A is preferred either way.
 
@@ -6056,7 +6056,7 @@ over its bar. That is what the confirmation sample is for. It is 35
 1.5 h of GPU, and needs a separate go. If arm A holds there, it ships
 as `MODELS["auto_engineer"] = "gpt-oss:20b"` with no protocol change.
 
-## Corpus v2 — Forward Diffs of the Commits That Introduced the Bugs
+## Corpus v2: Forward Diffs of the Commits That Introduced the Bugs
 
 **Status (2026-10-27): built, not yet baselined.** Fixtures only, no
 measurement. Every measurement on it starts from a fresh baseline.
@@ -6122,7 +6122,7 @@ Eleven known bugs, as in v1, but not the same eleven:
   saturated backlog to drain.
 
 All fixtures pass the input check and the base check, and every bug has
-a symbol in its diff's post-change lines (tests). The diffs are 1.5–3
+a symbol in its diff's post-change lines (tests). The diffs are 1.5-3
 times v1's, with more unrelated change around each bug. That is closer
 to a real review and should be harder. A real bug present in a
 post-state but not introduced by its diff (`payload_length_unclamped` in

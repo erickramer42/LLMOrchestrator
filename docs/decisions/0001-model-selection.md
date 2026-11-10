@@ -27,7 +27,7 @@ deepseek-v4.1-flash, glm-5.3, kimi-k3 (cloud-routed only, not local weights).
 
 - Code reviewer: laguna-xs-2.1, scoped system prompt (v2-header-scope),
   num_ctx 16384 (initially raised to 32768 to eliminate done_reason=length
-  truncation from thinking tokens; validated back down to 16384 by probe —
+  truncation from thinking tokens; validated back down to 16384 by probe:
   sufficient headroom with materially better latency).
   *Amended 2026-10-22: debates use num_ctx 24576.* The probe validated
   16384 on header-only fixtures. On the bridge-refactor diff the prompt
@@ -42,16 +42,16 @@ deepseek-v4.1-flash, glm-5.3, kimi-k3 (cloud-routed only, not local weights).
   `num_predict` 12288 (ADR-0002, third follow-up).
 - Automotive engineer: gemma4:12b.
 - Verdicts are derived from agent content (blockers/questions), never from
-  the model's self-reported verdict label — see ADR-0002.
+  the model's self-reported verdict label; see ADR-0002.
 
 ## Evaluation Evidence
 
 Model dissent repeatedly exposed defects in the eval harness itself before
-questioning the models — documented here because it shaped how much the
+questioning the models, documented here because it shaped how much the
 numbers below can be trusted:
 
 1. Fixture bug #1: clean-case snippet lacked include guards; two models
-   "falsely" flagged it — ground-truth error, not model error.
+   "falsely" flagged it: ground-truth error, not model error.
 2. Fixture bug #2: wrong namespace (qtune vs qttune) caused a spurious
    Qt-leakage false positive.
 3. Metric conflation: FP probe scored hedged questions and verdict-label
@@ -71,7 +71,7 @@ numbers below can be trusted:
 | Median questions | 5 per run |
 | Parse failures | 0/5 (0%) |
 | Timeouts | 0/5 (0%)* |
-| Per-run latency | ~90–180s |
+| Per-run latency | ~90-180s |
 
 Fixture: QtTune's `core/include/qttune/core.h` at `e08b455`, committed as
 [docs/fixtures/qttune_core_e08b455.h](../fixtures/qttune_core_e08b455.h)
@@ -79,7 +79,7 @@ on 2026-10-23. The logs record only the path `..\core.h`, and that copy
 is gone. `e08b455` was the committed version during both probe runs and
 header review 194320 (2026-10-07; the next change, `b975457`, came at
 18:02 that day). It has every detail the replies cite: the anonymous
-frame struct, `rsvd[3]`, `is_extended`, `data_length` 0–64 and
+frame struct, `rsvd[3]`, `is_extended`, `data_length` 0-64 and
 `out_frame` with a timeout.
 
 \* The 2026-10-07 probe could not count a timeout. Its counter looked
@@ -103,9 +103,9 @@ context (e.g., "#include <vector> violates C ABI integrity" vs. just
 
 - Partial CPU offload (laguna) accepted: MoE active params (~3B) keep
   throughput at 63.9 tok/s despite 50% split.
-- Thinking models pay per-call latency (~15-25s); a 3-round debate ≈ 2 min.
+- Thinking models pay per-call latency (~15-25s); a 3-round debate ~2 min.
 - Fixture-validation numbers (0% FP) did NOT transfer to production
-  workloads — measured at 1/12 precision on the first real diff (2/12
+  workloads: measured at 1/12 precision on the first real diff (2/12
   after the 2026-10-23 re-triage against the diff's post-state). That
   finding and its remediation are the subject of ADR-0002.
 
