@@ -355,7 +355,7 @@ previously-shipped bugs from a diff alone.
   AGENT_FAILURE). The retrieval budget competes with the debate
   loop's context growth; pack-from-rounds-2+ or a larger num_ctx is
   the trade space.
-  *Correction (2026-10-22, code review 2026-10-21 finding 8):* the
+  *Correction (2026-10-22, from the 2026-10-21 code review):* the
   prompt sizes do not support this attribution. In run 2 the diff is
   26,695 of ~32,000 prompt chars (~83%); the pack is 2,023 and the
   reviewer system prompt 1,890, and the proposal grew from 66 to 1,371
@@ -396,7 +396,7 @@ previously-shipped bugs from a diff alone.
   roughly doubles the output headroom to ~15K tokens. An output cap
   alone would only make a runaway fail sooner, since it still yields no
   JSON. Limiting thinking (the model reports Ollama's `thinking`
-  capability) changes reviewer behaviour and would need its own
+  capability) changes reviewer behavior and would need its own
   measurement. On the RTX 3060 (12 GB) the 20.7 GB model's GPU share
   drops from 48% to 46%. Expect slightly slower calls; the next live
   runs' `wall_s` will show by how much.
@@ -536,7 +536,7 @@ remediate and re-measure.
 
 *Prediction recorded 2026-10-22, before any arm was scored.*
 
-**Question** (code review 2026-10-21, finding 1): does the context pack
+**Question** (from the 2026-10-21 code review): does the context pack
 cause the deletion-consistency class? The pack is built from the
 current QtTune tree, but the fixture removes code that tree still has,
 and the transcript labels the pack ground truth that wins over the
@@ -605,7 +605,7 @@ v5.2 pack asserts the same three symbols, now with fuller declarations.
 **Decision rule** (on per-run M2 means):
 
 - **Pack-driven:** no-pack mean <= stale-pack mean - 1.0, and post-state
-  mean <= no-pack mean + 0.7. Remediate in retrieval (finding 1:
+  mean <= no-pack mean + 0.7. Remediate in retrieval (the stale-pack fix:
   post-state index, flag removed symbols, invert the precedence
   wording). Defer backlog #15 until re-measured.
 - **Intrinsic:** no-pack mean >= 0.7 x stale-pack mean. The class does
@@ -695,8 +695,8 @@ as an amendment before those arms run.
 **Decision:** skip the no-pack and post-state arms and fix retrieval
 directly. With arm 1 at 0.5 per run, the pre-registered rule could no
 longer return "pack-driven". One arm-1 blocker already shows the stale
-pack injecting a false fact (the line-390 citation). And finding 1's
-retrieval changes are correct whatever the ablation would show: a
+pack injecting a false fact (the line-390 citation). And the retrieval changes for the
+stale pack are correct whatever the ablation would show: a
 snapshot of another tree should never overrule the diff. Whether the
 class is pack-driven or intrinsic stays unanswered.
 
@@ -1039,7 +1039,7 @@ evidence for them):
   thread-safety blockers with 0 M2, per the fourth and fifth
   measurements.
 - **C, 10 new v6 samples** from the round-1 measurement mode.
-  - Each blocker is labelled by hand with the sixth measurement's
+  - Each blocker is labeled by hand with the sixth measurement's
     classes, against `8ffbf19`.
   - The labels are recorded here before the rule runs on them.
   - The labeller knows the rule. M2 labels rest on `git grep` facts,
@@ -1137,7 +1137,7 @@ guesses.
   (0.1 per run), 28 questions.
 - **Unit:** the same as before: round-1 blockers from first attempts,
   as stored after hedge demotion.
-- **Hedge-demoted items are labelled too.** They are recovered from
+- **Hedge-demoted items are labeled too.** They are recovered from
   the tail of `questions` using the `hedge_demotions` count. A demoted
   M2 is a direct sign the hypothesis holds; a demoted valid blocker
   (race, gate) is a cost (#12).
@@ -1331,7 +1331,7 @@ settings as in the sixth measurement, which is the comparison.
 
 - **Unit:** stored round-1 blockers from first attempts, after both
   demotions.
-- **Evidence-demoted items are labelled too:**
+- **Evidence-demoted items are labeled too:**
   - a demoted M2 is the mechanism working;
   - a demoted valid blocker (race, gate, freeze) is the cost.
 - **M1 is not comparable:** quoted code puts identifiers into blocker
@@ -1650,7 +1650,7 @@ two GUI-thread accesses. It is false, so the demotion was correct.
 ## Evidence Reader j5 (2026-10-22)
 
 **Decision:** the evidence check reads diffs with the shared
-`diff_reader` (code review 2026-10-21, finding 12). Inside a hunk, lines
+`diff_reader`, which replaced four separate diff parsers. Inside a hunk, lines
 are still counted by the hunk header. Outside a hunk, a line is now read
 by its first character. j4 read only lines inside counted hunks, which
 had two consequences:
@@ -1677,7 +1677,7 @@ the regex read the whole flattened blocker. So a hedge word in quoted
 code, such as a `// may be null` comment, demoted a verified blocker.
 From j6 the regex reads every field but the quote. Plain-string
 blockers, the engineer's included, are read whole as before. This is
-the minimum of backlog #12, from code review 2026-10-21, finding 9.
+the minimum of backlog #12: the hedge check reads the claim, not the quote.
 
 **Replay over the records with quoted blockers** (arms G and G3):
 - **No kept blocker can change.** The check reads less text than
@@ -2013,8 +2013,8 @@ and counts, not the blocker texts.
 ## Unknown-Layer Note v10.2 (2026-10-23)
 
 **Decision:** input with no file path gets the unknown-layer note, "apply
-all rules conservatively", and records layer `unknown` (code review
-2026-10-23, finding 19). A path comes from the first `+++` header, or
+all rules conservatively", and records layer `unknown`.
+A path comes from the first `+++` header, or
 else from a `//` comment in the first 20 context lines. Without one, a
 review had no layer note at all. Since j7 a diff without file headers
 can be blocked, so it is a real review input. PROMPT_VERSION is
@@ -2106,8 +2106,8 @@ race**.
   pack, the race was missing from every channel of round 1 in runs 1 and
   2, and run 3 still found it. Without a pack, it had appeared in the
   baseline, in v1 and in the control. The pack's stale call site, the
-  post-fix hand-off for code the diff reverts (code review 2026-10-21,
-  finding 1), may have suppressed
+  post-fix hand-off for code the diff reverts (a pack built from
+  another tree), may have suppressed
   it; three runs cannot tell.
 - **The 8-byte decode was the only true positive of the baseline and
   v1, and it is in removed code.** It is a real QtTune bug, later fixed.
@@ -2141,7 +2141,7 @@ race**.
   gate-and-freeze. No exhaustive triage of it has been done.
 
 **Effect on later measurements:** none. From the fifth measurement on,
-blockers were labelled against `8ffbf19`, and from the sixth with these
+blockers were labeled against `8ffbf19`, and from the sixth with these
 classes.
 
 **Process note:** this re-triage read the blocker texts of the seventh
@@ -2152,7 +2152,7 @@ no longer unseen by the labeller.
 ## Twelfth Measurement: Feedback Section v11 (backlog #11)
 
 *Design and prediction recorded 2026-10-23, before any v11 sample was
-run. Drafted in the 2026-10-23 code review (finding 9) and approved as
+run. Drafted in the 2026-10-23 code review and approved as
 drafted: the template text, 10 samples with the +5 rule, and the gate
 condition with one pair read by hand. v11 was implemented and
 unit-tested before this was written.*
@@ -2407,7 +2407,7 @@ and hedge checks demoted, recovered from the end of its questions. It
 then re-judges them under each variant. Hand labels per blocker are in
 `eval_harness/labels.json`, transcribed from the tenth, eleventh and
 twelfth measurements. 10 demoted items that the ADR never classified
-are labelled by hand and marked as such.
+are labeled by hand and marked as such.
 
 **Reproduction check (done):** re-applying the current judge to all 84
 raw blockers of the 28 first-attempt samples reproduces every record's
@@ -2614,14 +2614,14 @@ tests), `5924214` (its added comments name the bug as a known issue),
 - Prompt v11.1, judge j7, the debate fingerprint. First attempts only;
   retries are excluded as before.
 - Scored by `eval_harness.corpus score`, then read by hand: each stored
-  blocker labelled valid (a known bug, or a real finding) or a false
+  blocker labeled valid (a known bug, or a real finding) or a false
   positive, with the class.
 
 ### Predictions (recorded 2026-10-23, before any sample)
 
 The bridge fixture gave 80-94% valid stored blockers and found the race
 in 10 of 10 runs, the gate in 2-4 of 10. The corpus is unfamiliar code
-in smaller diffs, with the leak working in recall's favour.
+in smaller diffs, with the leak working in recall's favor.
 
 | metric | prediction |
 |---|---|
@@ -2662,7 +2662,7 @@ fingerprint hashes, so this is the design, not mixed arms; the scorer
 now warns only when one fixture's records differ.
 
 **Labels.** Every item, stored or demoted, was read against its
-fixture's `post_rev` and labelled in `eval_harness/corpus_labels.json`
+fixture's `post_rev` and labeled in `eval_harness/corpus_labels.json`
 (`python -m eval_harness.corpus score` prints them). Two notes decide
 most of the false positives:
 - In `poll_override_90020bd`'s post-state, `parse_query` rejects
@@ -2956,7 +2956,7 @@ thirteenth's.
   reads no intent cannot tell from harmful removals.
 - **These 61 samples have now chosen variants twice.** Anything picked
   from them needs fresh samples before it ships: a held-out corpus run,
-  labelled before any variant is applied to it.
+  labeled before any variant is applied to it.
 
 **Open choices (not decided here):**
 1. Measure linkage live as a judge change (JUDGE_VERSION bump), as is
@@ -3061,7 +3061,7 @@ every judge candidate, at one collection's GPU cost.
   eval_harness.corpus run --fixture all --runs 5`: prompt v11.1, judge
   j7, the same indexes, so the requests and fingerprints equal the
   fourteenth's. Retried first attempts are excluded, as before.
-- **Labels first.** Every item is labelled in
+- **Labels first.** Every item is labeled in
   `eval_harness/corpus_labels.json` from `corpus score --labels none`
   (which shows j7's split, the current judge's) before any variant is
   replayed on the new records. The labeller knows the candidates; the
@@ -3291,14 +3291,14 @@ on the same replies: A, the j8 split as stored; B, the split after
 repair. Pairing removes the between-sample noise the sixteenth measured
 (57% to 65% valid on identical requests).
 - **Corpus:** the 66 runs of the fourteenth and sixteenth measurements.
-- **Bridge:** the 28 labelled samples (G3, the eleventh's and twelfth's
+- **Bridge:** the 28 labeled samples (G3, the eleventh's and twelfth's
   round 1).
 - **Requests:** built with today's templates from each committed fixture
   and the record's proposal: what the shipped repair would send. The G3
   items came from v9's unfenced transcript; their repair calls see
   v11.1's fenced one. The code is the same.
 - **Scoring is mechanical.** A repaired item keeps its claim, so its
-  label transfers and no new labelling is needed.
+  label transfers and no new labeling is needed.
 - **Development data.** These labels' authors knew the candidates, and
   the samples have chosen judge variants before. The repair variant was
   not selected on outcomes from them, the fresh model calls are the
@@ -3584,7 +3584,7 @@ own functions (`adjudication.evidence_sources`, `hunk_identifiers`,
 
 `python -m eval_harness.repair ceiling --set corpus|bridge`; no model
 call, about a second. Pinned by a test (it fails with the hedge check
-switched off). The arm labelled "named" in the output is the registered
+switched off). The arm labeled "named" in the output is the registered
 on-point arm: a passing line names one of the claim's identifiers.
 "On-point" in the output also counts claims that name no identifier.
 

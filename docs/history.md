@@ -49,7 +49,7 @@ changed.
   model calls);
 - the review's housekeeping items.
 
-**Later (code review findings 19 and most of 9):**
+**Later (the unknown-layer note, the module split, shared harness code):**
 - PROMPT_VERSION v10.2: input with no file path gets the unknown-layer
   note; inputs with a path are sent as before;
 - repo_context.py split into indexer.py and retrieval.py, so a debate
@@ -85,7 +85,7 @@ changed.
 - judge variants replayed on it (fifteenth): voting and removed-line
   exceptions fail, claim-quote linkage passes once acronyms are not
   counted as identifiers;
-- a fresh sample of 35 corpus runs, labelled before replay (sixteenth),
+- a fresh sample of 35 corpus runs, labeled before replay (sixteenth),
   confirms it, and judge j8 ships claim-quote linkage.
 
 ### 2026-10-24
@@ -141,7 +141,7 @@ changed.
   replies repeat as much, so an abort on repetition was not built.
 - the cost side of #19 checked offline: an early retry at a token budget
   cuts more valid findings than false ones for any real time saving;
-  code review findings 20-23 (the repair runner's version handling)
+  the repair runner's version handling
   fixed; 18 v11.1 `poll_override` runs labeled, putting that fixture's
   baseline at 27 runs (1.22 false positives per review under j8).
 - the model bake-offs drafted and signed off: two local reviewer models
@@ -313,8 +313,7 @@ disagree; STATUS.md has the current state.
     12,288 tokens, and both retries recovered.
   - Debates only; probe and bake-off keep 16384, uncapped.
 - **Diff-authoritative retrieval (2026-10-22, PROMPT_VERSION
-  v6-diff-authoritative, pack format f3; code review 2026-10-21
-  finding 1).**
+  v6-diff-authoritative, pack format f3).**
   - The template calls the pack a snapshot of the indexed tree and the
     diff authoritative. "Ground truth" and "verified facts" are gone.
   - Constants, types and call sites from a modified file that use an
@@ -399,7 +398,7 @@ disagree; STATUS.md has the current state.
   - Context cut at 8000 characters is marked as truncated.
   - Feedback stayed v9's, appended to the proposal, until v11.1.
   - **A CRITIQUES section was measured and not shipped.** It put the
-    previous round in its own section, labelled unverified, with every
+    previous round in its own section, labeled unverified, with every
     channel and a keep-or-drop instruction. In a paired round-2
     measurement it matched v9's format on the race and on precision
     (93% each), but it dropped the in-flight-gate blocker in both pairs
@@ -441,7 +440,7 @@ disagree; STATUS.md has the current state.
   pack itself is deliberately left unchanged. On the bridge fixture all
   6 base blobs match the committed index.
 - **Unknown-layer note (2026-10-23, PROMPT_VERSION
-  v10.2-unknown-layer-note; code review 2026-10-23, finding 19; ADR-0002,
+  v10.2-unknown-layer-note; ADR-0002,
   "Unknown-Layer Note v10.2").** Input
   with no file path, in a diff header or in a `//` comment near the top
   of the context, gets the unknown-layer note ("apply all rules
@@ -537,7 +536,7 @@ disagree; STATUS.md has the current state.
   (corpus FPs per review 0.55 to 0.52, recall unchanged; bridge 0.25 to
   0.18). The composed arm, removal words plus filtered linkage, misses
   the corpus recall bar by one point (+0.09). A fresh sample of 35 corpus
-  runs, labelled before replay, decides both (sixteenth measurement,
+  runs, labeled before replay, decides both (sixteenth measurement,
   registered in `1be7179`).
 - **Judge j8, claim-quote linkage (2026-10-23; ADR-0002, sixteenth
   measurement and "Claim-Quote Linkage j8").** On the fresh sample,
@@ -750,8 +749,8 @@ Suggested order as of 2026-10-26 (judge j8 shipped; the repair route,
 seventeenth and eighteenth measurements, closed; the round-1 quote
 prompt, nineteenth, not shipped; cross-hunk linkage closed by its
 ceiling; field writers in the pack, twentieth, not shipped), then
-recall levers, one measurement each: the call-site caveat (code review
-finding 9), #8 per-file layer notes, #14 structured outputs, #19 early
+recall levers, one measurement each: the call-site caveat (the pack's call sites miss
+`Qt::AutoConnection` ones), #8 per-file layer notes, #14 structured outputs, #19 early
 runaway abort (its first question, whether the reviewer's runaways
 repeat, needs no GPU), then a local-model bake-off on the corpus, then #18
 early reject, then the rest.
@@ -766,7 +765,7 @@ references elsewhere stay valid.
 - **#6 Chained/escalated debates.** On MAX_ROUNDS_EXCEEDED, re-submit
    unresolved questions as a fresh debate. Depends on #2.
 - **#7 Stable real-diff corpus: BASELINE DONE (2026-10-23).** Seven
-   fixtures in `docs/fixtures/corpus/`, 33 labelled runs (Current State;
+   fixtures in `docs/fixtures/corpus/`, 33 labeled runs (Current State;
    ADR-0002, fourteenth measurement). Replayed offline (fifteenth).
    Fresh sample scored (sixteenth): linkage shipped as j8; no
    removed-line exception earned #21. The repair pass and its successor
