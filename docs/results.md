@@ -11,7 +11,7 @@ selection is [ADR-0001](decisions/0001-model-selection.md).
   fixes made one failure class at a time, 94% of the reviewer's stored
   blockers are valid on that diff.
 - From that diff alone, the reviewer found two real bugs that had
-  shipped in QtTune and were fixed later.
+  shipped in Havne and were fixed later.
 - On a corpus of seven other real diffs, precision is lower: 64% of
   stored blockers are valid, with a mean recall of 0.41 per known bug.
   That gap is the current frontier, and six measured attempts to close
@@ -38,8 +38,10 @@ selection is [ADR-0001](decisions/0001-model-selection.md).
 
 ## The bridge fixture: from 17% to 94%
 
-The first real workload was a 300-line refactor of QtTune's Qt bridge,
-[qttune_bridge_refactor.diff](fixtures/qttune_bridge_refactor.diff). On
+The first real workload was a refactor of Havne's Qt bridge,
+[qttune_bridge_refactor.diff](fixtures/qttune_bridge_refactor.diff)
+(Havne's revisions of that time, and so the fixture names, use its
+earlier name, `QtTune`). On
 synthetic fixtures the reviewer had scored 100%; here 2 of 12 blockers
 were correct. The false positives were sorted into classes, each class
 was fixed, and the result was re-measured on the same diff.
@@ -64,17 +66,17 @@ Then 10 round-1 samples per change:
 | Quotes accepted from either side of the diff (not shipped) | 60% | The false claims moved to quoting removed lines. |
 | **Blockers must quote post-change code (shipped)** | **94% (17 of 18)** | Claims of surviving removed code fell to 0.1 per run; 2 valid blockers lost to the check. |
 | **Reviewed code fenced as data (shipped)** | **80% (20 of 25)** | The data race in 10 of 10 runs. A replication gave 94% (17 of 18). |
-| **Previous round's critiques in their own section (shipped)** | 94% in both arms | Round 2, paired against the old format; no metric worse. |
-| **Claim–quote linkage, judge j8 (shipped)** | 94% (control, 19 runs) | 0.11 false positives per review; the race in 53% of runs, the gate in 42%. |
+| **Previous round's critiques in their own section (shipped)** | 94% in both arms | Round 2, paired against the previous format; no metric worse. |
+| **Claim-quote linkage, judge j8 (shipped)** | 94% (control, 19 runs) | 0.11 false positives per review; the race in 53% of runs, the gate in 42%. |
 
 "Valid" means correct in a hand review against the diff's post-state.
 ADR-0002 lists every blocker with its label.
 
 ## Two real bugs, found from a diff alone
 
-The fixture is the reverse patch of a merged QtTune commit, so the code
-it leaves is a state of QtTune that actually shipped. That code has two
-bugs, both fixed later in QtTune's history:
+The fixture is the reverse patch of a merged Havne commit, so the code
+it leaves is a state of Havne that actually shipped. That code has two
+bugs, both fixed later in Havne's history:
 - a worker-thread read of the GUI-owned `m_currentFrameCount`, a data
   race;
 - a backpressure check on the cumulative frame count, which does not
@@ -82,7 +84,7 @@ bugs, both fixed later in QtTune's history:
 
 The reviewer found both from the diff alone. The early triage had
 labeled the race blockers false positives, because it checked them
-against the current QtTune tree instead of the diff's post-state. A
+against the current Havne tree instead of the diff's post-state. A
 re-triage on 2026-10-23 corrected that in both directions: the race
 blockers became true positives, and the first run's only "true
 positive", a hardcoded 8-byte decode, turned out to be in code the diff
@@ -91,7 +93,7 @@ the code the diff leaves.
 
 ## The corpus: does it generalize?
 
-A corpus of seven real QtTune diffs tests whether the fixes transfer.
+A corpus of seven real Havne diffs tests whether the fixes transfer.
 Five reverse a bug-fix commit, so each reintroduces known bugs (eleven
 in all); two are clean forward changes, for a false-positive rate. Each
 diff gets an index of its own base commit.
@@ -99,7 +101,7 @@ diff gets an index of its own base commit.
 | Measurement | Runs | Valid share | False positives per review | Mean recall per bug |
 |---|---|---|---|---|
 | Baseline (fourteenth) | 33 | 57% | 0.55 | 0.46 |
-| With claim–quote linkage, j8 (both samples) | 66 | 64% | 0.41 | 0.41 |
+| With claim-quote linkage, j8 (both samples) | 66 | 64% | 0.41 | 0.41 |
 
 What the corpus showed:
 - **The quote rule costs recall where bugs are removals.** 14 of the 17
@@ -113,7 +115,7 @@ What the corpus showed:
   positives, but on the corpus the false claims recur across samples,
   and voting raised false positives from 0.55 to 0.98 per review
   (offline replay, fifteenth measurement).
-- **Claim–quote linkage does.** A blocker whose claim names code that
+- **Claim-quote linkage does.** A blocker whose claim names code that
   its quote's hunk does not contain becomes a question. On a fresh
   sample, labeled before replay, it cut false positives from 0.39 to
   0.30 per review with recall unchanged, and shipped as judge j8.
@@ -129,8 +131,8 @@ its rule. They are kept because the reasons are informative.
 | Eighteenth | A dedicated repair prompt (two pilots) | Closed at the pilot | A no-model ceiling showed the bar reachable only if the model declined almost every false claim; in the pilot it declined its valid ones too. |
 | Nineteenth | A round-1 prompt rule: quote the line a removal leaves unprotected | Recall +0.05 against +0.10 | Most valid claims still quoted removed lines; where they did not, the quoted code sat in another hunk, which linkage refuses. |
 | Nineteenth, amendment | Linkage across hunks for such claims | Closed without a run | Replaying with no linkage at all bounds any variant at +0.02 recall. |
-| Twentieth | Show the model the unchanged function that enforces a removed check | Target false positives rose, 1.33 → 1.67 per review | Every request carried the refuting code and no claim used it; the new section also tripled the bridge's false positives, which a control run confirmed. |
-| Twenty-first | Give each file of a multi-file diff its own layer rules, not only the first file's | Bridge false positives 0.11 → 0.33 per review, against a bar of 0.21 | The target class did not move (1.11 → 1.05 per run). On the bridge, naming the QML file drew claims toward the removed UI feature, and some quoted lines the evidence check accepts. |
+| Twentieth | Show the model the unchanged function that enforces a removed check | Target false positives rose from 1.33 to 1.67 per review | Every request carried the refuting code and no claim used it; the new section also tripled the bridge's false positives, which a control run confirmed. |
+| Twenty-first | Give each file of a multi-file diff its own layer rules, not only the first file's | Bridge false positives from 0.11 to 0.33 per review, against a bar of 0.21 | The target class did not move (from 1.11 to 1.05 per run). On the bridge, naming the QML file drew claims toward the removed UI feature, and some quoted lines the evidence check accepts. |
 | Twenty-second | Another local reviewer model of the same size class | `qwen3-coder:30b`: mean recall 0.09 against laguna's 0.42 | It stored blockers in 5 of 35 runs, all for the one bug visible on a single post-change line. `nemotron-3.5-lightning:30b` ran every first attempt to the output cap and was dropped before the corpus. |
 | Twenty-third | `gpt-oss:20b` as the engineer instead of `gemma4:12b` | Recall in any item 0.74 against 0.51, but 0.24 false blockers per review against a bar of 0.10 | Of its 8 false blockers, 3 claimed that code the hunks did not show was missing, and 2 read removed declarations as current. An engineer blocker forces a reject and has no evidence check. |
 | Twenty-fourth | `gpt-oss:20b` as the reviewer | Mean recall 0.31 against laguna's 0.44; false positives 0.73 times laguna's, against a bar of 0.7 | It stored fewer blockers, and most of the drop was valid ones. The evidence check demoted its claims of missing code, which had stood when it was the engineer. Taking either model's blockers raised recall to 0.56 but false positives to 0.74 per review. |
@@ -152,7 +154,8 @@ its rule. They are kept because the reasons are informative.
 - **False positives moved before they fell.** With the context pack,
   the reviewer began inventing surviving references to removed code.
   Evidence-quoted blockers later removed most of them.
-- **Thinking can run to the output cap.** About 5% of first attempts;
+- **Thinking can run to the output cap.** About 6% of reviewer first
+  attempts (29 of 458 on record);
   the retry usually recovers but costs minutes. Output is capped, and
   oversized input is refused before any model call.
 - **The hedge guardrail demotes hedged true claims**, by design. They

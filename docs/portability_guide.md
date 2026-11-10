@@ -2,7 +2,7 @@
 
 The judging machinery is codebase-independent: derived verdicts, schema
 validation, evidence-quoted blockers, the hedge check and fail-closed
-handling work on any diff. What is specific to QtTune is the domain
+handling work on any diff. What is specific to Havne is the domain
 knowledge: the engineer's priorities, the layer rules, the indexer's
 harvest and the fixtures. This guide lists each piece and where it
 lives. Moving these behind configuration is backlog #10.

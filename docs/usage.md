@@ -57,7 +57,8 @@ from a scratch directory if you don't intend to commit the record;
 retrieval still works, since the index is read from next to
 `retrieval.py`.
 
-A reviewer call on a local 12 GB GPU takes about 1–4 minutes, so a full
+An accepted reviewer reply takes a median of 83 s on a local 12 GB GPU,
+and a reply that thinks to the output cap a median of 266 s, so a full
 three-round debate can take 10 minutes or more.
 
 ## Golden suite
@@ -95,8 +96,8 @@ fails to parse; failed runs count against the model.
 python -m eval_harness.probe --model laguna-xs-2.1 --fixture docs/fixtures/qttune_core_e08b455.h
 ```
 
-That fixture is the header the logs in `probe_logs/` were taken on.
-QtTune's current `core.h` has changed since.
+That fixture is the header the logs in `probe_logs/` were taken on; it
+differs from Havne's current `core.h`.
 
 **Bake-off**, detection against false positives. A parse failure or
 timeout on a bug case counts as a miss.
@@ -122,7 +123,7 @@ naming code the diff removed that the post-change tree lacks (ADR-0002,
 fifth measurement).
 
 **Round-2 pairs** compare two round-2 formats: the CRITIQUES section a
-debate sends since v11.1, and the feedback debates sent before it. Each
+debate sends (v11.1), and the feedback format of v9. Each
 sample runs a debate's round 1, then the round-2 reviewer twice on the
 same round-1 replies, once per format:
 
@@ -138,7 +139,7 @@ and twelfth measurements). The scorers expand globs themselves, so the
 quoted patterns work in PowerShell too.
 
 **Offline replay**, no model: re-judges archived round-1 replies under
-deterministic judge variants (gapped quotes, claim–quote linkage, k-of-n
+deterministic judge variants (gapped quotes, claim-quote linkage, k-of-n
 voting) and scores them with the hand labels in
 `eval_harness/labels.json` (ADR-0002, thirteenth measurement):
 
@@ -157,7 +158,7 @@ fixture's diff and scored with `eval_harness/corpus_labels.json`:
 python -m eval_harness.replay --corpus "coach_artifacts/measurement_round1_20261024_0*.json"
 ```
 
-**The corpus** (backlog #7): seven real QtTune diffs in
+**The corpus** (backlog #7): seven real Havne diffs in
 `docs/fixtures/corpus/`, described by `docs/fixtures/corpus.json`. Five
 are the reverse of a fix commit, so each introduces the bugs the commit
 fixed, listed as its known bugs; two are forward diffs of commits no

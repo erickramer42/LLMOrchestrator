@@ -11,12 +11,12 @@ Each debate runs up to three rounds:
 ```
 TRANSCRIPT (proposal + fenced diff/context + layer note + retrieved repo facts
             + the previous round's critiques, in their own section)
-    → AGENTS CRITIQUE (same transcript; neither sees the other's reply)
-    → SCHEMA VALIDATION (retry with a correction, then fail closed)
-    → EVIDENCE CHECK (blockers that don't quote post-change code → questions)
-    → HEDGE DEMOTION (speculative blockers → questions)
-    → RULE-BASED JUDGE (verdicts derived from content, fail closed)
-    → CONVERGED, or the critiques are fed back for another round
+    -> AGENTS CRITIQUE (same transcript; neither sees the other's reply)
+    -> SCHEMA VALIDATION (retry with a correction, then fail closed)
+    -> EVIDENCE CHECK (blockers that don't quote post-change code -> questions)
+    -> HEDGE DEMOTION (speculative blockers -> questions)
+    -> RULE-BASED JUDGE (verdicts derived from content, fail closed)
+    -> CONVERGED, or the critiques are fed back for another round
 ```
 
 Before the first round, the input is checked. A run with no code, or a
@@ -55,7 +55,7 @@ The two agents have different jobs:
 | `retrieval.py` | Diff-keyed retrieval from the repo index, and the check that the index matches the diff's base |
 | `indexer.py` | Offline indexer: typedefs, constants, call sites, file purposes |
 | `reviewer_prompt.py` | Agent system prompts, versioned |
-| `file_metadata.py` | File path → layer (core / bridge / app) |
+| `file_metadata.py` | Maps a file path to its layer (core, bridge, app, unknown) |
 | `golden_tests.py` | Golden suite: live-model fixtures and deterministic guardrail units |
 | `review_fixtures.py` | Code snippets the golden suite and the bake-off share |
 | `eval_harness/` | Measurement runners and scorers: round-1 and round-2 samples, the corpus, offline replay of judge variants, the probe and the model bake-off |
@@ -93,9 +93,9 @@ without any model.
    - Measured: valid stored blockers rose from 42% to 94% (ADR-0002,
      tenth measurement).
    - Known limit: a quote proves the code exists, not that it supports
-     the claim. Since judge j8 a claim that names code identifiers must
-     name one from the hunk its quote comes from, which catches claims
-     resting on code the quote does not show (ADR-0002, sixteenth
+     the claim. Judge j8 also requires a claim that names code
+     identifiers to name one from the hunk its quote comes from, which
+     catches claims resting on code the quote does not show (ADR-0002, sixteenth
      measurement).
 
 3. **Hedged claims are questions.** A blocker must be a demonstrable
@@ -126,15 +126,15 @@ without any model.
    constants, file purposes and queued-connection call sites from the
    target repo. At review time, the entries tied to the diff go into
    the transcript under a character budget.
-   - The pack is labelled a snapshot. Indexed entries the diff removes
-     are omitted and named, not asserted. This came after a reviewer
-     cited a line that existed only in a stale index.
+   - The pack is labeled a snapshot. Indexed entries the diff removes
+     are omitted and named, not asserted, so a reviewer cannot cite a
+     line that exists only in a stale index.
    - The index stores each file's git blob id, and a review warns when
      the diff starts from a different version.
    - No output filter can fix a model confidently asserting facts it
      cannot see; only showing it the facts can.
 
-7. **Layer-aware review context.** File paths map to QtTune's layers
+7. **Layer-aware review context.** File paths map to Havne's layers
    (core / bridge / app), and each layer's rules are injected into the
    transcript. So core-module rules (no Qt headers, C ABI purity) don't
    fire on bridge code, where Qt is legitimate. A diff spanning several
@@ -182,7 +182,7 @@ The system is built so that most of it can be checked without a model.
 - **A measurement mode that is the real call.** `run_round1_review`
   makes exactly the request a debate's first round makes (pinned by a
   test) and saves it as a measurement record.
-- **A corpus of real diffs with known bugs.** Seven QtTune diffs, five
+- **A corpus of real diffs with known bugs.** Seven Havne diffs, five
   of them the reverse of a bug-fix commit, each with an index built
   from its own base commit, so retrieval never shows the model code
   from the wrong version.

@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-27.
+Last updated: 2026-11-09.
 
 What works today, what is being measured, what is known to be weak, and
 what comes next. For the system itself see [design.md](docs/design.md);
@@ -52,9 +52,9 @@ and each is in ADR-0002 in full.
 |---|---|---|
 | 17th, 18th | A repair call that re-quotes blockers the evidence check demoted | Closed: the model declined its own valid claims as readily as its false ones |
 | 19th | A round-1 prompt rule for quoting removal-caused defects | Not shipped: recall +0.05 against a +0.10 bar |
-| 19th, amendment | Cross-hunk claim–quote linkage | Closed without a run: its ceiling is below the bar |
-| 20th | Field definitions and writer functions in the context pack | Not shipped: target false positives rose (1.33 → 1.67 per review), and the bridge's tripled |
-| 21st | Per-file layer notes for multi-file diffs (#8) | Not shipped: bridge false positives rose (0.11 → 0.33 per review, against a bar of 0.21); invariant-elsewhere unchanged |
+| 19th, amendment | Cross-hunk claim-quote linkage | Closed without a run: its ceiling is below the bar |
+| 20th | Field definitions and writer functions in the context pack | Not shipped: target false positives rose (from 1.33 to 1.67 per review), and the bridge's tripled |
+| 21st | Per-file layer notes for multi-file diffs (#8) | Not shipped: bridge false positives rose (from 0.11 to 0.33 per review, against a bar of 0.21); invariant-elsewhere unchanged |
 | 22nd | Another local reviewer model: `qwen3-coder:30b`, `nemotron-3.5-lightning:30b` | Closed: nemotron ran every first attempt to the output cap; qwen stored almost nothing (mean recall 0.09 against laguna's 0.42, no false positives) |
 | 23rd | `gpt-oss:20b` as the engineer instead of `gemma4:12b` (the engineer's first measurement) | Not shipped: it found more known bugs (recall in any item 0.74 against 0.51) but raised 0.24 false blockers per review against a bar of 0.10 |
 | 24th | `gpt-oss:20b` as the reviewer | Not shipped: recall 0.31 against laguna's 0.44, false positives 0.73 times laguna's; the union of both models raises recall to 0.56 but false positives to 0.74 per review |
@@ -76,14 +76,14 @@ and each is in ADR-0002 in full.
 - **A multi-file diff gets only its first file's layer rules** (#8).
   Sending each file's rules was measured and cost bridge precision.
 - **A quote proves the code exists, not that it supports the claim.**
-  Claim–quote linkage (j8) catches claims about code the quote's hunk
+  Claim-quote linkage (j8) catches claims about code the quote's hunk
   does not contain, nothing finer.
 - **A deleted test cannot be a blocker:** its lines exist only on the
   removed side, so the objection becomes a question.
 - **Hedged true claims are demoted, by design.** A hedged claim is a
   question; it stays visible in the verdict.
 - **The reviewer sometimes thinks until the output cap.** About 6% of
-  first attempts; the retry usually recovers but costs 3–5 minutes, and
+  first attempts; the retry usually recovers but costs 3-5 minutes, and
   on 2026-10-26 two bridge samples failed all three attempts (#19).
 - **Retried replies are a different mode** (short, little thinking); the
   scorers exclude them.
@@ -105,9 +105,11 @@ reused. Done items are removed; their history is in
 
 **Suggested order:** the twenty-fifth's confirmation sample
 (`gpt-oss:20b` as the engineer, on corpus v1) and a registered laguna
-baseline on corpus v2, both on the GPU → #14 structured outputs → #18
-early reject → the rest. The call-site
-caveat (code review finding 9) rides on the next pack change rather
+baseline on corpus v2, both on the GPU, then #14 structured outputs,
+then #18 early reject, then the rest. The pack's call sites cover only
+explicit `Qt::QueuedConnection` and `Qt::BlockingQueuedConnection`
+connections, not the default `Qt::AutoConnection`, and the pack does
+not say so; a caveat saying so rides on the next pack change rather
 than being measured alone.
 
 - **#2 Judge granularity.** Split a finding's severity from whether it
@@ -121,9 +123,9 @@ than being measured alone.
   class beyond one diff.
 - **#8 Multi-file layer notes.** Measured as v16 (twenty-first): the
   per-file notes drew bridge claims toward the removed UI feature
-  (false positives 0.11 → 0.33 per review) and left invariant-elsewhere
+  (false positives from 0.11 to 0.33 per review) and left invariant-elsewhere
   unchanged. Open, with no successor registered.
-- **#10 Codebase abstraction.** Move the QtTune-specific parts (layer
+- **#10 Codebase abstraction.** Move the Havne-specific parts (layer
   rules, the engineer's domain, fixtures) behind configuration.
 - **#13 Probe rerun.** Rerun the probe on the committed `core.h` with
   the fixed scoring. The model bake-offs used the corpus instead, so
@@ -167,8 +169,8 @@ than being measured alone.
 2. **Fail closed.** Parse failures, schema violations, timeouts, empty
    or oversized input end in manual review, never in approval.
 3. **Blockers must be demonstrable.** A hedged blocker is a question,
-   even with a verified quote. Changes to `HEDGE_PATTERNS` must keep the
-   7 hedge units passing.
+   even with a verified quote. Changes to `HEDGE_PATTERNS` must keep
+   every hedge unit passing.
 4. **Prompts are versioned.** Any change to what the agents see bumps
    `PROMPT_VERSION`; transcript templates, layer notes and the pack
    format count, and the pack format also bumps `PACK_FORMAT_VERSION`.

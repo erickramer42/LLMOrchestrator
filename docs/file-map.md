@@ -11,18 +11,18 @@ together, see [design.md](design.md); for the current versions, see
 | `orchestrator.py` | CLI entry point: argument parsing and dispatch only. `--golden`, `--proposal` and `--index` are mutually exclusive; `--proposal` needs `--diff` or `--context`. Inputs are read as UTF-8. |
 | `config.py` | Models, `NUM_CTX`, the `NUM_PREDICT` output cap, the input check's chars-per-token floor, timeouts and temperatures; composes the reviewer prompts. The one place to swap models (the probe and bake-off excepted). |
 | `agent_client.py` | The Ollama client and the only module that touches the network. One agent turn in JSON mode; invalid or schema-violating replies are retried with a corrective message, then fail closed with `FAILURE_SENTINEL`. Records per-attempt telemetry: token counts, thinking and reply sizes, `done_reason`, wall time, the verbatim accepted reply, the tails of failed ones, and the whole thinking of any attempt that hit the cap or ran past `LONG_THINKING_TOKENS` (backlog #19). |
-| `adjudication.py` | Pure judging logic, no I/O: the verdict constants, schema validation (`normalize_agent_output`), the evidence check (`demote_unverified_blockers`: post-change quotes, and since j8 claim–quote linkage), the hedge check (`demote_hedged_blockers`), `derive_verdict`, `convergence_verdict` and `JUDGE_VERSION`. Imports cleanly in CI. |
+| `adjudication.py` | Pure judging logic, no I/O: the verdict constants, schema validation (`normalize_agent_output`), the evidence check (`demote_unverified_blockers`: post-change quotes and claim-quote linkage, j8), the hedge check (`demote_hedged_blockers`), `derive_verdict`, `convergence_verdict` and `JUDGE_VERSION`. Imports cleanly in CI. |
 | `debate.py` | The debate loop. Builds the transcript (fenced code, layer note, context pack, and from round 2 the CRITIQUES section), runs the input check, calls the agents, applies the guardrails, judges, and writes the decision record. Also the measurement modes: `run_round1_review` (a debate's first reviewer call alone) and `run_round2_pair` (two round-2 formats on the same round 1). |
 | `diff_reader.py` | The one unified-diff reader: `read_diff`, `diff_paths`, `base_blobs`, and the identifier helpers (`IDENT`, `code_like`) the judge and retrieval share. Used by the evidence check, retrieval, its base check and layer mapping. |
 | `reviewer_prompt.py` | The agents' system prompts and `PROMPT_VERSION`, with a comment per version on what changed and whether it shipped. |
-| `file_metadata.py` | File path → layer (core, bridge, app, unknown), and the layer notes the transcript carries. |
-| `golden_tests.py` | The golden suite: 3 live-model fixtures, reviewed through `debate.review_round1`, plus 7 deterministic hedge units taken from production blocker texts and the judge cases. |
+| `file_metadata.py` | Maps a file path to its layer (core, bridge, app, unknown), and holds the layer notes the transcript carries. |
+| `golden_tests.py` | The golden suite: live-model fixtures, reviewed through `debate.review_round1`, plus deterministic hedge units taken from production blocker texts, and the judge cases. |
 | `review_fixtures.py` | The code snippets the golden suite and the bake-off share. Add a fixture rather than edit one. |
 
 **Dependency direction (acyclic):** `reviewer_prompt`, `file_metadata`,
-`diff_reader` and `review_fixtures` are leaves → `config` →
-`agent_client` and `adjudication`, in parallel → `retrieval` → `debate`
-→ `golden_tests` → `orchestrator`. `indexer` sits on `retrieval` and
+`diff_reader` and `review_fixtures` are leaves, then `config`, then
+`agent_client` and `adjudication` in parallel, then `retrieval`, then
+`debate`, then `golden_tests`, then `orchestrator`. `indexer` sits on `retrieval` and
 `agent_client`, and only `orchestrator --index` imports it.
 `eval_harness.common` sits on `retrieval`; `round1` and `round2` on
 `common` and `debate`; `replay` on `common`, `adjudication` and
@@ -35,12 +35,13 @@ together, see [design.md](design.md); for the current versions, see
 |---|---|
 | `indexer.py` | Offline indexer (`orchestrator.py --index <repo> [--no-llm]`): C typedefs, numeric constants, queued-connection call sites, and optional LLM purpose summaries cached in `repo_context_cache.json`. Records the source commit and each file's git blob id. |
 | `retrieval.py` | Review-time retrieval (`build_context_pack`): purposes, types, constants and call sites tied to the diff, under a 6,000-character budget. Entries the diff removes are omitted and named; the base check compares the diff's pre-change blobs with the index. Holds `PACK_FORMAT_VERSION`. No model, no network. |
-| `repo_context.json` | The committed index for QtTune, built from the bridge fixture's base (`e0c4c31`). Reviewing another diff needs an index of that diff's base (`--index-out`, `--index-file`). |
+| `repo_context.json` | The committed index for Havne, built from the bridge fixture's base (`e0c4c31`). Reviewing another diff needs an index of that diff's base (`--index-out`, `--index-file`). |
 
 ## Evaluation harness
 
 | Path | Purpose |
 |---|---|
+| `eval_harness/__init__.py` | The package docstring: what the harness holds and how to run it (`python -m`). |
 | `eval_harness/common.py` | What the measurement scripts share: the `run`/`score` command line, the sample runner, record loading, attempt status, demoted-item recovery. |
 | `eval_harness/round1.py` | Round-1 samples on any diff (`run`) and their scoring (`score`): blockers per run, symbol hits, and candidates for hand review; evidence-demoted items listed as `#e`, hedge-demoted as `#h`. |
 | `eval_harness/round2.py` | The round-2 pair measurement: two round-2 formats on the same round-1 replies, compared on first-attempt pairs, with runaways counted per arm. |
@@ -57,9 +58,9 @@ together, see [design.md](design.md); for the current versions, see
 
 | Path | Purpose |
 |---|---|
-| `docs/fixtures/qttune_bridge_refactor.diff` | The bridge fixture: the reverse patch of QtTune `e0c4c31`. Its post-state is QtTune `8ffbf19`, which has two known bugs: the `m_currentFrameCount` race and the in-flight gate that freezes past 10,000 frames. |
-| `docs/fixtures/qttune_core_e08b455.h` | QtTune's `core.h` at `e08b455`, the clean header behind the probe logs and header review 194320. |
-| `docs/fixtures/judge_cases.json` | The golden suite's judge cases: 13 reviewer blockers copied verbatim from labeled records (corpus and bridge), each with its hand label and the outcome judge j8 gives it alone: kept, quote, link or hedge. Valid and false blockers for each outcome, including the known limits (invariant-elsewhere and thread-confusion claims kept) and costs (removal bugs demoted). |
+| `docs/fixtures/qttune_bridge_refactor.diff` | The bridge fixture: the reverse patch of Havne commit `e0c4c31`. Its post-state is Havne `8ffbf19`, which has two known bugs: the `m_currentFrameCount` race and the in-flight gate that freezes past 10,000 frames. |
+| `docs/fixtures/qttune_core_e08b455.h` | Havne's `core.h` at `e08b455`, the clean header behind the probe logs and header review 194320. |
+| `docs/fixtures/judge_cases.json` | The golden suite's judge cases: reviewer blockers copied verbatim from labeled records (corpus and bridge), each with its hand label and the outcome judge j8 gives it alone: kept, quote, link or hedge. Valid and false blockers for each outcome, including the known limits (invariant-elsewhere and thread-confusion claims kept) and costs (removal bugs demoted). |
 | `docs/fixtures/corpus_v2.json`, `docs/fixtures/corpus_v2/<id>/` | Corpus v2 (ADR-0002, "Corpus v2"): seven bug fixtures that are forward diffs of the commits that introduced each known bug, scoped to the bug's file when the commit is over the input limit, each with the `--no-llm` index of its parent; the proposal is the commit subject. The two clean fixtures are v1's. |
 | `docs/fixtures/corpus.json` | The corpus manifest: per fixture the commit, direction, base and post-state revisions, proposal, known bugs with their symbols, and what the removed lines leak. |
 | `docs/fixtures/corpus/<id>/` | One corpus fixture: `change.diff` (tests, docs and `*.md` excluded) and the `--no-llm` index of its base. |
@@ -78,12 +79,15 @@ together, see [design.md](design.md); for the current versions, see
 | `tests/test_deterministic.py` | The regression suite. Ollama is faked at the HTTP layer, so the real client, judge and debate code run without a model. Also pins the label counts of every scored sample. |
 | `tests/test_retrieval.py` | Retrieval and indexer unit tests. |
 | `.github/workflows/` | CI: compile check and the regression suite on Python 3.11 and 3.13, no Ollama. |
+| `requirements.txt` | The one dependency, `requests`. |
+| `.gitignore` | Keeps out caches, virtual environments, model weights, golden-suite run files (`gold_tests/run_*.json`), the summary cache (`repo_context_cache.json`) and local notes. |
 | `README.md` | The project in two minutes. |
 | `LICENSE` | MIT. |
 | `STATUS.md` | Current state, work in progress, limitations, backlog and conventions. |
 | `docs/design.md` | The pipeline and the design decisions behind it. |
 | `docs/results.md` | What was measured, what shipped, and what did not. |
 | `docs/usage.md` | Every command. |
+| `docs/file-map.md` | This file. |
 | `docs/portability_guide.md` | Adapting the tribunal to another codebase. |
 | `docs/history.md` | The dated engineering log. |
 | `docs/decisions/` | ADR-0001 (model selection) and ADR-0002 (adjudication and every measurement, predictions included). |
