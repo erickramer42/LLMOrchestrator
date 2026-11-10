@@ -59,7 +59,7 @@
         "omitted": 0
       },
       "truncated": false,
-      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\backoff_clamp_d1c20c0\\repo_context.json",
+      "index_file": "docs/fixtures/corpus/backoff_clamp_d1c20c0/repo_context.json",
       "sha256": "4f906ff88e1c11162e56be03ff7fc1d9a515c6351a0144f81480261c11f1650e",
       "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[core/src/j2534_transport.cpp] (core): File/layer: core/src/j2534_transport.cpp | C++17, Qt-free, Win32-guarded  [only on the diff's removed lines: j2534_transport]\n\n--- CONSTANTS ---\nJ2534_BACKOFF_BASE_MS = 100 (const)\nJ2534_BACKOFF_CAP_MS = 5000 (const)\nJ2534_POLL_INTERVAL_MS = 20 (const)\nJ2534_REQUEST_CYCLE_MS = 100 (const)\nJ2534_DRAIN_BUDGET = 10 (const)\nJ2534_DRAIN_READ_TIMEOUT_MS = 20 (const)"
     },

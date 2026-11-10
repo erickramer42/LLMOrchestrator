@@ -51,7 +51,7 @@
         "omitted": 0
       },
       "truncated": false,
-      "index_file": "E:\\CodeProjects\\LLMOrchestrator\\docs\\fixtures\\corpus\\poll_override_90020bd\\repo_context.json",
+      "index_file": "docs/fixtures/corpus/poll_override_90020bd/repo_context.json",
       "sha256": "a7ec3ecadb5ba6a2714373bb41685c9ed6d9237f853f90caf3e8fe403f2ef505",
       "text": "/*** REPO CONTEXT \u2014 INDEXED SNAPSHOT ***/\n\n--- MODIFIED FILES (machine-written summaries of the indexed version) ---\n[app/qml/SettingsPage.qml] (app): File/layer: app/qml/SettingsPage.qml | Qt6 Quick, UI layer\n[core/src/j2534_transport.cpp] (core): File/layer: core/src/j2534_transport.cpp | C++17, Qt-free, Win32-guarded\n\n--- KNOWN TYPES ---\nqttune_session_t (opaque): typedef struct qttune_session qttune_session_t;  // Forward-declared opaque handle types\nqttune_status_t (enum): typedef enum { QT_OK = 0, QT_ERR_NULL_ARGUMENT = 1, QT_ERR_NOT_IMPLEMENTED = 2, QT_ERR_NO_TRANSPORT = 3, QT_ERR_OUT_OF_MEMORY = 4, QT_ERR_SESSION_CLOSED = 5, QT_ERR_ALREADY_REGISTERED = 6, QT_ERR_LOAD_FAILED = 7, QT_ERR_VEHICLE_TIMEOUT = 8, QT_ERR_TRANSPORT_HARD_FAILURE = 9, } qttune_status_t;  // Status codes - append-only evolution for ABI stability"
     },
