@@ -104,7 +104,12 @@ with the directories set explicitly:
 
 Resources: `decision://{record_id}` (a finished record) and the committed
 index's `index://info`, `index://files`, `index://types`,
-`index://constants` and `index://callsites`.
+`index://constants` and `index://callsites`. `get_decision` and
+`list_decisions` are annotated read-only, and no tool reaches past the
+server and its local models (`openWorldHint` false); clients use these
+hints to decide when to ask before a call. The clients run against the
+server so far, and what each run showed, are in
+[mcp-clients.md](mcp-clients.md).
 
 Only a `done` review has a verdict. Read its `notes` first:
 `index_base_mismatch` means the repo context came from another version

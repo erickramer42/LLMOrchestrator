@@ -104,6 +104,7 @@ A separate package on top of the core ([ADR-0003](decisions/0003-mcp-server.md),
 | `docs/design.md` | The pipeline and the design decisions behind it. |
 | `docs/results.md` | What was measured, what shipped, and what did not. |
 | `docs/usage.md` | Every command. |
+| `docs/mcp-clients.md` | The MCP clients run against the server, dated, with what each run checked and showed; what was read in a client's source and not yet run, apart. |
 | `docs/file-map.md` | This file. |
 | `docs/portability_guide.md` | Adapting the tribunal to another codebase. |
 | `docs/history.md` | The dated engineering log. |

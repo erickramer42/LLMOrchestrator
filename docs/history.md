@@ -219,6 +219,13 @@ changed.
   of the reviewed text, never the text or a token. The spec's OAuth flow
   is described and not implemented. Server tests 19 to 36, run against a
   loopback `uvicorn`; TLS not tested.
+- MCP Inspector 2.13.0 run against the server over stdio and HTTP: 18 of
+  18 checks as designed, no model call (docs/mcp-clients.md). Lumo
+  Desktop's MCP client read in its source (rmcp 3.5.1; static bearer
+  headers, a 60 s call timeout, tools only, no server instructions), not
+  yet run. Server 0.2.1: tool annotations, and the submit-then-poll rule
+  and the verdict rule in the tool descriptions, for clients that read
+  no server instructions. Server tests 36 to 37.
 
 ## Features and measurements, in detail
 
