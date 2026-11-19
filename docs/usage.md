@@ -75,15 +75,11 @@ pip install -r requirements-mcp.txt        # requests and mcp==2.3.0
 python -m unittest discover -s tests_mcp -v
 ```
 
-Register it with the client, here with the `claude` CLI from the repo
-root. The path to `mcp_server` must be absolute, since the client starts
-the server from its own directory:
-
-```sh
-claude mcp add llm-orchestrator -- python "$(pwd)/mcp_server"
-```
-
-Or in a project's `.mcp.json`, with the directories set explicitly:
+Register it with the client as a stdio server whose command is
+`python <repo>/mcp_server`. The path must be absolute, since the client
+starts the server from its own directory. Clients that read an
+`mcpServers` file (a project's `.mcp.json`, for one) take this entry,
+with the directories set explicitly:
 
 ```json
 {
