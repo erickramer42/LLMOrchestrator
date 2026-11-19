@@ -7,4 +7,4 @@ module imports it or the SDK. Install with requirements-mcp.txt; run with
 from anywhere.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

@@ -4,8 +4,9 @@ and read-only resources for the records and the repo index (ADR-0003).
 Reviews are jobs: review_diff returns a debate id at once, and
 get_decision reports progress or the finished record. A verdict comes only
 from a finished record, so nothing here can approve a review the judge
-did not. Over stdio, stdout is the protocol: this module imports debate,
-never orchestrator, which prints to stdout.
+did not. Every tool call and resource read passes the guard (scopes,
+limits, the audit line; ADR-0004). Over stdio, stdout is the protocol:
+this module imports debate, never orchestrator, which prints to stdout.
 """
 
 import json
@@ -18,14 +19,17 @@ from pathlib import Path
 from typing import Any, Optional
 
 import anyio
+from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ResourceNotFoundError, ToolError
 
 import debate
 from config import MAX_DEBATE_ROUNDS
 from mcp_server import __version__
+from mcp_server.guard import AuditLog, Guard, RateLimiter, current_caller
 from mcp_server.jobs import (DONE, FAILED, FINISHED, LOST, QueueFull, ReviewQueue,
                              marker_path, record_path)
+from mcp_server.tokens import StaticTokenVerifier, TokenStore
 from retrieval import CONTEXT_PATH
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -50,15 +54,34 @@ class Settings:
     records_dir: Path
     index_dir: Path
     max_pending: int = 4
+    audit_log: Optional[Path] = None    # default: audit.jsonl in records_dir
+    tokens_file: Optional[Path] = None  # default: mcp_tokens.json at the repo root
+    calls_per_min: int = 120
+    reviews_per_hour: int = 20
+    max_reviews_per_caller: int = 2
+
+    @property
+    def audit_path(self) -> Path:
+        return Path(self.audit_log or Path(self.records_dir) / "audit.jsonl")
+
+    @property
+    def tokens_path(self) -> Path:
+        return Path(self.tokens_file or REPO_ROOT / "mcp_tokens.json")
 
     @classmethod
     def from_env(cls) -> "Settings":
-        """Directories from LLMORCH_RECORDS_DIR and LLMORCH_INDEX_DIR, else
-        under the repo root: never relative to the working directory."""
+        """Paths and limits from LLMORCH_* variables, else defaults under the
+        repo root: never relative to the working directory."""
+        env = os.environ.get
         return cls(
-            records_dir=Path(os.environ.get("LLMORCH_RECORDS_DIR") or REPO_ROOT / "mcp_records"),
-            index_dir=Path(os.environ.get("LLMORCH_INDEX_DIR") or REPO_ROOT / "mcp_indexes"),
-            max_pending=int(os.environ.get("LLMORCH_MAX_PENDING") or 4))
+            records_dir=Path(env("LLMORCH_RECORDS_DIR") or REPO_ROOT / "mcp_records"),
+            index_dir=Path(env("LLMORCH_INDEX_DIR") or REPO_ROOT / "mcp_indexes"),
+            max_pending=int(env("LLMORCH_MAX_PENDING") or 4),
+            audit_log=Path(env("LLMORCH_AUDIT_LOG")) if env("LLMORCH_AUDIT_LOG") else None,
+            tokens_file=Path(env("LLMORCH_TOKENS_FILE")) if env("LLMORCH_TOKENS_FILE") else None,
+            calls_per_min=int(env("LLMORCH_RATE_PER_MIN") or 120),
+            reviews_per_hour=int(env("LLMORCH_REVIEWS_PER_HOUR") or 20),
+            max_reviews_per_caller=int(env("LLMORCH_MAX_REVIEWS_PER_CALLER") or 2))
 
 
 def _check_id(record_id: str) -> str:
@@ -128,17 +151,33 @@ def summarize_record(record: dict, include_record: bool = False) -> dict:
         "resource": f"decision://{meta.get('debate_id')}",
         "server_version": __version__,
     }
+    tokens = _model_tokens(history)
+    if tokens["attempts"]:
+        summary["model_tokens"] = tokens
     if include_record:
         summary["record"] = record
     return summary
 
 
+def _model_tokens(history: list) -> dict:
+    """Prompt and output tokens over every agent attempt of a record."""
+    out = {"prompt": 0, "output": 0, "attempts": 0}
+    for entry in history:
+        for attempts in (entry.get("telemetry") or {}).values():
+            for a in attempts or []:
+                out["attempts"] += 1
+                out["prompt"] += a.get("prompt_eval_count") or 0
+                out["output"] += a.get("eval_count") or 0
+    return out
+
+
 class Tribunal:
     """The server's state: settings and the review queue."""
 
-    def __init__(self, settings: Settings, queue: Optional[ReviewQueue] = None):
+    def __init__(self, settings: Settings, queue: Optional[ReviewQueue] = None,
+                 transport: str = "stdio"):
         self.settings = settings
-        self.interface = {"name": "mcp", "server_version": __version__}
+        self.interface = {"name": "mcp", "server_version": __version__, "transport": transport}
         self.queue = queue or ReviewQueue(settings.records_dir, self.interface,
                                           settings.max_pending)
 
@@ -243,14 +282,29 @@ def _parse_time(value: Optional[str]) -> datetime:
 
 
 def build_server(settings: Optional[Settings] = None,
-                 queue: Optional[ReviewQueue] = None) -> MCPServer:
-    """The server with its tools and resources; the queue's worker starts
-    here. queue replaces the default one (tests)."""
-    tribunal = Tribunal(settings or Settings.from_env(), queue)
+                 queue: Optional[ReviewQueue] = None, transport: str = "stdio",
+                 base_url: Optional[str] = None,
+                 limiter: Optional[RateLimiter] = None) -> MCPServer:
+    """The server with its tools, resources and guard; the queue's worker
+    starts here. Over HTTP every request needs a token from the settings'
+    token file. queue and limiter replace the defaults (tests)."""
+    settings = settings or Settings.from_env()
+    tribunal = Tribunal(settings, queue, transport)
     tribunal.queue.start()
+    guard = Guard(transport, AuditLog(settings.audit_path),
+                  limiter or RateLimiter(settings.calls_per_min, settings.reviews_per_hour),
+                  tribunal.queue.active_count, settings.max_reviews_per_caller)
+    auth = {}
+    if transport == "http":
+        # No Protected Resource Metadata is served (resource_server_url None),
+        # so issuer_url is never published (ADR-0004)
+        auth = {"token_verifier": StaticTokenVerifier(TokenStore(settings.tokens_path)),
+                "auth": AuthSettings(issuer_url=base_url or "http://127.0.0.1",
+                                     resource_server_url=None)}
     server = MCPServer(name="llm-orchestrator", version=__version__,
-                       instructions=INSTRUCTIONS)
+                       instructions=INSTRUCTIONS, middleware=[guard], **auth)
     server.tribunal = tribunal  # type: ignore[attr-defined]
+    server.guard = guard  # type: ignore[attr-defined]
 
     @server.tool()
     async def review_diff(proposal: str, diff: str = "", context: str = "",
@@ -268,16 +322,19 @@ def build_server(settings: Optional[Settings] = None,
         for name, value in (("proposal", proposal), ("diff", diff), ("context", context)):
             _check_text(name, value)
         index_path = tribunal.index_path(index_name)
+        caller = current_caller.get()
         check = await anyio.to_thread.run_sync(
             debate.check_input, proposal, diff, context, header, index_path)
         if check["verdict"] is not None:
             # Refused without a model call; record it now, not after the queue.
             result = await anyio.to_thread.run_sync(lambda: debate.run_debate(
                 proposal, diff, context, header_artifact=header, index_path=index_path,
-                records_dir=tribunal.settings.records_dir, interface=tribunal.interface))
+                records_dir=tribunal.settings.records_dir,
+                interface={**tribunal.interface, "caller": caller}))
             return tribunal.describe(result["debate_id"])
         try:
-            record_id = tribunal.queue.submit(proposal, diff, context, header, index_path)
+            record_id = tribunal.queue.submit(proposal, diff, context, header, index_path,
+                                              caller=caller)
         except QueueFull as exc:
             raise ToolError(f"busy: {exc}; try again after a review finishes") from None
         notes = []
@@ -355,7 +412,3 @@ def build_server(settings: Optional[Settings] = None,
                         description=f"The committed repo index's {section}."
                         )(index_section(section))
     return server
-
-
-def main() -> None:
-    build_server().run("stdio")

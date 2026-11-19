@@ -63,10 +63,10 @@ class ReviewQueue:
 
     def submit(self, proposal: str, code_diff: str, code_context: str = "",
                header_artifact: bool = False,
-               index_path: Optional[str] = None) -> str:
+               index_path: Optional[str] = None, caller: str = "stdio") -> str:
         """Queue a review and return its debate id; QueueFull if full."""
         record_id = debate.new_debate_id()
-        job = {"record_id": record_id, "state": QUEUED, "round": None,
+        job = {"record_id": record_id, "state": QUEUED, "caller": caller, "round": None,
                "agent": None, "submitted_utc": _now(), "started_utc": None,
                "finished_utc": None, "error": None, "result": None,
                "args": (proposal, code_diff, code_context, header_artifact,
@@ -76,7 +76,7 @@ class ReviewQueue:
                 raise QueueFull(f"{self._pending.maxsize} reviews already wait")
             # The marker precedes the worker, which may finish and replace it at once.
             self._write_marker(record_id, {
-                "record_id": record_id, "state": QUEUED,
+                "record_id": record_id, "state": QUEUED, "caller": caller,
                 "submitted_utc": job["submitted_utc"],
                 "diff_sha256": debate.text_sha256(code_diff) if code_diff else None,
                 "context_sha256": debate.text_sha256(code_context) if code_context else None})
@@ -96,6 +96,12 @@ class ReviewQueue:
                     1 for j in self._jobs.values()
                     if j["state"] == QUEUED and j["submitted_utc"] < job["submitted_utc"])
             return view
+
+    def active_count(self, caller: str) -> int:
+        """The caller's reviews that are queued or running."""
+        with self._cond:
+            return sum(1 for j in self._jobs.values()
+                       if j["caller"] == caller and j["state"] in (QUEUED, RUNNING))
 
     def live(self) -> list:
         """Every queued or running job, oldest first."""
@@ -144,7 +150,7 @@ class ReviewQueue:
                 records_dir=self.records_dir,
                 on_progress=lambda e: self._update(record_id, round=e.get("round"),
                                                    agent=e.get("agent")),
-                interface=self.interface)
+                interface={**self.interface, "caller": self._jobs[record_id]["caller"]})
         except Exception as exc:  # a server fault, not a verdict: keep it answerable
             error = f"{type(exc).__name__}: {exc}"
             try:

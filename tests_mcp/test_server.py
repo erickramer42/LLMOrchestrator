@@ -149,10 +149,22 @@ class ToolTests(ServerTestCase):
         rid = final["record_id"]
         rec = json.loads((self.records / f"decision_{rid}.json").read_text(encoding="utf-8"))
         self.assertEqual(rec["metadata"]["interface"],
-                         {"name": "mcp", "server_version": __version__})
+                         {"name": "mcp", "server_version": __version__,
+                          "transport": "stdio", "caller": "stdio"})
         self.assertEqual(rec["inputs"]["diff_sha256"], final["diff_sha256"])
         self.assertFalse(marker_path(self.records, rid).exists())
         self.assertFalse((self.tmp / "coach_artifacts").exists())
+
+    def test_stdio_calls_are_audited_with_the_stdio_caller(self):
+        # ADR-0004: the guard runs on both transports
+        with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN):
+            _, final = self.review(self.server(), {"proposal": "p", "diff": DIFF})
+        lines = [json.loads(l) for l in
+                 (self.records / "audit.jsonl").read_text(encoding="utf-8").splitlines()]
+        self.assertEqual({(e["transport"], e["caller"]) for e in lines}, {("stdio", "stdio")})
+        submit = next(e for e in lines if e["tool"] == "review_diff")
+        self.assertEqual((submit["outcome"], submit["record_id"]), ("ok", final["record_id"]))
+        self.assertEqual(final["model_tokens"]["attempts"], 2)
 
     def test_findings_are_the_final_round_after_the_guardrails(self):
         # One verified blocker, one hedged (demoted to a question by judge j6).
@@ -308,7 +320,7 @@ class StatusTests(ServerTestCase):
             release.wait(10)
             raise OSError("stopped")
         queue = ReviewQueue(self.records, {"name": "mcp"}, max_pending=1, run=slow)
-        server = self.server(queue)
+        server = self.server(queue, max_reviews_per_caller=5)  # the queue fills first
         args = {"proposal": "p", "diff": DIFF}
         first = self.call(server, "review_diff", args)
         self.assertTrue(started.wait(10))

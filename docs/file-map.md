@@ -31,16 +31,20 @@ together, see [design.md](design.md); for the current versions, see
 
 ## MCP server
 
-A separate package on top of the core ([ADR-0003](decisions/0003-mcp-server.md)): it imports `debate`, `config` and `retrieval`, and no core module imports it or the SDK.
+A separate package on top of the core ([ADR-0003](decisions/0003-mcp-server.md), [ADR-0004](decisions/0004-mcp-http-auth-audit.md)): it imports `debate`, `config` and `retrieval`, and no core module imports it or the SDK.
 
 | Path | Purpose |
 |---|---|
 | `mcp_server/__init__.py` | The server's semantic version, `__version__`. |
-| `mcp_server/__main__.py` | Starts the server over stdio; puts the repo root on the import path, so a client can start it from any directory. |
-| `mcp_server/server.py` | The tools (`review_diff`, `get_decision`, `list_decisions`), the resources (`decision://`, `index://`), the settings from `LLMORCH_*` environment variables, and the summary of a finished record. Imports `debate`, never `orchestrator`, so nothing prints to stdout, which carries the protocol. |
-| `mcp_server/jobs.py` | The review queue: one worker thread, a bounded queue, per-job round and agent, and pending markers that let a restart report a review as lost. |
+| `mcp_server/__main__.py` | The entry point: stdio by default, `--http`, and the `token` commands. Puts the repo root, not its own folder, on the import path, so a client can start it from any directory. |
+| `mcp_server/server.py` | The tools (`review_diff`, `get_decision`, `list_decisions`), the resources (`decision://`, `index://`), the settings from `LLMORCH_*` environment variables, and the summary of a finished record. Imports `debate`, never `orchestrator`, so nothing prints to stdout, which carries the protocol over stdio. |
+| `mcp_server/jobs.py` | The review queue: one worker thread, a bounded queue, per-job caller, round and agent, and pending markers that let a restart report a review as lost. |
+| `mcp_server/guard.py` | The middleware around every tool call and resource read: the caller, its scopes, the per-caller limits and the audit line; and the wrapper that audits HTTP requests refused before MCP. |
+| `mcp_server/tokens.py` | The token file (ids, scopes, SHA-256 hashes), minting and revoking, and the SDK token verifier over it. |
+| `mcp_server/http_server.py` | Streamable HTTP: the startup checks (loopback or TLS, tokens present), Host and Origin checks, the app served by `uvicorn`. |
 | `requirements-mcp.txt` | `requirements.txt` plus the pinned SDK, `mcp==2.3.0`. |
 | `tests_mcp/test_server.py` | The server's tests: an in-process MCP client against the fake model, and a stdio launch from another directory. |
+| `tests_mcp/test_http.py` | The HTTP transport's tests on a loopback `uvicorn`: tokens and scopes, revocation, the audit log's content, the limits, Host and Origin refusals, the startup refusals, the token commands. |
 
 ## Repo context
 
@@ -93,7 +97,7 @@ A separate package on top of the core ([ADR-0003](decisions/0003-mcp-server.md))
 | `tests/test_retrieval.py` | Retrieval and indexer unit tests. |
 | `.github/workflows/` | CI on Python 3.11 and 3.13, no Ollama: the compile check and the regression suite with `requirements.txt` alone, then both suites with `requirements-mcp.txt`. |
 | `requirements.txt` | The core's one dependency, `requests`. |
-| `.gitignore` | Keeps out caches, virtual environments, model weights, golden-suite run files (`gold_tests/run_*.json`), the summary cache (`repo_context_cache.json`), the MCP server's records and indexes (`mcp_records/`, `mcp_indexes/`) and local notes. |
+| `.gitignore` | Keeps out caches, virtual environments, model weights, golden-suite run files (`gold_tests/run_*.json`), the summary cache (`repo_context_cache.json`), the MCP server's records, indexes and token file (`mcp_records/`, `mcp_indexes/`, `mcp_tokens.json`) and local notes. |
 | `README.md` | The project in two minutes. |
 | `LICENSE` | MIT. |
 | `STATUS.md` | Current state, work in progress, limitations, backlog and conventions. |
@@ -103,4 +107,4 @@ A separate package on top of the core ([ADR-0003](decisions/0003-mcp-server.md))
 | `docs/file-map.md` | This file. |
 | `docs/portability_guide.md` | Adapting the tribunal to another codebase. |
 | `docs/history.md` | The dated engineering log. |
-| `docs/decisions/` | ADR-0001 (model selection), ADR-0002 (adjudication and every measurement, predictions included) and ADR-0003 (the MCP server). |
+| `docs/decisions/` | ADR-0001 (model selection), ADR-0002 (adjudication and every measurement, predictions included), ADR-0003 (the MCP server) and ADR-0004 (its HTTP transport, tokens, audit log and limits). |

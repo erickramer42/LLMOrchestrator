@@ -120,8 +120,63 @@ The server runs one review at a time and queues up to 4 more
 (`LLMORCH_MAX_PENDING`); a call beyond that is refused as busy. Records go
 to `mcp_records/` (git-ignored) or `LLMORCH_RECORDS_DIR`, never to
 `coach_artifacts/`, and carry `metadata.interface` `{"name": "mcp",
-"server_version": ...}`. A restart loses queued and running reviews;
-`get_decision` then reports them as `lost`.
+"server_version": ..., "transport": ..., "caller": ...}`. A restart loses
+queued and running reviews; `get_decision` then reports them as `lost`.
+
+### Over HTTP
+
+The same tools at `http://127.0.0.1:8765/mcp`, for a server shared by
+several clients ([ADR-0004](decisions/0004-mcp-http-auth-audit.md)).
+Every request needs a bearer token; mint one per client first. The token
+is printed once, and the token file (`mcp_tokens.json`, git-ignored, or
+`LLMORCH_TOKENS_FILE`) keeps only its hash:
+
+```sh
+python -m mcp_server token add laptop --scope review   # review includes read
+python -m mcp_server token add dashboard --scope read
+python -m mcp_server token list
+python -m mcp_server token revoke dashboard            # takes effect at once
+python -m mcp_server --http                            # 127.0.0.1:8765
+```
+
+A client sends `Authorization: Bearer <token>` on every request. In an
+`mcpServers` file:
+
+```json
+{
+  "mcpServers": {
+    "llm-orchestrator": {
+      "type": "http",
+      "url": "http://127.0.0.1:8765/mcp",
+      "headers": {"Authorization": "Bearer <token>"}
+    }
+  }
+}
+```
+
+| Refused | Answer |
+|---|---|
+| No token, an unknown one or a revoked one | HTTP 401, before the request is read |
+| An `Origin` header the server doesn't allow (`LLMORCH_ALLOWED_ORIGINS`) | HTTP 403 |
+| A `Host` header that doesn't name the server (`LLMORCH_ALLOWED_HOSTS`) | HTTP 421 |
+| `review_diff` with a `read` token | Tool error `insufficient_scope` |
+| More than 120 calls a minute (`LLMORCH_RATE_PER_MIN`) | Tool error `rate_limited` |
+| More than 20 reviews an hour (`LLMORCH_REVIEWS_PER_HOUR`) | Tool error `rate_limited` |
+| More than 2 of one caller's reviews queued or running (`LLMORCH_MAX_REVIEWS_PER_CALLER`) | Tool error `rate_limited` |
+
+The limits are per token (per process over stdio) and reset on restart.
+`--host` other than loopback needs `--certfile` and `--keyfile`, or
+`--insecure-http` to send tokens in clear text; the server also refuses
+to start with no tokens.
+
+Every tool call and resource read, on either transport, appends one line
+to `mcp_records/audit.jsonl` (`LLMORCH_AUDIT_LOG`): the
+time, the server version, the transport, the caller (the token's id, or
+`stdio`), the tool and its arguments with `proposal`, `diff` and
+`context` replaced by their SHA-256 and length, the outcome, the
+review's id, status and verdict, the duration, and for a finished review
+the model token counts. A request refused before MCP gets a line with
+its status, path and client address.
 
 ## Golden suite
 

@@ -211,6 +211,14 @@ changed.
   splits into a core job on `requirements.txt` alone and a server job.
   Tests 225 to 233, plus 19 server tests in `tests_mcp/`. Not yet run
   against a live model.
+- the MCP server over Streamable HTTP, 0.2.0 (ADR-0004): pre-shared
+  bearer tokens with `read` and `review` scopes, stored as hashes and
+  revocable without a restart; Host and Origin checks; loopback unless TLS
+  or `--insecure-http`; one middleware on both transports for scopes,
+  per-caller limits and an append-only JSONL audit log that keeps hashes
+  of the reviewed text, never the text or a token. The spec's OAuth flow
+  is described and not implemented. Server tests 19 to 36, run against a
+  loopback `uvicorn`; TLS not tested.
 
 ## Features and measurements, in detail
 
