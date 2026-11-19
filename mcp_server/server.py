@@ -22,6 +22,7 @@ import anyio
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ResourceNotFoundError, ToolError
+from mcp_types import ToolAnnotations
 
 import debate
 from config import MAX_DEBATE_ROUNDS
@@ -38,6 +39,12 @@ MAX_WAIT_S = 55            # under the one-minute tool timeout some clients use
 MAX_LIST = 200
 INDEX_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\.json")
 INDEX_SECTIONS = ("files", "types", "constants", "callsites")
+# Hints for clients deciding when to ask before a call: nothing reaches past
+# this server and its local models, review_diff writes a record, the rest read
+READS = ToolAnnotations(read_only_hint=True, destructive_hint=False,
+                        idempotent_hint=True, open_world_hint=False)
+SUBMITS = ToolAnnotations(read_only_hint=False, destructive_hint=False,
+                          idempotent_hint=False, open_world_hint=False)
 
 INSTRUCTIONS = """\
 Multi-agent code review of Havne diffs on local models. review_diff queues
@@ -306,7 +313,7 @@ def build_server(settings: Optional[Settings] = None,
     server.tribunal = tribunal  # type: ignore[attr-defined]
     server.guard = guard  # type: ignore[attr-defined]
 
-    @server.tool()
+    @server.tool(annotations=SUBMITS)
     async def review_diff(proposal: str, diff: str = "", context: str = "",
                           header: bool = False,
                           index_name: Optional[str] = None) -> dict[str, Any]:
@@ -318,7 +325,9 @@ def build_server(settings: Optional[Settings] = None,
         repo index file in the server's index directory, built from the
         diff's base; by default the committed index is used. Input that
         cannot fit the models' context window is refused, never truncated.
-        Follow the review with get_decision."""
+        A review takes minutes to tens of minutes: follow it with
+        get_decision(record_id, wait_seconds=55) until status is done,
+        failed or lost."""
         for name, value in (("proposal", proposal), ("diff", diff), ("context", context)):
             _check_text(name, value)
         index_path = tribunal.index_path(index_name)
@@ -348,14 +357,16 @@ def build_server(settings: Optional[Settings] = None,
         state["notes"] = notes + [n for n in state.get("notes", []) if n not in notes]
         return state
 
-    @server.tool()
+    @server.tool(annotations=READS)
     async def get_decision(record_id: str, wait_seconds: int = 0,
                            include_record: bool = False,
                            ctx: Optional[Context] = None) -> dict[str, Any]:
         """A review's status (queued, running, done, failed or lost) and, once
         done, its final_verdict and findings. wait_seconds (up to 55) waits
-        for the review to finish, sending progress meanwhile.
-        include_record adds the full decision record."""
+        for the review to finish, sending progress meanwhile; call again
+        while status is queued or running. Only a done review's final_verdict
+        is a verdict: APPROVED_* approves, any MANUAL_REVIEW_REQUIRED needs a
+        person. Read notes first. include_record adds the full decision record."""
         _check_id(record_id)
         deadline = time.monotonic() + max(0, min(int(wait_seconds), MAX_WAIT_S))
         state = tribunal.describe(record_id, include_record)
@@ -370,7 +381,7 @@ def build_server(settings: Optional[Settings] = None,
                                           f"round {state['round']}: {state['agent']}")
         return state
 
-    @server.tool()
+    @server.tool(annotations=READS)
     async def list_decisions(limit: int = 20,
                              since: Optional[str] = None) -> dict[str, Any]:
         """Recent reviews on this server, newest first: status, verdict and

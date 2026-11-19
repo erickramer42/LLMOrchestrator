@@ -139,6 +139,23 @@ class ToolTests(ServerTestCase):
         self.assertEqual(templates, {"decision://{record_id}"})
         self.assertEqual(info.version, __version__)
 
+    def test_tools_carry_annotations_and_the_polling_rule(self):
+        # Clients that read no server instructions (Lumo Desktop) see only
+        # the tools' descriptions and annotations.
+        async def go():
+            async with Client(self.server()) as c:
+                return {t.name: t for t in (await c.list_tools()).tools}
+        tools = run(go)
+        for name in ("get_decision", "list_decisions"):
+            a = tools[name].annotations
+            self.assertEqual((a.read_only_hint, a.destructive_hint, a.open_world_hint),
+                             (True, False, False), name)
+        a = tools["review_diff"].annotations
+        self.assertEqual((a.read_only_hint, a.destructive_hint, a.idempotent_hint,
+                          a.open_world_hint), (False, False, False, False))
+        self.assertIn("get_decision(record_id, wait_seconds=55)", tools["review_diff"].description)
+        self.assertIn("MANUAL_REVIEW_REQUIRED needs a", tools["get_decision"].description)
+
     def test_a_clean_review_is_queued_then_approved_with_its_record(self):
         with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN):
             submitted, final = self.review(self.server(), {"proposal": "p", "diff": DIFF})
