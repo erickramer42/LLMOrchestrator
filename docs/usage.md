@@ -21,11 +21,14 @@ curl http://localhost:11434/api/version    # Ollama must be up for anything mode
 ```sh
 python -m unittest discover -s tests -v
 python -m py_compile *.py eval_harness/*.py tests/*.py
+python -m unittest discover -s tests_mcp -v   # the MCP server; needs requirements-mcp.txt
 ```
 
 The regression suite fakes Ollama at the HTTP layer, so the real client,
-judge and debate code run without a model. CI runs both commands on
-Python 3.11 and 3.13.
+judge and debate code run without a model. CI runs `tests/` and the
+compile check with `requirements.txt` alone, and again with
+`tests_mcp/` and `requirements-mcp.txt` installed, each on Python 3.11
+and 3.13.
 
 ## Reviews
 
@@ -60,6 +63,69 @@ retrieval still works, since the index is read from next to
 An accepted reviewer reply takes a median of 83 s on a local 12 GB GPU,
 and a reply that thinks to the output cap a median of 266 s, so a full
 three-round debate can take 10 minutes or more.
+
+## MCP server
+
+The same reviews, served to an MCP client over stdio
+([ADR-0003](decisions/0003-mcp-server.md)). It needs the SDK on top of
+the core's dependency:
+
+```sh
+pip install -r requirements-mcp.txt        # requests and mcp==2.3.0
+python -m unittest discover -s tests_mcp -v
+```
+
+Register it with the client, here with the `claude` CLI from the repo
+root. The path to `mcp_server` must be absolute, since the client starts
+the server from its own directory:
+
+```sh
+claude mcp add llm-orchestrator -- python "$(pwd)/mcp_server"
+```
+
+Or in a project's `.mcp.json`, with the directories set explicitly:
+
+```json
+{
+  "mcpServers": {
+    "llm-orchestrator": {
+      "command": "python",
+      "args": ["/path/to/LLMOrchestrator/mcp_server"],
+      "env": {
+        "LLMORCH_RECORDS_DIR": "/path/to/LLMOrchestrator/mcp_records",
+        "LLMORCH_INDEX_DIR": "/path/to/LLMOrchestrator/mcp_indexes"
+      }
+    }
+  }
+}
+```
+
+| Tool | What it does |
+|---|---|
+| `review_diff(proposal, diff, context?, header?, index_name?)` | Checks the input and queues a review; returns its `record_id` at once. Input that is empty or too large for the context window is refused and recorded at once. |
+| `get_decision(record_id, wait_seconds?, include_record?)` | The review's `status` (`queued`, `running`, `done`, `failed` or `lost`), its round and agent while running, and once done the `final_verdict`, the final round's findings and `notes`. Waits up to 55 s, with progress notifications. |
+| `list_decisions(limit?, since?)` | Recent reviews, newest first, with status, verdict and input hashes. |
+
+Resources: `decision://{record_id}` (a finished record) and the committed
+index's `index://info`, `index://files`, `index://types`,
+`index://constants` and `index://callsites`.
+
+Only a `done` review has a verdict. Read its `notes` first:
+`index_base_mismatch` means the repo context came from another version
+of the files the diff changes. To review against the diff's own base,
+build an index of it into the index directory and pass its file name:
+
+```sh
+mkdir -p mcp_indexes
+python orchestrator.py --index <clone-at-base> --no-llm --index-out mcp_indexes/base.json
+```
+
+The server runs one review at a time and queues up to 4 more
+(`LLMORCH_MAX_PENDING`); a call beyond that is refused as busy. Records go
+to `mcp_records/` (git-ignored) or `LLMORCH_RECORDS_DIR`, never to
+`coach_artifacts/`, and carry `metadata.interface` `{"name": "mcp",
+"server_version": ...}`. A restart loses queued and running reviews;
+`get_decision` then reports them as `lost`.
 
 ## Golden suite
 

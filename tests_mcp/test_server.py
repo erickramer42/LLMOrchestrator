@@ -1,0 +1,436 @@
+"""MCP server tests (ADR-0003): an in-process MCP client calls every tool
+and resource against the fake model server; one test launches the server
+over stdio from another directory. No Ollama, no network.
+
+Needs requirements-mcp.txt. Run from the repo root:
+    python -m unittest discover -s tests_mcp -v
+"""
+
+import contextlib
+import io
+import json
+import logging
+import os
+import sys
+import tempfile
+import threading
+import unittest
+from pathlib import Path
+from unittest import mock
+
+import anyio
+import requests
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from mcp import Client, StdioServerParameters  # noqa: E402
+
+import adjudication  # noqa: E402
+import agent_client  # noqa: E402
+import debate  # noqa: E402
+from mcp_server import __version__  # noqa: E402
+from mcp_server.jobs import ReviewQueue, marker_path  # noqa: E402
+from mcp_server.server import MAX_FIELD_CHARS, Settings, build_server  # noqa: E402
+
+logging.getLogger("agent_client").addHandler(logging.NullHandler())
+
+REVIEWER_CLEAN = {"verdict": "approve", "blockers": [], "questions": [], "nits": []}
+ENGINEER_CLEAN = {"verdict": "approve", "blockers": [], "concerns": [], "questions": []}
+QUOTE = "memcpy(buf, msg->data, msg->len);"
+DIFF = f"+++ b/core/src/x.cpp\n@@ -0,0 +1 @@\n+{QUOTE}\n"
+
+
+class FakeResp:
+    """Minimal stand-in for an Ollama /api/chat response."""
+
+    def __init__(self, content):
+        self._body = {"message": {"content": json.dumps(content)}, "done_reason": "stop"}
+        self.text = json.dumps(self._body)
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return self._body
+
+
+def fake_ollama(*replies):
+    seq = [r if isinstance(r, Exception) else FakeResp(r) for r in replies]
+    return mock.patch.object(agent_client.requests, "post", side_effect=seq)
+
+
+def run(coro_fn, *args):
+    return anyio.run(coro_fn, *args)
+
+
+class ServerTestCase(unittest.TestCase):
+    """A server on temporary directories, the working directory elsewhere,
+    and stdout captured: over stdio, stdout is the protocol."""
+
+    def setUp(self):
+        sleeper = mock.patch.object(agent_client.time, "sleep")
+        sleeper.start()
+        self.addCleanup(sleeper.stop)
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
+        self.records = self.tmp / "records"
+        self.indexes = self.tmp / "indexes"
+        self.indexes.mkdir()
+        cwd = os.getcwd()
+        os.chdir(self.tmp)
+        self.addCleanup(os.chdir, cwd)
+        self.stdout = io.StringIO()
+        redirect = contextlib.redirect_stdout(self.stdout)
+        redirect.__enter__()
+        self.addCleanup(redirect.__exit__, None, None, None)
+        stderr = contextlib.redirect_stderr(io.StringIO())
+        stderr.__enter__()
+        self.addCleanup(stderr.__exit__, None, None, None)
+
+    def server(self, queue=None, **settings):
+        s = Settings(records_dir=self.records, index_dir=self.indexes, **settings)
+        return build_server(s, queue)
+
+    def call(self, server, tool, args, **kw):
+        async def go():
+            async with Client(server) as c:
+                return await c.call_tool(tool, args, **kw)
+        return run(go)
+
+    def review(self, server, args, wait=30):
+        """Submit, then follow the review to its end; the final state."""
+        async def go():
+            async with Client(server) as c:
+                sub = await c.call_tool("review_diff", args)
+                self.assertFalse(sub.is_error, sub.content)
+                rid = sub.structured_content["record_id"]
+                state = sub.structured_content
+                for _ in range(wait):
+                    if state["status"] in ("done", "failed", "lost"):
+                        break
+                    res = await c.call_tool("get_decision",
+                                            {"record_id": rid, "wait_seconds": 1})
+                    self.assertFalse(res.is_error, res.content)
+                    state = res.structured_content
+                return sub.structured_content, state
+        return run(go)
+
+    def tearDown(self):
+        self.assertEqual(self.stdout.getvalue(), "", "the server wrote to stdout")
+
+
+class ToolTests(ServerTestCase):
+
+    def test_tools_and_resources_are_listed(self):
+        async def go():
+            async with Client(self.server()) as c:
+                tools = {t.name for t in (await c.list_tools()).tools}
+                resources = {str(r.uri) for r in (await c.list_resources()).resources}
+                templates = {t.uri_template
+                             for t in (await c.list_resource_templates()).resource_templates}
+                return tools, resources, templates, c.server_info
+        tools, resources, templates, info = run(go)
+        self.assertEqual(tools, {"review_diff", "get_decision", "list_decisions"})
+        self.assertEqual(resources, {"index://info", "index://files", "index://types",
+                                     "index://constants", "index://callsites"})
+        self.assertEqual(templates, {"decision://{record_id}"})
+        self.assertEqual(info.version, __version__)
+
+    def test_a_clean_review_is_queued_then_approved_with_its_record(self):
+        with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN):
+            submitted, final = self.review(self.server(), {"proposal": "p", "diff": DIFF})
+        self.assertIn(submitted["status"], ("queued", "running", "done"))
+        self.assertIsNone(submitted["final_verdict"])
+        self.assertEqual(final["status"], "done")
+        self.assertEqual(final["final_verdict"], "APPROVED_FOR_MERGE")
+        rid = final["record_id"]
+        rec = json.loads((self.records / f"decision_{rid}.json").read_text(encoding="utf-8"))
+        self.assertEqual(rec["metadata"]["interface"],
+                         {"name": "mcp", "server_version": __version__})
+        self.assertEqual(rec["inputs"]["diff_sha256"], final["diff_sha256"])
+        self.assertFalse(marker_path(self.records, rid).exists())
+        self.assertFalse((self.tmp / "coach_artifacts").exists())
+
+    def test_findings_are_the_final_round_after_the_guardrails(self):
+        # One verified blocker, one hedged (demoted to a question by judge j6).
+        rev = {**REVIEWER_CLEAN, "blockers": [
+            {"claim": "memcpy overflows buf", "file": "core/src/x.cpp", "quote": QUOTE},
+            {"claim": "this might leak", "file": "core/src/x.cpp", "quote": QUOTE}]}
+        replies = [rev, ENGINEER_CLEAN] * debate.MAX_DEBATE_ROUNDS
+        with fake_ollama(*replies):
+            _, final = self.review(self.server(), {"proposal": "p", "diff": DIFF})
+        self.assertEqual(final["final_verdict"], adjudication.MAX_ROUNDS_VERDICT)
+        self.assertEqual(final["rounds_completed"], debate.MAX_DEBATE_ROUNDS)
+        found = final["findings"]["reviewer"]
+        self.assertEqual(len(found["blockers"]), 1)
+        self.assertIn("memcpy overflows buf", found["blockers"][0])
+        self.assertTrue(any("might leak" in q for q in found["questions"]))
+
+    def test_schema_invalid_replies_never_approve(self):
+        bad = {"verdict": "approve", "summary": "looks fine"}
+        with fake_ollama(bad, bad, bad):
+            _, final = self.review(self.server(), {"proposal": "p", "diff": DIFF})
+        self.assertEqual(final["status"], "done")
+        self.assertEqual(final["final_verdict"], adjudication.AGENT_FAILURE_VERDICT)
+        self.assertTrue(any(n.startswith("agent_failure:") for n in final["notes"]))
+
+    def test_an_unreachable_model_never_approves(self):
+        err = requests.exceptions.ConnectionError("refused")
+        with fake_ollama(err, err, err):
+            _, final = self.review(self.server(), {"proposal": "p", "diff": DIFF})
+        self.assertEqual(final["final_verdict"], adjudication.AGENT_FAILURE_VERDICT)
+
+    def test_refused_input_is_recorded_at_once_without_a_model_call(self):
+        server = self.server()
+        with fake_ollama() as post:
+            empty = self.call(server, "review_diff", {"proposal": "p"})
+            large = self.call(server, "review_diff",
+                              {"proposal": "p", "diff": "+" + "x" * 60000 + "\n"})
+        self.assertEqual(post.call_count, 0)
+        for res, verdict in ((empty, adjudication.NO_INPUT_VERDICT),
+                             (large, adjudication.INPUT_TOO_LARGE_VERDICT)):
+            self.assertFalse(res.is_error)
+            self.assertEqual(res.structured_content["status"], "done")
+            self.assertEqual(res.structured_content["final_verdict"], verdict)
+            self.assertTrue(any(n.startswith("input_refused:")
+                                for n in res.structured_content["notes"]))
+        self.assertEqual(len(list(self.records.glob("decision_*.json"))), 2)
+
+    def test_a_field_over_the_cap_is_a_tool_error(self):
+        res = self.call(self.server(), "review_diff",
+                        {"proposal": "p", "diff": "+" + "x" * MAX_FIELD_CHARS})
+        self.assertTrue(res.is_error)
+        self.assertIn("limit", res.content[0].text)
+
+    def test_index_name_cannot_leave_the_index_directory(self):
+        # The files exist, so only the name check can refuse them.
+        index = (REPO_ROOT / "repo_context.json").read_text(encoding="utf-8")
+        (self.tmp / "outside.json").write_text(index, encoding="utf-8")
+        (self.indexes / ".hidden.json").write_text(index, encoding="utf-8")
+        (self.indexes / "x.txt").write_text(index, encoding="utf-8")
+        server = self.server()
+        for name in ("../outside.json", "..\\outside.json", str(self.tmp / "outside.json"),
+                     ".hidden.json", "x.txt", "missing.json"):
+            res = self.call(server, "review_diff",
+                            {"proposal": "p", "diff": DIFF, "index_name": name})
+            self.assertTrue(res.is_error, name)
+
+    def test_a_named_index_is_used(self):
+        index = json.loads((REPO_ROOT / "repo_context.json").read_text(encoding="utf-8"))
+        (self.indexes / "base.json").write_text(json.dumps(index), encoding="utf-8")
+        with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN):
+            _, final = self.review(self.server(),
+                                   {"proposal": "p", "diff": DIFF, "index_name": "base.json"})
+        rec = json.loads((self.records / f"decision_{final['record_id']}.json")
+                         .read_text(encoding="utf-8"))
+        self.assertTrue(rec["metadata"]["repo_context_pack"]["index_file"].endswith("base.json"))
+
+
+class StatusTests(ServerTestCase):
+
+    def test_unknown_and_malformed_ids_are_tool_errors(self):
+        server = self.server()
+        for rid in ("debate_20200101_000000_abcdef", "../../etc/passwd", "decision_x"):
+            res = self.call(server, "get_decision", {"record_id": rid})
+            self.assertTrue(res.is_error, rid)
+
+    def test_a_review_lost_in_a_restart_is_reported_as_lost(self):
+        rid = debate.new_debate_id()
+        self.records.mkdir()
+        marker_path(self.records, rid).write_text(json.dumps(
+            {"record_id": rid, "state": "queued",
+             "submitted_utc": "2026-11-19T20:00:00+00:00"}), encoding="utf-8")
+        server = self.server()
+        res = self.call(server, "get_decision", {"record_id": rid})
+        self.assertFalse(res.is_error)
+        self.assertEqual(res.structured_content["status"], "lost")
+        self.assertIsNone(res.structured_content["final_verdict"])
+        listed = self.call(server, "list_decisions", {}).structured_content["reviews"]
+        self.assertEqual([(r["record_id"], r["status"]) for r in listed], [(rid, "lost")])
+
+    def test_a_server_fault_is_failed_with_no_verdict(self):
+        def broken(*_a, **_k):
+            raise OSError("disk full")
+        queue = ReviewQueue(self.records, {"name": "mcp"}, run=broken)
+        server = self.server(queue)
+        _, final = self.review(server, {"proposal": "p", "diff": DIFF})
+        self.assertEqual(final["status"], "failed")
+        self.assertIsNone(final["final_verdict"])
+        self.assertIn("disk full", final["notes"][0])
+        # A restart still answers it from the marker.
+        res = self.call(self.server(), "get_decision", {"record_id": final["record_id"]})
+        self.assertEqual(res.structured_content["status"], "failed")
+
+    def test_the_marker_is_written_before_the_worker_can_take_the_job(self):
+        # Written after, it overwrote a fast failure's marker, so a restart
+        # reported the failed review as lost.
+        queue = ReviewQueue(self.records, {"name": "mcp"}, run=lambda *a, **k: {})
+        seen = []
+        real_put = queue._pending.put_nowait
+
+        def put(record_id):
+            seen.append(marker_path(self.records, record_id).is_file())
+            real_put(record_id)
+        queue._pending.put_nowait = put
+        queue.submit("p", DIFF)
+        self.assertEqual(seen, [True])
+
+    def test_a_review_finished_before_submit_returns_keeps_its_notes(self):
+        # The worker can finish before review_diff describes the job.
+        started = threading.Event()
+
+        def instant(*_a, **_k):
+            raise OSError("disk full")
+        queue = ReviewQueue(self.records, {"name": "mcp"}, run=instant)
+        real_submit = queue.submit
+
+        def submit_then_finish(*a, **k):
+            rid = real_submit(*a, **k)
+            queue.join()
+            started.set()
+            return rid
+        queue.submit = submit_then_finish
+        res = self.call(self.server(queue), "review_diff", {"proposal": "p", "diff": DIFF})
+        self.assertTrue(started.is_set())
+        self.assertEqual(res.structured_content["status"], "failed")
+        self.assertTrue(any("disk full" in n for n in res.structured_content["notes"]))
+
+    def test_a_full_queue_answers_busy(self):
+        release = threading.Event()
+        started = threading.Event()
+
+        def slow(*_a, debate_id, records_dir, on_progress, **_k):
+            on_progress({"round": 1, "agent": "reviewer"})
+            started.set()
+            release.wait(10)
+            raise OSError("stopped")
+        queue = ReviewQueue(self.records, {"name": "mcp"}, max_pending=1, run=slow)
+        server = self.server(queue)
+        args = {"proposal": "p", "diff": DIFF}
+        first = self.call(server, "review_diff", args)
+        self.assertTrue(started.wait(10))
+        second = self.call(server, "review_diff", args)
+        third = self.call(server, "review_diff", args)
+        try:
+            self.assertFalse(first.is_error)
+            self.assertEqual(second.structured_content["status"], "queued")
+            self.assertEqual(second.structured_content["queue_position"], 1)
+            self.assertTrue(third.is_error)
+            self.assertIn("busy", third.content[0].text)
+            running = self.call(server, "get_decision",
+                                {"record_id": first.structured_content["record_id"]})
+            self.assertEqual(running.structured_content["status"], "running")
+            self.assertEqual((running.structured_content["round"],
+                              running.structured_content["agent"]), (1, "reviewer"))
+        finally:
+            release.set()
+            queue.join()
+
+    def test_waiting_sends_progress(self):
+        release = threading.Event()
+        progressed = []
+
+        def stepping(*_a, debate_id, records_dir, on_progress, **_k):
+            on_progress({"round": 1, "agent": "reviewer"})
+            release.wait(10)
+            on_progress({"round": 1, "agent": "auto_engineer"})
+            raise OSError("stopped")
+        queue = ReviewQueue(self.records, {"name": "mcp"}, run=stepping)
+        server = self.server(queue)
+
+        async def progress(value, total, message):
+            progressed.append((value, total, message))
+            release.set()
+
+        async def go():
+            async with Client(server) as c:
+                sub = await c.call_tool("review_diff", {"proposal": "p", "diff": DIFF})
+                return await c.call_tool(
+                    "get_decision", {"record_id": sub.structured_content["record_id"],
+                                     "wait_seconds": 20},
+                    progress_callback=progress)
+        try:
+            # The first wait sees round 1's reviewer, then releases the engineer.
+            with mock.patch.object(queue, "wait_for_change",
+                                   wraps=queue.wait_for_change):
+                res = run(go)
+        finally:
+            release.set()
+            queue.join()
+        self.assertEqual(res.structured_content["status"], "failed")
+        self.assertTrue(progressed)
+        self.assertEqual(progressed[0][1], 2 * debate.MAX_DEBATE_ROUNDS)
+
+
+class ListAndResourceTests(ServerTestCase):
+
+    def test_list_decisions_reports_verdicts_and_hashes_newest_first(self):
+        server = self.server()
+        with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN, REVIEWER_CLEAN, ENGINEER_CLEAN):
+            _, a = self.review(server, {"proposal": "first", "diff": DIFF})
+            _, b = self.review(server, {"proposal": "second", "diff": DIFF + "+int y;\n"})
+        rows = self.call(server, "list_decisions", {}).structured_content["reviews"]
+        self.assertEqual([r["record_id"] for r in rows], [b["record_id"], a["record_id"]])
+        self.assertEqual(rows[0]["final_verdict"], "APPROVED_FOR_MERGE")
+        self.assertEqual(rows[1]["diff_sha256"], debate.text_sha256(DIFF))
+        limited = self.call(server, "list_decisions", {"limit": 1}).structured_content
+        self.assertEqual(len(limited["reviews"]), 1)
+        later = self.call(server, "list_decisions", {"since": "2999-01-01"}).structured_content
+        self.assertEqual(later["reviews"], [])
+        self.assertTrue(self.call(server, "list_decisions", {"since": "yesterday"}).is_error)
+
+    def test_records_and_index_are_readable_resources(self):
+        server = self.server()
+        with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN):
+            _, final = self.review(server, {"proposal": "p", "diff": DIFF})
+
+        async def go():
+            async with Client(server) as c:
+                rec = await c.read_resource(f"decision://{final['record_id']}")
+                types = await c.read_resource("index://types")
+                info = await c.read_resource("index://info")
+                errors = []
+                for uri in ("decision://debate_20200101_000000_abcdef",
+                            "decision://..%2F..%2Fsecret"):
+                    try:
+                        await c.read_resource(uri)
+                        errors.append(None)
+                    except Exception as exc:  # the SDK raises MCPError
+                        errors.append(type(exc).__name__)
+                return rec, types, info, errors
+        rec, types, info, errors = run(go)
+        self.assertEqual(json.loads(rec.contents[0].text)["metadata"]["debate_id"],
+                         final["record_id"])
+        index = json.loads((REPO_ROOT / "repo_context.json").read_text(encoding="utf-8"))
+        self.assertEqual(json.loads(types.contents[0].text), index["types"])
+        self.assertEqual(json.loads(info.contents[0].text)["source_commit"],
+                         index["source_commit"])
+        self.assertNotIn(None, errors)
+
+
+class StdioLaunchTests(unittest.TestCase):
+
+    def test_the_server_starts_over_stdio_from_another_directory(self):
+        # A client starts the server from its own working directory, and
+        # any stray stdout line would corrupt the protocol.
+        with tempfile.TemporaryDirectory() as tmp:
+            params = StdioServerParameters(
+                command=sys.executable, args=[str(REPO_ROOT / "mcp_server")], cwd=tmp,
+                env={**os.environ, "LLMORCH_RECORDS_DIR": str(Path(tmp, "records"))})
+
+            async def go():
+                with anyio.fail_after(60):
+                    async with Client(params) as c:
+                        tools = await c.list_tools()
+                        listed = await c.call_tool("list_decisions", {})
+                        return {t.name for t in tools.tools}, listed
+            tools, listed = anyio.run(go)
+        self.assertIn("review_diff", tools)
+        self.assertEqual(listed.structured_content["reviews"], [])
+
+
+if __name__ == "__main__":
+    unittest.main()

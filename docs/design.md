@@ -60,6 +60,7 @@ The two agents have different jobs:
 | `review_fixtures.py` | Code snippets the golden suite and the bake-off share |
 | `eval_harness/` | Measurement runners and scorers: round-1 and round-2 samples, the corpus, offline replay of judge variants, the probe and the model bake-off |
 | `tests/` | Deterministic regression tests, with Ollama faked at the HTTP layer |
+| `mcp_server/` | MCP server over stdio: reviews as queued jobs, records and the index as resources; a separate package the core never imports ([ADR-0003](decisions/0003-mcp-server.md)) |
 
 Every file, the evaluation harness and the committed evidence included, is in [file-map.md](file-map.md).
 

@@ -21,6 +21,10 @@ Thumbs.db
 # Test artifacts
 gold_tests/run_*.json
 
+# MCP server reviews and indexes: ad-hoc runs, not evidence (ADR-0003)
+mcp_records/
+mcp_indexes/
+
 # Logs
 *.log
 logs/

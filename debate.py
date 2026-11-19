@@ -12,7 +12,7 @@ import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from typing import Callable, Dict, List, NamedTuple, Optional, Tuple
 
 from adjudication import (AGENT_FAILURE_VERDICT, INPUT_TOO_LARGE_VERDICT,
                           JUDGE_VERSION, MAX_ROUNDS_VERDICT,
@@ -175,6 +175,14 @@ def _new_id(kind: str) -> str:
     """Timestamp plus a random suffix, so same-second runs don't collide."""
     return (f"{kind}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
             f"_{uuid.uuid4().hex[:6]}")
+
+
+DEBATE_ID_PATTERN = re.compile(r"debate_\d{8}_\d{6}_[0-9a-f]{6}")
+
+
+def new_debate_id() -> str:
+    """A debate id, for a caller that names the debate before it runs."""
+    return _new_id("debate")
 
 
 def _load_repo_index(path: Optional[Path] = None) -> dict:
@@ -414,12 +422,45 @@ def _run_settings(setup: _Setup, mode: str, max_rounds: int,
     }
 
 
+def check_input(proposal: str, code_diff: str = "", code_context: str = "",
+                header_artifact: bool = False,
+                index_path: Optional[str] = None) -> dict:
+    """The input check a debate of this input would make, without a
+    model call or a record: the size estimate, 'verdict' and 'reason' when
+    the input would be refused, and any retrieval error or index base
+    mismatch."""
+    setup = _prepare(code_diff, code_context, header_artifact, index_path)
+    check = _input_check(setup, proposal, code_diff, code_context)
+    return _with_diagnostics(dict(check), [], setup, check)
+
+
+def _notify(on_progress: Optional[Callable[[dict], None]], **event) -> None:
+    """Report progress; a failing callback never stops the debate."""
+    if on_progress is None:
+        return
+    try:
+        on_progress(dict(event))
+    except Exception as exc:  # the debate and its record matter more
+        print(f"WARNING: progress callback failed: {type(exc).__name__}: {exc}",
+              file=sys.stderr)
+
+
 def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
                header_artifact: bool = False,
-               index_path: Optional[str] = None) -> dict:
+               index_path: Optional[str] = None,
+               debate_id: Optional[str] = None,
+               records_dir: Optional[Path] = None,
+               on_progress: Optional[Callable[[dict], None]] = None,
+               interface: Optional[dict] = None) -> dict:
     """Orchestrates the full debate loop. Returns structured decision
     with audit trail. header_artifact selects the header-scoped reviewer
     prompt (interface definitions) instead of implementation standards.
+
+    debate_id names the debate in advance (default: a new id);
+    records_dir is where the record goes (default: coach_artifacts/);
+    on_progress receives one event dict before each agent call; interface
+    is stamped as metadata.interface (default: {"name": "cli"}). None of
+    them changes what the agents are sent (ADR-0003).
 
     From round 2 on, the transcript shows the previous round's replies in
     a CRITIQUES section after the code (v11.1; ADR-0002, twelfth
@@ -430,7 +471,10 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
 
     Input that _input_check refuses gets its verdict without any round.
     """
-    debate_id = _new_id("debate")
+    if debate_id is None:
+        debate_id = new_debate_id()
+    elif not DEBATE_ID_PATTERN.fullmatch(debate_id):
+        raise ValueError(f"not a debate id: {debate_id!r}")
     setup = _prepare(code_diff, code_context, header_artifact, index_path)
     check = _input_check(setup, proposal, code_diff, code_context)
 
@@ -440,7 +484,8 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
     rounds = range(1, MAX_DEBATE_ROUNDS + 1) if final_verdict is None else ()
     critiques = ""
     for round_num in rounds:
-        entry = _run_round(setup, proposal, round_num, critiques=critiques)
+        entry = _run_round(setup, proposal, round_num, critiques=critiques,
+                           on_progress=on_progress)
         round_history.append(entry)
 
         # Fail closed on unusable agent output
@@ -457,13 +502,14 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
         # round's replies, and only this round's, after the code
         critiques = _critiques_section(entry)
 
+    settings = _run_settings(setup, DEBATE_MODE, MAX_DEBATE_ROUNDS, check)
+    settings["interface"] = dict(interface or {"name": "cli"})
     decision_record = _save_decision_record(
         debate_id,
         _record_inputs(setup, proposal, proposal, code_diff, code_context,
                        header_artifact),
-        final_verdict, round_history,
-        _run_settings(setup, DEBATE_MODE, MAX_DEBATE_ROUNDS, check),
-        agent_failures)
+        final_verdict, round_history, settings, agent_failures,
+        output_dir=records_dir)
 
     result = {
         "debate_id": debate_id,
@@ -477,7 +523,8 @@ def run_debate(proposal: str, code_diff: str = "", code_context: str = "",
 
 def _run_round(setup: _Setup, proposal: str, round_num: int,
                with_engineer: bool = True, critiques: str = "",
-               temperature: Optional[float] = None) -> dict:
+               temperature: Optional[float] = None,
+               on_progress: Optional[Callable[[dict], None]] = None) -> dict:
     """One round's round_history entry. Both agents critique the same
     transcript; neither sees the other's reply until the feedback of a
     later round. with_engineer=False calls the reviewer alone (the
@@ -490,6 +537,7 @@ def _run_round(setup: _Setup, proposal: str, round_num: int,
         temperature = (TEMPERATURE_EXPLORATION if round_num == 1
                        else TEMPERATURE_RETRY)
     telemetry = {"reviewer": []}
+    _notify(on_progress, round=round_num, agent="reviewer")
     reviewer = call_agent(MODELS["code_reviewer"], setup.reviewer_prompt,
                           transcript, temperature, validate=_validate_reviewer,
                           telemetry=telemetry["reviewer"])
@@ -512,6 +560,7 @@ def _run_round(setup: _Setup, proposal: str, round_num: int,
                     failure_result("not called: reviewer failed this round"),
                     "concerns"))
         else:
+            _notify(on_progress, round=round_num, agent="auto_engineer")
             entry["auto_engineer"], hedge_stats["engineer_demoted"] = _engineer_call(
                 transcript, temperature, telemetry["auto_engineer"])
 
@@ -792,7 +841,8 @@ _RECORD_KINDS = {
 def _save_decision_record(record_id: str, inputs: dict, verdict: str,
                            round_history: List[dict], run_settings: dict,
                            agent_failures: List[str],
-                           round2_arms: Optional[dict] = None) -> Path:
+                           round2_arms: Optional[dict] = None,
+                           output_dir: Optional[Path] = None) -> Path:
     """ADR-style artifact for coach pipeline. A measurement is saved as
     measurement_<id>.json, so nothing reads it as a merge decision. All
     kinds keep the id under metadata.debate_id, so record readers need no
@@ -816,8 +866,8 @@ def _save_decision_record(record_id: str, inputs: dict, verdict: str,
             "intended_consumer": consumer,
         },
     }
-    output_dir = Path("coach_artifacts")
-    output_dir.mkdir(exist_ok=True)
+    output_dir = Path(output_dir) if output_dir is not None else Path("coach_artifacts")
+    output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / f"{prefix}_{record_id}.json"
     output_file.write_text(json.dumps(record, indent=2), encoding="utf-8")
     return output_file

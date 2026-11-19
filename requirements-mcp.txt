@@ -1,0 +1,4 @@
+# The MCP server (mcp_server/); the core needs requirements.txt alone.
+# Pinned exactly: see docs/decisions/0003-mcp-server.md.
+-r requirements.txt
+mcp==2.3.0

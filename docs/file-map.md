@@ -29,6 +29,19 @@ together, see [design.md](design.md); for the current versions, see
 `diff_reader`. The probe and bake-off import only `reviewer_prompt`,
 `eval_harness.raw_call` and `review_fixtures`. `tests/` sits on top.
 
+## MCP server
+
+A separate package on top of the core ([ADR-0003](decisions/0003-mcp-server.md)): it imports `debate`, `config` and `retrieval`, and no core module imports it or the SDK.
+
+| Path | Purpose |
+|---|---|
+| `mcp_server/__init__.py` | The server's semantic version, `__version__`. |
+| `mcp_server/__main__.py` | Starts the server over stdio; puts the repo root on the import path, so a client can start it from any directory. |
+| `mcp_server/server.py` | The tools (`review_diff`, `get_decision`, `list_decisions`), the resources (`decision://`, `index://`), the settings from `LLMORCH_*` environment variables, and the summary of a finished record. Imports `debate`, never `orchestrator`, so nothing prints to stdout, which carries the protocol. |
+| `mcp_server/jobs.py` | The review queue: one worker thread, a bounded queue, per-job round and agent, and pending markers that let a restart report a review as lost. |
+| `requirements-mcp.txt` | `requirements.txt` plus the pinned SDK, `mcp==2.3.0`. |
+| `tests_mcp/test_server.py` | The server's tests: an in-process MCP client against the fake model, and a stdio launch from another directory. |
+
 ## Repo context
 
 | Path | Purpose |
@@ -78,9 +91,9 @@ together, see [design.md](design.md); for the current versions, see
 |---|---|
 | `tests/test_deterministic.py` | The regression suite. Ollama is faked at the HTTP layer, so the real client, judge and debate code run without a model. Also pins the label counts of every scored sample. |
 | `tests/test_retrieval.py` | Retrieval and indexer unit tests. |
-| `.github/workflows/` | CI: compile check and the regression suite on Python 3.11 and 3.13, no Ollama. |
-| `requirements.txt` | The one dependency, `requests`. |
-| `.gitignore` | Keeps out caches, virtual environments, model weights, golden-suite run files (`gold_tests/run_*.json`), the summary cache (`repo_context_cache.json`) and local notes. |
+| `.github/workflows/` | CI on Python 3.11 and 3.13, no Ollama: the compile check and the regression suite with `requirements.txt` alone, then both suites with `requirements-mcp.txt`. |
+| `requirements.txt` | The core's one dependency, `requests`. |
+| `.gitignore` | Keeps out caches, virtual environments, model weights, golden-suite run files (`gold_tests/run_*.json`), the summary cache (`repo_context_cache.json`), the MCP server's records and indexes (`mcp_records/`, `mcp_indexes/`) and local notes. |
 | `README.md` | The project in two minutes. |
 | `LICENSE` | MIT. |
 | `STATUS.md` | Current state, work in progress, limitations, backlog and conventions. |
@@ -90,4 +103,4 @@ together, see [design.md](design.md); for the current versions, see
 | `docs/file-map.md` | This file. |
 | `docs/portability_guide.md` | Adapting the tribunal to another codebase. |
 | `docs/history.md` | The dated engineering log. |
-| `docs/decisions/` | ADR-0001 (model selection) and ADR-0002 (adjudication and every measurement, predictions included). |
+| `docs/decisions/` | ADR-0001 (model selection), ADR-0002 (adjudication and every measurement, predictions included) and ADR-0003 (the MCP server). |

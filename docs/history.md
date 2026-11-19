@@ -198,6 +198,20 @@ changed.
   fingerprints are unchanged. Tests 226 to 224: the two that switched the
   hook on went with it.
 
+### 2026-11-19
+
+- an MCP server over stdio, `mcp_server/` 0.1.0 on the pinned SDK
+  `mcp==2.3.0` (ADR-0003). `review_diff` queues a review and returns its
+  id at once, since a debate outlasts many clients' tool timeouts;
+  `get_decision` waits with progress notifications; one review runs at a
+  time. Records go to the git-ignored `mcp_records/`, stamped
+  `metadata.interface`. The core gained optional `run_debate` arguments
+  (record id, records directory, progress callback, interface) and
+  `check_input`; debate requests and fingerprints are unchanged. CI
+  splits into a core job on `requirements.txt` alone and a server job.
+  Tests 225 to 233, plus 19 server tests in `tests_mcp/`. Not yet run
+  against a live model.
+
 ## Features and measurements, in detail
 
 Each entry is dated. Newer entries supersede older ones where they

@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-11-09.
+Last updated: 2026-11-19.
 
 What works today, what is being measured, what is known to be weak, and
 what comes next. For the system itself see [design.md](docs/design.md);
@@ -16,7 +16,8 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 | Judge | `j8-claim-quote-linkage` |
 | Context-pack format | `f3-diff-authoritative` |
 | Models | reviewer `laguna-xs-2.1`, engineer `gemma4:12b`, on Ollama; `NUM_CTX` 24576, `NUM_PREDICT` 12288 |
-| Tests | 225 regression tests, no model needed; CI on Python 3.11 and 3.13 |
+| Tests | 233 regression tests and 19 MCP server tests, no model needed; CI on Python 3.11 and 3.13 |
+| MCP server | `mcp_server` 0.1.0 over stdio, SDK `mcp==2.3.0` ([ADR-0003](docs/decisions/0003-mcp-server.md)) |
 | Golden suite | 10/10 at the last live run (3 model fixtures, 7 hedge units); 13 deterministic judge cases since 2026-10-27 |
 
 **Headline numbers (judge j8, round-1 samples, hand-labeled):**
@@ -40,6 +41,12 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
   without the fix comments v1's reverse diffs leak; 11 known bugs. Its
   laguna baseline has not run yet. `corpus` and `replay --corpus` take
   `--manifest docs/fixtures/corpus_v2.json`.
+
+- **MCP server, stdio (ADR-0003):** reviews as queued jobs, the records
+  and the index as resources, tested in-process against the fake model
+  and through a stdio launch. Not yet run against a live model or from
+  an MCP client on a real Havne diff. Next: HTTP transport, token
+  authentication and an audit log.
 
 The shipped prompt is v11.1.
 

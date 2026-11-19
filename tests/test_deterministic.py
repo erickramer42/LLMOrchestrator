@@ -662,6 +662,75 @@ class DebateTests(NoSleep):
         self.assertEqual(rec["metadata"]["mode"], debate.DEBATE_MODE)
         self.assertEqual(rec["outputs"]["agent_failures"], [])
 
+    # ---- caller options (ADR-0003): none may change what agents see ----
+
+    def test_a_cli_debate_writes_to_coach_artifacts_stamped_cli(self):
+        with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN):
+            result = debate.run_debate("p", QUOTED_DIFF, "")
+        path = Path(result["decision_record_path"])
+        self.assertEqual(path.parent, Path("coach_artifacts"))
+        self.assertTrue(debate.DEBATE_ID_PATTERN.fullmatch(result["debate_id"]))
+        self.assertEqual(self.record(result)["metadata"]["interface"], {"name": "cli"})
+
+    def test_records_dir_debate_id_and_interface_are_honored(self):
+        rid = debate.new_debate_id()
+        out = Path("elsewhere", "records")
+        with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN):
+            result = debate.run_debate("p", QUOTED_DIFF, "", debate_id=rid,
+                                       records_dir=out,
+                                       interface={"name": "mcp", "server_version": "9.9.9"})
+        self.assertEqual(result["debate_id"], rid)
+        self.assertEqual(Path(result["decision_record_path"]), out / f"decision_{rid}.json")
+        self.assertFalse(Path("coach_artifacts").exists())
+        rec = self.record(result)
+        self.assertEqual(rec["metadata"]["debate_id"], rid)
+        self.assertEqual(rec["metadata"]["interface"]["name"], "mcp")
+
+    def test_a_malformed_debate_id_is_refused_before_any_call(self):
+        # The id becomes a file name, so it must match the pattern exactly.
+        with fake_ollama() as post:
+            for bad in ("../decision_x", "debate_20261119_000000_abcdeg", ""):
+                with self.assertRaises(ValueError):
+                    debate.run_debate("p", QUOTED_DIFF, "", debate_id=bad)
+        self.assertEqual(post.call_count, 0)
+
+    def test_progress_reports_each_agent_call_and_sends_the_same_requests(self):
+        rev = {**REVIEWER_CLEAN, "blockers": [quoted("memcpy overflows buf")]}
+        replies = [rev, ENGINEER_CLEAN] * debate.MAX_DEBATE_ROUNDS
+        with fake_ollama(*replies) as post:
+            plain = debate.run_debate("p", QUOTED_DIFF, "")
+        sent_plain = transcripts(post)
+        events = []
+        with fake_ollama(*replies) as post:
+            watched = debate.run_debate("p", QUOTED_DIFF, "", on_progress=events.append)
+        self.assertEqual(transcripts(post), sent_plain)
+        self.assertEqual(watched["final_verdict"], plain["final_verdict"])
+        self.assertEqual(events, [{"round": r, "agent": a}
+                                  for r in range(1, debate.MAX_DEBATE_ROUNDS + 1)
+                                  for a in ("reviewer", "auto_engineer")])
+
+    def test_a_failing_progress_callback_does_not_stop_the_debate(self):
+        def broken(_event):
+            raise RuntimeError("client went away")
+        with fake_ollama(REVIEWER_CLEAN, ENGINEER_CLEAN), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            result = debate.run_debate("p", QUOTED_DIFF, "", on_progress=broken)
+        self.assertEqual(result["final_verdict"], "APPROVED_FOR_MERGE")
+        self.assertTrue(Path(result["decision_record_path"]).exists())
+        self.assertIn("progress callback failed", err.getvalue())
+
+    def test_check_input_refuses_as_a_debate_would_without_a_model_call(self):
+        with fake_ollama() as post:
+            empty = debate.check_input("p", "", "")
+            large = debate.check_input("p", "+" + "x" * 60000 + "\n", "")
+            fine = debate.check_input("p", QUOTED_DIFF, "")
+        self.assertEqual(post.call_count, 0)
+        self.assertEqual(empty["verdict"], adjudication.NO_INPUT_VERDICT)
+        self.assertEqual(large["verdict"], adjudication.INPUT_TOO_LARGE_VERDICT)
+        self.assertIn("input_refused", large)
+        self.assertIsNone(fine["verdict"])
+        self.assertFalse(Path("coach_artifacts").exists())
+
     # ---- convergence (backlog #2) ----
 
     def test_open_items_without_blockers_converge_in_round_one(self):
@@ -2856,6 +2925,28 @@ class CliTests(unittest.TestCase):
                             "import sys, debate; print('indexer' in sys.modules)"],
                            cwd=REPO_ROOT, capture_output=True, text=True, timeout=60)
         self.assertEqual(r.stdout.strip(), "False", r.stderr)
+
+    def test_the_core_never_loads_the_mcp_server_or_its_sdk(self):
+        # ADR-0003: the core runs with requirements.txt alone.
+        r = subprocess.run([sys.executable, "-c",
+                            "import sys, debate, orchestrator, golden_tests; "
+                            "print(sorted(m for m in sys.modules "
+                            "if m.split('.')[0] in ('mcp', 'mcp_server', 'mcp_types')))"],
+                           cwd=REPO_ROOT, capture_output=True, text=True, timeout=60)
+        self.assertEqual(r.stdout.strip(), "[]", r.stderr)
+
+    def test_no_core_module_imports_the_mcp_server_or_its_sdk(self):
+        import ast
+        core = sorted(REPO_ROOT.glob("*.py")) + sorted(REPO_ROOT.glob("eval_harness/*.py"))
+        for path in core:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                names = ([a.name for a in node.names] if isinstance(node, ast.Import)
+                         else [node.module or ""] if isinstance(node, ast.ImportFrom)
+                         else [])
+                for name in names:
+                    self.assertNotIn(name.split(".")[0], ("mcp", "mcp_server", "mcp_types"),
+                                     path.name)
 
 
 if __name__ == "__main__":

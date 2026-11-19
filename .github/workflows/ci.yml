@@ -1,8 +1,9 @@
-# CI workflow: compile checks + deterministic regression suite, no Ollama
+# CI workflow: compile checks + deterministic regression suites, no Ollama
 name: CI
 on: [push, pull_request]
 jobs:
-  test:
+  core:
+    # requirements.txt alone: proves the core runs without the MCP SDK
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -20,3 +21,24 @@ jobs:
         run: python -m py_compile $(ls *.py) $(ls eval_harness/*.py) $(ls tests/*.py)
       - name: Regression tests
         run: python -m unittest discover -s tests -v
+
+  mcp-server:
+    # requirements-mcp.txt: the core suite again, then the server's (ADR-0003)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install deps
+        run: pip install -r requirements-mcp.txt
+      - name: Syntax check
+        run: python -m py_compile $(ls mcp_server/*.py) $(ls tests_mcp/*.py)
+      - name: Regression tests
+        run: python -m unittest discover -s tests -v
+      - name: MCP server tests
+        run: python -m unittest discover -s tests_mcp -v

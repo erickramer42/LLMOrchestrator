@@ -87,6 +87,7 @@ the measurement log in
 | How decisions were made, predictions included | [docs/decisions/](docs/decisions/) |
 | Current state, limitations and backlog | [STATUS.md](STATUS.md) |
 | Every file and its purpose | [docs/file-map.md](docs/file-map.md) |
+| Reviews served to MCP clients as queued jobs | [mcp_server/](mcp_server/) |
 
 ## Quick start
 
@@ -99,6 +100,7 @@ python orchestrator.py --proposal "Describe the change" --diff path/to/change.di
 ```
 
 Every command, including the evaluation harness: [usage](docs/usage.md).
+To review from an MCP client, see [the MCP server](docs/usage.md#mcp-server).
 
 ## Limitations
 
