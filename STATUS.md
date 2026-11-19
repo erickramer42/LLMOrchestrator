@@ -47,8 +47,8 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
   scoped bearer tokens, per-caller limits and an audit log. Tested against
   the fake model in-process, through a stdio launch and on a loopback
   HTTP server; TLS is passed to `uvicorn` and not tested. MCP Inspector
-  2.13.0 passed 18 of 18 checks over both transports; Lumo Desktop is
-  read in its source, not yet run ([mcp-clients.md](docs/mcp-clients.md)).
+  2.13.0 passed 18 of 18 checks over both transports, and Lumo Desktop
+  0.5.9 4 of 4 over stdio ([mcp-clients.md](docs/mcp-clients.md)).
   Not yet run against a live model or on a real Havne diff. Next:
   concurrent agent calls, measured.
 

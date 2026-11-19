@@ -226,6 +226,10 @@ changed.
   yet run. Server 0.2.1: tool annotations, and the submit-then-poll rule
   and the verdict rule in the tool descriptions, for clients that read
   no server instructions. Server tests 36 to 37.
+- Lumo Desktop 0.5.9 run against server 0.2.1 over stdio: 4 of 4
+  prompts as designed, one tool call each, no model call
+  (docs/mcp-clients.md). Its chat replies added guesses the server did
+  not make, so the record stays the verdict.
 
 ## Features and measurements, in detail
 

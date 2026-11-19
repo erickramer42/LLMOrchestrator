@@ -4,8 +4,8 @@ Which MCP clients have been run against the server
 ([ADR-0003](decisions/0003-mcp-server.md),
 [ADR-0004](decisions/0004-mcp-http-auth-audit.md)), what each run
 checked, and what it showed. A row comes from a run, dated, never from a
-client's documentation; what was read in a client's source and not yet
-run is listed apart. Commands and settings are in
+client's documentation; what was read only in a client's source is
+marked so. Commands and settings are in
 [usage.md](usage.md#mcp-server).
 
 ## Runs
@@ -14,6 +14,7 @@ run is listed apart. Commands and settings are in
 |---|---|---|---|---|---|
 | Python SDK client (`tests_mcp/`) | `mcp` 2.3.0 | in-process, stdio, HTTP | every version | each CI run | Every tool, resource and refusal; the regression suite |
 | MCP Inspector 2.13.0, CLI mode | `@modelcontextprotocol/client` 2.4.0 | stdio, HTTP | 0.2.0; annotations at 0.2.1 | 2026-11-19 | 18 of 18 checks as designed |
+| Lumo Desktop 0.5.9 | `rmcp` 3.5.1 (from its source) | stdio | 0.2.1 | 2026-11-19 | 4 of 4 prompts as designed, one tool call each |
 
 No client has yet run a review through to a model verdict: every check
 above either stops before a model call or uses the fake model.
@@ -67,12 +68,40 @@ What the run showed about clients:
 - Once, after printing a correct result, the Inspector process exited on
   a Node.js assertion (`src\win\async.c`); the server was unaffected.
 
-## Read, not yet run
+## Lumo Desktop 0.5.9
 
-### Lumo Desktop
+Run 2026-11-19 on Windows as a custom connector over stdio: the
+command is the Python interpreter, the one argument is the
+`mcp_server` folder, and no environment is set, so the records and the
+audit log went to `mcp_records/`. Each check was a chat prompt; the
+calls Lumo made come from the audit log. No check called a model.
+
+| Prompt | Call Lumo made | Result |
+|---|---|---|
+| List recent reviews | `list_decisions` with no arguments | `[]`, reported as no reviews |
+| Submit a review with the proposal `test` and no code | `review_diff` with the proposal and `diff` as an empty string | `done`, `NO_INPUT - MANUAL_REVIEW_REQUIRED`, `rounds_completed` 0 |
+| Get the decision for that review | `get_decision` with the id from the previous result | The same summary |
+| Get the decision for review `../x` | `get_decision` with `../x` | Tool error: not a review id; reported as refused |
+
+What the run showed about Lumo:
+
+- It made one call per prompt, with no retry, and carried the record id
+  from one result into the next call.
+- It sent `../x` to the server rather than refusing it itself, and
+  relayed the server's error.
+- An empty `diff` string counts as no code, the same as an omitted one.
+- Its replies stated the verdicts as the server gave them, but also
+  added things the server did not say: to the empty list it guessed
+  that earlier reviews had been cleared or run elsewhere, and it offered
+  to review changes from another conversation. The record, not the chat
+  reply, is the verdict.
+- The audit log names the caller `stdio`, as for any stdio client.
+
+### From its source
 
 From the source of Lumo Desktop at `bd5e2c6` (2026-11-17,
-https://github.com/ProtonLumo/lumo-desktop, read 2026-11-19); no run yet:
+https://github.com/ProtonLumo/lumo-desktop, read 2026-11-19). The
+installed 0.5.9 was not matched to a commit.
 
 - Its MCP client is `rmcp` 3.5.1, the Rust SDK, and connects with the
   initialize handshake.
