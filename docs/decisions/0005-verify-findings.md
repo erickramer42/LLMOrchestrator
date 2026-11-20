@@ -45,8 +45,11 @@ too, so every judge case also pins the tool. Each check judges a blocker
 without regard to the others, so judging findings one at a time equals
 judging them as one reply; a test pins this against every archived j8
 round-1 record under `coach_artifacts/`, where each blocker must end
-where its record stored it. `JUDGE_VERSION` is unchanged, since no
-debate's verdict moves.
+where its record stored it. On 2026-11-19 the test covered 826 of the
+828 blockers in those records. The other 2 carry a field the model added
+(`quote2`): a record stores a blocker as flattened text, which cannot be
+split back into its fields once there are more than three, so the test
+skips them. `JUDGE_VERSION` is unchanged, since no debate's verdict moves.
 
 Three choices differ from a debate on purpose:
 
