@@ -55,8 +55,15 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
   without a model, and gives no verdict on the change. Not measured on
   any other reviewer's findings: a finding that cites a line number
   instead of quoting code, or hedges, is demoted whether or not it is
-  right. Next: register that measurement in ADR-0002, then concurrent
-  agent calls, measured.
+  right.
+- **Twenty-sixth measurement, registered (ADR-0002), not run:**
+  `verify_findings` on findings by a hosted model and a held-out local
+  one (`gpt-oss:20b`), native and quoted, plus a hand-written control
+  of known-true findings, on corpus v2. It decides what the docs may
+  claim for each reviewer and format, and whether line-number mapping
+  is registered as a judge change. Next: the runner and the control,
+  then the hosted model's reviews; the local ones need the GPU. Then
+  concurrent agent calls, measured.
 
 The shipped prompt is v11.1.
 

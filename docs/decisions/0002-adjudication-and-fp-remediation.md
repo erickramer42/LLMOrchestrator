@@ -50,6 +50,7 @@ results; changes made after seeing data are dated amendments.
 | [Twenty-Fourth Measurement: `gpt-oss:20b` as the Reviewer](#twenty-fourth-measurement-gpt-oss20b-as-the-reviewer) | 2026-10-27 | `gpt-oss:20b` against laguna as the reviewer, on the corpus | Not shipped: recall 0.309 against the control's 0.436, false positives 0.73 times the control's; fails both branches of condition 1 |
 | [Twenty-Fifth Measurement: The Engineer at Verdict Level (Offline)](#twenty-fifth-measurement-the-engineer-at-verdict-level-offline) | 2026-10-27 | Round-1 verdicts of laguna paired with each engineer, blockers rejecting or as concerns | `gpt-oss:20b` with its blockers rejecting earns a confirmation sample (misses 5 to 3 of 22); as concerns it fails |
 | [Corpus v2: Forward Diffs of the Commits That Introduced the Bugs](#corpus-v2-forward-diffs-of-the-commits-that-introduced-the-bugs) | 2026-10-27 | Bug fixtures rebuilt as the commits that introduced each bug, without the fix comments v1's diffs leak | Built; baseline not yet run |
+| [Twenty-Sixth Measurement: Other Reviewers' Findings Under the Guardrails](#twenty-sixth-measurement-other-reviewers-findings-under-the-guardrails) | 2026-11-19 | `verify_findings` on findings by `claude-opus-5-5`, `gpt-oss:20b` and a hand-written control, native and quoted | Registered, not run |
 
 ## Context
 
@@ -6128,3 +6129,168 @@ to a real review and should be harder. A real bug present in a
 post-state but not introduced by its diff (`payload_length_unclamped` in
 `coalescing_e0c4c31`) is not that fixture's known bug and is labeled as
 such.
+
+## Twenty-Sixth Measurement: Other Reviewers' Findings Under the Guardrails
+
+**Status (2026-11-19): registered before any sample. Not run.**
+
+**Why.** `verify_findings` (ADR-0005) judges another reviewer's
+findings by the evidence check, claim-quote linkage and the hedge check.
+Those checks were built and measured on this project's reviewer replies;
+on other reviewers' findings their effect is unknown. This measurement
+decides two things: what the docs may claim about `verify_findings` for
+each reviewer and finding format, and whether ADR-0005's line-number
+remedy is registered as a judge change. Nothing ships from it, and no
+judge or prompt of the debate changes.
+
+**Fixtures.** Corpus v2 (`docs/fixtures/corpus_v2.json`): the seven bug
+fixtures with their 11 known bugs, and the two clean fixtures. Each
+reviewer sees the fixture's proposal (the commit subject) and its diff,
+nothing else: no context pack, no layer note.
+
+**Reviewers:**
+- **C, control:** known-true findings written by hand, one per known
+  bug (11), in both formats, one set. Written before any reviewer runs
+  and committed before any outcome is computed. Their writer knows the
+  checks, so the control measures what the quote and linkage checks do
+  to a true finding written as a careful reviewer would write it, not
+  hedging: the claims are confident by construction.
+- **S:** `claude-opus-5-5`, a hosted model, in a fresh context for each
+  review, given only the prompt below with the proposal and the diff in
+  it, and told to use no tools. It is never shown the labels, the known
+  bugs or this section. 5 reviews of each fixture in each arm (90).
+- **L:** `gpt-oss:20b` on Ollama, a held-out model: it is from another
+  family than the reviewer and engineer the guardrails were developed on
+  (`laguna-xs-2.1`, `gemma4:12b`), and `HEDGE_PATTERNS` and the judge
+  cases come from neither its output nor its prompt. 3 reviews of each
+  fixture in each arm (54).
+
+**Arms.** One prompt per arm, the same for S and L, written here before
+any sample.
+- **Arm N, native:** prose findings, converted to `{claim, file,
+  quote}` by the fixed rule below. This is what an unmodified outside
+  reviewer gives.
+- **Arm Q, quoted:** the reviewer is asked for `verify_findings`' input
+  shape, with verbatim quotes. This is the tool's input contract.
+
+Arm N's prompt:
+
+```
+You are reviewing a pull request. Its description and its unified diff follow.
+Report each problem you find in the changed code: bugs, races, missing checks,
+wrong behavior. Number the findings. For each, give the file and the line, and
+explain the problem. If you find none, reply "No findings."
+```
+
+Arm Q's prompt:
+
+```
+You are reviewing a pull request. Its description and its unified diff follow.
+Report each problem you find in the changed code: bugs, races, missing checks,
+wrong behavior. Reply with JSON only, in this form:
+{"findings": [{"claim": "...", "file": "...", "quote": "..."}]}
+claim: the problem, stated plainly. file: the path of the file it is in.
+quote: the code the claim rests on, copied verbatim from the post-change side
+of the diff (a context or added line, without its leading "+" or space).
+Reply {"findings": []} if you find none.
+```
+
+The proposal and diff follow the prompt as `Description:` and `Diff:`
+sections. For L, the prompt is the system message and the description
+and diff the user message, sent through a new call in
+`eval_harness/raw_call.py` (the module allowed to reach Ollama besides
+`agent_client.py`): `num_ctx` 24576 and `num_predict` 12288 (the
+debate's, since the largest diff is about 11,400 tokens), temperature
+0.7 (the debate's first attempt), JSON mode in arm Q only, one attempt
+and no retry. A reply that is empty, hits the output cap or, in arm Q,
+is not a JSON object with a `findings` list counts as a review with no
+findings and is reported as unusable. For S the same rule applies to
+its reply.
+
+**Arm N's conversion rule** (`eval_harness/outside.py`, written and
+unit-tested before any sample):
+- The reply is split into findings at lines that start with a number
+  and `.` or `)`, after any leading `#`, `*` or spaces; text before the
+  first is dropped. A reply of "No findings." has none.
+- `quote`: the finding's first fenced code block, else its longest
+  inline code span with 8 or more non-space characters, else empty.
+- `claim`: the finding's text with its fenced code blocks removed;
+  inline code spans stay, so linkage reads the identifiers they name.
+- `file`: the first path in the finding that names a file the diff
+  changes (exact or a unique suffix, with or without `:line`), else
+  empty.
+- Each finding is also marked for whether it cites a line (`path:N`,
+  `line N` or `lines N-M`), for the breakdown below; the mark is not
+  passed to the checks.
+
+**Labels.** Each finding gets labels in the corpus's terms
+(`eval_harness/corpus_labels.json`: a known-bug id, `unlisted`, or a
+false class), judged against the fixture's `post_rev` from the
+finding's own text, in `eval_harness/outside_labels.json`. They are
+drafted for each batch of reviews before `verify_findings` runs on it,
+and reviewed by hand before scoring. A finding is valid when a label is
+a known bug or in the corpus's `valid` list.
+
+**Measures, per reviewer and arm:**
+- usable reviews, and findings per usable review;
+- **P_all**, the valid share of all findings, and **P_kept**, the valid
+  share of the findings kept;
+- **K_v** and **K_f**, the share of valid and of false findings kept,
+  and their difference **D = K_v - K_f**, how well the checks separate
+  them;
+- **R_all** and **R_kept**, recall: the mean over the 11 known bugs of
+  the share of that fixture's usable reviews with a finding labeled with
+  it, among all findings and among kept ones;
+- false findings per review on the two clean fixtures, before and after
+  the checks;
+- outcomes (`kept`, `quote`, `link`, `hedge`, `invalid`) split by valid
+  and false; in arm N also by citation: a quote found in the finding,
+  a line cited and no quote, or neither.
+
+For C: the outcome of each known-true finding in each arm, and the
+reason for each demotion.
+
+**Rules.**
+1. **Claim rule.** The docs may say that `verify_findings` raises the
+   precision of a reviewer's findings, for that reviewer and arm, only if
+   all three hold: P_kept - P_all >= 0.10, D >= 0.20, and R_kept >= 0.75
+   x R_all. Otherwise the docs give the measured numbers and say the
+   claim does not hold for that reviewer and format.
+2. **Line-number trigger.** ADR-0005's remedy (resolve a cited
+   post-change line to its text before the quote check) is registered as
+   a judge change, in its own section with its own prediction, if in arm
+   N, pooled over S and L, the valid findings that end `quote` while
+   citing a line and quoting no code are at least 10, and at least half
+   of all valid findings that end `quote`.
+3. **No hedge exemption.** Valid findings demoted by the hedge check are
+   reported, never a reason to change `HEDGE_PATTERNS` (ADR-0002, Hedge
+   Check j6).
+
+**Predictions** (made before any sample, knowing the corpus and the
+checks):
+
+| | prediction |
+|---|---|
+| C, arm Q | 10 of 11 kept; `poll_needs_filter_at_parse` demoted (`link` or `quote`), since its cause is outside the diff |
+| C, arm N | at most 1 of 11 kept: the findings cite lines and quote no code |
+| S, arm Q | P_all 0.55-0.75; 85% or more of quotes verify; the hedge check demotes 20-40% of findings, valid and false alike; D between -0.10 and +0.15; the claim rule fails |
+| S, arm N | 70% or more of findings end `quote`; D between -0.10 and +0.10; the claim rule fails |
+| L, arm Q | P_all 0.30-0.50; 20-40% of quotes fail, mostly in false findings; D >= 0.20; the claim rule holds |
+| L, arm N | 70% or more of findings end `quote`; the claim rule fails |
+| R_all | S 0.50 or more; L 0.25-0.45 |
+| Line-number trigger | fires |
+
+The reasoning behind the S and L rows: the checks test that a quote
+exists in the code and that the claim names code near it, not that the
+claim's reasoning holds. A strong reviewer's false findings quote real
+code and state their claims about it, so the checks should keep them as
+readily as its valid ones; a weaker reviewer misquotes, and misquotes
+more where it is wrong.
+
+**Order and cost.** C first, with no model call. Then S, with no GPU:
+90 reviews at up to about 12,000 input tokens each. Then L, on the GPU:
+54 reviews, a separate go. Each review's raw reply and its findings are
+saved as `coach_artifacts/measurement_outside_<id>.json`, with its
+fixture already committed, so every number traces to a record. The
+outcomes are computed only at scoring, after the labels.
+A change to any of this after the first sample is a dated amendment.
