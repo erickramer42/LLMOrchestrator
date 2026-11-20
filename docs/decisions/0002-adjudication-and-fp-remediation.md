@@ -6294,3 +6294,33 @@ saved as `coach_artifacts/measurement_outside_<id>.json`, with its
 fixture already committed, so every number traces to a record. The
 outcomes are computed only at scoring, after the labels.
 A change to any of this after the first sample is a dated amendment.
+
+### Implementation (2026-11-19, before any sample)
+
+The runner is `eval_harness/outside.py` (`lines`, `prompt`, `ingest`,
+`control`, `run`, `list`, `score`), and L's call is `raw_call.chat`.
+What the section left open, fixed here before the first sample:
+- **S's message** is `Answer from the text below alone: use no tools and
+  read no files.`, a blank line, the arm's prompt, a blank line, then
+  the `Description:` and `Diff:` sections (`outside.py prompt` writes
+  each one to a file). Each review is a new context that receives only
+  that message; its final reply is saved verbatim and recorded with
+  `outside.py ingest`.
+- **L's call** has a 1,800 s timeout. A reply that times out is
+  unusable, like one that hits the output cap.
+- **Arm Q's parse** removes one code fence around the whole reply
+  before reading it as JSON. A finding that is not an object is kept as
+  a claim with no file and no quote, and a `null` field is empty.
+- **The control** is `eval_harness/outside_control.json`, one entry per
+  bug fixture: the arm N reply as text, and the arm Q findings, each
+  carrying its bug id, which is dropped before the checks. Its quotes
+  and line numbers are copied from `outside.py lines`, which prints a
+  fixture's post-change lines with their numbers and runs no check. No
+  check runs on the control before it is committed and labeled.
+- **Labels** go in `eval_harness/outside_labels.json` by record id and
+  finding (`#1`, `#2`, ...); `score` refuses while any finding has
+  none. A false class that `corpus_labels.json` lacks is defined in the
+  labels file.
+- **Records** carry `metadata.mode` `outside_findings`, the reviewer,
+  the model, the arm, the fixture, the conversion rule (`n1`) for arm N,
+  the SHA-256 of the prompt sent, and L's settings, and no outcome.

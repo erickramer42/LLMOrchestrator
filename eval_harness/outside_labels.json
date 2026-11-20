@@ -1,0 +1,6 @@
+{
+  "about": "Hand labels of the twenty-sixth measurement's findings (ADR-0002): each finding of each record under coach_artifacts/measurement_outside_*.json, keyed by record id and #n in the record's order of findings, judged against its fixture's post_rev (docs/fixtures/corpus_v2.json) from the finding's own text. A label is a known-bug id of the fixture, a term in eval_harness/corpus_labels.json's 'valid' list or in 'valid' here, or a false class from corpus_labels.json's 'classes' or from 'classes' here. Labels are written before scoring, and score refuses while any finding has none.",
+  "classes": {},
+  "valid": [],
+  "records": {}
+}

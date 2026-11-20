@@ -16,7 +16,7 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 | Judge | `j8-claim-quote-linkage` |
 | Context-pack format | `f3-diff-authoritative` |
 | Models | reviewer `laguna-xs-2.1`, engineer `gemma4:12b`, on Ollama; `NUM_CTX` 24576, `NUM_PREDICT` 12288 |
-| Tests | 239 regression tests and 46 MCP server tests, no model needed; CI on Python 3.11 and 3.13 |
+| Tests | 249 regression tests and 46 MCP server tests, no model needed; CI on Python 3.11 and 3.13 |
 | MCP server | `mcp_server` 0.3.0 over stdio or HTTP with scoped tokens and an audit log, SDK `mcp==2.3.0` ([ADR-0003](docs/decisions/0003-mcp-server.md), [ADR-0004](docs/decisions/0004-mcp-http-auth-audit.md), [ADR-0005](docs/decisions/0005-verify-findings.md), [clients](docs/mcp-clients.md)) |
 | Golden suite | 10/10 at the last live run (3 model fixtures, 7 hedge units); 13 deterministic judge cases since 2026-10-27 |
 
@@ -61,9 +61,10 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
   one (`gpt-oss:20b`), native and quoted, plus a hand-written control
   of known-true findings, on corpus v2. It decides what the docs may
   claim for each reviewer and format, and whether line-number mapping
-  is registered as a judge change. Next: the runner and the control,
-  then the hosted model's reviews; the local ones need the GPU. Then
-  concurrent agent calls, measured.
+  is registered as a judge change. The runner (`eval_harness/outside.py`)
+  and the hand-written control are built; no review has run. Next: the
+  hosted model's reviews and their labels; the local ones need the GPU.
+  Then concurrent agent calls, measured.
 
 The shipped prompt is v11.1.
 

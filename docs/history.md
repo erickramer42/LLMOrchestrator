@@ -239,6 +239,12 @@ changed.
   tests found that a rate limit of 0 raised an internal error; it now
   refuses. Unmeasured on other reviewers' findings. Tests 233 to 239,
   server tests 37 to 46.
+- The twenty-sixth measurement registered (ADR-0002): `verify_findings`
+  on findings by a hand-written control, a hosted model and
+  `gpt-oss:20b`, native and quoted, on corpus v2. Its runner
+  (`eval_harness/outside.py`, `raw_call.chat`) and control are built,
+  with arm N's conversion rule unit-tested before any sample. Tests 239
+  to 249.
 
 ## Features and measurements, in detail
 

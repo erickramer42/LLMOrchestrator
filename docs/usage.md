@@ -346,6 +346,24 @@ before it and at its recorded temperature, after checking that today's
 prompt matches the record's and that the rebuilt request has the
 recorded size. Each run writes `coach_artifacts/measurement_runaway_<id>.json`.
 
+**Other reviewers' findings** (the twenty-sixth measurement): findings
+of a hand-written control, a hosted model and a local one on corpus v2,
+native and quoted, judged by `verify_findings`' checks at scoring:
+
+```sh
+python -m eval_harness.outside lines --fixture loader_count_0b43261   # post-change lines, numbered; no check
+python -m eval_harness.outside control                                 # record the control
+python -m eval_harness.outside prompt --fixture all --arm both --out <dir>   # the hosted model's messages
+python -m eval_harness.outside ingest --reviewer S --model <id> --fixture <id> --arm N reply.txt
+python -m eval_harness.outside run --fixture all --arm both --runs 3 --model gpt-oss:20b   # local model, GPU
+python -m eval_harness.outside list "coach_artifacts/measurement_outside_*.json"
+python -m eval_harness.outside score "coach_artifacts/measurement_outside_*.json"
+```
+
+Each review writes `coach_artifacts/measurement_outside_<id>.json` with
+its reply and findings and no outcome. `score` refuses until every
+finding is labeled in `eval_harness/outside_labels.json`.
+
 Any review can use another index: `python orchestrator.py --index REPO
 --no-llm --index-out PATH` writes one without touching
 `repo_context.json`, and `--index-file PATH` on a review, or on

@@ -40,8 +40,8 @@ from adjudication import (JUDGE_VERSION, convergence_verdict,  # noqa: E402
                           normalize_agent_output)
 from agent_client import FAILURE_SENTINEL, call_agent, failure_result  # noqa: E402
 from diff_reader import base_blobs, diff_paths, read_diff  # noqa: E402
-from eval_harness import (bakeoff, common, corpus, probe, raw_call, replay, repair,  # noqa: E402
-                          round1, round2, runaway)
+from eval_harness import (bakeoff, common, corpus, outside, probe, raw_call, replay,  # noqa: E402
+                          repair, round1, round2, runaway)
 from eval_harness.bakeoff import tally  # noqa: E402
 from eval_harness.probe import summarize  # noqa: E402
 from file_metadata import get_layer_constraints, identify_layer  # noqa: E402
@@ -2335,6 +2335,150 @@ class VerifyFindingsTests(unittest.TestCase):
 
     def test_the_debate_reads_index_symbols_from_the_judge(self):
         self.assertIs(debate._index_symbols, adjudication.index_symbols)
+
+
+class OutsideTests(unittest.TestCase):
+    """The twenty-sixth measurement's runner (ADR-0002): its prompts, arm
+    N's conversion rule n1, arm Q's parse, the records and the scorer."""
+
+    FIXTURE = "loader_count_0b43261"
+    GOOD_QUOTE = "if (num == 0) {"
+
+    def test_the_prompts_are_the_registered_ones(self):
+        adr = Path(REPO_ROOT, "docs", "decisions",
+                   "0002-adjudication-and-fp-remediation.md").read_text(encoding="utf-8")
+        section = adr[adr.index("## Twenty-Sixth Measurement"):].replace("\r\n", "\n")
+        for arm, text in outside.PROMPTS.items():
+            self.assertIn(f"```\n{text}\n```", section, arm)
+
+    def test_native_findings_split_quote_file_and_line(self):
+        code_diff = outside.diff_text(outside.fixture_by_id(self.FIXTURE))
+        reply = ("Here is my review.\n\n"
+                 "1. **Count before status** in `core/src/j2534_loader.cpp:540`: the read\n"
+                 "   delivers a frame under an error status.\n"
+                 "   ```cpp\n   if (num == 0) {\n   1. not a new finding\n   ```\n"
+                 "**2. Missing clamp** in j2534_loader.cpp, line 562: `*out_frame = qttune_frame_t{};`"
+                 " is reset but `rc` is ignored.\n"
+                 "### 3) Unrelated file other.cpp has no issue, see `x`.\n")
+        found = outside.convert_native(reply, code_diff)
+        self.assertEqual(len(found), 3)
+        self.assertEqual([f["file"] for f in found],
+                         ["core/src/j2534_loader.cpp", "core/src/j2534_loader.cpp", ""])
+        self.assertEqual([f["quote"] for f in found],
+                         ["   if (num == 0) {\n   1. not a new finding",
+                          "*out_frame = qttune_frame_t{};", ""])
+        self.assertEqual([f["cites_line"] for f in found], [True, True, False])
+        self.assertNotIn("```", found[0]["claim"])
+        self.assertIn("`rc`", found[1]["claim"])
+        self.assertEqual(outside.convert_native("No findings.", code_diff), [])
+
+    def test_quoted_replies_parse_or_are_unusable(self):
+        ok = '```json\n{"findings": [{"claim": "c", "file": "f", "quote": null}, "bare"]}\n```'
+        self.assertEqual(outside.parse_quoted(ok), (
+            [{"claim": "c", "file": "f", "quote": ""},
+             {"claim": "bare", "file": "", "quote": ""}], None))
+        for bad in ("findings: none", "[]", '{"items": []}', '{"findings": {}}'):
+            self.assertIsNone(outside.parse_quoted(bad)[0], bad)
+        code_diff = outside.diff_text(outside.fixture_by_id(self.FIXTURE))
+        for reply, call, reason in (("x", {"error": "timeout after 1800s"}, "timeout after 1800s"),
+                                    ("1. x", {"error": None, "done_reason": "length"},
+                                     "hit the output cap"),
+                                    ("  ", None, "empty reply")):
+            self.assertEqual(outside.findings_of(reply, "N", code_diff, call), ([], reason))
+
+    def test_post_lines_number_the_post_change_side(self):
+        code_diff = ("--- a/x.c\n+++ b/x.c\n@@ -10,3 +20,3 @@ f\n a\n-b\n+c\n d\n"
+                     "@@ -40,1 +50,2 @@\n e\n+f\n")
+        self.assertEqual(outside.post_lines(code_diff),
+                         [("x.c", 20, " ", "a"), ("x.c", 21, "+", "c"), ("x.c", 22, " ", "d"),
+                          ("x.c", 50, " ", "e"), ("x.c", 51, "+", "f")])
+
+    def records(self, *specs):
+        """(path, record) pairs for this fixture: specs are (reviewer, arm, findings)."""
+        fixture = outside.fixture_by_id(self.FIXTURE)
+        out = []
+        for reviewer, arm, findings in specs:
+            reply = json.dumps({"findings": findings})
+            out.append(("x", outside.make_record(reviewer, "m", "Q", fixture, reply)))
+            out[-1][1]["metadata"]["arm"] = arm
+        return out
+
+    def test_a_record_holds_findings_and_no_outcome(self):
+        [(_, rec)] = self.records(("S", "Q", [{"claim": "c", "file": "f", "quote": "q"}]))
+        self.assertEqual(rec["metadata"]["mode"], "outside_findings")
+        self.assertTrue(rec["outputs"]["usable"])
+        self.assertNotIn("outcome", json.dumps(rec))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = outside.save(rec, Path(tmp))
+            self.assertEqual(path.name, f"measurement_{rec['metadata']['id']}.json")
+
+    def test_score_refuses_unlabeled_findings(self):
+        records = self.records(("S", "Q", [{"claim": "c", "file": "f", "quote": "q"}]))
+        with self.assertRaises(SystemExit):
+            outside.score(records, {"records": {}})
+
+    def test_score_computes_the_registered_measures(self):
+        good = {"claim": "num is checked before rc, so an error read delivers a frame",
+                "file": "core/src/j2534_loader.cpp", "quote": self.GOOD_QUOTE}
+        hedged = dict(good, claim="num may be checked too early")
+        invented = {"claim": "the loader leaks handle", "file": "core/src/j2534_loader.cpp",
+                    "quote": "free(handle->dll_path);"}
+        records = self.records(("S", "Q", [good, invented]), ("S", "Q", [hedged]))
+        labels = {"records": {
+            records[0][1]["metadata"]["id"]: {"labels": {"#1": ["count_under_error"],
+                                                         "#2": ["thread-confusion"]}},
+            records[1][1]["metadata"]["id"]: {"labels": {"#1": ["count_under_error"]}}}}
+        [m] = outside.score(records, labels)["measures"]
+        self.assertEqual((m["findings"], m["P_all"], m["P_kept"]), (3, 0.667, 1.0))
+        self.assertEqual((m["K_v"], m["K_f"], m["D"]), (0.5, 0.0, 0.5))
+        # count_under_error is this fixture's one known bug, found in both runs, kept in one
+        self.assertEqual((m["R_all"], m["R_kept"]), (1.0, 0.5))
+        self.assertFalse(m["claim_rule_holds"])  # R_kept below 0.75 x R_all
+        self.assertEqual(m["outcomes"], {"valid": {"kept": 1, "hedge": 1},
+                                         "false": {"quote": 1}})
+
+    def test_the_line_trigger_counts_line_only_valid_quote_demotions(self):
+        row = {"reviewer": "S", "arm": "N", "valid": True, "outcome": "quote",
+               "citation": "line"}
+        rows = [row] * 10 + [dict(row, citation="neither")] * 10
+        self.assertTrue(outside.line_trigger(rows)["fires"])
+        self.assertFalse(outside.line_trigger(rows + [dict(row, citation="quote")])["fires"])
+        self.assertFalse(outside.line_trigger([row] * 9)["fires"])
+        self.assertFalse(outside.line_trigger([dict(row, reviewer="C")] * 20)["fires"])
+
+    def test_the_control_drops_its_bug_field_before_judging(self):
+        control = {"fixtures": {self.FIXTURE: {
+            "N": "1. core/src/j2534_loader.cpp:540 checks num before rc.",
+            "Q": {"findings": [dict(claim="c", file="f", quote="q", bug="count_under_error")]}}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "control.json")
+            path.write_text(json.dumps(control), encoding="utf-8")
+            with mock.patch.object(outside, "CONTROL_PATH", path):
+                recs = outside.control_records()
+        self.assertEqual([(r["metadata"]["reviewer"], r["metadata"]["arm"]) for r in recs],
+                         [("C", "N"), ("C", "Q")])
+        self.assertEqual(recs[1]["outputs"]["findings"], [{"claim": "c", "file": "f", "quote": "q"}])
+        self.assertNotIn("count_under_error", recs[1]["outputs"]["reply"])
+        self.assertTrue(recs[0]["outputs"]["findings"][0]["cites_line"])
+
+    def test_the_chat_call_sends_the_registered_settings_once(self):
+        with mock.patch.object(raw_call.requests, "post", side_effect=[
+                FakeResp("1. x", thinking="abc", eval_count=5),
+                FakeResp('{"findings": []}'),
+                requests.exceptions.Timeout()]) as post:
+            prose = raw_call.chat("m", "sys", "user", json_mode=False)
+            quoted = raw_call.chat("m", "sys", "user", json_mode=True)
+            timed_out = raw_call.chat("m", "sys", "user", json_mode=False)
+        payloads = [c.kwargs["json"] for c in post.call_args_list]
+        self.assertEqual([p["options"] for p in payloads],
+                         [{"num_ctx": 24576, "num_predict": 12288, "temperature": 0.7}] * 3)
+        self.assertEqual(["format" in p for p in payloads], [False, True, False])
+        self.assertEqual({c.kwargs["timeout"] for c in post.call_args_list}, {1800})
+        self.assertEqual((prose[0], prose[1]["thinking_chars"], prose[1]["eval_count"]),
+                         ("1. x", 3, 5))
+        self.assertEqual(quoted[0], '{"findings": []}')
+        self.assertEqual(timed_out, ("", timed_out[1]))
+        self.assertEqual(timed_out[1]["error"], "timeout after 1800s")
 
 
 # Runaway repetition (backlog #19)

@@ -68,8 +68,11 @@ A separate package on top of the core ([ADR-0003](decisions/0003-mcp-server.md),
 | `eval_harness/repair.py` | The repair pass (seventeenth measurement, not shipped): its request templates and calls, measured paired on archived replies, its no-model ceiling check, and its successor's pilots (eighteenth). No debate sends it. |
 | `eval_harness/labels.json` | Hand labels for every bridge-fixture item scored since the tenth measurement (race, gate, deletion, removal objection, deleted test, other FP). |
 | `eval_harness/corpus_labels.json` | Hand labels for every corpus item (known-bug ids and false-positive classes), each sample labeled before it was scored; a test pins each sample's counts. |
+| `eval_harness/outside.py` | The twenty-sixth measurement's runner: arm N's conversion rule, arm Q's parse, records of other reviewers' findings with no outcome, the local run, and the scorer that judges them with `verify_findings`' checks. |
+| `eval_harness/outside_control.json` | The measurement's control: one hand-written known-true finding per corpus v2 known bug, in both formats. |
+| `eval_harness/outside_labels.json` | Hand labels for the measurement's findings, written before scoring. |
 | `eval_harness/engineer_labels.json` | Hand labels for the engineer's corpus items (twenty-third measurement): every blocker, and each concern or question that states a known bug. |
-| `eval_harness/probe.py`, `bakeoff.py`, `raw_call.py` | The false-positive probe and the model bake-off of ADR-0001, with the raw model call they were measured with (no `config.py` settings, no guardrails). |
+| `eval_harness/probe.py`, `bakeoff.py`, `raw_call.py` | The false-positive probe and the model bake-off of ADR-0001, with the raw model call they were measured with (no `config.py` settings, no guardrails). `raw_call.chat` is the twenty-sixth measurement's one-attempt call, prose or JSON, with its own settings. |
 
 ## Fixtures and evidence
 
