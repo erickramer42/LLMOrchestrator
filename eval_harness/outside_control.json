@@ -1,0 +1,120 @@
+{
+  "about": "Control arm C of ADR-0002's twenty-sixth measurement: one known-true finding per known bug of corpus v2 (11 bugs over the 7 bug fixtures; the 2 clean fixtures have none), written by hand before any reviewer ran and before any outcome was computed. Q findings quote one or more consecutive post-change lines verbatim; N gives the same findings as numbered prose citing file:line, the post-change line of the Q quote's first line, with no code. The bug field gives the label and is stripped before checking.",
+  "fixtures": {
+    "backoff_tristate_808ee49": {
+      "N": "1. core/src/j2534_transport.cpp:341. The backoff step checks backoff_ms against J2534_BACKOFF_CAP_MS before it doubles it, so starting from J2534_BACKOFF_BASE_MS of 100 the sequence reaches 3200, which is under the cap and doubles to 6400 ms, above the 5000 ms cap. Only the next step clamps it. The same expression is repeated in all three worker modes, so each of them overshoots the cap once.",
+      "Q": {
+        "findings": [
+          {
+            "claim": "The backoff step compares backoff_ms with J2534_BACKOFF_CAP_MS before doubling it, so a backoff_ms of 3200 doubles to 6400 ms, above the 5000 ms cap. The doubled value is never clamped; the cap only applies on the step after the overshoot, so one wait exceeds the cap in each of the three worker modes.",
+            "file": "core/src/j2534_transport.cpp",
+            "quote": "                backoff_ms = (backoff_ms < J2534_BACKOFF_CAP_MS)\n                              ? backoff_ms * 2 : J2534_BACKOFF_CAP_MS;",
+            "bug": "backoff_overshoot"
+          }
+        ]
+      }
+    },
+    "loader_count_0b43261": {
+      "N": "1. core/src/j2534_loader.cpp:540. read_frame now checks the message count before the status. The checks of rc only run when num is 0, so when read_msgs returns a hard-error status but num is nonzero the message is delivered as a frame. Because num is initialized to 1, a vendor that does not write pNumMsgs on an error leaves it at 1, and the zero-filled msg is delivered as a real frame while the link looks healthy.",
+      "Q": {
+        "findings": [
+          {
+            "claim": "read_frame tests num before rc: the status checks run only inside the num == 0 branch, so a read_msgs call that returns a hard-error status with num still nonzero is delivered as a frame. num starts at 1, so a vendor that leaves pNumMsgs untouched on error turns the zero-filled msg into a delivered frame and the link reads as healthy.",
+            "file": "core/src/j2534_loader.cpp",
+            "quote": "    if (num == 0) {",
+            "bug": "count_under_error"
+          }
+        ]
+      }
+    },
+    "scheduler_8305420": {
+      "N": "1. core/src/j2534_transport.cpp:204. In j2534_worker, sched_mode is true whenever the schedule has any entries, and the loop tests sched_mode before poll_pid. With a profile that has mux defs the schedule is never empty, so a ?poll= in the URI is silently ignored and that PID is never requested on its own, with no error to say so.",
+      "Q": {
+        "findings": [
+          {
+            "claim": "j2534_worker sets sched_mode whenever t->sched.count is nonzero and tests it before t->poll_pid, so under a profile with mux defs a ?poll= request is silently ignored: the scheduler branch always wins and the URI's poll_pid is never requested on its own.",
+            "file": "core/src/j2534_transport.cpp",
+            "quote": "    const bool sched_mode = (t->sched.count > 0);",
+            "bug": "poll_ignored"
+          }
+        ]
+      }
+    },
+    "profile_channels_c5cc6f7": {
+      "N": "1. core/src/j2534_transport.cpp:833. The URI parser still refuses ?poll= unless ?filter= supplies an rx_id, but with this change resolve_channels takes the channel from the profile's declared channels when the transport attaches. A URI such as ?profile=obd2&poll=0x0C is therefore rejected by parse_query before the profile's channels are known, although the profile provides exactly the channel the poll needs.",
+      "Q": {
+        "findings": [
+          {
+            "claim": "parse_query still rejects ?poll= when no ?filter= gives an rx_id, but this change has resolve_channels derive the channel from the profile's declared channels at attach. So ?profile=obd2&poll=0x0C fails at parse time even though the profile now supplies the channel the poll would use.",
+            "file": "core/src/j2534_transport.cpp",
+            "quote": "    resolve_channels(t, set, params);",
+            "bug": "poll_needs_filter_at_parse"
+          }
+        ]
+      }
+    },
+    "connect_thread_eacf1d0": {
+      "N": "1. app/qttunebridge.cpp:367. connectCoreOnly starts the session with qttune_session_start while still on the connect thread, before the queued completion posted with invokeMethod gives the session to the GUI thread. If the bridge is destroyed while a connect is in flight, the destructor joins m_connectThread, but m_session is not yet set and the queued completion is dropped, so nothing stops or destroys the started session. Its worker keeps calling onFrame with a pointer to the freed bridge, a use-after-free.",
+      "Q": {
+        "findings": [
+          {
+            "claim": "connectCoreOnly calls qttune_session_start on m_connectThread, before the queued invokeMethod completion hands the session to the GUI thread. If the bridge is destroyed mid-connect, the destructor joins m_connectThread but knows nothing of that session, and the queued completion is dropped with the object, so the session is never stopped and its worker keeps calling onFrame with a freed this.",
+            "file": "app/qttunebridge.cpp",
+            "quote": "    rc = qttune_session_start(session);",
+            "bug": "start_before_gui_owns"
+          }
+        ]
+      }
+    },
+    "coalescing_e0c4c31": {
+      "N": "1. app/qttunebridge.cpp:340. handleFrameInternal passes a hardcoded length of 8 to qttune_decode_signal rather than the frame's data_length. A frame shorter than 8 bytes is decoded from bytes past its payload, and a CAN FD frame longer than 8 bytes never has the signals beyond byte 8 decoded.\n\n2. app/qttunebridge.cpp:336. handleFrameInternal clears m_stagingBuffer before decoding each frame. The buffer is meant to accumulate values until the coalescing tick flushes it, so clearing it per frame means each flush holds only the last frame's signals, and every earlier frame in the 100 ms window is discarded.\n\n3. app/qttunebridge.cpp:349. Dropped frames are counted in onFrame once m_inFlightFrames reaches MaxInFlightFrames, but the comparison with m_lastReportedDropped and the droppedFramesChanged signal happen only in handleFrameInternal. While the backlog is saturated, frames are being dropped instead of queued, so handleFrameInternal does not run for them and the drop count is not reported until the backlog drains.",
+      "Q": {
+        "findings": [
+          {
+            "claim": "handleFrameInternal calls qttune_decode_signal with a hardcoded length of 8 instead of frame->data_length, so a short frame decodes bytes past its payload and a CAN FD frame loses every signal beyond byte 8.",
+            "file": "app/qttunebridge.cpp",
+            "quote": "        if (qttune_decode_signal(&def, frame->data, 8, &val) == 0) {",
+            "bug": "decode_length_8"
+          },
+          {
+            "claim": "handleFrameInternal clears m_stagingBuffer at the start of every frame, so the coalesced update flushed on the tick carries only the last frame's signals and the values of every other frame in the 100 ms window are lost.",
+            "file": "app/qttunebridge.cpp",
+            "quote": "    m_stagingBuffer.clear();",
+            "bug": "staging_clear_per_frame"
+          },
+          {
+            "claim": "onFrame counts drops in m_droppedFrames when m_inFlightFrames reaches MaxInFlightFrames, but droppedFramesChanged is emitted only from handleFrameInternal, which does not run while the backlog is saturated. Drops are therefore not reported while they happen.",
+            "file": "app/qttunebridge.cpp",
+            "quote": "    const int dropped = m_droppedFrames.load(std::memory_order_relaxed);\n    if (dropped != m_lastReportedDropped) {",
+            "bug": "drops_unreported_when_saturated"
+          }
+        ]
+      }
+    },
+    "marshaling_7dbdcec": {
+      "N": "1. app/qttunebridge.cpp:192. onFrame runs on the transport's worker thread and reads m_currentFrameCount, while handleFrameInternal increments the same field on the GUI thread. The field is a plain int with no atomic or lock, so the two threads race on it, which is undefined behavior.\n\n2. app/qttunebridge.cpp:192. The backpressure check in onFrame compares m_currentFrameCount, a count of every frame since connect, with MaxFrames of 10000. Nothing lowers the count except a new connect, so once 10000 frames have arrived every later frame is dropped at the source for the rest of the session. Since the dropped count is only reported from handleFrameInternal, which no longer runs, the drop counter shown to the user freezes as well.\n\n3. app/qttunebridge.cpp:214. handleFrameInternal builds payloadHex from data_length bytes of the frame's inline data buffer, which is 64 bytes, without clamping data_length to the buffer's size. A transport that reports a data_length above 64 makes the bridge read past the end of the buffer.",
+      "Q": {
+        "findings": [
+          {
+            "claim": "onFrame reads m_currentFrameCount on the worker thread while handleFrameInternal increments it on the GUI thread. m_currentFrameCount is a plain int, not atomic, so this is a data race.",
+            "file": "app/qttunebridge.cpp",
+            "quote": "    if (self->m_currentFrameCount >= FrameListModel::MaxFrames) {",
+            "bug": "frame_count_race"
+          },
+          {
+            "claim": "The backpressure check in onFrame compares the cumulative m_currentFrameCount with MaxFrames, and the count resets only on connect, so after 10000 frames every frame is dropped for the rest of the session. Drops are reported only from handleFrameInternal, which then never runs, so the drop count stops updating too.",
+            "file": "app/qttunebridge.cpp",
+            "quote": "    if (self->m_currentFrameCount >= FrameListModel::MaxFrames) {\n        self->m_droppedFrames.fetch_add(1, std::memory_order_relaxed);",
+            "bug": "cumulative_gate_freeze"
+          },
+          {
+            "claim": "handleFrameInternal builds payloadHex from frame->data_length bytes of the 64-byte inline frame->data buffer without clamping data_length to sizeof(frame->data), so a transport that reports a longer length makes the bridge read past the buffer.",
+            "file": "app/qttunebridge.cpp",
+            "quote": "    vm[\"payloadHex\"]  = QByteArray(\n        reinterpret_cast<const char*>(frame->data),\n        static_cast<qsizetype>(frame->data_length)).toHex();",
+            "bug": "payload_length_unclamped"
+          }
+        ]
+      }
+    }
+  }
+}
