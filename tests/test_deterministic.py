@@ -14,6 +14,7 @@ import io
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -2257,6 +2258,83 @@ class JudgeCaseTests(unittest.TestCase):
                 label = corpus_labels["records"][case["record"]]["labels"][case["key"]]
                 valid = any(t in known_bugs or t in corpus_labels["valid"] for t in label)
             self.assertEqual((label, valid), (case["label"], case["valid"]), case["record"])
+
+
+class VerifyFindingsTests(unittest.TestCase):
+    """Findings from any reviewer judged by the debate's guardrails (ADR-0005)."""
+
+    def test_each_judge_case_gets_its_expected_outcome(self):
+        fixtures = golden_tests.judge_fixtures()
+        for case in json.loads(golden_tests.JUDGE_CASES_PATH.read_text(
+                encoding="utf-8"))["cases"]:
+            diff_path, index_path = fixtures[case["fixture"]]
+            symbols = adjudication.index_symbols(
+                json.loads(index_path.read_text(encoding="utf-8")))
+            [result] = adjudication.verify_findings(
+                [case["blocker"]], diff_path.read_text(encoding="utf-8"), "", symbols)
+            self.assertEqual(result["outcome"], case["expected"], case["record"])
+
+    def test_one_by_one_reproduces_every_j8_record(self):
+        # judge_finding judges a blocker alone, a debate a whole reply: on
+        # every archived j8 round-1 record, each blocker ends where the
+        # record stored it (kept, #e for quote or link, #h for hedge).
+        fixtures = {debate.text_sha256(d.read_text(encoding="utf-8")): d
+                    for d, _ in golden_tests.judge_fixtures().values()}
+        checked = 0
+        for path in sorted(Path(REPO_ROOT, "coach_artifacts").glob(
+                "measurement_round1_*.json")):
+            rec = json.loads(path.read_text(encoding="utf-8"))
+            meta, inputs = rec["metadata"], rec["inputs"]
+            diff_path = fixtures.get(inputs.get("diff_sha256"))
+            if (meta.get("judge_version") != JUDGE_VERSION or diff_path is None
+                    or inputs.get("context_sha256") or not rec["outputs"]["round_history"]):
+                continue
+            index_file = meta["repo_context_pack"].get("index_file")
+            symbols = (adjudication.index_symbols(json.loads(
+                Path(REPO_ROOT, index_file).read_text(encoding="utf-8")))
+                if index_file else frozenset())
+            # a blocker with fields beyond the three cannot be recovered from
+            # its text: their "; key: " lands in the parsed quote
+            items = [it for it in replay.raw_items(rec, {})
+                     if not re.search(r"; [A-Za-z_]\w*: ", it.blocker["quote"])]
+            results = adjudication.verify_findings(
+                [it.blocker for it in items], diff_path.read_text(encoding="utf-8"), "",
+                symbols)
+            for item, result in zip(items, results):
+                stored = {"#e": ("quote", "link"), "#h": ("hedge",)}.get(item.key[:2], ("kept",))
+                self.assertIn(result["outcome"], stored, f"{path.name} {item.key}")
+                checked += 1
+        if not checked:
+            self.skipTest("j8 records not present")
+        self.assertGreater(checked, 500)
+
+    def test_only_the_blocker_fields_are_read(self):
+        # The hedge check reads every field but the quote; a caller's
+        # severity or suggestion text must not demote a finding.
+        finding = {"claim": "m_count is read off-thread", "file": "app/x.cpp",
+                   "quote": GATE_LINE, "suggestion": "this could use a mutex"}
+        [result] = adjudication.verify_findings([finding], REPLAY_DIFF)
+        self.assertEqual(result, {"outcome": "kept", "found_in": "app/x.cpp"})
+
+    def test_found_in_names_the_source_of_the_quote(self):
+        context = "uint8_t buf[8];"
+        results = adjudication.verify_findings([
+            {"claim": "m_count is read off-thread", "file": "x.cpp", "quote": GATE_LINE},
+            {"claim": "buf is too small", "file": "x.h", "quote": context},
+            {"claim": "m_count is read off-thread", "file": "app/x.cpp"},
+            {"claim": "m_count is read off-thread", "file": "app/x.cpp",
+             "quote": "m_inFlight.fetch_add(1);"}], REPLAY_DIFF, context)
+        self.assertEqual([(r["outcome"], r["found_in"]) for r in results],
+                         [("kept", "app/x.cpp"), ("kept", adjudication.CONTEXT_SOURCE),
+                          ("quote", None), ("quote", None)])
+
+    def test_no_findings_is_no_outcome_and_never_a_verdict(self):
+        self.assertEqual(adjudication.verify_findings([], REPLAY_DIFF), [])
+        self.assertEqual(adjudication.verify_findings(["None"], REPLAY_DIFF),
+                         [{"outcome": "invalid", "found_in": None}])
+
+    def test_the_debate_reads_index_symbols_from_the_judge(self):
+        self.assertIs(debate._index_symbols, adjudication.index_symbols)
 
 
 # Runaway repetition (backlog #19)

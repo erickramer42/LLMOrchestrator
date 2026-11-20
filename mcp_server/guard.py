@@ -3,9 +3,9 @@ read, on both transports (ADR-0004).
 
 One server middleware: it names the caller (the token's id over HTTP,
 `stdio` otherwise), refuses a call outside the caller's scopes or over a
-limit, runs the call, and appends one audit line. The diff, context and
-proposal never reach the log: only their SHA-256 and length do, and a
-caller is named by its token's id, never the token.
+limit, runs the call, and appends one audit line. The diff, context,
+proposal and findings never reach the log: only their SHA-256 and size
+do, and a caller is named by its token's id, never the token.
 """
 
 import contextvars
@@ -26,8 +26,10 @@ from pydantic import BaseModel
 from mcp_server import __version__
 from mcp_server.tokens import READ, REVIEW, SCOPES
 
-REDACTED_ARGS = ("proposal", "diff", "context")
-REVIEW_TOOLS = ("review_diff",)
+REDACTED_ARGS = ("proposal", "diff", "context", "findings")
+# Tools that need the review scope, and of those the ones that run the GPU
+REVIEW_TOOLS = ("review_diff", "verify_findings")
+GPU_TOOLS = ("review_diff",)
 AUDITED = ("tools/call", "resources/read")
 STDIO_CALLER = "stdio"
 
@@ -41,12 +43,17 @@ def _now() -> str:
 
 
 def redact(arguments: dict) -> dict:
-    """Arguments for the log: reviewed text by hash and length only."""
+    """Arguments for the log: reviewed text, and findings that quote it,
+    by hash and size only."""
     out = {}
     for key, value in (arguments or {}).items():
         if key in REDACTED_ARGS and isinstance(value, str):
             out[key] = {"sha256": hashlib.sha256(value.encode("utf-8")).hexdigest(),
                         "chars": len(value)}
+        elif key in REDACTED_ARGS and isinstance(value, list):
+            text = json.dumps(value, sort_keys=True, ensure_ascii=False, default=str)
+            out[key] = {"sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+                        "items": len(value)}
         elif key in REDACTED_ARGS:
             out[key] = {"type": type(value).__name__}
         else:
@@ -89,7 +96,7 @@ class RateLimiter:
         while window and window[0] <= now - span:
             window.popleft()
         if len(window) >= limit:
-            return window[0] + span - now
+            return window[0] + span - now if window else span  # a limit of 0 refuses all
         window.append(now)
         return None
 
@@ -169,7 +176,7 @@ class Guard:
         if wait is not None:
             return refuse("rate_limited", f"rate_limited: over {self.limiter.calls_per_min} "
                           f"calls a minute; retry in {wait:.0f} s")
-        if name in REVIEW_TOOLS:
+        if name in GPU_TOOLS:
             active = self.active_reviews(caller)
             if active >= self.max_reviews_per_caller:
                 return refuse("rate_limited", f"rate_limited: {active} of your reviews are "
@@ -198,7 +205,7 @@ class Guard:
         else:
             entry["outcome"] = "ok"
             structured = data.get("structuredContent") or {}
-            for key in ("record_id", "status", "final_verdict", "model_tokens"):
+            for key in ("record_id", "status", "final_verdict", "model_tokens", "counts"):
                 if structured.get(key) is not None:
                     entry[key] = structured[key]
         self.audit.write(entry)

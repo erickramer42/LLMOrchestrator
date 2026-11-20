@@ -1,10 +1,11 @@
-"""The MCP server: tools to submit a review and read decision records,
-and read-only resources for the records and the repo index (ADR-0003).
+"""The MCP server: tools to submit a review, read decision records and
+check another reviewer's findings, and read-only resources for the records
+and the repo index (ADR-0003, ADR-0005).
 
 Reviews are jobs: review_diff returns a debate id at once, and
 get_decision reports progress or the finished record. A verdict comes only
 from a finished record, so nothing here can approve a review the judge
-did not. Every tool call and resource read passes the guard (scopes,
+did not; verify_findings judges findings, never a change. Every tool call and resource read passes the guard (scopes,
 limits, the audit line; ADR-0004). Over stdio, stdout is the protocol:
 this module imports debate, never orchestrator, which prints to stdout.
 """
@@ -23,7 +24,9 @@ from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ResourceNotFoundError, ToolError
 from mcp_types import ToolAnnotations
+from pydantic import BaseModel, Field
 
+import adjudication
 import debate
 from config import MAX_DEBATE_ROUNDS
 from mcp_server import __version__
@@ -37,6 +40,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 MAX_FIELD_CHARS = 200_000  # per text field; the input check refuses far less
 MAX_WAIT_S = 55            # under the one-minute tool timeout some clients use
 MAX_LIST = 200
+MAX_FINDINGS = 100
+MAX_FINDING_CHARS = 20_000
 INDEX_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\.json")
 INDEX_SECTIONS = ("files", "types", "constants", "callsites")
 # Hints for clients deciding when to ask before a call: nothing reaches past
@@ -53,7 +58,35 @@ of minutes. Follow it with get_decision(record_id, wait_seconds=55) until
 status is done, failed or lost. Only final_verdict on a done review is a
 verdict; APPROVED_* means approved, anything with MANUAL_REVIEW_REQUIRED
 needs a person. Read notes first: index_base_mismatch means the repo
-context came from another version of the code."""
+context came from another version of the code. verify_findings checks
+another reviewer's findings against a diff at once, without a model; its
+outcomes judge the findings, never the change."""
+
+# What a verify_findings outcome means, for clients that read only results
+OUTCOME_MEANING = {
+    adjudication.KEPT: "a blocker: its quote is in the post-change code, its claim names "
+                       "code of the quote's hunk or none, and it has no hedge word",
+    adjudication.QUOTE: "demoted to a question: no quote of 8 or more characters found in "
+                        "the post-change lines of the named file or in the context",
+    adjudication.LINK: "demoted to a question: the claim names code identifiers, none of "
+                       "them in the hunk the quote comes from",
+    adjudication.HEDGE: "demoted to a question: the claim is hedged (may, could, likely ...)",
+    adjudication.INVALID: "dropped: no content",
+}
+FOUND_IN = {adjudication.CONTEXT_SOURCE: "context",
+            adjudication.UNFILED_SOURCE: "diff lines outside any file"}
+
+
+class Finding(BaseModel):
+    """One finding of another reviewer, in this tribunal's blocker shape."""
+    claim: str = Field(min_length=1, max_length=MAX_FINDING_CHARS,
+                       description="what is wrong, as the reviewer states it")
+    file: str = Field("", max_length=1000, description="the path of the file the quote is from")
+    quote: str = Field("", max_length=MAX_FINDING_CHARS,
+                       description="the code the claim rests on, copied verbatim "
+                       "from the post-change side of the diff or from the context")
+    id: Optional[str] = Field(None, max_length=200,
+                              description="the caller's own id, echoed in the result")
 
 
 @dataclass(frozen=True)
@@ -197,6 +230,35 @@ class Tribunal:
         if not path.is_file():
             raise ToolError(f"no index named {index_name!r} in the server's index directory")
         return str(path)
+
+    def verify(self, findings: list, diff: str, context: str,
+               index_name: Optional[str]) -> dict:
+        """Each finding's outcome under the debate's guardrails, and their
+        counts; no verdict on the change."""
+        notes = ["outcomes judge the findings, not the change: this is no merge verdict, "
+                 "and no finding kept or demoted says the code is right"]
+        path = Path(self.index_path(index_name) or CONTEXT_PATH)
+        try:
+            symbols = adjudication.index_symbols(json.loads(path.read_text(encoding="utf-8")))
+        except (OSError, ValueError) as exc:
+            symbols = frozenset()
+            notes.append(f"index_error: {type(exc).__name__}; capitals-only names in claims "
+                         "are not counted as code")
+        judged = adjudication.verify_findings(
+            [f.model_dump(include=set(adjudication.FINDING_FIELDS)) for f in findings],
+            diff, context, symbols)
+        results = []
+        for i, (finding, result) in enumerate(zip(findings, judged)):
+            row = {"index": i, "outcome": result["outcome"],
+                   "meaning": OUTCOME_MEANING[result["outcome"]],
+                   "found_in": FOUND_IN.get(result["found_in"], result["found_in"])}
+            if finding.id is not None:
+                row["id"] = finding.id
+            results.append(row)
+        counts = {o: sum(r["outcome"] == o for r in results) for o in OUTCOME_MEANING}
+        return {"results": results, "counts": counts, "notes": notes,
+                "judge_version": adjudication.JUDGE_VERSION,
+                "index": index_name or "committed", "server_version": __version__}
 
     def describe(self, record_id: str, include_record: bool = False) -> dict:
         """A review's state: live job, finished record, or marker."""
@@ -356,6 +418,27 @@ def build_server(settings: Optional[Settings] = None,
         state = tribunal.describe(record_id)  # may already be finished
         state["notes"] = notes + [n for n in state.get("notes", []) if n not in notes]
         return state
+
+    @server.tool(annotations=READS)
+    async def verify_findings(diff: str, findings: list[Finding], context: str = "",
+                              index_name: Optional[str] = None) -> dict[str, Any]:
+        """Check another reviewer's findings against a unified diff with this
+        tribunal's guardrails, at once and without a model. Each finding is
+        {claim, file, quote}: the quote copied verbatim from the post-change
+        side of the diff (or from context). Its outcome is kept (a blocker),
+        quote (its quote is not in that code), link (its claim names none of
+        the code around its quote), hedge (its claim is hedged) or invalid.
+        The outcomes judge the findings, never the change: nothing here
+        approves a diff. index_name: as for review_diff."""
+        for name, value in (("diff", diff), ("context", context)):
+            _check_text(name, value)
+        if not diff.strip() and not context.strip():
+            raise ToolError("no diff and no context: there is no code to check quotes against")
+        if len(findings) > MAX_FINDINGS:
+            raise ToolError(f"{len(findings)} findings, over the {MAX_FINDINGS} limit; "
+                            "send them in several calls")
+        return await anyio.to_thread.run_sync(tribunal.verify, findings, diff, context,
+                                              index_name)
 
     @server.tool(annotations=READS)
     async def get_decision(record_id: str, wait_seconds: int = 0,

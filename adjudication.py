@@ -395,6 +395,16 @@ def _quote_linked(evidence: dict, sources: Dict[str, List[str]],
     return bool(ids & set().union(*(hunks[path][h] for h in found if h < len(hunks[path]))))
 
 
+def index_symbols(index: dict) -> FrozenSet[str]:
+    """The type and constant names an index defines, which claim-quote
+    linkage counts as code even when written in capitals only (j8)."""
+    try:
+        return frozenset([str(t["name"]) for t in index.get("types", [])]
+                         + [str(c["name"]) for c in index.get("constants", [])])
+    except (KeyError, TypeError, AttributeError):
+        return frozenset()
+
+
 def before_sources(code_diff: str) -> Dict[str, List[str]]:
     """Each file's code as it read BEFORE the change: context and removed
     lines in order, with the hunk breaks evidence_sources puts in. Never
@@ -484,3 +494,50 @@ def demote_unverified_blockers(agent_out: dict, sources: Dict[str, List[str]],
         out[concern_key] = (out.get(concern_key, []) or []) + demoted
 
     return out, len(demoted)
+
+
+# Findings from any reviewer (ADR-0005)
+
+# Where a finding ends: kept as a blocker, or demoted by the evidence check
+# ('quote'), claim-quote linkage ('link') or the hedge check; 'invalid' when
+# normalization drops it
+KEPT, QUOTE, LINK, HEDGE, INVALID = "kept", "quote", "link", "hedge", "invalid"
+FINDING_FIELDS = ("claim", "file", "quote")
+
+
+def judge_finding(finding, sources: Dict[str, List[str]],
+                  hunks: Dict[str, List[Set[str]]], symbols: FrozenSet[str]) -> str:
+    """Where one blocker ends when a debate judges it alone as a round-1
+    reviewer blocker. Each guardrail judges a blocker without regard to
+    the others, so a list's outcomes are its blockers' outcomes one by one."""
+    out, _ = normalize_agent_output(
+        {"blockers": [finding], "questions": [], "nits": []}, "reviewer")
+    if not out or not out.get("blockers"):
+        return INVALID
+    details: List[dict] = []
+    out, _ = demote_unverified_blockers(out, sources, "questions", hunks, symbols, details)
+    if details:
+        return details[0]["reason"]
+    _, hedged = demote_hedged_blockers(out, "questions")
+    return HEDGE if hedged else KEPT
+
+
+def verify_findings(findings: list, code_diff: str, code_context: str = "",
+                    symbols: FrozenSet[str] = frozenset()) -> List[dict]:
+    """Each finding judged by judge_finding against the diff and context:
+    {"outcome", "found_in"}, in order. Only FINDING_FIELDS of an object
+    finding are read, since the hedge check reads every field but the
+    quote. found_in is the source holding its quote (a path,
+    CONTEXT_SOURCE or UNFILED_SOURCE), or None. The context is read whole.
+    The outcomes judge the findings, never the code: no list, empty or
+    not, approves a change."""
+    sources = evidence_sources(code_diff, code_context)
+    hunks = hunk_identifiers(code_diff)
+    results = []
+    for finding in findings:
+        if isinstance(finding, dict):
+            finding = {k: finding[k] for k in FINDING_FIELDS if k in finding}
+        where = quote_location(_evidence(finding), sources)
+        results.append({"outcome": judge_finding(finding, sources, hunks, symbols),
+                        "found_in": where[0] if where else None})
+    return results

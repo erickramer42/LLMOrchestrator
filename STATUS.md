@@ -16,8 +16,8 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 | Judge | `j8-claim-quote-linkage` |
 | Context-pack format | `f3-diff-authoritative` |
 | Models | reviewer `laguna-xs-2.1`, engineer `gemma4:12b`, on Ollama; `NUM_CTX` 24576, `NUM_PREDICT` 12288 |
-| Tests | 233 regression tests and 37 MCP server tests, no model needed; CI on Python 3.11 and 3.13 |
-| MCP server | `mcp_server` 0.2.1 over stdio or HTTP with scoped tokens and an audit log, SDK `mcp==2.3.0` ([ADR-0003](docs/decisions/0003-mcp-server.md), [ADR-0004](docs/decisions/0004-mcp-http-auth-audit.md), [clients](docs/mcp-clients.md)) |
+| Tests | 239 regression tests and 46 MCP server tests, no model needed; CI on Python 3.11 and 3.13 |
+| MCP server | `mcp_server` 0.3.0 over stdio or HTTP with scoped tokens and an audit log, SDK `mcp==2.3.0` ([ADR-0003](docs/decisions/0003-mcp-server.md), [ADR-0004](docs/decisions/0004-mcp-http-auth-audit.md), [ADR-0005](docs/decisions/0005-verify-findings.md), [clients](docs/mcp-clients.md)) |
 | Golden suite | 10/10 at the last live run (3 model fixtures, 7 hedge units); 13 deterministic judge cases since 2026-10-27 |
 
 **Headline numbers (judge j8, round-1 samples, hand-labeled):**
@@ -49,8 +49,14 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
   HTTP server; TLS is passed to `uvicorn` and not tested. MCP Inspector
   2.13.0 passed 18 of 18 checks over both transports, and Lumo Desktop
   0.5.9 4 of 4 over stdio ([mcp-clients.md](docs/mcp-clients.md)).
-  Not yet run against a live model or on a real Havne diff. Next:
-  concurrent agent calls, measured.
+  Not yet run against a live model or on a real Havne diff.
+- **Checking other reviewers' findings (ADR-0005):** `verify_findings`
+  judges `{claim, file, quote}` findings by the debate's guardrails,
+  without a model, and gives no verdict on the change. Not measured on
+  any other reviewer's findings: a finding that cites a line number
+  instead of quoting code, or hedges, is demoted whether or not it is
+  right. Next: register that measurement in ADR-0002, then concurrent
+  agent calls, measured.
 
 The shipped prompt is v11.1.
 

@@ -11,7 +11,7 @@ together, see [design.md](design.md); for the current versions, see
 | `orchestrator.py` | CLI entry point: argument parsing and dispatch only. `--golden`, `--proposal` and `--index` are mutually exclusive; `--proposal` needs `--diff` or `--context`. Inputs are read as UTF-8. |
 | `config.py` | Models, `NUM_CTX`, the `NUM_PREDICT` output cap, the input check's chars-per-token floor, timeouts and temperatures; composes the reviewer prompts. The one place to swap models (the probe and bake-off excepted). |
 | `agent_client.py` | The Ollama client and the only module that touches the network. One agent turn in JSON mode; invalid or schema-violating replies are retried with a corrective message, then fail closed with `FAILURE_SENTINEL`. Records per-attempt telemetry: token counts, thinking and reply sizes, `done_reason`, wall time, the verbatim accepted reply, the tails of failed ones, and the whole thinking of any attempt that hit the cap or ran past `LONG_THINKING_TOKENS` (backlog #19). |
-| `adjudication.py` | Pure judging logic, no I/O: the verdict constants, schema validation (`normalize_agent_output`), the evidence check (`demote_unverified_blockers`: post-change quotes and claim-quote linkage, j8), the hedge check (`demote_hedged_blockers`), `derive_verdict`, `convergence_verdict` and `JUDGE_VERSION`. Imports cleanly in CI. |
+| `adjudication.py` | Pure judging logic, no I/O: the verdict constants, schema validation (`normalize_agent_output`), the evidence check (`demote_unverified_blockers`: post-change quotes and claim-quote linkage, j8), the hedge check (`demote_hedged_blockers`), `derive_verdict`, `convergence_verdict` and `JUDGE_VERSION`; and `judge_finding` and `verify_findings`, which judge one blocker or another reviewer's findings by the same checks ([ADR-0005](decisions/0005-verify-findings.md)). Imports cleanly in CI. |
 | `debate.py` | The debate loop. Builds the transcript (fenced code, layer note, context pack, and from round 2 the CRITIQUES section), runs the input check, calls the agents, applies the guardrails, judges, and writes the decision record. Also the measurement modes: `run_round1_review` (a debate's first reviewer call alone) and `run_round2_pair` (two round-2 formats on the same round 1). |
 | `diff_reader.py` | The one unified-diff reader: `read_diff`, `diff_paths`, `base_blobs`, and the identifier helpers (`IDENT`, `code_like`) the judge and retrieval share. Used by the evidence check, retrieval, its base check and layer mapping. |
 | `reviewer_prompt.py` | The agents' system prompts and `PROMPT_VERSION`, with a comment per version on what changed and whether it shipped. |
@@ -31,13 +31,13 @@ together, see [design.md](design.md); for the current versions, see
 
 ## MCP server
 
-A separate package on top of the core ([ADR-0003](decisions/0003-mcp-server.md), [ADR-0004](decisions/0004-mcp-http-auth-audit.md)): it imports `debate`, `config` and `retrieval`, and no core module imports it or the SDK.
+A separate package on top of the core ([ADR-0003](decisions/0003-mcp-server.md), [ADR-0004](decisions/0004-mcp-http-auth-audit.md), [ADR-0005](decisions/0005-verify-findings.md)): it imports `debate`, `adjudication`, `config` and `retrieval`, and no core module imports it or the SDK.
 
 | Path | Purpose |
 |---|---|
 | `mcp_server/__init__.py` | The server's semantic version, `__version__`. |
 | `mcp_server/__main__.py` | The entry point: stdio by default, `--http`, and the `token` commands. Puts the repo root, not its own folder, on the import path, so a client can start it from any directory. |
-| `mcp_server/server.py` | The tools (`review_diff`, `get_decision`, `list_decisions`), the resources (`decision://`, `index://`), the settings from `LLMORCH_*` environment variables, and the summary of a finished record. Imports `debate`, never `orchestrator`, so nothing prints to stdout, which carries the protocol over stdio. |
+| `mcp_server/server.py` | The tools (`review_diff`, `get_decision`, `list_decisions`, `verify_findings`), the resources (`decision://`, `index://`), the settings from `LLMORCH_*` environment variables, and the summary of a finished record. Imports `debate`, never `orchestrator`, so nothing prints to stdout, which carries the protocol over stdio. |
 | `mcp_server/jobs.py` | The review queue: one worker thread, a bounded queue, per-job caller, round and agent, and pending markers that let a restart report a review as lost. |
 | `mcp_server/guard.py` | The middleware around every tool call and resource read: the caller, its scopes, the per-caller limits and the audit line; and the wrapper that audits HTTP requests refused before MCP. |
 | `mcp_server/tokens.py` | The token file (ids, scopes, SHA-256 hashes), minting and revoking, and the SDK token verifier over it. |
@@ -108,4 +108,4 @@ A separate package on top of the core ([ADR-0003](decisions/0003-mcp-server.md),
 | `docs/file-map.md` | This file. |
 | `docs/portability_guide.md` | Adapting the tribunal to another codebase. |
 | `docs/history.md` | The dated engineering log. |
-| `docs/decisions/` | ADR-0001 (model selection), ADR-0002 (adjudication and every measurement, predictions included), ADR-0003 (the MCP server) and ADR-0004 (its HTTP transport, tokens, audit log and limits). |
+| `docs/decisions/` | ADR-0001 (model selection), ADR-0002 (adjudication and every measurement, predictions included), ADR-0003 (the MCP server), ADR-0004 (its HTTP transport, tokens, audit log and limits) and ADR-0005 (checking other reviewers' findings). |

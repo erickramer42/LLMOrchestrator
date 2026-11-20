@@ -101,11 +101,12 @@ with the directories set explicitly:
 | `review_diff(proposal, diff, context?, header?, index_name?)` | Checks the input and queues a review; returns its `record_id` at once. Input that is empty or too large for the context window is refused and recorded at once. |
 | `get_decision(record_id, wait_seconds?, include_record?)` | The review's `status` (`queued`, `running`, `done`, `failed` or `lost`), its round and agent while running, and once done the `final_verdict`, the final round's findings and `notes`. Waits up to 55 s, with progress notifications. |
 | `list_decisions(limit?, since?)` | Recent reviews, newest first, with status, verdict and input hashes. |
+| `verify_findings(diff, findings, context?, index_name?)` | Checks another reviewer's findings (`{claim, file, quote, id?}`) with the debate's guardrails, at once and without a model: each finding's outcome (`kept`, `quote`, `link`, `hedge` or `invalid`) and where its quote was found. No verdict on the change ([ADR-0005](decisions/0005-verify-findings.md)). |
 
 Resources: `decision://{record_id}` (a finished record) and the committed
 index's `index://info`, `index://files`, `index://types`,
-`index://constants` and `index://callsites`. `get_decision` and
-`list_decisions` are annotated read-only, and no tool reaches past the
+`index://constants` and `index://callsites`. `get_decision`,
+`list_decisions` and `verify_findings` are annotated read-only, and no tool reaches past the
 server and its local models (`openWorldHint` false); clients use these
 hints to decide when to ask before a call. The clients run against the
 server so far, and what each run showed, are in
@@ -164,12 +165,14 @@ A client sends `Authorization: Bearer <token>` on every request. In an
 | No token, an unknown one or a revoked one | HTTP 401, before the request is read |
 | An `Origin` header the server doesn't allow (`LLMORCH_ALLOWED_ORIGINS`) | HTTP 403 |
 | A `Host` header that doesn't name the server (`LLMORCH_ALLOWED_HOSTS`) | HTTP 421 |
-| `review_diff` with a `read` token | Tool error `insufficient_scope` |
+| `review_diff` or `verify_findings` with a `read` token | Tool error `insufficient_scope` |
 | More than 120 calls a minute (`LLMORCH_RATE_PER_MIN`) | Tool error `rate_limited` |
 | More than 20 reviews an hour (`LLMORCH_REVIEWS_PER_HOUR`) | Tool error `rate_limited` |
 | More than 2 of one caller's reviews queued or running (`LLMORCH_MAX_REVIEWS_PER_CALLER`) | Tool error `rate_limited` |
 
 The limits are per token (per process over stdio) and reset on restart.
+`verify_findings` counts only against the calls a minute, since it runs
+no model.
 `--host` other than loopback needs `--certfile` and `--keyfile`, or
 `--insecure-http` to send tokens in clear text; the server also refuses
 to start with no tokens.
@@ -178,9 +181,10 @@ Every tool call and resource read, on either transport, appends one line
 to `mcp_records/audit.jsonl` (`LLMORCH_AUDIT_LOG`): the
 time, the server version, the transport, the caller (the token's id, or
 `stdio`), the tool and its arguments with `proposal`, `diff` and
-`context` replaced by their SHA-256 and length, the outcome, the
-review's id, status and verdict, the duration, and for a finished review
-the model token counts. A request refused before MCP gets a line with
+`context` replaced by their SHA-256 and length and `findings` by the
+SHA-256 of its JSON and its count, the outcome, the
+review's id, status and verdict, the duration, for a finished review
+the model token counts, and for `verify_findings` the outcome counts. A request refused before MCP gets a line with
 its status, path and client address.
 
 ## Golden suite

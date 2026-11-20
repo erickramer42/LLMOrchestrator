@@ -230,6 +230,15 @@ changed.
   prompts as designed, one tool call each, no model call
   (docs/mcp-clients.md). Its chat replies added guesses the server did
   not make, so the record stays the verdict.
+- `verify_findings`, server 0.3.0 (ADR-0005): another reviewer's
+  `{claim, file, quote}` findings judged by the debate's guardrails, at
+  once and without a model, one outcome per finding and no verdict on
+  the change. `adjudication.judge_finding` is shared with the judge
+  cases; a test pins it to the stored split of every archived j8
+  round-1 record. Needs the `review` scope, outside the GPU limits. Its
+  tests found that a rate limit of 0 raised an internal error; it now
+  refuses. Unmeasured on other reviewers' findings. Tests 233 to 239,
+  server tests 37 to 46.
 
 ## Features and measurements, in detail
 

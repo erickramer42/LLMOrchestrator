@@ -183,6 +183,29 @@ class AuthTests(HttpTestCase):
         self.assertTrue(all(e["server_version"] == __version__ for e in lines))
 
 
+class VerifyScopeTests(HttpTestCase):
+
+    def test_verify_findings_needs_the_review_scope_and_no_review_slot(self):
+        # It runs no model, so the hourly review limit does not apply.
+        self.start(reviews_per_hour=0)
+        args = {"diff": DIFF, "findings": [{"claim": "x is wrong", "quote": "msg->len"}]}
+        with fake_ollama() as post:
+            read, = self.calls(self.read_token, ("verify_findings", args))
+            checked, review = self.calls(self.review_token, ("verify_findings", args),
+                                         ("review_diff", {"proposal": "p", "diff": DIFF}))
+        self.assertEqual(post.call_count, 0)
+        self.assertTrue(read.is_error)
+        self.assertIn("insufficient_scope", read.content[0].text)
+        self.assertFalse(checked.is_error, checked.content)
+        self.assertTrue(review.is_error)
+        self.assertIn("rate_limited", review.content[0].text)
+
+    def test_redact_hashes_a_findings_list(self):
+        out = redact({"findings": [{"claim": "c", "quote": "q"}]})
+        self.assertEqual(set(out["findings"]), {"sha256", "items"})
+        self.assertEqual(out["findings"]["items"], 1)
+
+
 class AuditContentTests(HttpTestCase):
 
     def test_no_token_or_reviewed_text_reaches_the_audit_log(self):
@@ -256,6 +279,10 @@ class LimitTests(HttpTestCase):
         self.assertIsNone(limiter.take_call("a"))
         self.assertIsNone(limiter.take_review("a"))
         self.assertIsNotNone(limiter.take_review("a"))
+
+    def test_a_limit_of_zero_refuses_instead_of_failing(self):
+        limiter = RateLimiter(0, 0, clock=lambda: 0.0)
+        self.assertEqual((limiter.take_call("a"), limiter.take_review("a")), (60.0, 3600.0))
 
 
 class HostAndOriginTests(HttpTestCase):

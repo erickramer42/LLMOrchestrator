@@ -87,7 +87,7 @@ the measurement log in
 | How decisions were made, predictions included | [docs/decisions/](docs/decisions/) |
 | Current state, limitations and backlog | [STATUS.md](STATUS.md) |
 | Every file and its purpose | [docs/file-map.md](docs/file-map.md) |
-| Reviews served to MCP clients as queued jobs | [mcp_server/](mcp_server/) |
+| Reviews served to MCP clients as queued jobs, and other reviewers' findings checked | [mcp_server/](mcp_server/) |
 
 ## Quick start
 

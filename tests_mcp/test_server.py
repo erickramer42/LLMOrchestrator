@@ -133,7 +133,8 @@ class ToolTests(ServerTestCase):
                              for t in (await c.list_resource_templates()).resource_templates}
                 return tools, resources, templates, c.server_info
         tools, resources, templates, info = run(go)
-        self.assertEqual(tools, {"review_diff", "get_decision", "list_decisions"})
+        self.assertEqual(tools, {"review_diff", "get_decision", "list_decisions",
+                                 "verify_findings"})
         self.assertEqual(resources, {"index://info", "index://files", "index://types",
                                      "index://constants", "index://callsites"})
         self.assertEqual(templates, {"decision://{record_id}"})
@@ -146,7 +147,7 @@ class ToolTests(ServerTestCase):
             async with Client(self.server()) as c:
                 return {t.name: t for t in (await c.list_tools()).tools}
         tools = run(go)
-        for name in ("get_decision", "list_decisions"):
+        for name in ("get_decision", "list_decisions", "verify_findings"):
             a = tools[name].annotations
             self.assertEqual((a.read_only_hint, a.destructive_hint, a.open_world_hint),
                              (True, False, False), name)
@@ -256,6 +257,85 @@ class ToolTests(ServerTestCase):
         rec = json.loads((self.records / f"decision_{final['record_id']}.json")
                          .read_text(encoding="utf-8"))
         self.assertTrue(rec["metadata"]["repo_context_pack"]["index_file"].endswith("base.json"))
+
+
+class VerifyTests(ServerTestCase):
+    """verify_findings: other reviewers' findings under the guardrails (ADR-0005)."""
+
+    FINDINGS = [
+        {"id": "a", "claim": "memcpy copies msg->len bytes into buf unchecked",
+         "file": "core/src/x.cpp", "quote": QUOTE},
+        {"id": "b", "claim": "buf overflows", "file": "core/src/x.cpp",
+         "quote": "memcpy(buf, msg->data, sizeof buf);"},
+        {"claim": "m_lastReported races between threads", "file": "x.cpp", "quote": QUOTE},
+        {"claim": "buf may overflow", "file": "core/src/x.cpp", "quote": QUOTE,
+         "severity": "high"},
+    ]
+
+    def verify(self, args, server=None):
+        with fake_ollama() as post:
+            res = self.call(server or self.server(), "verify_findings", args)
+        self.assertEqual(post.call_count, 0)
+        return res
+
+    def test_each_finding_gets_its_outcome_and_no_verdict(self):
+        res = self.verify({"diff": DIFF, "findings": self.FINDINGS})
+        self.assertFalse(res.is_error, res.content)
+        out = res.structured_content
+        self.assertEqual([(r["index"], r.get("id"), r["outcome"], r["found_in"])
+                          for r in out["results"]],
+                         [(0, "a", "kept", "core/src/x.cpp"), (1, "b", "quote", None),
+                          (2, None, "link", "core/src/x.cpp"),
+                          (3, None, "hedge", "core/src/x.cpp")])
+        self.assertEqual(out["counts"], {"kept": 1, "quote": 1, "link": 1, "hedge": 1,
+                                         "invalid": 0})
+        self.assertTrue(all(r["meaning"] for r in out["results"]))
+        self.assertNotIn("final_verdict", out)
+        self.assertIn("no merge verdict", out["notes"][0])
+        self.assertEqual((out["judge_version"], out["index"]),
+                         (adjudication.JUDGE_VERSION, "committed"))
+        self.assertFalse(self.records.exists() and any(self.records.glob("decision_*")))
+
+    def test_a_quote_from_the_context_is_found_there(self):
+        res = self.verify({"diff": "", "context": "uint8_t buf[8];",
+                           "findings": [{"claim": "buf is too small", "quote": "uint8_t buf[8];"}]})
+        self.assertEqual([(r["outcome"], r["found_in"]) for r in res.structured_content["results"]],
+                         [("kept", "context")])
+
+    def test_no_findings_counts_nothing_and_approves_nothing(self):
+        out = self.verify({"diff": DIFF, "findings": []}).structured_content
+        self.assertEqual((out["results"], sum(out["counts"].values())), ([], 0))
+        self.assertNotIn("final_verdict", out)
+
+    def test_no_code_too_many_findings_and_an_empty_claim_are_refused(self):
+        for args in ({"diff": "", "findings": self.FINDINGS[:1]},
+                     {"diff": DIFF, "findings": self.FINDINGS[:1] * 101},
+                     {"diff": DIFF, "findings": [{"claim": "", "quote": QUOTE}]},
+                     {"diff": DIFF, "findings": ["buf overflows"]},
+                     {"diff": DIFF, "findings": self.FINDINGS, "index_name": "../x.json"}):
+            res = self.verify(args)
+            self.assertTrue(res.is_error, args)
+
+    def test_findings_are_hashed_in_the_audit_log(self):
+        self.verify({"diff": DIFF, "findings": self.FINDINGS})
+        [line] = [json.loads(l) for l in
+                  (self.records / "audit.jsonl").read_text(encoding="utf-8").splitlines()]
+        self.assertEqual((line["tool"], line["outcome"], line["counts"]["kept"]),
+                         ("verify_findings", "ok", 1))
+        self.assertEqual(line["arguments"]["findings"]["items"], 4)
+        self.assertNotIn("m_lastReported", json.dumps(line))
+        self.assertNotIn("memcpy", json.dumps(line))
+
+    def test_a_named_index_supplies_the_capitals_only_names(self):
+        diff = "+++ b/core/src/x.cpp\n@@ -0,0 +1 @@\n+if (len > MAX_LEN) return;\n"
+        (self.indexes / "base.json").write_text(json.dumps(
+            {"types": [], "constants": [{"name": "SCONFIG"}]}), encoding="utf-8")
+        finding = {"claim": "SCONFIG is ignored here", "file": "core/src/x.cpp",
+                   "quote": "if (len > MAX_LEN) return;"}
+        outcomes = [self.verify({"diff": diff, "findings": [finding], **extra})
+                    .structured_content["results"][0]["outcome"]
+                    for extra in ({}, {"index_name": "base.json"})]
+        self.assertEqual(outcomes, ["kept", "link"])
 
 
 class StatusTests(ServerTestCase):

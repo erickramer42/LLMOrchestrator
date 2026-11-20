@@ -20,6 +20,7 @@ from adjudication import (AGENT_FAILURE_VERDICT, INPUT_TOO_LARGE_VERDICT,
                           convergence_verdict, demote_hedged_blockers,
                           demote_unverified_blockers, derive_verdict,
                           evidence_sources, hunk_identifiers,
+                          index_symbols as _index_symbols,
                           normalize_agent_output)
 from agent_client import call_agent, failure_result
 from config import (CHARS_PER_TOKEN_FLOOR, MAX_DEBATE_ROUNDS, MODELS, NUM_CTX,
@@ -195,16 +196,6 @@ def _load_repo_index(path: Optional[Path] = None) -> dict:
         return json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         return {"_load_error": f"{type(exc).__name__}: {exc}"}
-
-
-def _index_symbols(index: dict) -> frozenset:
-    """The type and constant names an index defines, which claim-quote
-    linkage counts as code even when written in capitals only (j8)."""
-    try:
-        return frozenset([str(t["name"]) for t in index.get("types", [])]
-                         + [str(c["name"]) for c in index.get("constants", [])])
-    except (KeyError, TypeError, AttributeError):
-        return frozenset()
 
 
 def _recorded_index_path(path: Path) -> str:

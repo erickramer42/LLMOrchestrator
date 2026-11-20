@@ -12,10 +12,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from adjudication import (JUDGE_VERSION, demote_hedged_blockers, demote_unverified_blockers,
-                          evidence_sources, hunk_identifiers, normalize_agent_output)
+from adjudication import (JUDGE_VERSION, demote_hedged_blockers, evidence_sources,
+                          hunk_identifiers, index_symbols, judge_finding)
 from config import MODELS, TEMPERATURE_RETRY
-from debate import _index_symbols, review_round1
+from debate import review_round1
 from review_fixtures import ABI_TYPE_LEAK, CANFD_BUFFER_OVERFLOW, CLEAN_ABI_HEADER
 from reviewer_prompt import PROMPT_VERSION
 
@@ -102,18 +102,8 @@ def judge_outcome(blocker: dict, code_diff: str, index: dict) -> str:
     """Where one reviewer blocker ends when a debate judges it alone:
     'kept', 'quote' (evidence check), 'link' (claim-quote linkage, j8),
     'hedge', or 'invalid' when normalization drops it."""
-    out, _ = normalize_agent_output(
-        {"verdict": "reject", "blockers": [blocker], "questions": [], "nits": []}, "reviewer")
-    if not out or not out.get("blockers"):
-        return "invalid"
-    details: List[dict] = []
-    out, _ = demote_unverified_blockers(out, evidence_sources(code_diff), "questions",
-                                        hunk_identifiers(code_diff), _index_symbols(index),
-                                        details)
-    if details:
-        return details[0]["reason"]
-    _, hedged = demote_hedged_blockers(out, "questions")
-    return "hedge" if hedged else "kept"
+    return judge_finding(blocker, evidence_sources(code_diff), hunk_identifiers(code_diff),
+                         index_symbols(index))
 
 
 def judge_fixtures() -> Dict[str, Tuple[Path, Path]]:
