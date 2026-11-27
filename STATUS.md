@@ -61,8 +61,9 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
   branch's commit (`python -m tasks`); a worker answers each finding
   through `claim_task` and `submit_result`, and every quote is checked
   against the file at that commit before the submitter sees it. Next:
-  the saving on Lumo's next real cold read of a Havne diff, against a
-  cold read by a hosted-model session, before any other kind.
+  the twenty-seventh measurement (ADR-0002, registered): the saving on
+  Lumo's next real cold read of a Havne diff, against a cold read by a
+  hosted-model session; at or under half, `large_diff_read` is next.
 - **Twenty-sixth measurement, registered (ADR-0002), not run:**
   `verify_findings` on findings by a hosted model and a held-out local
   one (`gpt-oss:20b`), native and quoted, plus a hand-written control

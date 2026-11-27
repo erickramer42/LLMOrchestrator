@@ -51,6 +51,7 @@ results; changes made after seeing data are dated amendments.
 | [Twenty-Fifth Measurement: The Engineer at Verdict Level (Offline)](#twenty-fifth-measurement-the-engineer-at-verdict-level-offline) | 2026-10-27 | Round-1 verdicts of laguna paired with each engineer, blockers rejecting or as concerns | `gpt-oss:20b` with its blockers rejecting earns a confirmation sample (misses 5 to 3 of 22); as concerns it fails |
 | [Corpus v2: Forward Diffs of the Commits That Introduced the Bugs](#corpus-v2-forward-diffs-of-the-commits-that-introduced-the-bugs) | 2026-10-27 | Bug fixtures rebuilt as the commits that introduced each bug, without the fix comments v1's diffs leak | Built; baseline not yet run |
 | [Twenty-Sixth Measurement: Other Reviewers' Findings Under the Guardrails](#twenty-sixth-measurement-other-reviewers-findings-under-the-guardrails) | 2026-11-19 | `verify_findings` on findings by `claude-opus-5-5`, `gpt-oss:20b` and a hand-written control, native and quoted | Registered, not run |
+| [Twenty-Seventh Measurement: The Task Board's Saving](#twenty-seventh-measurement-the-task-boards-saving) | 2026-11-26 | A submitter's tokens for a `second_read` through the task board against a hosted-model cold read of the same diff | Registered, not run |
 
 ## Context
 
@@ -6324,3 +6325,34 @@ What the section left open, fixed here before the first sample:
 - **Records** carry `metadata.mode` `outside_findings`, the reviewer,
   the model, the arm, the fixture, the conversion rule (`n1`) for arm N,
   the SHA-256 of the prompt sent, and L's settings, and no outcome.
+
+## Twenty-Seventh Measurement: The Task Board's Saving
+
+**Status (2026-11-26): registered before any sample. Not run.**
+
+**Why.** The task board (ADR-0006) exists to save a Havne session the
+tokens of checking another reviewer's findings. Whether it does is
+unknown. This measurement decides whether any task kind beyond
+`second_read` is built. It judges cost only; whether Lumo's answers are
+right is a later measurement.
+
+**The sample.** Lumo's next real cold read of a Havne diff, on a work
+branch's commit, read two ways by the same Havne session:
+- **Route A, today's:** a read-only hosted-model session
+  (`claude-opus-5-5`) reads the diff cold and checks the findings in the
+  code. Its cost is its total tokens, from its usage report.
+- **Route B, the board:** the session posts the findings as a
+  `second_read` (`python -m tasks submit`), Lumo claims and answers it,
+  and the session fetches the result and checks the items that passed.
+  Its cost is the tokens the session spends on all of that, reported
+  with `get --caller-tokens` and stored in the task record's `cost`.
+
+**Prediction.** Route B costs 10-25K tokens against route A's 50-100K:
+the session reads a short, already checked result instead of the files.
+
+**Ship rule.** Route B at or under half of route A's tokens on the same
+diff is the baseline, and `large_diff_read` is built next. Above half,
+every other kind is on hold, and the board stays for `second_read` alone.
+
+**What one sample cannot say.** It is one diff and one answer; a later
+sample of other diffs can only move the baseline, not reopen the rule.
