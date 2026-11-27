@@ -254,6 +254,14 @@ def evidence_sources(code_diff: str, code_context: str = "") -> Dict[str, List[s
     return sources
 
 
+def file_sources(files: Dict[str, str]) -> Dict[str, List[str]]:
+    """Whole files as quote sources, keyed by path: non-blank lines with
+    whitespace collapsed, as evidence_sources keeps a diff's, with no hunk
+    breaks. The task board checks a worker's quotes against them."""
+    return {path: [s for s in map(_squash, text.splitlines()) if s]
+            for path, text in files.items()}
+
+
 def _match_file(name: str, sources: Dict[str, List[str]]) -> Optional[str]:
     """The diff path a blocker's file names: its first token, without
     quotes, an a/ or b/ prefix or a :line suffix; exact, or a unique path

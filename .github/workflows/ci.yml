@@ -18,7 +18,7 @@ jobs:
       - name: Install deps
         run: pip install -r requirements.txt
       - name: Syntax check
-        run: python -m py_compile $(ls *.py) $(ls eval_harness/*.py) $(ls tests/*.py)
+        run: python -m py_compile $(ls *.py) $(ls eval_harness/*.py) $(ls tests/*.py) $(ls tasks/*.py)
       - name: Regression tests
         run: python -m unittest discover -s tests -v
 

@@ -11,6 +11,7 @@ import io
 import json
 import logging
 import os
+import subprocess
 import sys
 import tempfile
 import threading
@@ -24,6 +25,7 @@ import requests
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(REPO_ROOT / "tests"))
 
 from mcp import Client, StdioServerParameters  # noqa: E402
 
@@ -33,6 +35,9 @@ import debate  # noqa: E402
 from mcp_server import __version__  # noqa: E402
 from mcp_server.jobs import ReviewQueue, marker_path  # noqa: E402
 from mcp_server.server import MAX_FIELD_CHARS, Settings, build_server  # noqa: E402
+from tasks.board import Board  # noqa: E402
+from test_tasks import FINDING as TASK_FINDING  # noqa: E402
+from test_tasks import item as task_item, make_project  # noqa: E402
 
 logging.getLogger("agent_client").addHandler(logging.NullHandler())
 
@@ -40,6 +45,7 @@ REVIEWER_CLEAN = {"verdict": "approve", "blockers": [], "questions": [], "nits":
 ENGINEER_CLEAN = {"verdict": "approve", "blockers": [], "concerns": [], "questions": []}
 QUOTE = "memcpy(buf, msg->data, msg->len);"
 DIFF = f"+++ b/core/src/x.cpp\n@@ -0,0 +1 @@\n+{QUOTE}\n"
+TASK_ITEM = task_item()
 
 
 class FakeResp:
@@ -134,7 +140,8 @@ class ToolTests(ServerTestCase):
                 return tools, resources, templates, c.server_info
         tools, resources, templates, info = run(go)
         self.assertEqual(tools, {"review_diff", "get_decision", "list_decisions",
-                                 "verify_findings"})
+                                 "verify_findings", "list_tasks", "claim_task",
+                                 "submit_result"})
         self.assertEqual(resources, {"index://info", "index://files", "index://types",
                                      "index://constants", "index://callsites"})
         self.assertEqual(templates, {"decision://{record_id}"})
@@ -518,6 +525,52 @@ class ListAndResourceTests(ServerTestCase):
         self.assertEqual(json.loads(info.contents[0].text)["source_commit"],
                          index["source_commit"])
         self.assertNotIn(None, errors)
+
+
+class TaskToolTests(ServerTestCase):
+    """The board's worker side over MCP (ADR-0006), on a temporary git
+    repository with a worktree; the submitter posts through the board."""
+
+    def setUp(self):
+        super().setUp()
+        self.projects, _, self.head, work = make_project(self.tmp)
+        self.addCleanup(lambda: subprocess.run(
+            ["git", "-C", str(self.tmp / "proj"), "worktree", "remove", "--force", str(work)],
+            capture_output=True))
+        self.mcp = self.server(projects_file=self.projects)
+        self.board = Board(self.records / "tasks", self.projects)
+        self.task_id = self.board.submit("second_read", "demo", self.head,
+                                         {"findings": [TASK_FINDING]})["task_id"]
+
+    def calls(self, *calls):
+        async def go():
+            async with Client(self.mcp) as c:
+                return [await c.call_tool(tool, args) for tool, args in calls]
+        return run(go)
+
+    def test_a_worker_lists_claims_and_answers_and_the_submitter_reads_it(self):
+        listed, claimed, answered = self.calls(
+            ("list_tasks", {}), ("claim_task", {"task_id": self.task_id}),
+            ("submit_result", {"task_id": self.task_id, "items": [TASK_ITEM]}))
+        self.assertEqual(listed.structured_content["tasks"][0]["task_id"], self.task_id)
+        self.assertFalse(claimed.is_error, claimed.content)
+        self.assertEqual(claimed.structured_content["files"][0]["path"], "core/a.cpp")
+        self.assertFalse(answered.is_error, answered.content)
+        self.assertEqual(answered.structured_content["state"], "done")
+        view = self.board.get(self.task_id)
+        self.assertEqual(view["result"]["refuted"][0]["finding"], 0)
+        self.assertEqual(json.loads((self.records / "tasks" / f"{self.task_id}.json")
+                                    .read_text(encoding="utf-8"))["claim"]["worker"], "stdio")
+
+    def test_a_refusal_and_a_malformed_item_are_tool_errors(self):
+        early, bad = self.calls(
+            ("submit_result", {"task_id": self.task_id, "items": [TASK_ITEM]}),
+            ("submit_result", {"task_id": self.task_id,
+                               "items": [dict(TASK_ITEM, verdict="maybe")]}))
+        self.assertTrue(early.is_error)
+        self.assertIn("not claimed", early.content[0].text)
+        self.assertTrue(bad.is_error)
+        self.assertEqual(self.board.list()[0]["state"], "open")
 
 
 class StdioLaunchTests(unittest.TestCase):

@@ -200,6 +200,20 @@ class VerifyScopeTests(HttpTestCase):
         self.assertTrue(review.is_error)
         self.assertIn("rate_limited", review.content[0].text)
 
+    def test_the_task_worker_tools_need_the_review_scope_and_items_are_hashed(self):
+        self.start()
+        args = {"task_id": "task_20260101_000000_abcdef",
+                "items": [{"finding": 0, "verdict": "unclear"}]}
+        claim, answer = self.calls(self.read_token, ("claim_task", {"task_id": args["task_id"]}),
+                                   ("submit_result", args))
+        listed, = self.calls(self.read_token, ("list_tasks", {}))
+        for res in (claim, answer):
+            self.assertTrue(res.is_error)
+            self.assertIn("insufficient_scope", res.content[0].text)
+        self.assertFalse(listed.is_error, listed.content)
+        logged = [e for e in self.audit() if e.get("tool") == "submit_result"][0]
+        self.assertEqual(set(logged["arguments"]["items"]), {"sha256", "items"})
+
     def test_redact_hashes_a_findings_list(self):
         out = redact({"findings": [{"claim": "c", "quote": "q"}]})
         self.assertEqual(set(out["findings"]), {"sha256", "items"})

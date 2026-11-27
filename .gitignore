@@ -48,3 +48,6 @@ logs/
 repo_context_cache.json
 
 run_commands.md
+
+# Task board projects: local paths and denylists (projects.example.json shows the shape)
+projects.json

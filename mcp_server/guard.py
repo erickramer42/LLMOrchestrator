@@ -4,7 +4,7 @@ read, on both transports (ADR-0004).
 One server middleware: it names the caller (the token's id over HTTP,
 `stdio` otherwise), refuses a call outside the caller's scopes or over a
 limit, runs the call, and appends one audit line. The diff, context,
-proposal and findings never reach the log: only their SHA-256 and size
+proposal, findings and a task answer's items never reach the log: only their SHA-256 and size
 do, and a caller is named by its token's id, never the token.
 """
 
@@ -26,9 +26,9 @@ from pydantic import BaseModel
 from mcp_server import __version__
 from mcp_server.tokens import READ, REVIEW, SCOPES
 
-REDACTED_ARGS = ("proposal", "diff", "context", "findings")
+REDACTED_ARGS = ("proposal", "diff", "context", "findings", "items")
 # Tools that need the review scope, and of those the ones that run the GPU
-REVIEW_TOOLS = ("review_diff", "verify_findings")
+REVIEW_TOOLS = ("review_diff", "verify_findings", "claim_task", "submit_result")
 GPU_TOOLS = ("review_diff",)
 AUDITED = ("tools/call", "resources/read")
 STDIO_CALLER = "stdio"

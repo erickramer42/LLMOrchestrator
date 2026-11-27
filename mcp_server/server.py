@@ -5,7 +5,8 @@ and the repo index (ADR-0003, ADR-0005).
 Reviews are jobs: review_diff returns a debate id at once, and
 get_decision reports progress or the finished record. A verdict comes only
 from a finished record, so nothing here can approve a review the judge
-did not; verify_findings judges findings, never a change. Every tool call and resource read passes the guard (scopes,
+did not; verify_findings judges findings, never a change. The task tools
+are the board's worker side (ADR-0006). Every tool call and resource read passes the guard (scopes,
 limits, the audit line; ADR-0004). Over stdio, stdout is the protocol:
 this module imports debate, never orchestrator, which prints to stdout.
 """
@@ -33,8 +34,10 @@ from mcp_server import __version__
 from mcp_server.guard import AuditLog, Guard, RateLimiter, current_caller
 from mcp_server.jobs import (DONE, FAILED, FINISHED, LOST, QueueFull, ReviewQueue,
                              marker_path, record_path)
+from mcp_server.task_tools import register as register_task_tools
 from mcp_server.tokens import StaticTokenVerifier, TokenStore
 from retrieval import CONTEXT_PATH
+from tasks.board import Board
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MAX_FIELD_CHARS = 200_000  # per text field; the input check refuses far less
@@ -60,7 +63,9 @@ verdict; APPROVED_* means approved, anything with MANUAL_REVIEW_REQUIRED
 needs a person. Read notes first: index_base_mismatch means the repo
 context came from another version of the code. verify_findings checks
 another reviewer's findings against a diff at once, without a model; its
-outcomes judge the findings, never the change."""
+outcomes judge the findings, never the change. list_tasks, claim_task and
+submit_result are the task board's worker side: claim a task, read the
+files it lists, answer with quotes; every quote is checked."""
 
 # What a verify_findings outcome means, for clients that read only results
 OUTCOME_MEANING = {
@@ -96,6 +101,7 @@ class Settings:
     max_pending: int = 4
     audit_log: Optional[Path] = None    # default: audit.jsonl in records_dir
     tokens_file: Optional[Path] = None  # default: mcp_tokens.json at the repo root
+    projects_file: Optional[Path] = None  # default: projects.json at the repo root
     calls_per_min: int = 120
     reviews_per_hour: int = 20
     max_reviews_per_caller: int = 2
@@ -119,6 +125,8 @@ class Settings:
             max_pending=int(env("LLMORCH_MAX_PENDING") or 4),
             audit_log=Path(env("LLMORCH_AUDIT_LOG")) if env("LLMORCH_AUDIT_LOG") else None,
             tokens_file=Path(env("LLMORCH_TOKENS_FILE")) if env("LLMORCH_TOKENS_FILE") else None,
+            projects_file=(Path(env("LLMORCH_PROJECTS_FILE"))
+                           if env("LLMORCH_PROJECTS_FILE") else None),
             calls_per_min=int(env("LLMORCH_RATE_PER_MIN") or 120),
             reviews_per_hour=int(env("LLMORCH_REVIEWS_PER_HOUR") or 20),
             max_reviews_per_caller=int(env("LLMORCH_MAX_REVIEWS_PER_CALLER") or 2))
@@ -505,4 +513,6 @@ def build_server(settings: Optional[Settings] = None,
                         mime_type="application/json",
                         description=f"The committed repo index's {section}."
                         )(index_section(section))
+    register_task_tools(server, Board(Path(settings.records_dir) / "tasks",
+                                      settings.projects_file))
     return server

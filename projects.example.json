@@ -1,0 +1,11 @@
+{
+  "projects": {
+    "example": {
+      "root": "../example-project",
+      "rules": "docs/rules",
+      "always": ["README.md", "docs/architecture.md"],
+      "denylist": "local/denylist.txt",
+      "never": ["local/", "private/"]
+    }
+  }
+}
