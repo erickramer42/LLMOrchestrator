@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-11-19.
+Last updated: 2026-11-26.
 
 What works today, what is being measured, what is known to be weak, and
 what comes next. For the system itself see [design.md](docs/design.md);
@@ -183,6 +183,12 @@ than being measured alone.
 - **#21 Bridge proposal mismatch.** The proposal describes adding the
   LiveView page; the diff removes it. A matching proposal would start a
   new baseline.
+- **#22 Size limits.** Source files stay under 1,000 lines and functions
+  under 80. Over them: `tests/test_deterministic.py`,
+  `retrieval.build_context_pack`, `mcp_server.server.build_server` and
+  `indexer.build_index`. Each split is a moves-only commit first; the
+  pack is model-facing, so its split leaves every pack byte-identical,
+  pinned by tests.
 
 ## Conventions
 
