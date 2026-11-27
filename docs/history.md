@@ -246,6 +246,17 @@ changed.
   with arm N's conversion rule unit-tested before any sample. Tests 239
   to 249.
 
+### 2026-11-26
+
+- The task board, server 0.4.0 (ADR-0006): a session posts a
+  `second_read` of another reviewer's findings at a work branch's commit
+  (`python -m tasks`); a worker (Lumo over MCP: `list_tasks`,
+  `claim_task`, `submit_result`) answers each finding with a quote, which
+  `adjudication.judge_finding` checks against the file at that commit
+  before the submitter sees it. One retry, then unverified. Projects are
+  local configuration (`projects.json`). Not yet run with Lumo. Tests 249
+  to 272, server tests 46 to 49.
+
 ## Features and measurements, in detail
 
 Each entry is dated. Newer entries supersede older ones where they

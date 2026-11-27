@@ -20,7 +20,7 @@ curl http://localhost:11434/api/version    # Ollama must be up for anything mode
 
 ```sh
 python -m unittest discover -s tests -v
-python -m py_compile *.py eval_harness/*.py tests/*.py
+python -m py_compile *.py eval_harness/*.py tests/*.py tasks/*.py
 python -m unittest discover -s tests_mcp -v   # the MCP server; needs requirements-mcp.txt
 ```
 
@@ -182,10 +182,37 @@ to `mcp_records/audit.jsonl` (`LLMORCH_AUDIT_LOG`): the
 time, the server version, the transport, the caller (the token's id, or
 `stdio`), the tool and its arguments with `proposal`, `diff` and
 `context` replaced by their SHA-256 and length and `findings` by the
-SHA-256 of its JSON and its count, the outcome, the
+SHA-256 of its JSON and its count (a task answer's `items` the same), the outcome, the
 review's id, status and verdict, the duration, for a finished review
 the model token counts, and for `verify_findings` the outcome counts. A request refused before MCP gets a line with
 its status, path and client address.
+
+## Task board
+
+A session posts work for another agent; the agent's answer is checked
+before the session sees it ([ADR-0006](decisions/0006-task-board.md)).
+Copy `projects.example.json` to `projects.json` (git-ignored) and name
+each project's root, rule folder, always-listed files, denylist and
+never-listed paths.
+
+```sh
+# Submitter: findings.json is a list of {claim, file, quote?, line?}
+python -m tasks submit --project <name> --kind second_read --commit <sha> --findings findings.json
+python -m tasks get <task_id> --wait 600 --caller-tokens <n>
+python -m tasks list --state open
+
+# Worker without MCP: items.json is a list of {finding, verdict, file, quote, reason}
+python -m tasks claim <task_id> --worker <name>
+python -m tasks submit-result <task_id> items.json --worker <name>
+```
+
+A worker with MCP uses `list_tasks`, `claim_task` and `submit_result`
+(review scope for the last two). The commit must be checked out in a
+worktree or the main clone, with no uncommitted changes to the files the
+task lists; the worker reads each file from the path the claim gives.
+Output is JSON; exit status 0 done, 1 refused or failed, 2 usage error.
+`LLMORCH_RECORDS_DIR` and `LLMORCH_PROJECTS_FILE` move the board and the
+project file.
 
 ## Golden suite
 

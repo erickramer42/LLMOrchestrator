@@ -16,8 +16,8 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
 | Judge | `j8-claim-quote-linkage` |
 | Context-pack format | `f3-diff-authoritative` |
 | Models | reviewer `laguna-xs-2.1`, engineer `gemma4:12b`, on Ollama; `NUM_CTX` 24576, `NUM_PREDICT` 12288 |
-| Tests | 249 regression tests and 46 MCP server tests, no model needed; CI on Python 3.11 and 3.13 |
-| MCP server | `mcp_server` 0.3.0 over stdio or HTTP with scoped tokens and an audit log, SDK `mcp==2.3.0` ([ADR-0003](docs/decisions/0003-mcp-server.md), [ADR-0004](docs/decisions/0004-mcp-http-auth-audit.md), [ADR-0005](docs/decisions/0005-verify-findings.md), [clients](docs/mcp-clients.md)) |
+| Tests | 272 regression tests and 49 MCP server tests, no model needed; CI on Python 3.11 and 3.13 |
+| MCP server | `mcp_server` 0.4.0 over stdio or HTTP with scoped tokens and an audit log, SDK `mcp==2.3.0` ([ADR-0003](docs/decisions/0003-mcp-server.md), [ADR-0004](docs/decisions/0004-mcp-http-auth-audit.md), [ADR-0005](docs/decisions/0005-verify-findings.md), [ADR-0006](docs/decisions/0006-task-board.md), [clients](docs/mcp-clients.md)) |
 | Golden suite | 10/10 at the last live run (3 model fixtures, 7 hedge units); 13 deterministic judge cases since 2026-10-27 |
 
 **Headline numbers (judge j8, round-1 samples, hand-labeled):**
@@ -56,6 +56,13 @@ lives, [file-map.md](docs/file-map.md); for how the project got here,
   any other reviewer's findings: a finding that cites a line number
   instead of quoting code, or hedges, is demoted whether or not it is
   right.
+- **Task board (ADR-0006), built, not yet run with Lumo:** a session
+  posts a `second_read` of another reviewer's findings at a work
+  branch's commit (`python -m tasks`); a worker answers each finding
+  through `claim_task` and `submit_result`, and every quote is checked
+  against the file at that commit before the submitter sees it. Next:
+  the saving on Lumo's next real cold read of a Havne diff, against a
+  cold read by a hosted-model session, before any other kind.
 - **Twenty-sixth measurement, registered (ADR-0002), not run:**
   `verify_findings` on findings by a hosted model and a held-out local
   one (`gpt-oss:20b`), native and quoted, plus a hand-written control

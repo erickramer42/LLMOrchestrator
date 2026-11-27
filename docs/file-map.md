@@ -27,17 +27,18 @@ together, see [design.md](design.md); for the current versions, see
 `eval_harness.common` sits on `retrieval`; `round1` and `round2` on
 `common` and `debate`; `replay` on `common`, `adjudication` and
 `diff_reader`. The probe and bake-off import only `reviewer_prompt`,
-`eval_harness.raw_call` and `review_fixtures`. `tests/` sits on top.
+`eval_harness.raw_call` and `review_fixtures`. `tasks` sits on `adjudication`. `tests/` sits on top.
 
 ## MCP server
 
-A separate package on top of the core ([ADR-0003](decisions/0003-mcp-server.md), [ADR-0004](decisions/0004-mcp-http-auth-audit.md), [ADR-0005](decisions/0005-verify-findings.md)): it imports `debate`, `adjudication`, `config` and `retrieval`, and no core module imports it or the SDK.
+A separate package on top of the core ([ADR-0003](decisions/0003-mcp-server.md), [ADR-0004](decisions/0004-mcp-http-auth-audit.md), [ADR-0005](decisions/0005-verify-findings.md), [ADR-0006](decisions/0006-task-board.md)): it imports `debate`, `adjudication`, `config`, `retrieval` and `tasks`, and no core module imports it or the SDK.
 
 | Path | Purpose |
 |---|---|
 | `mcp_server/__init__.py` | The server's semantic version, `__version__`. |
 | `mcp_server/__main__.py` | The entry point: stdio by default, `--http`, and the `token` commands. Puts the repo root, not its own folder, on the import path, so a client can start it from any directory. |
-| `mcp_server/server.py` | The tools (`review_diff`, `get_decision`, `list_decisions`, `verify_findings`), the resources (`decision://`, `index://`), the settings from `LLMORCH_*` environment variables, and the summary of a finished record. Imports `debate`, never `orchestrator`, so nothing prints to stdout, which carries the protocol over stdio. |
+| `mcp_server/server.py` | The review tools (`review_diff`, `get_decision`, `list_decisions`, `verify_findings`), the resources (`decision://`, `index://`), the settings from `LLMORCH_*` environment variables, and the summary of a finished record. Imports `debate`, never `orchestrator`, so nothing prints to stdout, which carries the protocol over stdio. |
+| `mcp_server/task_tools.py` | The task board's worker tools: `list_tasks`, `claim_task`, `submit_result`, over `tasks.board`. |
 | `mcp_server/jobs.py` | The review queue: one worker thread, a bounded queue, per-job caller, round and agent, and pending markers that let a restart report a review as lost. |
 | `mcp_server/guard.py` | The middleware around every tool call and resource read: the caller, its scopes, the per-caller limits and the audit line; and the wrapper that audits HTTP requests refused before MCP. |
 | `mcp_server/tokens.py` | The token file (ids, scopes, SHA-256 hashes), minting and revoking, and the SDK token verifier over it. |
@@ -45,6 +46,19 @@ A separate package on top of the core ([ADR-0003](decisions/0003-mcp-server.md),
 | `requirements-mcp.txt` | `requirements.txt` plus the pinned SDK, `mcp==2.3.0`. |
 | `tests_mcp/test_server.py` | The server's tests: an in-process MCP client against the fake model, and a stdio launch from another directory. |
 | `tests_mcp/test_http.py` | The HTTP transport's tests on a loopback `uvicorn`: tokens and scopes, revocation, the audit log's content, the limits, Host and Origin refusals, the startup refusals, the token commands. |
+
+## Task board
+
+Work one session posts for another agent, with each answer's quotes checked before the submitter sees it ([ADR-0006](decisions/0006-task-board.md)). Core-side: it imports `adjudication`, never `mcp`, and calls no model.
+
+| Path | Purpose |
+|---|---|
+| `tasks/board.py` | The store (one JSON record per task, a lock file per change), claims, the quote check on an answer, the one retry, the denylist check, the submitter's view and its cost counts. |
+| `tasks/projects.py` | `projects.json`: a project's root, rules, always-listed files, denylist and never-listed paths; the checkout at a commit, the rules whose globs match, working-tree reads with their hashes. Runs git with `--no-optional-locks`. |
+| `tasks/kinds.py` | The task kinds: `second_read`'s payload, item shape and the worker's instructions (model-facing, versioned). |
+| `tasks/__main__.py` | The command line: `submit`, `list`, `get`, `claim`, `submit-result`. |
+| `projects.example.json` | The shape of the git-ignored `projects.json`. |
+| `tests/test_tasks.py` | The board's tests on a temporary repository with a worktree. |
 
 ## Repo context
 
@@ -100,7 +114,7 @@ A separate package on top of the core ([ADR-0003](decisions/0003-mcp-server.md),
 | `tests/test_retrieval.py` | Retrieval and indexer unit tests. |
 | `.github/workflows/` | CI on Python 3.11 and 3.13, no Ollama: the compile check and the regression suite with `requirements.txt` alone, then both suites with `requirements-mcp.txt`. |
 | `requirements.txt` | The core's one dependency, `requests`. |
-| `.gitignore` | Keeps out caches, virtual environments, model weights, golden-suite run files (`gold_tests/run_*.json`), the summary cache (`repo_context_cache.json`), the MCP server's records, indexes and token file (`mcp_records/`, `mcp_indexes/`, `mcp_tokens.json`) and local notes. |
+| `.gitignore` | Keeps out caches, virtual environments, model weights, golden-suite run files (`gold_tests/run_*.json`), the summary cache (`repo_context_cache.json`), the MCP server's records, indexes and token file (`mcp_records/`, `mcp_indexes/`, `mcp_tokens.json`), the task board's `projects.json` and local notes. |
 | `README.md` | The project in two minutes. |
 | `LICENSE` | MIT. |
 | `STATUS.md` | Current state, work in progress, limitations, backlog and conventions. |
@@ -111,4 +125,4 @@ A separate package on top of the core ([ADR-0003](decisions/0003-mcp-server.md),
 | `docs/file-map.md` | This file. |
 | `docs/portability_guide.md` | Adapting the tribunal to another codebase. |
 | `docs/history.md` | The dated engineering log. |
-| `docs/decisions/` | ADR-0001 (model selection), ADR-0002 (adjudication and every measurement, predictions included), ADR-0003 (the MCP server), ADR-0004 (its HTTP transport, tokens, audit log and limits) and ADR-0005 (checking other reviewers' findings). |
+| `docs/decisions/` | ADR-0001 (model selection), ADR-0002 (adjudication and every measurement, predictions included), ADR-0003 (the MCP server), ADR-0004 (its HTTP transport, tokens, audit log and limits), ADR-0005 (checking other reviewers' findings) and ADR-0006 (the task board). |
